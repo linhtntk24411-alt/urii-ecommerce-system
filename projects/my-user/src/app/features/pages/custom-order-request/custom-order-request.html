@@ -1,0 +1,242 @@
+<main class="main-content">
+  <div class="bg-blur-accent"></div>
+
+  <section class="wizard-section">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-nav">
+      Hồ sơ của tôi &gt; <span class="active-link">Yêu cầu thiết kế</span>
+    </div>
+
+    <div class="section-title-box">
+      <h1>Đặt làm theo yêu cầu</h1>
+      <p>Biến ý tưởng của bạn thành những tác phẩm Perler Beads độc bản.</p>
+    </div>
+
+    <!-- Thanh tiến trình Stepper chuẩn gốc -->
+    <div class="stepper-container">
+      <div class="stepper-line"></div>
+      <div class="step-node" (click)="goToStep(1)">
+        <div class="node-circle" [class.active]="currentStep >= 1">
+          @if (currentStep > 1) {
+            <span class="material-symbols-outlined fs-20">check</span>
+          } @else {
+            1
+          }
+        </div>
+        <span class="node-label" [class.active]="currentStep >= 1">Thông tin</span>
+      </div>
+      <div class="step-node" (click)="goToStep(2)">
+        <div class="node-circle" [class.active]="currentStep >= 2">
+          @if (currentStep > 2) {
+            <span class="material-symbols-outlined fs-20">check</span>
+          } @else {
+            2
+          }
+        </div>
+        <span class="node-label" [class.active]="currentStep >= 2">Hình ảnh</span>
+      </div>
+      <div class="step-node" (click)="goToStep(3)">
+        <div class="node-circle" [class.active]="currentStep >= 3">3</div>
+        <span class="node-label" [class.active]="currentStep >= 3">Xác nhận</span>
+      </div>
+    </div>
+
+    <!-- Khung Form Wizard Panel -->
+    <div class="glass-form-panel">
+      <!-- BƯỚC 1: THÔNG TIN CƠ BẢN -->
+      @if (currentStep === 1) {
+        <div class="form-wizard-step animate-fade-in">
+          <div class="form-grid">
+            <label class="form-group">
+              <span class="form-label">Tên yêu cầu thiết kế *</span>
+              <input class="form-input" [(ngModel)]="formData.requestName" placeholder="Ví dụ: Chân dung thú cưng Corgi 20x20cm" type="text" />
+            </label>
+            <div class="form-row-two-col">
+              <label class="form-group">
+                <span class="form-label">Kích thước mong muốn (cm)</span>
+                <input class="form-input" [(ngModel)]="formData.size" placeholder="VD: 15 x 15" type="text" />
+              </label>
+              <label class="form-group">
+                <span class="form-label">Loại hạt</span>
+                <select class="form-select" [(ngModel)]="formData.beadType">
+                  <option value="Hạt 2.6mm (Mini)">Hạt 2.6mm (Mini)</option>
+                  <option value="Hạt Perler 5mm (Midi Beads)">Hạt Perler 5mm (Midi Beads)</option>
+                  <option value="Hạt 10mm (Maxi)">Hạt 10mm (Maxi)</option>
+                </select>
+              </label>
+            </div>
+            <label class="form-group">
+              <span class="form-label">Mô tả ý tưởng & ghi chú đặc biệt *</span>
+              <textarea class="form-textarea" [(ngModel)]="formData.notes" placeholder="Hãy mô tả chi tiết màu sắc, phong cách hoặc bất kỳ yêu cầu nào khác để Urii có thể tư vấn tốt nhất cho bạn..." rows="5"></textarea>
+            </label>
+          </div>
+          <div class="action-bar justify-end">
+            <button class="btn-primary" (click)="nextStep(2)">
+              Tiếp tục <span class="material-symbols-outlined">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- BƯỚC 2: UPLOAD HÌNH ẢNH -->
+      @if (currentStep === 2) {
+        <div class="form-wizard-step animate-fade-in">
+          <div class="upload-layout-grid">
+            <div class="upload-left-pane">
+              <h2>Tải lên hình ảnh tham khảo</h2>
+              <p class="pane-desc">Vui lòng tải lên hình ảnh rõ nét để chúng tôi có thể chuyển đổi chính xác nhất sang dạng Perler Beads cho bạn.</p>
+
+              <div class="upload-dropzone" (click)="fileInput.click()">
+                <input #fileInput type="file" accept="image/*" class="hidden" (change)="onFileSelected($event)" />
+                <div class="zone-icon-box">
+                  <span class="material-symbols-outlined icon-primary">add_photo_alternate</span>
+                </div>
+                <p class="zone-title">Kéo thả hoặc Click để tải lên</p>
+                <p class="zone-subtitle">Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB/ảnh)</p>
+              </div>
+
+              @if (selectedFile) {
+                <div class="uploaded-files-list">
+                  <div class="uploaded-file-item animate-fade-in">
+                    <div class="file-item-info">
+                      <span class="material-symbols-outlined icon-primary">image</span>
+                      <div class="file-item-text">
+                        <span class="file-name">{{ selectedFile.name }}</span>
+                        <span class="file-size">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+                      </div>
+                    </div>
+                    <button class="btn-icon-del" (click)="removeFile()">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="upload-right-pane">
+              <div class="tips-box">
+                <h3><span class="material-symbols-outlined icon-primary">lightbulb</span> Mẹo để có sản phẩm đẹp</h3>
+                <ul>
+                  <li>Chọn ảnh có độ tương phản cao.</li>
+                  <li>Hạn chế chi tiết quá nhỏ, phức tạp.</li>
+                  <li>Ảnh chụp chính diện, không bị mờ.</li>
+                </ul>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ghi chú thêm cho hình ảnh</label>
+                <textarea class="form-textarea" [(ngModel)]="formData.imageNotes" placeholder="Ví dụ: Lấy phần chân dung nhân vật, đổi màu nền sang xanh nhạt, v.v." rows="4"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="action-bar justify-between">
+            <button class="btn-secondary" (click)="nextStep(1)">
+              <span class="material-symbols-outlined">arrow_back</span> Quay lại
+            </button>
+            <button class="btn-primary" (click)="renderSummaryPage()">
+              Tiếp tục <span class="material-symbols-outlined">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- BƯỚC 3: XÁC NHẬN & BÁO GIÁ -->
+      @if (currentStep === 3) {
+        <div class="form-wizard-step animate-fade-in">
+          <div class="review-layout-grid">
+            <div class="review-details-section">
+              <h2>Xác nhận yêu cầu</h2>
+              <div class="review-data-flex">
+                <div class="review-text-info">
+                  <div class="info-block">
+                    <p class="info-label">Tên yêu cầu</p>
+                    <p class="info-val-strong">{{ formData.requestName || '-' }}</p>
+                  </div>
+                  <div class="info-block">
+                    <p class="info-label">Kích thước</p>
+                    <p class="info-val">{{ formData.size || '-' }}</p>
+                  </div>
+                  <div class="info-block">
+                    <p class="info-label">Loại hạt sử dụng</p>
+                    <p class="info-val">{{ formData.beadType }}</p>
+                  </div>
+                  <div class="info-block">
+                    <p class="info-label">Mô tả thêm</p>
+                    <p class="info-val-italic">"{{ formData.notes || '-' }}"</p>
+                  </div>
+                </div>
+
+                <div class="review-image-sidebar">
+                  <p class="info-label">Hình ảnh tham khảo</p>
+                  <div class="preview-thumbnail-box">
+                    @if (imagePreviewUrl) {
+                      <img [src]="imagePreviewUrl" alt="Ảnh tham khảo" />
+                    } @else {
+                      <div class="no-img-placeholder">Chưa tải ảnh</div>
+                    }
+                  </div>
+                  <p class="file-name-tag">{{ selectedFile?.name || 'Chưa có hình ảnh' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="price-summary-card">
+              <div class="price-billing-box">
+                <h3>Báo giá dự kiến</h3>
+                <div class="billing-row">
+                  <span>Phí thiết kế (Map)</span>
+                  <strong>{{ pricing.mapPrice | number }}đ</strong>
+                </div>
+                <div class="billing-row">
+                  <span>Nguyên liệu & Công làm</span>
+                  <strong>{{ pricing.materialPrice | number }}đ</strong>
+                </div>
+                <div class="billing-total-row">
+                  <span>Tổng cộng</span>
+                  <span class="total-price">{{ pricing.totalPrice | number }}đ</span>
+                </div>
+                <p class="billing-note">* Lưu ý: Đây là mức giá ước tính. Giá cuối cùng sẽ được xác nhận sau khi chuyên viên Urii xem xét kỹ độ phức tạp của mẫu.</p>
+              </div>
+              <div class="action-buttons-group">
+                <button class="btn-submit" [disabled]="isSubmitting" (click)="submitRequest()">
+                  <span class="material-symbols-outlined">send</span> Gửi yêu cầu ngay
+                </button>
+                <button class="btn-edit" (click)="nextStep(2)">Quay lại chỉnh sửa</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- TÍNH NĂNG NỔI BẬT CHUẨN GỐC -->
+    <div class="features-highlight-section">
+      <div class="feature-box">
+        <span class="material-symbols-outlined icon-fill">palette</span>
+        <h4>Tư vấn màu sắc</h4>
+        <p>Chúng tôi hỗ trợ phối màu chuẩn xác nhất theo ảnh gốc.</p>
+      </div>
+      <div class="feature-box">
+        <span class="material-symbols-outlined icon-fill">timer</span>
+        <h4>Phản hồi nhanh</h4>
+        <p>Nhận báo giá và bản thảo sơ bộ trong vòng 24h.</p>
+      </div>
+      <div class="feature-box">
+        <span class="material-symbols-outlined icon-fill">local_shipping</span>
+        <h4>Giao hàng toàn quốc</h4>
+        <p>Đóng gói chuyên nghiệp, đảm bảo tác phẩm an toàn.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL THÀNH CÔNG -->
+@if (showSuccessModal) {
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-icon">✓</div>
+      <h2>Đã gửi thành công!</h2>
+      <p>Yêu cầu đã tiếp nhận. Mã: <span class="order-code">{{ generatedOrderCode }}</span>.</p>
+      <button class="btn-modal-close" (click)="finishAndNavigate()">Xem danh sách đơn</button>
+    </div>
+  </div>
+}

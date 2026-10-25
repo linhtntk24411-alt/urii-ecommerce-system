@@ -3,10 +3,12 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "start": "ng serve my-user",
+    "start:admin": "ng serve my-admin",
+    "build": "ng build my-user",
+    "build:admin": "ng build my-admin",
+    "watch": "ng build my-user --watch --configuration development",
+    "test": "ng test my-user",
     "serve:ssr:my-user": "node dist/my-user/server/server.mjs",
     "serve:ssr:my-admin": "node dist/my-admin/server/server.mjs"
   },

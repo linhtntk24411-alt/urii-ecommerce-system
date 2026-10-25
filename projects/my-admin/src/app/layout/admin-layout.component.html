@@ -1,0 +1,100 @@
+<div class="admin-layout-wrapper">
+  <!-- Sidebar điều hướng bên trái -->
+  <aside id="layout-sidebar" class="admin-sidebar custom-scrollbar">
+    <div class="sidebar-logo">
+        <img alt="Urii Logo" src="/assets/Urii-Logo.png">
+    </div>
+
+    <a routerLink="/" class="btn-view-store">
+      <i class="bi bi-shop"></i>
+      <span>Quay lại Cửa hàng</span>
+    </a>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item" routerLink="/dashboard" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">dashboard</span>
+        <span class="nav-text">Dashboard</span>
+      </a>
+      <a class="nav-item" routerLink="/products" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">storefront</span>
+        <span class="nav-text">Sản phẩm</span>
+      </a>
+      <a class="nav-item" routerLink="/orders" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">shopping_bag</span>
+        <span class="nav-text">Đơn hàng</span>
+      </a>
+      <a class="nav-item" routerLink="/promotions" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">confirmation_number</span>
+        <span class="nav-text">Mã Giảm Giá</span>
+      </a>
+      <a class="nav-item" routerLink="/users" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">group</span>
+        <span class="nav-text">Người Dùng</span>
+      </a>
+      <a class="nav-item" routerLink="/blogs" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">assignment</span>
+        <span class="nav-text">Blog Cộng Đồng</span>
+      </a>
+      <a class="nav-item" routerLink="/comments" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">chat</span>
+        <span class="nav-text">Bình Luận</span>
+      </a>
+      <a class="nav-item" routerLink="/map-admin" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">photo_library</span>
+        <span class="nav-text">Thư Viện Map Mẫu</span>
+      </a>
+      <a class="nav-item" routerLink="/support" routerLinkActive="active">
+        <span class="material-symbols-outlined icon-md">support_agent</span>
+        <span class="nav-text">Hỗ trợ Chatbot</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="footer-link" routerLink="/help-center">
+        <span class="material-symbols-outlined icon-md">help</span>
+        <span class="footer-text">Trung tâm trợ giúp</span>
+      </a>
+      <a class="footer-link" id="adminLogoutBtn" href="#" (click)="$event.preventDefault()">
+        <span class="material-symbols-outlined icon-md">logout</span>
+        <span class="footer-text">Đăng xuất</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Khu vực nội dung chính bên phải -->
+  <div class="admin-main-area">
+    <!-- Topbar phía trên -->
+    <header id="layout-topbar" class="admin-topbar">
+      <div class="topbar-left">
+        <button type="button" class="menu-toggle-btn" title="Menu">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div class="search-wrapper">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input class="search-input" placeholder="Tìm kiếm đơn hàng, người dùng..." type="text">
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="notification-wrapper">
+          <button type="button" class="icon-btn" title="Thông báo">
+            <i class="bi bi-bell-fill fs-5"></i>
+            <span class="notification-badge" style="display: none;">0</span>
+          </button>
+        </div>
+        
+        <div class="admin-profile">
+          <div class="profile-avatar">
+            <img src="assets/avatar-non.jpg" alt="Urii Admin Avatar">
+        </div>
+          <span class="admin-name">Urii Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Nội dung thay đổi theo route -->
+    <main class="admin-main-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

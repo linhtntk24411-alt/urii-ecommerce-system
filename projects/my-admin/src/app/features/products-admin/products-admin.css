@@ -1,0 +1,57 @@
+/* Styling tổng quan */
+.shadow-sm {
+  box-shadow: 0 .125rem .25rem rgba(0,0,0,.04) !important;
+}
+
+/* Styling cho bảng */
+.table th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.table td {
+  vertical-align: middle;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.img-thumbnail {
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.sku-text {
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+/* Badge trạng thái */
+.badge-status-sap-het {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+}
+
+.badge-status-het-hang {
+  background-color: #f8d7da !important;
+  color: #721c24 !important;
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  border: none;
+  box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
+}
+
+.btn-primary:hover {
+  background-color: #0b5ed7;
+}
+
+/* Custom form input focus */
+.form-control:focus, .form-select:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}

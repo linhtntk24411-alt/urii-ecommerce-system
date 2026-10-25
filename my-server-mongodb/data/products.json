@@ -1,0 +1,1949 @@
+{
+  "products": [
+    {
+      "id": "1075483767",
+      "name": "Bút Đặt Hạt Tự Động 2.6mm",
+      "slug": "products-but",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81zut-mmzv8ahrn6kg08_310c94be477d4ca4a635bb252881a2f8.webp",
+      "isSale": true,
+      "originalPrice": 20000,
+      "currentPrice": 15000,
+      "stock": 98,
+      "description": "Bút chế tác hạt có thể thu vào có đầu 2,6mm (0,10in) để đặt hạt chính xác, để tạo ra các thiết kế nghệ thuật hạt phức tạp với độ chính xác chuyên nghiệp.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Tiêu chuẩn"
+      },
+      "variants": [
+        {
+          "name": "Hồng",
+          "price": 15000,
+          "stock": 49,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-825zu-mjs736ho1ame0d_resize_w900_nl_98f1eaf8aaac44eb9ad3128b758488bb.webp"
+        },
+        {
+          "name": "Xanh dương nhạt",
+          "price": 15000,
+          "stock": 49,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81zut-mmzv8ahrn6kg08_310c94be477d4ca4a635bb252881a2f8.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075483768",
+      "name": "DIY KIT",
+      "slug": "products-kit",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/set_h_t_nh_a_urii_rainbow_48_m_u_4ce5db5cf38d45a68edca10c15bf227e.png",
+      "isSale": true,
+      "originalPrice": 79000,
+      "currentPrice": 69000,
+      "stock": 44,
+      "description": "DIY KIT",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Tiêu chuẩn"
+      },
+      "variants": [
+        {
+          "name": "Đa màu",
+          "price": 69000,
+          "stock": 44,
+          "image": "https://cdn.hstatic.net/products/200001193910/set_h_t_nh_a_urii_rainbow_48_m_u_4ce5db5cf38d45a68edca10c15bf227e.png"
+        }
+      ]
+    },
+    {
+      "id": "1075486161",
+      "name": "Mô Hình Hạt Nhựa Ủi Thành Phẩm Sakabooon - Chủ Đề Đồ Ăn",
+      "slug": "mo-hinh-hat-nhua-ui-thuc-pham-sakabooon",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/12_ea1aea881164402a91baa18fb750921b.jpg",
+      "isSale": true,
+      "originalPrice": 13500,
+      "currentPrice": 12000,
+      "stock": 40,
+      "description": "Mô hình thành phẩm làm từ hạt nhựa ủi Perler cao cấp, thiết kế pixel art dễ thương, thích hợp làm phụ kiện trang trí, quà tặng hoặc sưu tầm.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Cơm cà ri",
+        "Size": "Freesize"
+      },
+      "variants": [
+        {
+          "name": "Hạt Nhựa",
+          "price": 12000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_020305_a4dc2020dd2b4dffb5290a2c11044bab.png"
+        },
+        {
+          "name": "Hạt Nhựa",
+          "price": 12000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_020309_b91f3ca9a12d48349f70d85ed080189d.png"
+        },
+        {
+          "name": "Hạt Nhựa",
+          "price": 12000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_020314_97a56ae9115d4836841867b4d2b86d45.png"
+        },
+        {
+          "name": "Hạt Nhựa",
+          "price": 12000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_020320_36c9869dfea1478b9c4dee3d4cb29eb5.png"
+        }
+      ]
+    },
+    {
+      "id": "1075486162",
+      "name": "[Mã màu A] Gói bổ sung hạt nhựa ủi 2.6mm 10g (1000 hạt)",
+      "slug": "products-hat-nhua-refill-a",
+      "category": "HN",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgmtea6d4e_resize_w900_nl_25e50b681aa242f3afad6382ba6b2d4f.webp",
+      "isSale": true,
+      "originalPrice": 18000,
+      "currentPrice": 15000,
+      "stock": 80,
+      "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu A1, 10g khoảng 1000 hạt; chất liệu nhựa, dùng làm đồ chơi DIY/sáng tạo cho trẻ em, xuất xứ Trung Quốc.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "A1",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgmtea6d4e_resize_w900_nl_25e50b681aa242f3afad6382ba6b2d4f.webp"
+        },
+        {
+          "name": "A2",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgy0xbf3a2_c1e8d8c9ec9d4b9a880be1210afed38f.webp"
+        },
+        {
+          "name": "A3",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgo31qmbbd_6a9c707a6e1640e587f882335036d8e5.webp"
+        },
+        {
+          "name": "A4",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgor07b670_1f06ae48c9d34891a2fb050e027b874d.webp"
+        },
+        {
+          "name": "A5",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgprdcldee_30dbca61ac904d8e98f76543eaadf6d2.webp"
+        },
+        {
+          "name": "A6",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgqfpuyta7_73e9cdf0e4114b899eb6d77d69f8396b.webp"
+        },
+        {
+          "name": "A7",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgrnuj9k37_6135fdea02384b1180830b391c0fba4e.webp"
+        },
+        {
+          "name": "A8",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mm4kqgrjpn2d7f_a092be209ad64fc796de2dca007c6643.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486163",
+      "name": "[Mã màu B] Gói bổ sung hạt nhựa ủi 2.6mm 10g (1000 hạt)",
+      "slug": "products-hat-nhua-refill-b",
+      "category": "HN",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzoay70g176_a6a1cf0e1eef49449f0a23c1a5de51b6.webp",
+      "isSale": true,
+      "originalPrice": 18000,
+      "currentPrice": 15000,
+      "stock": 100,
+      "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu B1, khoảng 1000 hạt, an toàn cho trẻ em, dùng xếp hình sáng tạo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "B1",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzoay70g176_a6a1cf0e1eef49449f0a23c1a5de51b6.webp"
+        },
+        {
+          "name": "B2",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzoay5lvqdc_0204c4523dab436fb1757e77409dcda5.webp"
+        },
+        {
+          "name": "B3",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzoay2sqr21_17594d8d29d245918c3086f9bb21145b.webp"
+        },
+        {
+          "name": "B4",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzoay47b7d2_37b5db08f35948ebb237223e2c1f3dca.webp"
+        },
+        {
+          "name": "B5",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzobciivce7_afb48cc625f441389aa2d5e78b1b19cb.webp"
+        },
+        {
+          "name": "B6",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmhpzohnd8n679_6cd20cb215734a328fe9d2115f2cc4cd.webp"
+        },
+        {
+          "name": "B7",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/o1cn01nrxvmw1if7fjmbev0___1818234439_017413d3a4d34fe19dae76daca64c966.jpg"
+        },
+        {
+          "name": "B8",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mng55rvzwkqu40_c72503ed16b14179907ab4bdd6da7459.webp"
+        },
+        {
+          "name": "B9",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mng5629j9csgae_e1b445634acc4967bb0b75c7a0ffd2c1.webp"
+        },
+        {
+          "name": "B10",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mng56bg3as5db2_60c232613c3c4cafbc99bd398211dcf3.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486164",
+      "name": "[Mã màu C] Gói bổ sung hạt nhựa ủi 2.6mm 10g (1000 hạt)",
+      "slug": "products-hat-nhua-refill-c",
+      "category": "HN",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnbt7617xh4w36_057d92b2b36945c0a623b97c80e7debf.webp",
+      "isSale": true,
+      "originalPrice": 18000,
+      "currentPrice": 15000,
+      "stock": 100,
+      "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu C1, khoảng 1000 hạt, an toàn cho trẻ em, dùng xếp hình sáng tạo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "C1",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnbt7617xh4w36_057d92b2b36945c0a623b97c80e7debf.webp"
+        },
+        {
+          "name": "C2",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnbt7f51rd3663_e11d42bf7a724aa89275504102337d5e.webp"
+        },
+        {
+          "name": "C3",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7qf4ssooy8b_ad22e64a61424138a35bcea7e88aaf5b.webp"
+        },
+        {
+          "name": "C4",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7qsz6zw9220_afd1a0df464f4c02832db200e4fa12a6.webp"
+        },
+        {
+          "name": "C5",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7r5iohambea_d0f5e79a7d80431a8073d385db39e9c8.webp"
+        },
+        {
+          "name": "C6",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7rcoqoyrle6_e1ef85aba0d540ab980dae6b7718769c.webp"
+        },
+        {
+          "name": "C7",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7rpa87dhda3_d2defc890a794befaaf1393051b9a37c.webp"
+        },
+        {
+          "name": "C8",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7ryvkq8zs9c_d2ae478b37964767b1d5df82c94836f1.webp"
+        },
+        {
+          "name": "C9",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7s7xgk64j10_6b4fdad1739b410380241999c85f0bf0.webp"
+        },
+        {
+          "name": "C10",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnc7sl2v6wao7a_748bd35900fc4bc6a7a5f9aba0ffe531.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486165",
+      "name": "[Mã màu F] Gói bổ sung hạt nhựa ủi 2.6mm 10g (1000 hạt)",
+      "slug": "products-hat-nhua-refill-f",
+      "category": "HN",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6ee3kqv554_fda0605d33c84efc8538d5caa9f5e341.webp",
+      "isSale": true,
+      "originalPrice": 18000,
+      "currentPrice": 15000,
+      "stock": 80,
+      "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu F1, 10g khoảng 1000 hạt; chất liệu nhựa, dùng làm đồ chơi DIY/sáng tạo cho trẻ em, xuất xứ Trung Quốc.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "F1",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6ee3kqv554_fda0605d33c84efc8538d5caa9f5e341.webp"
+        },
+        {
+          "name": "F2",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6emj98ua4e_e87d6993d42e42968ba7cf71f487a5a8.webp"
+        },
+        {
+          "name": "F3",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6emrzw1w9d_6d407d5a94cc4b569abd39aba1b30632.webp"
+        },
+        {
+          "name": "F4",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6en20w0402_a3a7560fefe944179b4000d5583280d9.webp"
+        },
+        {
+          "name": "F5",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6enc1vyc13_ce19881bda824b9ba46ea413d4e8e6aa.webp"
+        },
+        {
+          "name": "F6",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6entc5j5a9_0ab351a7ad5c47b0b8bdb57cf4634f43.webp"
+        },
+        {
+          "name": "F7",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6enzfa4j5e_b83ea6a3cf51415bbafc5109ee0fa0a8.webp"
+        },
+        {
+          "name": "F8",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa6ev7d5hf62_1f84b31cd0924125a2e96a2d1160f217.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486167",
+      "name": "[Mã màu G] Gói bổ sung hạt nhựa ủi 2.6mm 10g (1000 hạt)",
+      "slug": "products-hat-nhua-refill-g",
+      "category": "HN",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa4tdcmww204_8d2ad59824d44a59a0f03bbec965a974.webp",
+      "isSale": true,
+      "originalPrice": 18000,
+      "currentPrice": 15000,
+      "stock": 30,
+      "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu G1, 10g khoảng 1000 hạt; chất liệu nhựa, dùng làm đồ chơi DIY/sáng tạo cho trẻ em, xuất xứ Trung Quốc.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "G1",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa4tdcmww204_8d2ad59824d44a59a0f03bbec965a974.webp"
+        },
+        {
+          "name": "G2",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa4tdgnldy21_cd035812b8094f2f9c0ad5c851ca6009.webp"
+        },
+        {
+          "name": "G3",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa4tdcobgic6_454aa3a2627643d597dc7095af029361.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486168",
+      "name": "[Mã màu H] Gói bổ sung hạt nhựa ủi 2.6mm 10g (1000 hạt)",
+      "slug": "products-hat-nhua-refill-h",
+      "category": "HN",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp",
+      "isSale": true,
+      "originalPrice": 18000,
+      "currentPrice": 15000,
+      "stock": 100,
+      "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu H1, khoảng 1000 hạt, an toàn cho trẻ em, dùng xếp hình sáng tạo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "H1",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H2",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H3",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H4",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H5",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H6",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H7",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H8",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H9",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        },
+        {
+          "name": "H10",
+          "price": 15000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmqa2sihq0w03d_a4fd8b6bc5b2467198335f264f8fe0e3.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486180",
+      "name": "Bộ Hạt Xếp Hình - Combo Handmade DIY Nhẵn Mịn",
+      "slug": "bo-hat-xep-hinh-combo-handmade-diy",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030756_fc41e98c92554127b69b389763080b5f.png",
+      "isSale": true,
+      "originalPrice": 78000,
+      "currentPrice": 68000,
+      "stock": 321,
+      "description": "Bộ hạt xếp hình Combo Handmade DIY cao cấp giúp kích thích sự sáng tạo và rèn luyện tính kiên nhẫn cho trẻ em. Hạt nhựa lên màu chuẩn, bề mặt nhẵn mịn, dễ ủi kết dính. Bộ sản phẩm đi kèm bàn ủi an toàn, tiện lợi, là lựa chọn làm quà tặng sinh nhật vô cùng độc đáo cho các bé.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa nguyên sinh an toàn",
+        "Size": "Bộ 24 màu"
+      },
+      "variants": [
+        {
+          "name": "Từ 6 tuổi trở lên",
+          "price": 68000,
+          "stock": 54,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030756_fc41e98c92554127b69b389763080b5f.png"
+        },
+        {
+          "name": "Từ 6 tuổi trở lên",
+          "price": 128700,
+          "stock": 23,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030811_c9073067f8344633be47f045c3fa097f.png"
+        },
+        {
+          "name": "Từ 6 tuổi trở lên",
+          "price": 170000,
+          "stock": 57,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030820_cd7c2139473a4c5a87e4e589ea2641a0.png"
+        },
+        {
+          "name": "Từ 6 tuổi trở lên",
+          "price": 214500,
+          "stock": 33,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030826_98362fbdbd654cbdae961269f616e50b.png"
+        },
+        {
+          "name": "Từ 6 tuổi trở lên",
+          "price": 236000,
+          "stock": 112,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030836_09eb35f6c5d7434eb319698146a7bd7c.png"
+        },
+        {
+          "name": "Từ 6 tuổi trở lên",
+          "price": 250000,
+          "stock": 42,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030845_b8fd17fd3d584b479b4545951530bda3.png"
+        }
+      ]
+    },
+    {
+      "id": "1075486181",
+      "name": "Hộp Nhựa Trong Suốt Đựng Hạt Nhựa",
+      "slug": "hop-nhua-trong-suot-dung-hat-nhua",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/17_b8faf4e313f843cebfb347809c599da4.png",
+      "isSale": true,
+      "originalPrice": 5000,
+      "currentPrice": 4300,
+      "stock": 300,
+      "description": "Hộp nhựa đựng đồ đa năng bằng chất liệu nhựa PP trong suốt, có nắp gài chắc chắn. Giúp phân loại, lưu trữ các loại hạt nhựa perler, phụ kiện hoặc dụng cụ làm sản phẩm handmade một cách ngăn nắp, dễ tìm kiếm và chống bụi bẩn.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa PP",
+        "Size": "Trong suốt"
+      },
+      "variants": [
+        {
+          "name": "Hộp nhựa lẻ",
+          "price": 4300,
+          "stock": 100,
+          "image": "https://cdn.hstatic.net/products/200001193910/17_b8faf4e313f843cebfb347809c599da4.png"
+        },
+        {
+          "name": "Set 30 lưới",
+          "price": 35000,
+          "stock": 100,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-820m8-mne0x3z4rlz732_resize_w900_nl_12d679ce6f344bdc863f8dbc615c2bcc.webp"
+        },
+        {
+          "name": "Set 32 lưới",
+          "price": 40000,
+          "stock": 100,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-8260u-mmassfyosef73e_resize_w900_nl_6b65fdbea9c1451bb6ca14f166c0a154.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075486182",
+      "name": "Kẹp Gắp Hạt Nhựa Đầu Nhọn Skeetboot",
+      "slug": "kep-gap-hat-nhua-dau-nhon-skeetboot",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/14_5d9c84038d0c4c9799cd806f51dfb478.png",
+      "isSale": true,
+      "originalPrice": 20000,
+      "currentPrice": 15000,
+      "stock": 50,
+      "description": "Kẹp nhựa gắp hạt nhựa perler chuyên dụng với thiết kế đầu nhọn, thân kẹp có rãnh chống trượt giúp cầm nắm chắc chắn. Sản phẩm hỗ trợ gắp và sắp xếp các hạt nhựa nhỏ vào bảng khuôn một cách dễ dàng và chuẩn xác.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Đầu nhọn thẳng"
+      },
+      "variants": [
+        {
+          "name": "Trắng",
+          "price": 15000,
+          "stock": 50,
+          "image": "https://cdn.hstatic.net/products/200001193910/14_5d9c84038d0c4c9799cd806f51dfb478.png"
+        }
+      ]
+    },
+    {
+      "id": "1075486183",
+      "name": "Khuôn Nhựa Vuông Ghép Ô Xếp Hạt Nhựa Ủi Perler",
+      "slug": "khuan-nhua-ghep-o-xep-hat-perler-board",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/28_a58711ac70ac4112bdc62a1483b1f958.png",
+      "isSale": true,
+      "originalPrice": 6700,
+      "currentPrice": 5000,
+      "stock": 70,
+      "description": "Khuôn nhựa vuông (pegboard) chuyên dụng xếp hạt nhựa ủi perler, thiết kế thông minh có khớp nối giúp dễ dàng ghép nhiều tấm lại với nhau để làm các mô hình kích thước lớn. Thân khuôn có vạch lưới caro giúp dễ định vị kẻ ô chính xác khi xếp hạt.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Hồng"
+      },
+      "variants": [
+        {
+          "name": "Combo 3",
+          "price": 5000,
+          "stock": 35,
+          "image": "https://cdn.hstatic.net/products/200001193910/28_a58711ac70ac4112bdc62a1483b1f958.png"
+        },
+        {
+          "name": "Combo 3",
+          "price": 5000,
+          "stock": 35,
+          "image": "https://cdn.hstatic.net/products/200001193910/32_dd5a70c8805047eabfc715320304b109.png"
+        }
+      ]
+    },
+    {
+      "id": "1075486184",
+      "name": "Nhíp Gắp Hạt Nhựa Đầu Cong Skeetboot",
+      "slug": "nhip-gap-hat-nhua-dau-cong-skeetboot",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/10_1f431ffdaeaa41cba38c4c20f83faebb.png",
+      "isSale": true,
+      "originalPrice": 20000,
+      "currentPrice": 15000,
+      "stock": 50,
+      "description": "Nhíp gắp hạt nhựa perler chuyên dụng với thiết kế đầu cong nhọn, chất liệu nhựa cứng cáp, giúp bạn dễ dàng gắp và sắp xếp các hạt nhựa nhỏ vào khuôn một cách chính xác và nhanh chóng.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Đầu cong"
+      },
+      "variants": [
+        {
+          "name": "Xanh dương nhạt",
+          "price": 15000,
+          "stock": 50,
+          "image": "https://cdn.hstatic.net/products/200001193910/10_1f431ffdaeaa41cba38c4c20f83faebb.png"
+        }
+      ]
+    },
+    {
+      "id": "1075502443",
+      "name": "Giấy Chịu Nhiệt  - Vải Nướng Hạt Perler Khâu Cạnh Trong Suốt",
+      "slug": "giay-chiu-nhiet-dohobby-vai-nuong-hat-perler-khau-canh",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-822x5-mi13q5xbh1c503_324060be7da44d2593fbc06b0d788114.webp",
+      "isSale": true,
+      "originalPrice": 25000,
+      "currentPrice": 15000,
+      "stock": 42,
+      "description": "Vải nướng hạt nhựa Perler cao cấp từ thương hiệu Urii. Thiết kế cải tiến với đường khâu cạnh bo viền chắc chắn chống tưa rách và chất liệu trong suốt giúp bạn dễ dàng quan sát độ nóng chảy của hạt trong lúc ủi. Sản phẩm chịu nhiệt độ cao, chống dính hoàn hảo và dùng được cho mọi hoạt động ép nhiệt thủ công DIY.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Teflon chịu nhiệt",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Khâu cạnh trong suốt",
+          "price": 15000,
+          "stock": 42,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-822x5-mi13q5xbh1c503_324060be7da44d2593fbc06b0d788114.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075502449",
+      "name": "Vải Ủi Bóng Hạt Nhựa Ủi - Vải Cách Nhiệt Chịu Nhiệt Độ Cao Tái Sử Dụng",
+      "slug": "vai-ui-bong-hat-nhua-chiu-nhiet-do-cao-tai-su-dung",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-823p6-mop2tnf6s1e671_resize_w900_nl_fc84f4ac8d4a473b9ca73703576eae3f.webp",
+      "isSale": true,
+      "originalPrice": 28000,
+      "currentPrice": 18000,
+      "stock": 42,
+      "description": "Vải ủi tạo độ bóng (Glossy Ironing Fabric) chuyên dụng cho hạt nhựa perler. Khác với giấy ủi thông thường, loại vải cách nhiệt chịu nhiệt độ cao này giúp bề mặt hạt nhựa sau khi nóng chảy đạt độ bóng loáng, mịn màng như gương cực kỳ đẹp mắt. Sản phẩm có độ bền bỉ vượt trội, chống dính hoàn hảo và dễ dàng tái sử dụng nhiều lần cho các dự án DIY thủ công.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Cách nhiệt, tái sử dụng",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Tạo độ bóng gương",
+          "price": 18000,
+          "stock": 42,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-823p6-mop2tnf6s1e671_resize_w900_nl_fc84f4ac8d4a473b9ca73703576eae3f.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075502451",
+      "name": "Vải Ủi Hạt Nhựa Ủi Chuyên Dụng - Ủi dày 2 mặt",
+      "slug": "vai-ui-hat-nhua-ui-day-2-mat",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mns1xaw80u1170_resize_w900_nl_e485a825697542a5ab44d59d2ef109b6.webp",
+      "isSale": true,
+      "originalPrice": 15000,
+      "currentPrice": 8000,
+      "stock": 42,
+      "description": "",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Tấm rời",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Sợi thủy tinh chịu nhiệt Teflon",
+          "price": 8000,
+          "stock": 42,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mns1xaw80u1170_resize_w900_nl_e485a825697542a5ab44d59d2ef109b6.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075502456",
+      "name": "Vải Ủi Hạt Nhựa Ủi Chuyên Dụng - Vân Nhỏ",
+      "slug": "vai-ui-hat-nhua-van-nho",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mn63xmfwq6m83f_resize_w900_nl_53deb52871a64d1d82006e739773b422.webp",
+      "isSale": true,
+      "originalPrice": 15000,
+      "currentPrice": 8000,
+      "stock": 42,
+      "description": "Vải ủi (giấy ủi) chịu nhiệt chuyên dụng dùng trong làm mô hình hạt nhựa ủi perler. Sản phẩm giúp truyền nhiệt đều từ bàn ủi sang hạt nhựa mà không làm chảy hay dính hạt vào bề mặt bàn ủi, có thể tái sử dụng nhiều lần, đảm bảo bề mặt mô hình sau khi ủi nhẵn mịn và đẹp mắt.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Tấm rời",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Sợi thủy tinh chịu nhiệt Teflon",
+          "price": 8000,
+          "stock": 42,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mn63xmfwq6m83f_resize_w900_nl_53deb52871a64d1d82006e739773b422.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075502457",
+      "name": "Vải Ủi Hạt Nhựa Ủi Chuyên Dụng - Vân To",
+      "slug": "vai-ui-hat-nhua-van-to",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mn63ybkq3pxkca_resize_w900_nl_4cf0012ac52d416199f1c40c48b63502.webp",
+      "isSale": true,
+      "originalPrice": 15000,
+      "currentPrice": 8000,
+      "stock": 42,
+      "description": "",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Tấm rời",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Sợi thủy tinh chịu nhiệt Teflon",
+          "price": 8000,
+          "stock": 42,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mn63ybkq3pxkca_resize_w900_nl_4cf0012ac52d416199f1c40c48b63502.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075502458",
+      "name": "Vải Ủi Kim Tuyến Lấp Lánh - Phụ Kiện Ủi Tạo Hiệu Ứng Hạt Nhựa Perler",
+      "slug": "vai-ui-kim-tuyen-lap-lanh-hat-nhua-perler",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mo2ddgwvulmudf_resize_w900_nl_aa68a7d534de4772b9abdf251c035947.webp",
+      "isSale": true,
+      "originalPrice": 32000,
+      "currentPrice": 22000,
+      "stock": 240,
+      "description": "Vải ủi tạo hiệu ứng kim tuyến (Glitter Ironing Fabric) độc đáo dành riêng cho các tín đồ handmade làm hạt nhựa perler. Khác với giấy ủi thường, loại vải cách nhiệt này giúp truyền một lớp hiệu ứng ánh kim tuyến lấp lánh, mịn màng lên bề mặt mô hình sau khi nóng chảy. Sản phẩm có độ bền cao, chống dính hoàn hảo và dễ dàng tái sử dụng nhiều lần.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Cầu vồng hạt nhỏ",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Chịu nhiệt, tái sử dụng",
+          "price": 22000,
+          "stock": 120,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-823rr-moncott3qarzf6_resize_w900_nl_9ede8dc825624dad8eea1135f544eb41.webp"
+        },
+        {
+          "name": "Chịu nhiệt, tái sử dụng",
+          "price": 30000,
+          "stock": 120,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mo2dcyi1ghzaa5_resize_w900_nl_b6332562c81249e3b6e22bd2459233ea.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075503644",
+      "name": "Bộ Khay Căn Chỉnh Hạt Nhựa Ủi Perler Chuyên Dụng",
+      "slug": "bo-khay-can-chinh-hat-nhua-perler-diy",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81zv5-mmtucka8boci5a_resize_w900_nl_081dcfc5b59941ea8b2d10407ecca8cd.webp",
+      "isSale": true,
+      "originalPrice": 30000,
+      "currentPrice": 25000,
+      "stock": 410,
+      "description": "Bộ khay căn chỉnh hạt nhựa ủi perler là dụng cụ hỗ trợ đắc lực cho các tín đồ đam mê làm đồ thủ công handmade. Thiết kế khay gồm các rãnh định vị thông minh giúp hạt tự động gom lại, lật đúng chiều và xếp thẳng hàng, giúp bạn dễ dàng dùng nhíp gắp hạt hoặc đổ trực tiếp vào bảng khuôn xếp hình một cách nhanh chóng, tiết kiệm tối đa thời gian.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Nhựa ABS bền bỉ"
+      },
+      "variants": [
+        {
+          "name": "Xanh dương nhạt",
+          "price": 25000,
+          "stock": 80,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81zv5-mmtucka8boci5a_resize_w900_nl_081dcfc5b59941ea8b2d10407ecca8cd.webp"
+        },
+        {
+          "name": "Hồng",
+          "price": 25000,
+          "stock": 81,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81zv4-mmtucl0y38jqcd_resize_w900_nl_94c27b09a3dd49dda6769a8e9f764c91.webp"
+        },
+        {
+          "name": "Vàng",
+          "price": 25000,
+          "stock": 82,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81ztg-mmtucl0rm29s75_resize_w900_nl_311bad8d9dcc40a8b993adf02de605ed.webp"
+        },
+        {
+          "name": "Tím",
+          "price": 25000,
+          "stock": 83,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81zvj-mmtucl0u2k1t91_resize_w900_nl_6a5ecab02dd0418a924fa22501eb83ba.webp"
+        },
+        {
+          "name": "Trắng",
+          "price": 25000,
+          "stock": 84,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-81ztw-mmtucl0td9tw59_resize_w900_nl_cf917073e14b49ae84b73f59a4d0f0a1.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075503649",
+      "name": "BST Ươm Hoa | Hoa Bạch Tuyết",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-bach-tuyet",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____8_______________55d5bf54ba4e47cbbbd4d48964632406.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa bạch tuyết phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____8_______________55d5bf54ba4e47cbbbd4d48964632406.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503652",
+      "name": "BST Ươm Hoa | Hoa Cẩm Tú Cầu",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-cam-tu-cau",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____4_______________f3707922d5354dd3ae25b7531ba19f1e.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa cẩm tú cầu phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____4_______________f3707922d5354dd3ae25b7531ba19f1e.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503653",
+      "name": "BST Ươm Hoa | Hoa Hồng Đỏ",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-hong-do",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____7_______________98ee20606d6645d99a3119839de2b9c0.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa hồng đỏ phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____7_______________98ee20606d6645d99a3119839de2b9c0.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503654",
+      "name": "BST Ươm Hoa | Hoa Hồng Phấn",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-hong-phan",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____10_______________f09af0b2f4564bba8c188a6a418bcf31.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa hồng phấn phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____10_______________f09af0b2f4564bba8c188a6a418bcf31.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503657",
+      "name": "BST Ươm Hoa | Hoa Lài",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-lai",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____9_______________77fed3b7db8741fbbdf4d9e61b0c0ac5.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa lài phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa' độc quyền. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler cao cấp.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____9_______________77fed3b7db8741fbbdf4d9e61b0c0ac5.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503658",
+      "name": "BST Ươm Hoa | Hoa Linh Lan",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-linh-lan",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____6_______________9b18ab90d2f241b3bd44502c2875eb0b.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa linh lan phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____6_______________9b18ab90d2f241b3bd44502c2875eb0b.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503661",
+      "name": "BST Ươm Hoa| Hoa Tử La Lan Tím",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-tim",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____5_______________88dfbff64b954be1b2da734d8de4a26c.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa tím phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa' độc quyền. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler cao cấp.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____5_______________88dfbff64b954be1b2da734d8de4a26c.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503662",
+      "name": "BST Ươm Hoa | Hoa Tử La Lan",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-tu-la-lan",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____3_______________a13c92099ee34acc9745dd4f182206e9.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa tử la lan phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____3_______________a13c92099ee34acc9745dd4f182206e9.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503663",
+      "name": "BST Ươm Hoa | Hoa Tulip",
+      "slug": "mo-hinh-perler-kitty-bo-hoa-tulip",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____2_______________80e11e2818224283a18e3d40cf6e432e.jpg",
+      "isSale": true,
+      "originalPrice": 65000,
+      "currentPrice": 45000,
+      "stock": 10,
+      "description": "Mô hình bó hoa tulip phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Ươm Hoa"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 45000,
+          "stock": 10,
+          "image": "https://cdn.hstatic.net/products/200001193910/__share___________kitty_____2_______________80e11e2818224283a18e3d40cf6e432e.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075503664",
+      "name": "Hello Kitty Cô Dâu Chú Rể",
+      "slug": "moc-khoa-hat-nhua-ui-hello-kitty-co-dau-chu-re",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-movaviuq3l6p83_resize_w900_nl_8b1b10be1c1d468587cfca1d9111ae71.webp",
+      "isSale": true,
+      "originalPrice": 80000,
+      "currentPrice": 60000,
+      "stock": 101,
+      "description": "Cặp móc khóa thành phẩm Hello Kitty Cô dâu & Chú rể được làm thủ công tỉ mỉ từ hạt nhựa ủi Perler chất lượng cao. Với thiết kế pixel art dễ thương, chú rể lịch lãm trong bộ vest và cô dâu lộng lẫy trong chiếc váy cưới thắt nơ. Sản phẩm đi kèm móc treo chắc chắn, là món quà cưới, quà kỷ niệm cặp đôi vô cùng độc đáo và ý nghĩa.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Móc nhựa/kim loại"
+      },
+      "variants": [
+        {
+          "name": "Hello Kitty đeo kính",
+          "price": 60000,
+          "stock": 101,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-movaviuq3l6p83_resize_w900_nl_8b1b10be1c1d468587cfca1d9111ae71.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075503666",
+      "name": "Móc khoá hạt nhựa Hello Kitty đeo kính",
+      "slug": "moc-khoa-hat-nhua-ui-hello-kitty-deo-kinh",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_210316_5334a31e5d1542d6b123d0250be67986_3cc47c209f1947c9a14e6224303fe71f.png",
+      "isSale": true,
+      "originalPrice": 49999,
+      "currentPrice": 35000,
+      "stock": 100,
+      "description": "Móc khóa thành phẩm được làm thủ công từ hạt nhựa ủi Perler chất lượng cao, mô phỏng nhân vật mèo Hello Kitty đeo mắt kính thời trang độc đáo theo phong cách pixel art. Sản phẩm đi kèm móc treo chắc chắn, thích hợp để trang trí chìa khóa, balo, cặp sách hoặc dùng làm quà tặng cho các bạn nhỏ và những ai yêu thích Hello Kitty.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Móc nhựa/kim loại"
+      },
+      "variants": [
+        {
+          "name": "Hello Kitty đeo kính",
+          "price": 35000,
+          "stock": 100,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_210316_5334a31e5d1542d6b123d0250be67986_3cc47c209f1947c9a14e6224303fe71f.png"
+        }
+      ]
+    },
+    {
+      "id": "1075503669",
+      "name": "Móc Khóa Hạt Nhựa Ủi Phim Hoạt Hình We Bare Bears",
+      "slug": "moc-khoa-hat-nhua-ui-we-bare-bears",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/40_26710c6640d5417b802035cf621efd7f.jpg",
+      "isSale": true,
+      "originalPrice": 50000,
+      "currentPrice": 35000,
+      "stock": 60,
+      "description": "Móc khóa thành phẩm được làm thủ công tỉ mỉ từ hạt nhựa ủi Perler cao cấp, mô phỏng theo tạo hình pixel cực kỳ dễ thương của 3 anh em nhà gấu trong phim We Bare Bears. Sản phẩm đi kèm móc treo nhựa cứng cáp, phù hợp làm móc chìa khóa, treo balo, túi xách hoặc làm quà tặng ý nghĩa cho bạn bè.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "Gấu Xám (Grizzly)"
+      },
+      "variants": [
+        {
+          "name": "Móc nhựa",
+          "price": 35000,
+          "stock": 20,
+          "image": "https://cdn.hstatic.net/products/200001193910/40_26710c6640d5417b802035cf621efd7f.jpg"
+        },
+        {
+          "name": "Móc nhựa",
+          "price": 35000,
+          "stock": 20,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_200318_cbf53d9363324d67987b5e13e3941114.png"
+        },
+        {
+          "name": "Móc nhựa",
+          "price": 35000,
+          "stock": 20,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_200431_383fc03ca7a2482b90ad7d78b3b34922.png"
+        }
+      ]
+    },
+    {
+      "id": "1075504621",
+      "name": "BST World Cup | Haaland",
+      "slug": "bst-world-cup-moc-khoa-perler-haaland",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/haaland_902ff15bd6fd40b6bb180dec92b18bfb.jpg",
+      "isSale": true,
+      "originalPrice": 67000,
+      "currentPrice": 55000,
+      "stock": 11,
+      "description": "Móc khóa thành phẩm nhân vật cầu thủ Haaland tuyển quốc gia Na Uy thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo theo phong cách pixel art. Bộ móc khóa gồm charm cầu thủ, áo đấu tương ứng, cúp vàng danh giá và tag tên cầu thủ độc đáo. Thích hợp làm móc khóa xe, balo hoặc quà tặng cho các fan bóng đá chân chính.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "World Cup"
+      },
+      "variants": [
+        {
+          "name": "Haaland",
+          "price": 55000,
+          "stock": 11,
+          "image": "https://cdn.hstatic.net/products/200001193910/haaland_902ff15bd6fd40b6bb180dec92b18bfb.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075504623",
+      "name": "BST World Cup | Mbappe",
+      "slug": "bst-world-cup-moc-khoa-perler-mbappe",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/mbappe_e4e84515d48a4f23acfbe81b832433e2.jpg",
+      "isSale": true,
+      "originalPrice": 67000,
+      "currentPrice": 55000,
+      "stock": 14,
+      "description": "Móc khóa thành phẩm nhân vật cầu thủ Mbappe tuyển quốc gia Pháp thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "World Cup"
+      },
+      "variants": [
+        {
+          "name": "Mbappe",
+          "price": 55000,
+          "stock": 14,
+          "image": "https://cdn.hstatic.net/products/200001193910/mbappe_e4e84515d48a4f23acfbe81b832433e2.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075504624",
+      "name": "BST World Cup | Messi",
+      "slug": "bst-world-cup-moc-khoa-perler-messi",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/messi_8caf9174aa6a4fb8856ce2f56ce406ad.jpg",
+      "isSale": true,
+      "originalPrice": 67000,
+      "currentPrice": 55000,
+      "stock": 13,
+      "description": "Móc khóa thành phẩm nhân vật cầu thủ Messi tuyển quốc gia Argentina thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "World Cup"
+      },
+      "variants": [
+        {
+          "name": "Messi",
+          "price": 55000,
+          "stock": 13,
+          "image": "https://cdn.hstatic.net/products/200001193910/messi_8caf9174aa6a4fb8856ce2f56ce406ad.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075504626",
+      "name": "BST World Cup | Neymar Jr",
+      "slug": "bst-world-cup-moc-khoa-perler-neymar-jr",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/neymar_0b3ed5c5b24f4d5e809e22990851d23f.jpg",
+      "isSale": true,
+      "originalPrice": 67000,
+      "currentPrice": 55000,
+      "stock": 12,
+      "description": "Móc khóa thành phẩm nhân vật cầu thủ Neymar Jr tuyển quốc gia Brazil thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "World Cup"
+      },
+      "variants": [
+        {
+          "name": "Neymar Jr",
+          "price": 55000,
+          "stock": 12,
+          "image": "https://cdn.hstatic.net/products/200001193910/neymar_0b3ed5c5b24f4d5e809e22990851d23f.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075504627",
+      "name": "BST World Cup | Ronaldo",
+      "slug": "bst-world-cup-moc-khoa-perler-ronaldo",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/cr7_04363dd746ed4335a47a72de768ece45.jpg",
+      "isSale": true,
+      "originalPrice": 67000,
+      "currentPrice": 55000,
+      "stock": 15,
+      "description": "Móc khóa thành phẩm nhân vật cầu thủ Ronaldo tuyển quốc gia Bồ Đào Nha thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "World Cup"
+      },
+      "variants": [
+        {
+          "name": "Ronaldo",
+          "price": 55000,
+          "stock": 15,
+          "image": "https://cdn.hstatic.net/products/200001193910/cr7_04363dd746ed4335a47a72de768ece45.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075504628",
+      "name": "BST World Cup | Yamal",
+      "slug": "bst-world-cup-moc-khoa-perler-yamal",
+      "category": "BST",
+      "image": "https://cdn.hstatic.net/products/200001193910/tbn_f77a75c2220d42619f95161ed154ac80.jpg",
+      "isSale": true,
+      "originalPrice": 67000,
+      "currentPrice": 55000,
+      "stock": 16,
+      "description": "Móc khóa thành phẩm nhân vật cầu thủ Yamal tuyển quốc gia Tây Ban Nha thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "15x15cm",
+        "Size": "World Cup"
+      },
+      "variants": [
+        {
+          "name": "Yamal",
+          "price": 55000,
+          "stock": 16,
+          "image": "https://cdn.hstatic.net/products/200001193910/tbn_f77a75c2220d42619f95161ed154ac80.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075506391",
+      "name": "Combo 6 Móc Khóa Hạt Nhựa Ủi Hình Tem Thư NMIXX (Phiên Bản Doll)",
+      "slug": "bo-6-tem-moc-khoa-hat-nhua-ui-nmixx-doll-stamp",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/nmixx__________1_________________aa16e78da7f64faeb4ce6bcba8490fe9.jpg",
+      "isSale": true,
+      "originalPrice": 260000,
+      "currentPrice": 155000,
+      "stock": 21,
+      "description": "Trọn bộ combo bao gồm 6 chiếc móc khóa thành phẩm được làm thủ công từ hạt nhựa ủi Perler cao cấp. Thiết kế độc đáo mô phỏng theo hình ảnh các con tem thư (Stamp) cách điệu từ các em búp bê doll chính thức của nhóm nhạc NMIXX. Mỗi sản phẩm đều được phối màu sắc sảo theo phong cách pixel art dễ thương, viền răng cưa giống như một chiếc tem thật. Thích hợp để treo balo, bóp viết hoặc làm quà tặng sưu tầm ý nghĩa cho các NSWER.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Chịu nhiệt, tái sử dụng",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 155000,
+          "stock": 21,
+          "image": "https://cdn.hstatic.net/products/200001193910/nmixx_________________________7c6e3c15bc074005837e393cd7be7aec.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075506392",
+      "name": "Móc Khóa Hạt Nhựa Ủi Diluc - Genshin Impact",
+      "slug": "bst-genshin-impact-moc-khoa-perler-diluc",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpu9phaljta9b3_resize_w900_nl_10c436d253544d18926384e62d394851.webp",
+      "isSale": true,
+      "originalPrice": 40000,
+      "currentPrice": 30000,
+      "stock": 20,
+      "description": "Móc khóa thành phẩm nhân vật trong tựa game Genshin Impact. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler phối màu chuẩn xác theo phong cách pixel art chibi siêu đáng yêu. Bộ móc khóa bền, chắc chắn, thích hợp decor balo, túi xách, chìa khóa xe hoặc làm quà tặng ý nghĩa cho các nhà lữ hành.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Chịu nhiệt, tái sử dụng",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 30000,
+          "stock": 20,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpu9phaljta9b3_resize_w900_nl_10c436d253544d18926384e62d394851.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506393",
+      "name": "Móc Khóa Hạt Nhựa Ủi Furina - Genshin Impact",
+      "slug": "bst-genshin-impact-moc-khoa-perler-furina",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mp6bxig1vy8b10_resize_w900_nl_ae3b7ea1c1424dcbaf95ddd02fcd422b.webp",
+      "isSale": true,
+      "originalPrice": 45000,
+      "currentPrice": 35000,
+      "stock": 18,
+      "description": "Móc khóa thành phẩm nhân vật trong tựa game Genshin Impact. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler phối màu chuẩn xác theo phong cách pixel art chibi siêu đáng yêu. Bộ móc khóa bền, chắc chắn, thích hợp decor balo, túi xách, chìa khóa xe hoặc làm quà tặng ý nghĩa cho các nhà lữ hành.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Chịu nhiệt, tái sử dụng",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 35000,
+          "stock": 18,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mp6bxig1vy8b10_resize_w900_nl_ae3b7ea1c1424dcbaf95ddd02fcd422b.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506394",
+      "name": "Móc Khóa Hạt Nhựa Ủi Raiden Shogun - Genshin Impact",
+      "slug": "bst-genshin-impact-moc-khoa-perler-raiden-shogun",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mp6c1fhho7bj41_resize_w900_nl_3161bac02cef4bd1bc5bdb739d7776e8.webp",
+      "isSale": true,
+      "originalPrice": 35000,
+      "currentPrice": 28000,
+      "stock": 19,
+      "description": "Móc khóa thành phẩm nhân vật trong tựa game Genshin Impact. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler phối màu chuẩn xác theo phong cách pixel art chibi siêu đáng yêu. Bộ móc khóa bền, chắc chắn, thích hợp decor balo, túi xách, chìa khóa xe hoặc làm quà tặng ý nghĩa cho các nhà lữ hành.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Chịu nhiệt, tái sử dụng",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 28000,
+          "stock": 19,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mp6c1fhho7bj41_resize_w900_nl_3161bac02cef4bd1bc5bdb739d7776e8.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506395",
+      "name": "Bút Đậu Cỏ Bốn Lá May Mắn Phong Cách Hàn Quốc (2.6mm)",
+      "slug": "but-dau-co-bon-la-may-man-phong-cach-han-quoc-2-6mm",
+      "category": "DC",
+      "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-820mm-mn9u7uhgkav442_ed6b7289f5174516b274283697c7606d.webp",
+      "isSale": true,
+      "originalPrice": 14900,
+      "currentPrice": 10000,
+      "stock": 17,
+      "description": "Bút chấm hạt nhựa Perler thiết kế hai đầu (bút đậu đôi) tiện lợi, giúp bạn dễ dàng gắp và xếp các hạt nhựa kích thước nhỏ 2.6mm một cách nhanh chóng, chính xác. Kiểu dáng dễ thương phong cách Hàn Quốc với điểm nhấn hình cỏ bốn lá may mắn. Sản phẩm là dụng cụ không thể thiếu cho người mới bắt đầu và các \"tín đồ\" đam mê bộ môn xếp hạt nhựa uốn/ủi Perler Bead.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Bút chấm hạt",
+        "Size": "2.6mm"
+      },
+      "variants": [
+        {
+          "name": "Xanh lá",
+          "price": 10000,
+          "stock": 17,
+          "image": "https://cdn.hstatic.net/products/200001193910/sg-11134201-820mm-mn9u7uhgkav442_ed6b7289f5174516b274283697c7606d.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506396",
+      "name": "Dây Móc Khóa Hạt Nhựa Ủi Anime Chibi Tầng Đáng Yêu",
+      "slug": "day-moc-khoa-hat-nhua-ui-anime-chibi-dang-yeu",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/_______1_____________416c0ba58d254326b01d57fa069b12c9.jpg",
+      "isSale": true,
+      "originalPrice": 75000,
+      "currentPrice": 55000,
+      "stock": 15,
+      "description": "Sản phẩm dây móc khóa thành phẩm được làm thủ công tỉ mỉ từ hạt nhựa uốn/ủi Perler cao cấp. Thiết kế độc đáo kết nối 3 tầng charm pixel nghệ thuật: tầng trên cùng là charm gấu hồng ngôi sao, tầng giữa là nhân vật cô bé anime tóc vàng thắt nơ hồng dễ thương, và tầng dưới cùng là charm bánh bao/thú nhỏ xinh xắn. Toàn bộ dây được liên kết chắc chắn bằng khoen kim loại và đi kèm móc khóa nơ hồng ngọt ngào. Phù hợp để làm phụ kiện treo balo, túi xách thời trang hoặc quà tặng thủ công cho bạn bè.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Chịu nhiệt, tái sử dụng",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 55000,
+          "stock": 15,
+          "image": "https://cdn.hstatic.net/products/200001193910/_______1_____________416c0ba58d254326b01d57fa069b12c9.jpg"
+        }
+      ]
+    },
+    {
+      "id": "1075506398",
+      "name": "Móc Khóa Chó Rách Lấp Lánh Hạt Nhựa Ủi",
+      "slug": "moc-khoa-cho-rach-lap-lanh-hat-nhua-ui",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnyerhsr38cmd3_resize_w900_nl_0380cc871f134402b3ff3ba47620f697.webp",
+      "isSale": true,
+      "originalPrice": 45000,
+      "currentPrice": 30000,
+      "stock": 100,
+      "description": "Móc khóa thành phẩm hình chú chó 'rách' (chó rách nát / meme ngộ nghĩnh) phiên bản đặc biệt lấp lánh, được làm thủ công từ hạt nhựa uốn/ủi Perler kết hợp hiệu ứng kim tuyến độc đáo. Với phong cách thiết kế hài hước, độc lạ và cực kỳ 'vô tri', chiếc móc khóa này sẽ là phụ kiện tạo điểm nhấn siêu lầy lội cho balo, túi xách, chìa khóa xe của bạn, hoặc trở thành món quà tặng handmade 'bựa' và cá tính dành cho bạn bè.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Meme độc lạ",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 30000,
+          "stock": 100,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mnyerhsr38cmd3_resize_w900_nl_0380cc871f134402b3ff3ba47620f697.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506399",
+      "name": "[NGÔI SAO] Móc Khóa Hạt Nhựa Ủi Handmade",
+      "slug": "moc-khoa-hat-nhua-ui-handmade-hinh-ngoi-sao",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsm6g39454y2c_52cdc5c64fc34626ac8c0caab6bb6985.webp",
+      "isSale": true,
+      "originalPrice": 39999,
+      "currentPrice": 15000,
+      "stock": 180,
+      "description": "Móc khóa thành phẩm hình ngôi sao lấp lánh được làm thủ công tỉ mỉ từ những hạt nhựa ủi Perler chất lượng. Sản phẩm phối màu hài hòa theo phong cách pixel art trẻ trung, năng động. Móc khóa có độ bền cao, không phai màu, thích hợp dùng làm phụ kiện tạo điểm nhấn cho chìa khóa, balo, túi xách hoặc làm món quà tặng nhỏ xinh, ý nghĩa dành tặng bạn bè và người thân.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Cầu vồng",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 15000,
+          "stock": 16,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfsq7kaa5ed_resize_w900_nl_eaf17f22ff5f48c395d7a9052bfde427.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 17,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfspgzpjg78_resize_w900_nl_5db731540d8e43b19c860c4b9ba8332f.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 18,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfsoqm5n2c8_resize_w900_nl_75af0170b7424cb78f85cfc769252f42.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 19,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfsomzito09_resize_w900_nl_aafa98f21ffb47eca86242a4a1fa80c2.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 20,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfspnjoy57e_resize_w900_nl_0e6376f29b5b4464ba0310cbe477a1d1.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 21,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfsql3pccaf_resize_w900_nl_2088f3f8fd084e27a98ecad47d683519.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 22,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfstn4uto19_resize_w900_nl_b06a6e0d36394a3ea465a707b58d63ac.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 23,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxfsrsritq4f_resize_w900_nl_7fa2e497809c42cc88b8f61303af7b7e.webp"
+        },
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 12500,
+          "stock": 24,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mpsxl6dam6fgf5_c321ff79e91f42728070e572c82c70dc.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506400",
+      "name": "Móc Khóa Kitty Meme Hạt Nhựa Ủi",
+      "slug": "moc-khoa-kitty-meme-hat-nhua-ui",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mp1u1nt4wnpc4e_resize_w900_nl_bea2bf1de5104f359221e95e74a0f3b7.webp",
+      "isSale": true,
+      "originalPrice": 45000,
+      "currentPrice": 30000,
+      "stock": 101,
+      "description": "Móc khóa thành phẩm nhân vật Hello Kitty phiên bản meme biểu cảm 'vô tri' cực kỳ hài hước và lầy lội. Sản phẩm được làm thủ công tỉ mỉ từ hạt nhựa uốn/ủi Perler chất lượng cao theo phong cách pixel art độc đáo. Vừa giữ được nét đáng yêu quen thuộc của Kitty, vừa mang tính giải trí cao nhờ biểu cảm meme độc lạ. Đây là phụ kiện hoàn hảo để tạo điểm nhấn cho balo, túi xách, chìa khóa hoặc làm quà tặng bất ngờ, thú vị cho bạn bè.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Meme độc lạ",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 30000,
+          "stock": 101,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mp1u1nt4wnpc4e_resize_w900_nl_bea2bf1de5104f359221e95e74a0f3b7.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506401",
+      "name": "Móc Khóa Nơ Hạt Nhựa Ủi Dễ Thương Trang Trí Điện Thoại",
+      "slug": "moc-khoa-no-hat-nhua-ui-de-thuong-trang-tri-dien-thoai",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mlec8n3fa4gf0c_c0316dbcf6d541b5b9eef79dd01c8cdc.webp",
+      "isSale": true,
+      "originalPrice": 25000,
+      "currentPrice": 23000,
+      "stock": 25,
+      "description": "Móc khóa thành phẩm hình chiếc nơ xinh xắn được làm thủ công từ hạt nhựa ủi Perler phối màu pastel ngọt ngào. Sản phẩm có thiết kế nhỏ gọn, trọng lượng nhẹ, đi kèm dây móc tiện lợi, rất thích hợp dùng làm phụ kiện trang trí điện thoại, ốp lưng, balo, bóp viết hoặc làm quà tặng thủ công đáng yêu cho bạn bè, người thân.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Hình nơ",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 23000,
+          "stock": 25,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mlec8n3fa4gf0c_c0316dbcf6d541b5b9eef79dd01c8cdc.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506402",
+      "name": "Móc Khóa Snoopy Đáng Yêu Hạt Nhựa Ủi Perler",
+      "slug": "moc-khoa-snoopy-hat-nhua-ui-perler",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmjyr8uzetj5c4_resize_w900_nl_8d71390fa3174c1c8a229ee0d7edda32.webp",
+      "isSale": true,
+      "originalPrice": 35000,
+      "currentPrice": 25000,
+      "stock": 45,
+      "description": "Móc khóa thành phẩm hình chú chó Snoopy tinh nghịch và đáng yêu được làm thủ công tỉ mỉ từ những hạt nhựa ủi Perler chất lượng cao. Thiết kế mang phong cách pixel art cổ điển với hai tông màu trắng đen đặc trưng phối cùng các phụ kiện nhỏ xinh. Sản phẩm bền màu, gọn nhẹ, thích hợp làm phụ kiện trang trí balo, túi xách, chìa khóa hoặc làm quà tặng lưu niệm dễ thương cho các fan của chú chó Snoopy.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Snoopy",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 25000,
+          "stock": 45,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmjyr8uzetj5c4_resize_w900_nl_8d71390fa3174c1c8a229ee0d7edda32.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506403",
+      "name": "Móc Khóa Vịt Dễ Thương Hạt Nhựa Ủi Perler",
+      "slug": "moc-khoa-vit-hat-nhua-ui-perler",
+      "category": "TP",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mq939ejtdamm2e_resize_w900_nl_fae72b20ed8745af8ee0109dd415bd81.webp",
+      "isSale": true,
+      "originalPrice": 49000,
+      "currentPrice": 37000,
+      "stock": 50,
+      "description": "Móc khóa thành phẩm hình chú vịt vàng dễ thương được làm thủ công từ những hạt nhựa ủi Perler chất lượng cao. Với thiết kế pixel art ngộ nghĩnh, tông màu vàng nổi bật phối cùng chiếc mỏ cam xinh xắn, chiếc móc khóa này là phụ kiện hoàn hảo để làm điệu cho balo, túi xách, chìa khóa xe hoặc làm món quà tặng handmade nhỏ nhắn, ý nghĩa cho bạn bè.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Chú vịt độc lạ",
+        "Size": "15x15cm"
+      },
+      "variants": [
+        {
+          "name": "Hạt nhựa Perler",
+          "price": 37000,
+          "stock": 50,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mq939ejtdamm2e_resize_w900_nl_fae72b20ed8745af8ee0109dd415bd81.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506444",
+      "name": "Bộ KIT Mini Tự Làm Móc Khóa Hạt Nhựa Ủi Hoạt Hình Kuromi Tím Cá Tính",
+      "slug": "bo-kit-mini-kuromi-haravan",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqkycwtl363d_resize_w900_nl_212f7268f4bb435487c3ffe38bd2e3f1.webp",
+      "isSale": true,
+      "originalPrice": 50000,
+      "currentPrice": 34000,
+      "stock": 53,
+      "description": "",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 34000,
+          "stock": 53,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqkycwtl363d_resize_w900_nl_212f7268f4bb435487c3ffe38bd2e3f1.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506445",
+      "name": "Bộ KIT Mini Tự Làm Móc Khóa Hạt Nhựa Ủi Hoạt Hình Cinnamoroll Màu Xanh Dễ Thương",
+      "slug": "bo-kit-mini-tu-lam-moc-khoa-hat-nhua-ui-cinnamoroll-phu-hop-cho-be",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqk3ydf8xt15_resize_w900_nl_7c49199adca84b46a483c134417adee8.webp",
+      "isSale": true,
+      "originalPrice": 50000,
+      "currentPrice": 34000,
+      "stock": 49,
+      "description": "Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản nhân vật chú chó tai dài Cinnamoroll siêu đáng yêu thuộc vũ trụ Sanrio. Gói sản phẩm nhỏ gọn được bọc túi bảo vệ kiên cố, bao gồm đầy đủ nguyên liệu cho bé và các bạn trẻ tập tành làm đồ thủ công: 1 túi hạt nhựa Perler tuyển chọn (chủ đạo màu trắng, xanh, pastel), 1 khay khuôn nhựa xếp hạt vuông mini trong suốt, 1 nhíp gắp nhựa tiện lợi và giấy ủi đi kèm. Đây là dòng sản phẩm giáo dục giải trí lành mạnh, kích thích tư duy thẩm mỹ, sự tập trung và khéo léo của đôi tay, thành phẩm có thể làm móc khóa treo balo, phụ kiện bóp viết xinh xắn.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 34000,
+          "stock": 49,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqk3ydf8xt15_resize_w900_nl_7c49199adca84b46a483c134417adee8.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506446",
+      "name": "Bộ KIT Mini Tự Làm Móc Khóa Hạt Nhựa Ủi Hoạt Hình Hello Kitty Màu Hồng Dễ Thương",
+      "slug": "bo-kit-mini-tu-lam-moc-khoa-hat-nhua-ui-hello-kitty-phu-hop-cho-be",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqlalaadcf4f_resize_w900_nl_cbfc6b81f60c493f87f2e74bfa269343.webp",
+      "isSale": true,
+      "originalPrice": 50000,
+      "currentPrice": 34000,
+      "stock": 50,
+      "description": "Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản nhân vật Hello Kitty thắt nơ hồng siêu dễ thương thuộc vũ trụ Sanrio. Gói sản phẩm nhỏ gọn được bọc túi bảo vệ kiên cố, bao gồm đầy đủ nguyên liệu cho bé và các bạn trẻ tập tành làm đồ thủ công: 1 túi hạt nhựa Perler tuyển chọn (chủ đạo màu trắng, hồng, đỏ, pastel), 1 khay khuôn nhựa xếp hạt vuông mini trong suốt, 1 nhíp gắp nhựa tiện lợi màu hồng và giấy ủi đi kèm. Đây là dòng sản phẩm giáo dục giải trí lành mạnh, kích thích tư duy thẩm mỹ, sự tập trung và khéo léo của đôi tay, thành phẩm có thể làm móc khóa treo balo, phụ kiện bóp viết xinh xắn.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 34000,
+          "stock": 50,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqlalaadcf4f_resize_w900_nl_cbfc6b81f60c493f87f2e74bfa269343.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506447",
+      "name": "Bộ KIT Mini Tự Làm Móc Khóa Hạt Nhựa Ủi Hình Hoạt Hình Sanrio Dễ Thương",
+      "slug": "bo-kit-mini-tu-lam-moc-khoa-hat-nhua-ui-sanrio-dang-yeu",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmo8uwtuwdtt0b_7148f66e12474bfb8c74bcc7f1d72031.webp",
+      "isSale": true,
+      "originalPrice": 50000,
+      "currentPrice": 34000,
+      "stock": 48,
+      "description": "Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler các nhân vật hoạt hình Sanrio siêu dễ thương (Pompompurin, Cinnamoroll,...). Gói sản phẩm nhỏ gọn, tiện lợi bao gồm đầy đủ nguyên liệu cho người mới bắt đầu: túi hạt nhựa Perler đa sắc màu, 1 bảng khuôn xếp hạt nhựa trong suốt mini, 1 nhíp gắp nhựa tiện lợi và giấy ủi đi kèm. Đây là món đồ chơi sáng tạo lý tưởng giúp bé rèn luyện sự khéo tay, kiên nhẫn hoặc làm quà tặng handmade, móc khóa cặp sách vô cùng đáng yêu.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 34000,
+          "stock": 48,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mmo8uwtuwdtt0b_7148f66e12474bfb8c74bcc7f1d72031.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506448",
+      "name": "Bộ KIT Tự Làm Móc Khóa Hạt Nhựa Ủi Chibi Capybara",
+      "slug": "bo-kit-tu-lam-moc-khoa-hat-nhua-ui-capybara",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-10_021657_f4830813de2742e0a258e334e736b275.png",
+      "isSale": true,
+      "originalPrice": 150000,
+      "currentPrice": 125000,
+      "stock": 46,
+      "description": "Bộ KIT tự làm (DIY) móc khóa hạt nhựa uốn/ủi Perler nhân vật chuột lang nước Capybara vô tri siêu dễ thương. Bộ sản phẩm bao gồm đầy đủ nguyên liệu cho người mới bắt đầu: hạt nhựa Perler với các tông màu chuẩn, bảng khuôn xếp hạt, giấy ủi chuyên dụng, nhíp gắp và phụ kiện móc khóa đi kèm. Thích hợp làm quà tặng sáng tạo hoặc hoạt động giải trí giải tỏa căng thẳng.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Capybara"
+      },
+      "variants": [
+        {
+          "name": "2.6mm",
+          "price": 125000,
+          "stock": 46,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-10_021657_f4830813de2742e0a258e334e736b275.png"
+        }
+      ]
+    },
+    {
+      "id": "1075506449",
+      "name": "Bộ KIT Tự Làm Móc Khóa Hạt Nhựa Ủi Hoạt Hình Hello Kitty (Đầy Đủ Nguyên Vật Liệu)",
+      "slug": "bo-kit-tu-lam-moc-khoa-hat-nhua-ui-hello-kitty-day-du-nguyen-lieu",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-820l4-mjxswvt46z9e1e_resize_w900_nl_5929add4300a4d86bffe7e63e9ade912.webp",
+      "isSale": true,
+      "originalPrice": 40000,
+      "currentPrice": 25000,
+      "stock": 54,
+      "description": "Bộ KIT DIY tự làm móc khóa hạt nhựa uốn/ủi Perler nhân vật Hello Kitty đáng yêu với đầy đủ nguyên vật liệu đi kèm giúp bạn dễ dàng hoàn thành sản phẩm tại nhà. Trọn bộ sản phẩm bao gồm: 1 gói hạt nhựa đa sắc màu, 1 tấm khay nhựa cố định mẫu (khuôn xếp hạt), 1 nhíp gắp nhựa tiện lợi, 1 tờ ảnh mẫu hướng dẫn, giấy ủi chuyên dụng và dây móc khóa đi kèm. Dòng sản phẩm giải trí sáng tạo lành mạnh giúp rèn luyện sự khéo léo, kiên nhẫn và tính tỉ mỉ. Lưu ý: Bộ sản phẩm chưa bao gồm bàn ủi, quý khách tự chuẩn bị bàn ủi gia đình hoặc bàn ủi mini để sấy nhiệt định hình thành phẩm.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 25000,
+          "stock": 54,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-820l4-mjxswvt46z9e1e_resize_w900_nl_5929add4300a4d86bffe7e63e9ade912.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506450",
+      "name": "Bộ KIT Tự Làm Móc Khóa Hạt Nhựa Ủi Hình Voi Xanh Đội Mũ Đỏ (Đầy Đủ Nguyên Vật Liệu)",
+      "slug": "bo-kit-tu-lam-moc-khoa-hat-nhua-ui-voi-xanh-day-du-nguyen-lieu",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mn9tllwa0wso50_resize_w900_nl_db79a79f537a4a0098009f1f73cfad1b.webp",
+      "isSale": true,
+      "originalPrice": 40000,
+      "currentPrice": 25000,
+      "stock": 55,
+      "description": "Bộ KIT DIY tự làm móc khóa hạt nhựa uốn/ủi Perler hình chú Voi Xanh đội mũ đỏ ngộ nghĩnh với đầy đủ nguyên vật liệu đi kèm giúp bạn dễ dàng hoàn thành sản phẩm tại nhà. Trọn bộ sản phẩm bao gồm: 1 gói hạt nhựa màu sắc tiêu chuẩn (xanh dương, hồng, đỏ, đen, trắng), 1 tấm khay nhựa cố định mẫu (khuôn xếp hạt), 1 nhíp gắp nhựa tiện lợi, 1 tờ ảnh mẫu hướng dẫn, giấy ủi chuyên dụng và dây móc khóa bi màu xanh đi kèm. Sản phẩm là món đồ chơi giải trí sáng tạo lành mạnh giúp rèn luyện sự khéo léo, kiên nhẫn và tính tỉ mỉ cho cả trẻ em và người lớn. Lưu ý: Bộ sản phẩm chưa bao gồm bàn ủi, quý khách tự chuẩn bị bàn ủi gia đình hoặc bàn ủi mini để sấy nhiệt định hình thành phẩm.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 25000,
+          "stock": 55,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mn9tllwa0wso50_resize_w900_nl_db79a79f537a4a0098009f1f73cfad1b.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506451",
+      "name": "Bộ Vali DIY Hạt Ghép Ủi Nhiệt Hoạt Hình Dễ Thương",
+      "slug": "bo-vali-diy-hat-ghep-ui-nhiet-hoat-hinh-de-thuong-do-choi-xep-hinh-hat-dau-sang-tao",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-10_021858_7fb058cb58d24605a7cc01a0ce0cc15f.png",
+      "isSale": true,
+      "originalPrice": 439000,
+      "currentPrice": 250000,
+      "stock": 47,
+      "description": "Bộ Vali DIY hạt ghép ủi nhiệt hoạt hình dễ thương là món đồ chơi giáo dục trí tuệ và sáng tạo cao cấp dành cho trẻ em. Sản phẩm được thiết kế gọn gàng trong một chiếc vali nhựa tiện lợi, giúp bé dễ dàng sắp xếp và mang theo bên mình. Bộ sản phẩm bao gồm hàng ngàn hạt nhựa Perler sắc màu an toàn, khuôn tạo hình đa dạng, giấy ủi chuyên dụng, nhíp gắp và các phụ kiện đi kèm để bé tự do sáng tạo nên những bức tranh 3D sinh động, móc khóa hoạt hình hoặc mô hình lắp ráp độc đáo. Trò chơi giúp kích thích tư duy logic, rèn luyện sự kiên nhẫn, khéo léo của đôi tay và phát triển khả năng phối màu nghệ thuật ở trẻ.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ Vali Đồ Chơi DIY",
+          "price": 250000,
+          "stock": 47,
+          "image": "https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-10_021858_7fb058cb58d24605a7cc01a0ce0cc15f.png"
+        }
+      ]
+    },
+    {
+      "id": "1075506452",
+      "name": "Combo 2 Bộ KIT Mini Tự Làm Móc Khóa Hạt Nhựa Ủi Hoạt Hình Sanrio (Cinnamoroll + Kuromi)",
+      "slug": "combo-2-bo-kit-mini-tu-lam-moc-khoa-hat-nhua-ui-sanrio-cinnamoroll-kuromi",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqpz3y8sg290_resize_w900_nl_05e65b3079674e03aa065db8fdfaaa2f.webp",
+      "isSale": true,
+      "originalPrice": 80000,
+      "currentPrice": 70000,
+      "stock": 51,
+      "description": "Combo siêu tiết kiệm gồm 2 Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản cặp bài trùng Sanrio cực hot: Chú chó tai dài Cinnamoroll đáng yêu và Cô thỏ tinh nghịch Kuromi cá tính. Trọn bộ combo cung cấp đầy đủ nguyên liệu độc lập cho mỗi gói bao gồm: 2 túi hạt nhựa Perler đa sắc màu cao cấp, 2 khay khuôn nhựa xếp hạt vuông trong suốt mini, 2 nhíp gắp nhựa tiện lợi và giấy ủi chuyên dụng đi kèm từng bộ. Đây là sự lựa chọn hoàn hảo để các bé rèn luyện tính kiên nhẫn, đôi tay khéo léo cùng bạn bè, hoặc làm quà tặng đôi handmade độc đáo để treo balo, bóp viết.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 70000,
+          "stock": 51,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqpz3y8sg290_resize_w900_nl_05e65b3079674e03aa065db8fdfaaa2f.webp"
+        }
+      ]
+    },
+    {
+      "id": "1075506453",
+      "name": "Set 4 Bộ KIT Mini Tự Làm Móc Khóa Hạt Nhựa Ủi Hoạt Hình Sanrio Full Mẫu Siêu Tiết Kiệm",
+      "slug": "set-4-bo-kit-mini-tu-lam-moc-khoa-hat-nhua-ui-sanrio-full-mau-tiet-kiem",
+      "category": "KIT",
+      "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqntbxndal71_resize_w900_nl_2f0a276fc86f44449c0bf5399601bc90.webp",
+      "isSale": true,
+      "originalPrice": 150000,
+      "currentPrice": 100000,
+      "stock": 52,
+      "description": "Set trọn bộ 4 gói KIT mini tự làm (DIY) xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản giới hạn tập hợp đầy đủ 4 nhân vật Sanrio được yêu thích nhất hiện nay bao gồm: Chú chó Pompompurin tai nâu tinh nghịch, Cô mèo Hello Kitty nơ hồng điệu đà, Cô thỏ Kuromi cá tính và Chú chó tai dài Cinnamoroll đáng yêu. Mỗi gói KIT nhỏ gọn trong set đều được đóng gói riêng biệt và trang bị đầy đủ nguyên liệu độc lập bao gồm: 1 túi hạt nhựa Perler sắc màu theo đúng tone màu nhân vật, 1 khay khuôn nhựa xếp hạt vuông trong suốt mini, 1 nhíp gắp nhựa tiện lợi và giấy ủi chuyên dụng. Đây là set sản phẩm tuyệt vời dành cho các bé rèn luyện tính kiên nhẫn, phối màu sáng tạo hoặc làm quà tặng nhóm, quà tặng cặp đôi handmade độc đáo.",
+      "specifications": {
+        "Hãng": "Urii",
+        "Chất liệu": "Nhựa",
+        "Size": "Từ 5 tuổi trở lên"
+      },
+      "variants": [
+        {
+          "name": "Bộ KIT mini tự làm",
+          "price": 100000,
+          "stock": 52,
+          "image": "https://cdn.hstatic.net/products/200001193910/vn-11134207-81ztc-mojqntbxndal71_resize_w900_nl_2f0a276fc86f44449c0bf5399601bc90.webp"
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,10 @@
 
 # Node
 /node_modules
+/my-server-mongodb/node_modules/
+/my-server-mongodb/.env
+/my-server-mongodb/.seed-user-credentials.json
+/my-server-mongodb/.seed-user-credentials.json.tmp
 npm-debug.log
 yarn-error.log
 

@@ -1,0 +1,124 @@
+{
+  "maps": [
+    {
+      "id": "M01",
+      "title": "Map mẫu: Bạch tuộc tím cute",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-bach-tuoc.webp",
+      "rating": 4.5,
+      "liked": true
+    },
+    {
+      "id": "M02",
+      "title": "Map mẫu: Bánh kem dâu ngọt ngào",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-banh-kem.webp",
+      "rating": 4.9,
+      "liked": true
+    },
+    {
+      "id": "M03",
+      "title": "Map mẫu: Quả bơ tình yêu",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-bo.webp",
+      "rating": 4.5,
+      "liked": true
+    },
+    {
+      "id": "M04",
+      "title": "Map mẫu: Bó hoa đa sắc",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-bo-hoa.webp",
+      "rating": 4.9,
+      "liked": true
+    },
+    {
+      "id": "M05",
+      "title": "Map mẫu: Bướm đêm dạ quang",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-buom.webp",
+      "rating": 4.7,
+      "liked": true
+    },
+    {
+      "id": "M06",
+      "title": "Map mẫu: Cá heo xanh tinh nghịch",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-ca-heo.webp",
+      "rating": 4.5,
+      "liked": true
+    },
+    {
+      "id": "M07",
+      "title": "Map mẫu: Trái cam chín mọng",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-cam.webp",
+      "rating": 4.7,
+      "liked": true
+    },
+    {
+      "id": "M08",
+      "title": "Map mẫu: Cá mập ôm phao",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-ca-map-cute.webp",
+      "rating": 4.9,
+      "liked": true
+    },
+    {
+      "id": "M09",
+      "title": "Map mẫu: Cam cười tinh nghịch",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-cam-cute.webp",
+      "rating": 4.7,
+      "liked": true
+    },
+    {
+      "id": "M10",
+      "title": "Map mẫu: Cá ngựa đại dương",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-ca-ngua.webp",
+      "rating": 4.5,
+      "liked": true
+    },
+    {
+      "id": "M11",
+      "title": "Map mẫu: Cáo lửa rực rỡ",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-cao.webp",
+      "rating": 4.5,
+      "liked": true
+    },
+    {
+      "id": "M12",
+      "title": "Map mẫu: Capybara lực sĩ",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-capybara-cute.webp",
+      "rating": 4.9,
+      "liked": true
+    },
+    {
+      "id": "M13",
+      "title": "Map mẫu: Cá vàng béo tròn",
+      "author": "Urii Thiết kế",
+      "image": "images/gallery_assets/mau-ca-vang.webp",
+      "rating": 4.9,
+      "liked": true
+    },
+    {
+      "id": "M14",
+      "title": "Map mẫu: Quả chanh tây",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-chanh.webp",
+      "rating": 4.7,
+      "liked": true
+    },
+    {
+      "id": "M15",
+      "title": "Map mẫu: Chậu hoa ba sắc",
+      "author": "Sưu tầm",
+      "image": "images/gallery_assets/mau-chau-hoa.webp",
+      "rating": 4.7,
+      "liked": true
+    }
+  ]
+}

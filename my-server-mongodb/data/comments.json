@@ -1,0 +1,50 @@
+{
+  "comments": [
+    { "id": 1, "blogId": 1, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Bài viết hay quá! Mình cũng thích ngồi làm đồ handmade vào cuối tuần.", "time": "1 giờ trước" },
+    { "id": 2, "blogId": 1, "author": "Lê Hoàng Nam", "avatar": "images/avatar_user3.jpeg", "content": "Nhìn góc bàn với ly trà là thấy bình yên rồi. Cảm ơn bạn đã chia sẻ!", "time": "3 giờ trước" },
+    { "id": 3, "blogId": 1, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Nhìn những chiếc bánh sừng bò pixel thèm quá trời!", "time": "5 giờ trước" },
+    { "id": 4, "blogId": 1, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Mình cũng nghiện bộ môn xếp hạt này như bạn. Xả stress cực kỳ hiệu quả.", "time": "6 giờ trước" },
+    { "id": 5, "blogId": 1, "author": "Vũ Khánh Linh", "avatar": "images/avatar-non.jpg", "content": "Góc bàn nhìn ấm cúng thật đấy, thêm cái đèn vàng nữa là hết sảy.", "time": "8 giờ trước" },
+    { "id": 6, "blogId": 1, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Bạn thường mua hạt perler ở đâu vậy? Mình muốn thử làm charm đồ ăn.", "time": "10 giờ trước" },
+    { "id": 7, "blogId": 1, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Mấy trái tim hồng có chân gỗ nhỏ xíu dễ thương ghê!", "time": "12 giờ trước" },
+    { "id": 8, "blogId": 1, "author": "Vũ Khánh Linh", "avatar": "images/avatar-non.jpg", "content": "Bài viết truyền cảm hứng quá, cuối tuần này mình cũng bày ra làm mới được.", "time": "14 giờ trước" },
+    { "id": 9, "blogId": 1, "author": "Lê Hoàng Nam", "avatar": "images/avatar_user3.jpeg", "content": "Làm handmade đúng là liều thuốc tinh thần sau ngày dài mệt mỏi.", "time": "16 giờ trước" },
+    { "id": 10, "blogId": 1, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Mình thích nhất là mấy em bánh pretzel thắt nút cười toe toét.", "time": "1 ngày trước" },
+
+    { "id": 11, "blogId": 2, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Em cáo dễ thương quá! Màu cam nhìn tươi tắn ghê.", "time": "2 giờ trước" },
+    { "id": 12, "blogId": 2, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Làm theo hướng dẫn của bạn, mình đã thành công rồi! Cảm ơn nhiều nha.", "time": "4 giờ trước" },
+    { "id": 13, "blogId": 2, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Cầm thành phẩm dày dặn trên tay đúng là đã thật. Bõ công hì hục cả buổi.", "time": "6 giờ trước" },
+
+    { "id": 14, "blogId": 3, "author": "Lê Hoàng Nam", "avatar": "images/avatar_user3.jpeg", "content": "Bé mèo khóc mà nhìn dễ thương không tưởng. Mà công nhận trời mưa làm tâm trạng sụt sịt thật.", "time": "1 giờ trước" },
+    { "id": 15, "blogId": 3, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Mình cũng đang làm một em mèo tương tự, cảm ơn ý tưởng của bạn nha!", "time": "3 giờ trước" },
+    { "id": 16, "blogId": 3, "author": "Vũ Khánh Linh", "avatar": "images/avatar-non.jpg", "content": "Ảnh chụp đẹp, bài viết hài hước. Đọc xong tự nhiên thấy vui hẳn.", "time": "5 giờ trước" },
+
+    { "id": 17, "blogId": 4, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Rèm cửa đẹp quá, mình sẽ làm một cái tặng đứa bạn thân.", "time": "2 giờ trước" },
+    { "id": 18, "blogId": 4, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Công phu thật đấy, cả tháng trời kiên trì. Bạn giỏi quá!", "time": "4 giờ trước" },
+
+    { "id": 19, "blogId": 5, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Mang handmade ra phố hay ghê, mình cũng sẽ làm một sợi treo túi.", "time": "1 giờ trước" },
+    { "id": 20, "blogId": 5, "author": "Nguyễn Minh Anh", "avatar": "images/avatar_user.jpeg", "content": "Mình cũng thường làm charm để tặng bạn bè. Mọi người đều thích lắm!", "time": "3 giờ trước" },
+
+    { "id": 21, "blogId": 6, "author": "Lê Hoàng Nam", "avatar": "images/avatar_user3.jpeg", "content": "Bookmark đáng yêu quá, mình sẽ làm theo cho cuốn planner mới.", "time": "2 giờ trước" },
+    { "id": 22, "blogId": 6, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Mình thích nhất là bé tôm chiên giòn ôm dâu tây. Cưng xỉu!", "time": "5 giờ trước" },
+
+    { "id": 23, "blogId": 7, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Kệ đựng hạt gọn gàng quá, mình học hỏi được nhiều. Cảm ơn bạn!", "time": "1 giờ trước" },
+    { "id": 24, "blogId": 7, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Mình sẽ sắp xếp lại góc làm việc như bạn ngay. Ngăn nắp nhìn sướng mắt thật.", "time": "3 giờ trước" },
+
+    { "id": 25, "blogId": 8, "author": "Vũ Khánh Linh", "avatar": "images/avatar-non.jpg", "content": "Bộ sưu tập Sanrio của bạn đẹp quá! Bé Kitty ngồi bánh tart dâu cưng ghê.", "time": "2 giờ trước" },
+    { "id": 26, "blogId": 8, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Mình thích nhất là Kitty trong bánh tart dâu với lại bé Kuromi cá tính.", "time": "4 giờ trước" },
+
+    { "id": 27, "blogId": 9, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Fan bóng đá như mình mê mấy em này luôn! Nhìn là muốn sưu tầm hết.", "time": "1 giờ trước" },
+    { "id": 28, "blogId": 9, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Messi Chibi nhìn dễ thương quá trời. Bộ sọc xanh trắng chuẩn bài!", "time": "3 giờ trước" },
+
+    { "id": 29, "blogId": 10, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Hộp quà 3D độc đáo thật, mình sẽ làm tặng người yêu dịp kỷ niệm.", "time": "2 giờ trước" },
+    { "id": 30, "blogId": 10, "author": "Nguyễn Minh Anh", "avatar": "images/avatar_user.jpeg", "content": "Cảm ơn hướng dẫn chi tiết, mình sẽ thử ngay cuối tuần này.", "time": "5 giờ trước" },
+
+    { "id": 31, "blogId": 11, "author": "Đỗ Quang Huy", "avatar": "images/avatar-non.jpg", "content": "Hello Kitty trong túi đào cưng xỉu! Chờ thành phẩm của bạn nha.", "time": "1 giờ trước" },
+    { "id": 32, "blogId": 11, "author": "Phạm Thu Hà", "avatar": "images/avatar_user2.jpeg", "content": "Đợi thành phẩm của bạn nhé, nhìn phần thô đã thấy đẹp rồi.", "time": "4 giờ trước" },
+
+    { "id": 33, "blogId": 12, "author": "Lê Hoàng Nam", "avatar": "images/avatar_user3.jpeg", "content": "Nam châm đồ ăn nhìn thèm ghê, mình đã thử làm và thành công rồi nha!", "time": "2 giờ trước" },
+    { "id": 34, "blogId": 12, "author": "Vũ Khánh Linh", "avatar": "images/avatar-non.jpg", "content": "Rất thích ý tưởng này, cảm ơn bạn đã chia sẻ!", "time": "5 giờ trước" },
+    { "id": 35, "blogId": 12, "author": "Trần Thị Bảo Ngọc", "avatar": "images/avatar_user1.jpeg", "content": "Mình sẽ làm bộ sưu tập nam châm đồ ăn giống bạn. Nhìn tủ lạnh vui mắt hẳn.", "time": "7 giờ trước" }
+  ]
+}

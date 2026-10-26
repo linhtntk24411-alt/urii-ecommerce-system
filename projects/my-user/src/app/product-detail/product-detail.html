@@ -1,0 +1,296 @@
+<main class="container py-4 product-detail">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small mb-0 bg-white p-2 px-3 rounded-3 shadow-sm">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none text-secondary">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a href="/#products" class="text-decoration-none text-secondary">Sản phẩm</a></li>
+      <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">
+        {{ product?.name ?? 'Chi tiết sản phẩm' }}
+      </li>
+    </ol>
+  </nav>
+
+  @if (isLoading) {
+    <div class="loading-spinner" role="status">
+      <span class="spinner-border text-primary-custom"></span>
+      <span class="visually-hidden">Đang tải sản phẩm...</span>
+    </div>
+  } @else if (loadError || !product) {
+    <div class="text-center py-5">
+      <p class="text-danger">{{ loadError || 'Không tìm thấy sản phẩm.' }}</p>
+      <button type="button" class="btn btn-primary-custom" (click)="loadProductData()">Thử lại</button>
+    </div>
+  } @else {
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="bg-white rounded-4 p-3 shadow-sm">
+          <div class="product-main-image mb-3">
+            <img [src]="product.image || 'https://via.placeholder.com/400'"
+              [alt]="product.name || 'Sản phẩm'">
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="bg-white rounded-4 p-4 shadow-sm">
+          <h1 class="fw-bold fs-3 mb-2">{{ product.name }}</h1>
+
+          <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+            <div class="stars-display" aria-label="Đánh giá">
+              @for (star of starIndexes(product.rating || 0); track star) {
+                <i class="bi bi-star-fill"></i>
+              }
+              @if (hasHalfStar(product.rating || 0)) {
+                <i class="bi bi-star-half"></i>
+              }
+              @for (star of emptyStarIndexes(product.rating || 0); track star) {
+                <i class="bi bi-star"></i>
+              }
+            </div>
+            <span class="text-secondary small fw-semibold">
+              {{ product.rating || 0 }} ({{ product.reviews || 0 }} đánh giá)
+            </span>
+            <span class="text-secondary small">|</span>
+            <span class="text-secondary small">Đã bán {{ (product.reviews || 0) * 3.5 | number:'1.0-0' }}</span>
+          </div>
+
+          <div class="bg-light p-3 rounded-3 mb-3">
+            <span class="fs-2 fw-bold text-danger">{{ formatPrice(selectedPrice) }}</span>
+            @if (hasDiscount) {
+              <span class="text-decoration-line-through text-secondary ms-2">
+                {{ formatPrice(product.originalPrice || 0) }}
+              </span>
+              <span class="badge bg-danger bg-opacity-10 text-danger ms-2 py-2 px-3">
+                -{{ discountPercent }}%
+              </span>
+            }
+          </div>
+
+          @if (countdownText) {
+            <div class="alert" [class.alert-warning]="countdownText === 'Ưu đãi đã kết thúc.'"
+              [class.alert-danger]="countdownText !== 'Ưu đãi đã kết thúc.'">
+              <i class="bi bi-clock-history me-2"></i>{{ countdownText }}
+            </div>
+          }
+
+          @if (product.variants?.length) {
+            <div class="mb-3">
+              <label class="fw-semibold small text-secondary d-block mb-2">Phân loại sản phẩm</label>
+              <div class="d-flex flex-wrap gap-2">
+                @for (variant of product.variants ?? []; track variant.name) {
+                  <button type="button" class="variant-option"
+                    [class.active]="selectedVariant === variant"
+                    [disabled]="variant.stock <= 0"
+                    (click)="selectVariant(variant)">
+                    <span class="variant-name">{{ variant.name }}</span>
+                    <span class="variant-desc d-block">{{ formatPrice(variant.price) }}</span>
+                    <span class="variant-desc d-block">Còn {{ variant.stock }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <div class="mb-3">
+            <label for="qtyInput" class="fw-semibold small text-secondary d-block mb-2">Số lượng</label>
+            <div class="d-flex align-items-center gap-3">
+              <div class="d-flex align-items-center">
+                <button type="button" class="qty-btn rounded-start" aria-label="Giảm số lượng"
+                  [disabled]="quantity <= 1" (click)="updateQuantity(-1)">-</button>
+                <input id="qtyInput" type="number" class="qty-input" [value]="quantity"
+                  min="1" [max]="selectedStock" (input)="setQuantity($event)">
+                <button type="button" class="qty-btn rounded-end" aria-label="Tăng số lượng"
+                  [disabled]="quantity >= selectedStock" (click)="updateQuantity(1)">+</button>
+              </div>
+              <span class="text-secondary small">{{ selectedStock }} sản phẩm có sẵn</span>
+            </div>
+          </div>
+
+          <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+            <button type="button"
+              class="btn btn-outline-primary-custom flex-fill py-3 rounded-pill fw-semibold"
+              [disabled]="selectedStock <= 0" (click)="addCurrentProductToCart()">
+              <i class="bi bi-cart-plus me-2"></i>Thêm vào giỏ hàng
+            </button>
+            <button type="button" class="btn btn-primary-custom flex-fill py-3 rounded-pill fw-semibold"
+              [disabled]="selectedStock <= 0" (click)="buyCurrentProductNow()">
+              <i class="bi bi-bag me-2"></i>Mua ngay
+            </button>
+          </div>
+
+          <div class="row g-2 mt-3">
+            <div class="col-6"><div class="d-flex align-items-center gap-2 text-secondary small"><i class="bi bi-truck text-danger"></i><span>Giao hàng toàn quốc</span></div></div>
+            <div class="col-6"><div class="d-flex align-items-center gap-2 text-secondary small"><i class="bi bi-shield-check text-danger"></i><span>Hàng chính hãng 100%</span></div></div>
+            <div class="col-6"><div class="d-flex align-items-center gap-2 text-secondary small"><i class="bi bi-arrow-repeat text-danger"></i><span>Đổi trả trong 7 ngày</span></div></div>
+            <div class="col-6"><div class="d-flex align-items-center gap-2 text-secondary small"><i class="bi bi-gift text-danger"></i><span>Tặng kèm map mẫu</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="mt-4 bg-white rounded-4 shadow-sm overflow-hidden">
+      <ul class="nav nav-tabs-custom border-bottom px-4 pt-2" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button type="button" class="nav-link" [class.active]="selectedTab === 'description'"
+            (click)="selectedTab = 'description'">
+            <i class="bi bi-file-text me-2"></i>Mô tả sản phẩm
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button type="button" class="nav-link" [class.active]="selectedTab === 'reviews'"
+            (click)="selectedTab = 'reviews'">
+            <i class="bi bi-star me-2"></i>Đánh giá ({{ reviews.length }})
+          </button>
+        </li>
+      </ul>
+
+      <div class="p-4">
+        @if (selectedTab === 'description') {
+          <div class="text-secondary product-description"
+            [innerHTML]="product.description || 'Chưa có mô tả cho sản phẩm này.'"></div>
+        } @else {
+          @if (reviews.length === 0) {
+            <p class="text-secondary text-center py-4">Chưa có đánh giá nào cho sản phẩm này.</p>
+          } @else {
+            <div class="row g-4 mb-4">
+              <div class="col-md-4 text-center">
+                <div class="display-1 fw-bold text-danger">{{ averageRating | number:'1.1-1' }}</div>
+                <div class="stars-display fs-4">
+                  @for (star of starIndexes(averageRating); track star) { <i class="bi bi-star-fill"></i> }
+                  @if (hasHalfStar(averageRating)) { <i class="bi bi-star-half"></i> }
+                  @for (star of emptyStarIndexes(averageRating); track star) { <i class="bi bi-star"></i> }
+                </div>
+                <span class="text-secondary">{{ reviews.length }} đánh giá</span>
+              </div>
+              <div class="col-md-8">
+                @for (item of reviewDistribution; track item.rating) {
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="small text-secondary rating-label">{{ item.rating }} sao</span>
+                    <div class="rating-bar flex-grow-1">
+                      <div class="rating-bar-fill" [style.width.%]="item.percent"></div>
+                    </div>
+                    <span class="small text-secondary rating-percent">{{ item.percent | number:'1.0-0' }}%</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              @for (filter of reviewFilters; track filter.value) {
+                <button type="button" class="filter-review-btn"
+                  [class.active]="selectedReviewFilter === filter.value"
+                  (click)="setReviewFilter(filter.value)">
+                  {{ filter.label }}
+                </button>
+              }
+            </div>
+
+            @if (filteredReviews.length === 0) {
+              <p class="text-secondary text-center py-3">Không có đánh giá phù hợp.</p>
+            } @else {
+              @for (review of filteredReviews; track $index) {
+                <article class="review-item mb-3">
+                  <div class="d-flex gap-3">
+                    <div [class]="'review-avatar bg-' + reviewColor($index) + ' bg-opacity-10 text-' + reviewColor($index)">
+                      {{ review.avatar || review.user.slice(0, 2).toUpperCase() }}
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 class="fw-bold mb-0">{{ review.user }}</h6>
+                          <div class="stars-display text-warning small">
+                            @for (star of starIndexes(review.rating); track star) { <i class="bi bi-star-fill"></i> }
+                            @if (hasHalfStar(review.rating)) { <i class="bi bi-star-half"></i> }
+                            @for (star of emptyStarIndexes(review.rating); track star) { <i class="bi bi-star"></i> }
+                          </div>
+                        </div>
+                        <span class="text-secondary small">{{ formatDate(review.date) }}</span>
+                      </div>
+                      <p class="text-secondary mt-2 mb-0 review-content">{{ review.content }}</p>
+                      @if (review.helpful) {
+                        <div class="mt-2 text-secondary small">
+                          <i class="bi bi-hand-thumbs-up"></i>
+                          {{ review.helpful }} người thấy hữu ích
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </article>
+              }
+            }
+          }
+        }
+      </div>
+    </section>
+
+    <section class="mt-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold fs-4 mb-0">Sản phẩm gợi ý</h2>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle"
+            aria-label="Cuộn sang trái" (click)="scrollRelated(-1)">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle"
+            aria-label="Cuộn sang phải" (click)="scrollRelated(1)">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        @for (category of relatedCategories; track category.value) {
+          <button type="button" class="category-filter-btn"
+            [class.active]="selectedRelatedCategory === category.value"
+            (click)="setRelatedCategory(category.value)">
+            {{ category.label }}
+          </button>
+        }
+      </div>
+
+      <div class="related-scroll">
+        @for (related of relatedProducts; track related.id) {
+          <article class="product-card">
+            <a class="related-product-link" [href]="productDetailUrl(related)">
+              <div class="product-image-wrapper">
+                <img [src]="related.image || 'https://via.placeholder.com/300'"
+                  [alt]="related.name || 'Sản phẩm'" loading="lazy">
+                @if (related.isSale && related.currentPrice && related.originalPrice) {
+                  <span class="badge-discount">
+                    -{{ (1 - related.currentPrice / related.originalPrice) * 100 | number:'1.0-0' }}%
+                  </span>
+                }
+                @if (related.isHot) {
+                  <span class="badge-hot"><i class="bi bi-fire"></i> Hot</span>
+                }
+              </div>
+              <div class="product-info">
+                <div class="product-title">{{ related.name }}</div>
+                <div class="product-price">
+                  <span class="current-price">{{ formatPrice(related.currentPrice || related.originalPrice || 0) }}</span>
+                  @if (related.isSale && related.currentPrice && related.originalPrice) {
+                    <span class="original-price">{{ formatPrice(related.originalPrice) }}</span>
+                  }
+                </div>
+                <div class="product-meta">
+                  <span><i class="bi bi-star"></i> {{ related.rating || 0 }}</span>
+                  <span>({{ related.reviews || 0 }})</span>
+                </div>
+              </div>
+            </a>
+            <div class="related-actions">
+              <button type="button" class="cart-icon" aria-label="Thêm vào giỏ hàng"
+                (click)="addRelatedProductToCart(related)">
+                <i class="bi bi-cart-plus"></i>
+              </button>
+              <button type="button" class="btn-buy" (click)="buyRelatedProductNow(related)">
+                <i class="bi bi-bag"></i> Mua ngay
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <p class="text-secondary">Không có sản phẩm liên quan.</p>
+        }
+      </div>
+    </section>
+  }
+</main>

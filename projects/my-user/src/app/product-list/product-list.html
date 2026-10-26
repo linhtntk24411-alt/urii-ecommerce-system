@@ -1,0 +1,208 @@
+<div id="header-component"></div>
+
+<main class="container my-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small mb-0 bg-white p-2 px-3 rounded-3 shadow-sm">
+      <li class="breadcrumb-item">
+        <a href="index.html" class="text-decoration-none text-secondary">Trang chủ</a>
+      </li>
+      <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">
+        <a href="product.html" class="text-decoration-none text-primary-custom">Sản phẩm</a>
+      </li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <aside class="col-lg-3">
+      <div class="bg-white rounded-4 p-4 shadow-sm sticky-top product-filter-panel">
+        <h5 class="fw-bold text-primary-custom mb-4"><i class="bi bi-funnel"></i> Bộ lọc</h5>
+
+        <div class="mb-4">
+          <label class="fw-semibold small text-secondary d-block mb-2">Khoảng giá (VNĐ)</label>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="price1"
+              [checked]="selectedPrices.has('under-50')"
+              (change)="setPriceFilter('under-50', $event)">
+            <label class="form-check-label small" for="price1">Dưới 50.000</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="price2"
+              [checked]="selectedPrices.has('50-200')"
+              (change)="setPriceFilter('50-200', $event)">
+            <label class="form-check-label small" for="price2">50.000 - 200.000</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="price3"
+              [checked]="selectedPrices.has('over-200')"
+              (change)="setPriceFilter('over-200', $event)">
+            <label class="form-check-label small" for="price3">Trên 200.000</label>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="fw-semibold small text-secondary d-block mb-2">Khuyến mãi</label>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="sale1"
+              [checked]="selectedSales.has('sale')"
+              (change)="setSaleFilter('sale', $event)">
+            <label class="form-check-label small" for="sale1">Đang giảm giá</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="sale2"
+              [checked]="selectedSales.has('hot')"
+              (change)="setSaleFilter('hot', $event)">
+            <label class="form-check-label small" for="sale2">Sản phẩm hot</label>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="fw-semibold small text-secondary d-block mb-2">Đánh giá</label>
+          <div class="rating-filter-group">
+            @for (rating of ratingOptions; track rating.value) {
+              <button type="button" class="rating-filter-btn"
+                [class.active]="selectedRating === rating.value"
+                (click)="selectRating(rating.value)">
+                @if (rating.value === 'all') {
+                  <i class="bi bi-list-ul"></i>
+                } @else {
+                  <span class="stars">{{ rating.stars }}</span>
+                }
+                {{ rating.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-outline-secondary w-100 rounded-pill py-2"
+          id="clearFilters" (click)="clearFilters()">
+          <i class="bi bi-arrow-counterclockwise"></i> Xóa bộ lọc
+        </button>
+      </div>
+    </aside>
+
+    <section class="col-lg-9" aria-label="Danh sách sản phẩm">
+      <div class="d-flex flex-wrap align-items-center justify-content-between bg-white p-3 rounded-4 shadow-sm mb-4">
+        <p class="small text-secondary mb-0" aria-live="polite">{{ productCountText }}</p>
+        <div class="d-flex align-items-center gap-3">
+          <label for="sortSelect" class="d-none d-md-inline small text-secondary mb-0">Sắp xếp:</label>
+          <select class="form-select form-select-sm bg-white border-0 shadow-sm"
+            id="sortSelect" style="width: auto; border-radius: 8px;"
+            [value]="sortOrder" (change)="setSortOrder($event)">
+            <option value="popular">Phổ biến nhất</option>
+            <option value="price-asc">Giá: Thấp đến Cao</option>
+            <option value="price-desc">Giá: Cao đến Thấp</option>
+            <option value="sale">Giảm giá nhiều nhất</option>
+          </select>
+        </div>
+      </div>
+
+      @if (categoryInfo) {
+        <div class="alert alert-light border rounded-3 py-2 px-3 mb-4 small text-secondary">
+          {{ categoryInfo }}
+        </div>
+      }
+
+      @if (isLoading) {
+        <div class="loading-spinner text-center py-5" role="status">
+          <span class="spinner-border text-primary"></span>
+          <span class="visually-hidden">Đang tải...</span>
+        </div>
+      } @else if (loadError) {
+        <div class="col-12 text-center py-5">
+          <p class="text-danger">{{ loadError }}</p>
+          <button type="button" class="btn btn-primary mt-3" (click)="loadProducts()">
+            <i class="bi bi-arrow-repeat"></i> Thử lại
+          </button>
+        </div>
+      } @else if (pagedProducts.length === 0) {
+        <div class="col-12 text-center py-5">
+          <p class="text-secondary">Không tìm thấy sản phẩm phù hợp</p>
+        </div>
+      } @else {
+        <div class="product-list">
+          @for (product of pagedProducts; track product.id) {
+            <article class="product-card">
+              <div class="product-image-wrapper">
+                <a [href]="'/product-detail?id=' + product.id" class="d-block"
+                  [attr.aria-label]="'Xem chi tiết ' + (product.name || 'sản phẩm')">
+                  <img [src]="product.image || ''" [alt]="product.name || 'Sản phẩm'" loading="lazy">
+                </a>
+                @if (hasDiscount(product)) {
+                  <span class="badge-discount">-{{ discountPercent(product) }}%</span>
+                }
+                @if (product.isHot) {
+                  <span class="badge-hot"><i class="bi bi-fire"></i> Hot</span>
+                }
+                <button type="button" class="cart-icon"
+                  [attr.aria-label]="'Thêm ' + (product.name || 'sản phẩm') + ' vào giỏ hàng'"
+                  (click)="addToCart(product)">
+                  <i class="bi bi-cart-plus"></i>
+                </button>
+              </div>
+              <div class="product-info">
+                <div class="product-title">{{ product.name }}</div>
+                <div class="product-price">
+                  @if (hasDiscount(product)) {
+                    <span class="current-price">{{ formatPrice(displayPrice(product)) }}</span>
+                    <span class="original-price">{{ formatPrice(product.originalPrice || 0) }}</span>
+                  } @else {
+                    <span class="current-price no-discount">{{ formatPrice(displayPrice(product)) }}</span>
+                  }
+                </div>
+                <div class="product-meta">
+                  <div class="product-rating">
+                    <i class="bi bi-star"></i>
+                    <span><span class="rating-number">{{ product.rating || 0 }}</span></span>
+                    <span class="review-count">({{ product.reviews || 0 }})</span>
+                  </div>
+                  <div class="product-stock-info">
+                    <i class="bi bi-box-seam"></i>
+                    <span><span class="stock-number">{{ product.stock || 0 }}</span></span>
+                  </div>
+                </div>
+                <div class="product-actions">
+                  <button type="button" class="btn-buy" (click)="buyNow(product)">
+                    <i class="bi bi-bag"></i> Mua ngay
+                  </button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+
+      @if (!isLoading && !loadError && totalPages > 1) {
+        <nav aria-label="Page navigation" class="mt-4">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <button type="button" class="page-link rounded-3 border-0"
+                aria-label="Trang trước" [disabled]="currentPage === 1"
+                (click)="changePage(currentPage - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            </li>
+            @for (page of pageNumbers; track page) {
+              <li class="page-item" [class.active]="page === currentPage">
+                <button type="button" class="page-link rounded-3"
+                  [class.border-0]="page !== currentPage"
+                  [attr.aria-current]="page === currentPage ? 'page' : null"
+                  (click)="changePage(page)">
+                  {{ page }}
+                </button>
+              </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <button type="button" class="page-link rounded-3 border-0"
+                aria-label="Trang sau" [disabled]="currentPage === totalPages"
+                (click)="changePage(currentPage + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      }
+    </section>
+  </div>
+</main>
+
+<div id="footer-component"></div>

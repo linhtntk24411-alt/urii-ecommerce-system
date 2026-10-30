@@ -33,4 +33,16 @@ This command updates only stored passwords that are not already bcrypt hashes; i
 
 ## API access
 
-Product, category, blog, comment, map, and active-voucher reads are public. Product creation/deletion and access to users/orders require a bearer JWT for an admin account. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
+Product, category, blog, comment, map, and active-voucher reads are public. Product mutations and all order, user, admin-promotion, and dashboard endpoints require a bearer JWT for an admin account. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
+
+Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin account:
+
+| Resource | Endpoints |
+| --- | --- |
+| Products | `GET /api/products`, `GET /api/products/:id`, `POST /api/products`, `PUT/PATCH /api/products/:id`, `DELETE /api/products/:id` |
+| Orders | `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`, `PUT/PATCH /api/orders/:id`, `DELETE /api/orders/:id` |
+| Users | `GET /api/users`, `GET /api/users/:id`, `POST /api/users`, `PUT/PATCH /api/users/:id`, `DELETE /api/users/:id` |
+| Promotions | `GET /api/vouchers/manage`, `GET /api/vouchers/:id`, `POST /api/vouchers`, `PUT/PATCH /api/vouchers/:id`, `DELETE /api/vouchers/:id` |
+| Dashboard | `GET /api/dashboard` |
+
+`GET /api/vouchers` remains public and only returns active, currently available vouchers. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.

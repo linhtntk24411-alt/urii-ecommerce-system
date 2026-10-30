@@ -157,6 +157,11 @@ test('voucher availability respects date range, quantity, and active status', ()
   assert.equal(isVoucherAvailable({ ...voucher, isActive: false }, now), false);
   assert.equal(isVoucherAvailable({ ...voucher, startDate: '01/06/2026' }, now), false);
   assert.equal(isVoucherAvailable({ ...voucher, endDate: '31/04/2026' }, now), false);
+  assert.equal(isVoucherAvailable({
+    ...voucher,
+    startDate: '2026-05-01',
+    endDate: '2026-05-31'
+  }, now), true);
 });
 
 test('Excel conversion keeps the existing product fixture format', () => {

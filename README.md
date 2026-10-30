@@ -1,59 +1,54 @@
-# UriiEcommerceSystem
+# Urii Ecommerce System
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.7.
+Urii is an ecommerce application with separate Angular storefront and admin applications, plus an Express/MongoDB API.
 
-## Development server
+## Project structure
 
-To start a local development server, run:
+- `projects/my-user/` — customer-facing Angular application.
+- `projects/my-admin/` — admin dashboard, promotions, and user management.
+- `my-server-mongodb/` — Express API, Mongoose models, seed data, and backend tests.
 
-```bash
-ng serve
+## Run locally
+
+Install frontend dependencies from the repository root:
+
+```sh
+npm install
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Start the storefront or admin app in its own terminal:
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
+```sh
+npm start -- --project my-user
+npm start -- --project my-admin
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+The Angular dev-server proxy sends `/api` requests to `http://localhost:3002`. Start the backend separately:
 
-```bash
-ng generate --help
+```sh
+cd my-server-mongodb
+npm install
 ```
 
-## Building
+Copy `.env.example` to `.env`, set a private MongoDB URI and a random `JWT_SECRET`, then run:
 
-To build the project run:
-
-```bash
-ng build
+```sh
+npm run dev
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Create an admin using the backend's `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and optional `SEED_ADMIN_NAME` environment variables, then run `npm run seed:admin`. Do not commit `.env` or use demo credentials. See [the backend README](./my-server-mongodb/README.md) for seed safety and API details.
 
-## Running unit tests
+## Build and tests
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+```sh
+npm run build -- --project my-user
+npm run build -- --project my-admin
+npm test -- --project my-admin --watch=false
 ```
 
-## Running end-to-end tests
+Backend tests:
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
+```sh
+cd my-server-mongodb
+npm test
 ```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

@@ -35,16 +35,30 @@ test('serves image files from public/images', async () => {
   assert.match(response.headers.get('content-type'), /^image\/jpeg/);
 });
 
-test('rejects product mutations and private data reads without an admin token', async () => {
+test('requires admin authentication for private reads and all CRUD mutations', async () => {
   const requests = [
     fetch(`${baseUrl}/api/products`, { method: 'POST' }),
+    fetch(`${baseUrl}/api/products/sku-1`, { method: 'PUT' }),
+    fetch(`${baseUrl}/api/products/sku-1`, { method: 'PATCH' }),
     fetch(`${baseUrl}/api/products/sku-1`, { method: 'DELETE' }),
     fetch(`${baseUrl}/api/users`),
-    fetch(`${baseUrl}/api/orders`)
+    fetch(`${baseUrl}/api/users/507f1f77bcf86cd799439011`),
+    fetch(`${baseUrl}/api/users`, { method: 'POST' }),
+    fetch(`${baseUrl}/api/users/507f1f77bcf86cd799439011`, { method: 'PATCH' }),
+    fetch(`${baseUrl}/api/users/507f1f77bcf86cd799439011`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/orders`),
+    fetch(`${baseUrl}/api/orders`, { method: 'POST' }),
+    fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'PUT' }),
+    fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/vouchers/manage`),
+    fetch(`${baseUrl}/api/vouchers`, { method: 'POST' }),
+    fetch(`${baseUrl}/api/vouchers/WELCOME10`, { method: 'PATCH' }),
+    fetch(`${baseUrl}/api/vouchers/WELCOME10`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/dashboard`)
   ];
 
   const responses = await Promise.all(requests);
-  assert.deepEqual(responses.map((response) => response.status), [401, 401, 401, 401]);
+  assert.ok(responses.every((response) => response.status === 401));
 });
 
 test('rejects authenticated non-admin users from admin-only APIs', async () => {

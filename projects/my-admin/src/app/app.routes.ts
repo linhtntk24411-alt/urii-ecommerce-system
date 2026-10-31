@@ -4,8 +4,10 @@ import { ProductsAdmin } from './features/products-admin/products-admin';
 import { OrdersAdmin } from './features/orders-admin/orders-admin';
 import { MapAdmin } from './features/map-admin/map-admin';
 import { SupportAdmin } from './features/support-admin/support-admin';
+import { LoginAdmin } from './features/login-admin/login-admin';
 
 export const routes: Routes = [
+  { path: '', component: LoginAdmin, pathMatch: 'full' },
   {
     path: '',
     component: AdminLayoutComponent,

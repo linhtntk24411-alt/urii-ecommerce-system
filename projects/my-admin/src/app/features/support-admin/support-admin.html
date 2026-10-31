@@ -1,0 +1,173 @@
+<div style="width: 100%; max-width: 1400px; margin: 0 auto; height: 100%;">
+    
+    <!-- Page Title -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1" style="font-size: 28px; font-family: 'Segoe UI', sans-serif;">Hỗ trợ Chatbot</h1>
+            <p class="text-muted small m-0">Tư vấn trực tiếp cho khách hàng và quản lý luồng Human-in-the-loop</p>
+        </div>
+    </div>
+
+    <!-- Chat Workspace Container -->
+    <div class="row g-0 rounded-4 shadow-sm border overflow-hidden bg-white" style="height: calc(80vh - 60px); min-height: 550px;">
+        
+        <!-- Left Column: Chat Sessions List -->
+        <div class="col-12 col-md-4 border-end d-flex flex-column h-100 bg-light-subtle">
+            
+            <!-- Search Bar -->
+            <div class="p-3 border-bottom bg-white">
+                <div class="input-group input-group-sm rounded-3 overflow-hidden border">
+                    <span class="input-group-text border-0 bg-transparent text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" [(ngModel)]="searchQuery" class="form-control border-0 ps-1" placeholder="Tìm kiếm khách hàng...">
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="bg-white border-bottom px-2 py-1 d-flex gap-1">
+                <button class="btn btn-sm btn-outline-danger flex-fill py-1 fw-semibold filter-btn" [class.active]="currentFilter === 'all'" (click)="setFilter('all')" style="font-size: 12.5px;">Tất cả</button>
+                <button class="btn btn-sm btn-outline-danger flex-fill py-1 fw-semibold filter-btn" [class.active]="currentFilter === 'waiting'" (click)="setFilter('waiting')" style="font-size: 12.5px;">
+                    Chờ phản hồi <span class="badge bg-danger ms-1" *ngIf="getWaitingCount() > 0">{{ getWaitingCount() }}</span>
+                </button>
+                <button class="btn btn-sm btn-outline-danger flex-fill py-1 fw-semibold filter-btn" [class.active]="currentFilter === 'active'" (click)="setFilter('active')" style="font-size: 12.5px;">Đang chat</button>
+            </div>
+
+            <!-- Sessions List -->
+            <div class="flex-grow-1 overflow-y-auto custom-scrollbar" id="sessions-list" style="background-color: #fbf9f8;">
+                @for (s of getFilteredSessions(); track s.sessionId) {
+                <div class="session-item" [class.active]="s.sessionId === selectedSessionId" [class.unread]="s.unreadCount > 0" (click)="selectSession(s.sessionId)">
+                    <div class="position-relative">
+                        <div class="avatar-circle bg-danger bg-opacity-75 text-white rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase" style="width: 40px; height: 40px; font-size: 14px;">{{ getInitials(s.userName) }}</div>
+                        <span class="position-absolute bottom-0 end-0 border border-2 border-white rounded-circle active-status-dot" [style.background-color]="s.status === 'ai' ? '#22c55e' : (s.status === 'waiting' ? '#f59e0b' : '#ef4444')"></span>
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="session-name text-truncate" style="max-width: 140px;">{{ s.userName || 'Khách vãng lai' }}</div>
+                            <span class="session-time">{{ formatTime(s.lastMessageTime) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="session-preview text-truncate">{{ getLastMessage(s) }}</div>
+                            <div class="d-flex align-items-center gap-1.5">
+                                @if (s.status === 'waiting') {
+                                    <span class="badge bg-warning text-dark px-1.5 py-0.5 small" style="font-size: 10px;">Chờ hỗ trợ</span>
+                                } @else if (s.status === 'active') {
+                                    <span class="badge bg-danger px-1.5 py-0.5 small" style="font-size: 10px;">Đang hỗ trợ</span>
+                                } @else {
+                                    <span class="badge bg-secondary px-1.5 py-0.5 small" style="font-size: 10px;">AI Tư vấn</span>
+                                }
+                                <span class="badge bg-danger rounded-pill" *ngIf="s.unreadCount > 0">{{ s.unreadCount }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                } @empty {
+                <div class="text-center py-5 text-muted">
+                    <span class="material-symbols-outlined fs-2">chat_bubble_outline</span>
+                    <p class="small mt-2">Không tìm thấy cuộc hội thoại nào</p>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Active Conversation -->
+        <div class="col-12 col-md-8 d-flex flex-column h-100" id="chat-content-pane">
+            
+            <!-- Default Blank State -->
+            <div class="d-flex flex-column align-items-center justify-content-center h-100 p-5 text-center text-muted" *ngIf="!getSelectedSession()">
+                <div class="bg-danger bg-opacity-10 text-danger rounded-circle p-4 mb-3" style="font-size: 40px; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-chat-dots-fill"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Chưa chọn cuộc trò chuyện</h5>
+                <p class="small text-muted px-4" style="max-width: 400px;">Hãy chọn một khách hàng từ danh sách bên trái để bắt đầu xem lịch sử trò chuyện và hỗ trợ tư vấn.</p>
+            </div>
+
+            <!-- Chat Console -->
+            <div class="d-flex flex-column h-100" *ngIf="getSelectedSession() as currentSession">
+                
+                <!-- Chat Header -->
+                <div class="p-3 border-bottom bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="position-relative">
+                            <div class="avatar-circle bg-danger text-white rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase" style="width: 45px; height: 45px; font-size: 18px;">{{ getInitials(currentSession.userName) }}</div>
+                            <span class="active-status-dot position-absolute bottom-0 end-0 border border-2 border-white rounded-circle" style="width: 12px; height: 12px;" [style.background-color]="currentSession.status === 'ai' ? '#22c55e' : (currentSession.status === 'waiting' ? '#f59e0b' : '#ef4444')"></span>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">{{ currentSession.userName || 'Khách vãng lai' }}</h6>
+                            <small class="text-muted">{{ currentSession.userEmail || 'Không có Email' }}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-danger fw-semibold px-3 py-1.5 rounded-3 d-flex align-items-center gap-1 shadow-sm" *ngIf="currentSession.status !== 'active'" (click)="takeoverChat()">
+                            <i class="bi bi-hand-index-thumb"></i> Tiếp quản chat
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary fw-semibold px-3 py-1.5 rounded-3 d-flex align-items-center gap-1" *ngIf="currentSession.status === 'active'" (click)="handbackChat()">
+                            <i class="bi bi-robot"></i> Chuyển lại cho AI
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Notice Bar -->
+                <div class="px-3 py-2 bg-light border-bottom d-flex align-items-center justify-content-between" style="font-size: 13px;">
+                    <div class="d-flex align-items-center gap-1.5 text-secondary">
+                        <span class="fw-semibold">Trạng thái:</span>
+                        @if (currentSession.status === 'ai') {
+                            <span class="badge bg-secondary">AI đang hỗ trợ tự động</span>
+                        } @else if (currentSession.status === 'waiting') {
+                            <span class="badge bg-warning text-dark">Khách hàng đang chờ nhân viên tiếp quản</span>
+                        } @else {
+                            <span class="badge bg-danger">Nhân viên đang hỗ trợ trực tiếp</span>
+                        }
+                    </div>
+                    <div class="text-muted" style="font-size: 11px; font-family: monospace;">ID: {{ currentSession.sessionId }}</div>
+                </div>
+
+                <!-- Chat Messages Body -->
+                <div class="flex-grow-1 p-3 overflow-y-auto bg-light-subtle d-flex flex-column gap-3 custom-scrollbar" style="background-color: #fcfbfa; position: relative;">
+                    @for (msg of currentSession.messages; track msg.timestamp) {
+                        @if (msg.isSystemLog) {
+                            <div class="system-log-row">
+                                <div class="system-log-bubble">{{ msg.text }}</div>
+                            </div>
+                        } @else if (msg.sender === 'user') {
+                            <div class="chat-message-row customer-msg">
+                                <div class="message-bubble">
+                                    <p>{{ msg.text }}</p>
+                                    <div class="message-meta">
+                                        <span>{{ formatTime(msg.timestamp) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        } @else {
+                            <div class="chat-message-row shop-msg" [class.bot-msg]="msg.sender === 'bot'">
+                                <div class="message-bubble">
+                                    <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
+                                    <div class="message-meta">
+                                        <span class="badge p-0.5 fw-bold" [ngClass]="msg.sender === 'bot' ? 'bg-secondary' : 'bg-danger'" style="font-size: 8px;">{{ msg.sender === 'bot' ? 'AI' : 'ADMIN' }}</span>
+                                        <span>{{ formatTime(msg.timestamp) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    } @empty {
+                        <div class="text-center py-5 text-muted small">Chưa có tin nhắn nào trong hội thoại này</div>
+                    }
+                </div>
+
+                <!-- Chat Input Footer -->
+                <div class="p-3 border-top bg-white">
+                    <div class="input-group shadow-sm rounded-4 border overflow-hidden p-1 bg-light">
+                        <textarea [(ngModel)]="adminReplyText" (keydown.enter)="$event.preventDefault(); sendAdminMessage()" class="form-control border-0 bg-transparent custom-scrollbar py-2" rows="1" placeholder="Nhập tin nhắn phản hồi..." style="resize: none; outline: none; box-shadow: none; font-size: 14px;"></textarea>
+                        <button class="btn btn-danger px-4 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center" (click)="sendAdminMessage()" type="button" style="width: 50px; height: 42px; margin-top: auto; margin-bottom: auto;">
+                            <i class="bi bi-send-fill fs-5"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2 px-1 text-muted" style="font-size: 11px;">
+                        <span>Bấm <b>Enter</b> để gửi, <b>Shift + Enter</b> để xuống dòng</span>
+                        <span class="text-danger" *ngIf="currentSession.status === 'active'"><i class="bi bi-exclamation-triangle"></i> AI đã tạm ngưng, bạn đang trực tiếp chat</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>

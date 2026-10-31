@@ -1,7 +1,7 @@
-<div style="width: 100%; max-width: 1400px; margin: 0 auto; padding-bottom: 50px;">
+<div class="product-admin-container">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="fw-bold mb-1" style="font-size: 28px;">Quản lý sản phẩm</h1>
+            <h1 class="page-title">Quản lý sản phẩm</h1>
             <p class="text-muted small m-0">Theo dõi và quản lý kho hàng DIY của bạn</p>
         </div>
         <button class="btn btn-danger fw-bold px-4 py-2 rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#editProductModal" (click)="openAddModal()">
@@ -103,29 +103,72 @@
     <div class="card border-0 shadow-sm rounded-4 bg-white">
         <div class="table-responsive p-0">
             <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light text-muted" style="font-size: 13px; font-weight: 600;">
+                <thead class="thead-custom">
                     <tr>
-                        <th class="ps-4 py-3" style="width: 60px;">Hình ảnh</th>
+                        <th class="ps-4 py-3 col-image">Hình ảnh</th>
                         <th class="py-3">Tên sản phẩm / <span class="fw-normal">SKU</span></th>
                         <th class="py-3">Danh mục</th>
                         <th class="py-3">Giá bán</th>
                         <th class="py-3">Tồn kho</th>
                         <th class="py-3">Trạng thái</th>
-                        <th class="pe-4 text-end py-3" style="width: 120px;">Hành động</th>
+                        <th class="pe-4 text-end py-3 col-actions">Hành động</th>
                     </tr>
                 </thead>
                 <tbody id="product-list" class="fs-6">
                     @for (p of pageItems; track p.id || p._id) {
                         <tr>
-                            <td class="ps-4"><img [src]="formatImagePath(p.image)" [alt]="p.name" style="width: 45px; height: 45px; object-fit: cover; border-radius: 8px;"></td>
+                            <!-- 1. Hình ảnh -->
+                            <td class="ps-4">
+                                <img [src]="formatImagePath(p.image)" [alt]="p.name" class="product-thumb">
+                            </td>
+                            
+                            <!-- 2. Tên sản phẩm & SKU -->
                             <td>
                                 <strong class="text-dark fs-6">{{ p.name }}</strong>
                                 <div class="sku-text text-muted">SKU: {{ getSku(p) }}</div>
                             </td>
-                            <td><span class="badge bg-light text-dark border rounded-pill px-3">{{ getCategoryName(p.category) }}</span></td>
-                            <td class="text-danger fw-bold">{{ (p.price || 0).toLocaleString('vi-VN') }}đ</td>
-                            <td>{{ p.stock }}</td>
-                            <td><span class="badge rounded-pill px-3" [ngClass]="getStatusInfo(p.status).class">{{ getStatusInfo(p.status).text }}</span></td>
+
+                            <!-- 3. Danh mục (Mỗi danh mục một màu riêng biệt, không bị trùng) -->
+                            <td>
+                                @if (p.category === 'TP') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #e3f2fd !important; color: #0d6efd !important; font-weight: 600; font-size: 12px;">TP</span>
+                                } @else if (p.category === 'HN') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #d1e7dd !important; color: #0f5132 !important; font-weight: 600; font-size: 12px;">HN</span>
+                                } @else if (p.category === 'DC') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #f3e8ff !important; color: #8b5cf6 !important; font-weight: 600; font-size: 12px;">DC</span>
+                                } @else if (p.category === 'KIT' || p.category === 'kit') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #fff3cd !important; color: #664d03 !important; font-weight: 600; font-size: 12px;">KIT</span>
+                                } @else {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #e6fffa !important; color: #00b4d8 !important; font-weight: 600; font-size: 12px;">{{ p.category }}</span>
+                                }
+                            </td>
+
+                            <!-- 4. Giá bán -->
+                            <td class="text-danger fw-bold">
+                                {{ (p.price || 0).toLocaleString('vi-VN') }}đ
+                            </td>
+
+                            <!-- 5. Tồn kho -->
+                            <td>
+                                {{ p.stock }}
+                            </td>
+
+                            <!-- 6. Trạng thái (Mỗi trạng thái một màu chuẩn, rõ nét) -->
+                            <td>
+                                @if (p.status === 'hot' || p.status === 'Bán chạy' || p.status === 'Đang Hot') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #f8d7da !important; color: #840001 !important; font-weight: 600; font-size: 12px;">Bán chạy</span>
+                                } @else if (p.status === 'new' || p.status === 'Mới') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #d1e7dd !important; color: #0f5132 !important; font-weight: 600; font-size: 12px;">Mới</span>
+                                } @else if (p.status === 'sap-het' || p.status === 'Sắp hết hàng') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #fff3cd !important; color: #664d03 !important; font-weight: 600; font-size: 12px;">Sắp hết hàng</span>
+                                } @else if (p.status === 'het-hang' || p.status === 'Hết hàng') {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #e2e3e5 !important; color: #383d41 !important; font-weight: 600; font-size: 12px;">Hết hàng</span>
+                                } @else {
+                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #c6efd2 !important; color: #029739 !important; font-weight: 600; font-size: 12px;">Bình thường</span>
+                                }
+                            </td>
+
+                            <!-- 7. Hành động -->
                             <td class="pe-4">
                                 <div class="d-flex justify-content-end gap-2">
                                     <button class="btn-action-edit" (click)="openEditModal(p)"><i class="bi bi-pencil fs-6"></i></button>
@@ -141,26 +184,31 @@
         </div>
         <!-- Phân trang -->
         <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
-            <div class="text-muted small" id="pagination-info">Hiển thị {{ totalItems ? startIdx + 1 : 0 }}-{{ mathMin(startIdx + itemsPerPage, totalItems) }} trên tổng số {{ totalItems }} sản phẩm</div>
-            <nav><ul class="pagination pagination-sm m-0" id="pagination-controls">
-                <li class="page-item" [class.disabled]="currentPage === 1">
-                    <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage - 1)">«</a>
-                </li>
-                @for (i of totalPagesArray; track i) {
-                    <li class="page-item" [class.active]="currentPage === i">
-                        <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(i)">{{ i }}</a>
+            <div class="text-muted small" id="pagination-info">
+                Hiển thị {{ totalItems ? startIdx + 1 : 0 }}-{{ mathMin(startIdx + itemsPerPage, totalItems) }} trên tổng số {{ totalItems }} sản phẩm
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm m-0" id="pagination-controls">
+                    <li class="page-item" [class.disabled]="currentPage === 1">
+                        <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage - 1)">«</a>
                     </li>
-                }
-                <li class="page-item" [class.disabled]="currentPage === totalPages || totalPages === 0">
-                    <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage + 1)">»</a>
-                </li>
-            </ul></nav>
+                    @for (i of totalPagesArray; track i) {
+                        <li class="page-item" [class.active]="currentPage === i">
+                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(i)">{{ i }}</a>
+                        </li>
+                    }
+                    <li class="page-item" [class.disabled]="currentPage === totalPages || totalPages === 0">
+                        <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage + 1)">»</a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>
 
 <!-- MODAL SỬA SẢN PHẨM -->
 <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+    <!-- ... (Nội dung Modal giữ nguyên, vì không có style inline) ... -->
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">

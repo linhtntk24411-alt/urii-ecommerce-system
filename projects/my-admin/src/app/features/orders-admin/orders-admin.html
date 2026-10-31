@@ -1,0 +1,423 @@
+<div class="orders-container">
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-3 text-primary fs-4"><i class="bi bi-clipboard-data"></i></div>
+                    <div><h6 class="text-muted small mb-1 fw-normal font-segoe">Tổng đơn hàng</h6><h3 class="fw-bold mb-0 text-dark font-segoe">{{ statTotal }}</h3></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning fs-4"><i class="bi bi-hourglass-split"></i></div>
+                    <div><h6 class="text-muted small mb-1 fw-normal font-segoe">Chờ xác nhận</h6><h3 class="fw-bold mb-0 text-warning font-segoe">{{ statPending }}</h3></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success fs-4"><i class="bi bi-check-circle"></i></div>
+                    <div><h6 class="text-muted small mb-1 fw-normal font-segoe">Đã xác nhận</h6><h3 class="fw-bold mb-0 text-success font-segoe">{{ statApproved }}</h3></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="bg-danger bg-opacity-10 p-3 rounded-3 text-danger fs-4"><i class="bi bi-x-circle"></i></div>
+                    <div><h6 class="text-muted small mb-1 fw-normal font-segoe">Yêu cầu hủy</h6><h3 class="fw-bold mb-0 text-danger font-segoe">{{ statCancel }}</h3></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 filter-bar">
+        <div class="card-body p-0">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="filter-label">Tìm kiếm</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control font-segoe" [(ngModel)]="searchQuery" placeholder="Mã đơn hoặc tên khách...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Trạng thái</label>
+                    <select class="form-select font-segoe" [(ngModel)]="filterStatus">
+                        <option value="">Tất cả</option>
+                        <option value="pending">Chờ xác nhận</option>
+                        <option value="approved">Đã xác nhận</option>
+                        <option value="completed">Hoàn thành</option>
+                        <option value="cancelled">Đã hủy</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Ngày đặt</label>
+                    <input type="date" class="form-control font-segoe" [(ngModel)]="filterDate">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Sắp xếp</label>
+                    <select class="form-select font-segoe" [(ngModel)]="filterSort">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <button class="btn btn-danger w-100 fw-bold filter-btn" (click)="applyFilters()">
+                        <i class="bi bi-funnel me-1"></i> Lọc
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. BẢNG DANH SÁCH ĐƠN HÀNG THƯỜNG -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+            <h4 class="fw-bold text-danger m-0 font-segoe">Danh sách đơn hàng</h4>
+        </div>
+        <div class="table-responsive p-0 mt-2">
+            <table class="table table-hover align-middle mb-0 table-orders">
+                <thead class="text-muted small fw-bold bg-light">
+                    <tr>
+                        <th class="ps-4 py-3 font-segoe">MÃ ĐƠN HÀNG</th>
+                        <th class="py-3 font-segoe">KHÁCH HÀNG</th>
+                        <th class="py-3 font-segoe">NGÀY ĐẶT</th>
+                        <th class="py-3 font-segoe">SẢN PHẨM</th>
+                        <th class="py-3 font-segoe">TỔNG TIỀN</th>
+                        <th class="py-3 font-segoe">TRẠNG THÁI</th>
+                        <th class="pe-4 text-end py-3 font-segoe">THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody class="fs-6">
+                    @for (o of pagedRegularOrders; track o.id) {
+                    <tr>
+                        <td class="ps-4"><span class="order-id">#{{ o.id }}</span></td>
+                        <td>
+                            <div class="customer-info">
+                                <span class="customer-avatar">{{ o.customerAvatar || '--' }}</span>
+                                <div class="customer-name font-segoe">{{ o.customerName }}</div>
+                            </div>
+                        </td>
+                        <td>{{ o.date }}</td>
+                        <td>{{ o.product }}</td>
+                        <td class="order-total">{{ (o.total || 0).toLocaleString('vi-VN') }}đ</td>
+                        <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ statusMap[o.status]?.text }}</span></td>
+                        <td class="pe-4">
+                            <div class="action-btn-group">
+                                <button class="btn-action-icon" (click)="openOrderDetail(o)" title="Xem chi tiết"><i class="bi bi-eye"></i></button>
+                                <div class="custom-dropdown">
+                                    <button class="btn-action-icon" (click)="toggleDropdown(o.id, $event)" title="Chỉnh sửa trạng thái">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <ul class="dropdown-menu shadow" [class.show]="activeDropdownId === o.id">
+                                        <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'pending')">Chờ xác nhận</a></li>
+                                        <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'approved')">Đã xác nhận</a></li>
+                                        <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'completed')">Hoàn thành</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item py-2 text-danger" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'cancelled')">Đã hủy</a></li>
+                                    </ul>
+                                </div>
+                                <button class="btn-action-icon text-danger" (click)="deleteOrder(o.id)" title="Xóa"><i class="bi bi-x-circle"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    } @empty {
+                        <tr><td colspan="7" class="text-center text-muted py-5">Không có đơn hàng nào phù hợp.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+            <div class="text-muted small">Hiển thị {{ regularOrders.length ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ MathMin(currentPage * ITEMS_PER_PAGE, regularOrders.length) }} của {{ regularOrders.length }} đơn</div>
+            <nav>
+                <ul class="pagination pagination-sm m-0">
+                    <li class="page-item" [class.disabled]="currentPage === 1"><a class="page-link" href="#" (click)="$event.preventDefault(); currentPage = currentPage - 1">«</a></li>
+                    @for (i of getPageArray(regularOrders.length, ITEMS_PER_PAGE); track i) {
+                        <li class="page-item" [class.active]="currentPage === i"><a class="page-link" href="#" (click)="$event.preventDefault(); currentPage = i">{{ i }}</a></li>
+                    }
+                    <li class="page-item" [class.disabled]="currentPage === Math.ceil(regularOrders.length / ITEMS_PER_PAGE)"><a class="page-link" href="#" (click)="$event.preventDefault(); currentPage = currentPage + 1">»</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 2. BẢNG YÊU CẦU HỦY ĐƠN HÀNG -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+            <h4 class="fw-bold text-danger m-0 font-segoe">Yêu cầu hủy đơn hàng <span class="badge bg-danger rounded-pill fs-6 align-middle font-segoe">{{ cancelRequests.length }}</span></h4>
+        </div>
+        <div class="table-responsive p-0 mt-2">
+            <table class="table table-hover align-middle mb-0 table-orders-cancel">
+                <thead class="text-muted small fw-bold bg-light">
+                    <tr>
+                        <th class="ps-4 py-3 font-segoe">MÃ ĐƠN HÀNG</th>
+                        <th class="py-3 font-segoe">KHÁCH HÀNG</th>
+                        <th class="py-3 font-segoe">LÝ DO HỦY</th>
+                        <th class="py-3 font-segoe">NGÀY YÊU CẦU</th>
+                        <th class="py-3 font-segoe">TRẠNG THÁI</th>
+                        <th class="pe-4 text-end py-3 font-segoe">XỬ LÝ</th>
+                    </tr>
+                </thead>
+                <tbody class="fs-6">
+                    @for (r of pagedCancelRequests; track r.id) {
+                    <tr>
+                        <td class="ps-4"><span class="order-id">#{{ r.id }}</span></td>
+                        <td>{{ r.customerName }}</td>
+                        <td class="cancel-reason" [title]="r.reason">{{ r.reason }}</td>
+                        <td>{{ r.date }}</td>
+                        <td><span class="badge-status badge-status-pending_approval">Chờ duyệt</span></td>
+                        <td class="pe-4">
+                            <div class="action-btn-group">
+                                <button class="btn-process-cancel" (click)="handleCancelRequest(r.id, true)">Đồng ý</button>
+                                <button class="btn-ignore-cancel" (click)="handleCancelRequest(r.id, false)">Từ chối</button>
+                            </div>
+                        </td>
+                    </tr>
+                    } @empty {
+                        <tr><td colspan="6" class="text-center text-muted py-5">Không có yêu cầu hủy nào.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+            <nav>
+                <ul class="pagination pagination-sm m-0">
+                    <li class="page-item" [class.disabled]="currentCancelPage === 1"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCancelPage = currentCancelPage - 1">«</a></li>
+                    @for (i of getPageArray(cancelRequests.length, ITEMS_PER_PAGE); track i) {
+                        <li class="page-item" [class.active]="currentCancelPage === i"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCancelPage = i">{{ i }}</a></li>
+                    }
+                    <li class="page-item" [class.disabled]="currentCancelPage === Math.ceil(cancelRequests.length / ITEMS_PER_PAGE)"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCancelPage = currentCancelPage + 1">»</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 3. BẢNG CUSTOM ORDER -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+            <h4 class="fw-bold text-danger m-0 font-segoe">
+                <i class="bi bi-palette me-2"></i>Đơn hàng Custom theo yêu cầu 
+                <span class="badge bg-warning rounded-pill fs-6 align-middle font-segoe">{{ customOrders.length }}</span>
+            </h4>
+        </div>
+        <div class="table-responsive p-0 mt-2">
+            <table class="table table-hover align-middle mb-0 table-orders-custom">
+                <thead class="text-muted small fw-bold bg-light">
+                    <tr>
+                        <th class="ps-4 py-3 font-segoe">MÃ ĐƠN</th>
+                        <th class="py-3 font-segoe">KHÁCH HÀNG</th>
+                        <th class="py-3 font-segoe">SẢN PHẨM</th>
+                        <th class="py-3 font-segoe">YÊU CẦU</th>
+                        <th class="py-3 font-segoe">TRẠNG THÁI</th>
+                        <th class="pe-4 text-end py-3 font-segoe">THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody class="fs-6">
+                    @for (o of pagedCustomOrders; track o.id) {
+                    <tr>
+                        <td class="ps-4"><span class="order-id">#{{ o.id }}</span></td>
+                        <td>
+                            <div class="customer-info">
+                                <span class="customer-avatar">{{ o.customerAvatar }}</span>
+                                <div class="customer-name font-segoe">{{ o.customerName }}</div>
+                            </div>
+                        </td>
+                        <td>{{ o.product }}</td>
+                        <td><span class="badge bg-info bg-opacity-10 text-info">{{ objectKeys(o.customDetails).length }} yêu cầu</span></td>
+                        <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ statusMap[o.status]?.text }}</span></td>
+                        <td class="pe-4">
+                            <div class="action-btn-group">
+                                <button class="btn-action-icon" (click)="openCustomOrderForm(o)" title="Xem form yêu cầu"><i class="bi bi-file-text"></i></button>
+                                @if (o.status === 'waiting_quote') {
+                                    <button class="btn-action-icon text-success" (click)="openQuoteForm(o)" title="Báo giá cho khách"><i class="bi bi-cash-stack"></i></button>
+                                } @else if (o.status === 'approved' || o.status === 'pending') {
+                                    <button class="btn-action-icon text-warning" (click)="editQuote(o)" title="Sửa báo giá"><i class="bi bi-pencil-square"></i></button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                    } @empty {
+                        <tr><td colspan="6" class="text-center text-muted py-5">Chưa có đơn hàng custom nào.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+            <div class="text-muted small">Hiển thị...</div>
+            <nav>
+                <ul class="pagination pagination-sm m-0">
+                    <li class="page-item" [class.disabled]="currentCustomPage === 1"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCustomPage = currentCustomPage - 1">«</a></li>
+                    @for (i of getPageArray(customOrders.length, CUSTOM_ITEMS_PER_PAGE); track i) {
+                        <li class="page-item" [class.active]="currentCustomPage === i"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCustomPage = i">{{ i }}</a></li>
+                    }
+                    <li class="page-item" [class.disabled]="currentCustomPage === Math.ceil(customOrders.length / CUSTOM_ITEMS_PER_PAGE)"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCustomPage = currentCustomPage + 1">»</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- ================= 4 MODALS TÍCH HỢP TỪ JS CŨ LÊN HTML ================= -->
+<!-- Modal Chi Tiết Đơn Hàng -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content font-segoe border-0 shadow-lg rounded-3">
+            <div class="modal-header border-bottom px-4 py-3">
+                <h4 class="modal-title fw-bold text-danger m-0">Chi tiết đơn hàng #{{ selectedOrder?.id }}</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-5">
+                    <div class="col-md-6">
+                        <h5 class="fw-bold border-bottom pb-2 mb-3">Thông tin khách hàng</h5>
+                        <div class="mb-3 text-dark"><span class="text-muted me-1">Họ tên:</span> <strong>{{ selectedOrder?.customerName }}</strong></div>
+                        <div class="mb-3 text-dark"><span class="text-muted me-1">SĐT:</span> <strong>{{ selectedOrder?.phone || '0987654321' }}</strong></div>
+                        <div class="mb-4 text-dark"><span class="text-muted me-1">Địa chỉ:</span> <span>{{ selectedOrder?.address || 'Số 10, Đường Lê Lợi, Quận 1, TP.HCM' }}</span></div>
+                        <h5 class="fw-bold border-bottom pb-2 mb-3 mt-5">Thanh toán</h5>
+                        <div class="mb-2 text-dark"><span class="text-muted me-1">Phương thức:</span> <span>Chuyển khoản ngân hàng (MB Bank)</span></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="fw-bold border-bottom pb-2 mb-3">Chi tiết đơn hàng</h5>
+                        <div class="mb-3 text-dark"><span class="text-muted me-1">Sản phẩm:</span> <strong>{{ selectedOrder?.product }}</strong></div>
+                        <div class="mb-3 text-dark"><span class="text-muted me-1">Ngày đặt:</span> <span>{{ selectedOrder?.date }}</span></div>
+                        <div class="mb-3 d-flex align-items-center"><span class="text-muted me-2">Trạng thái:</span> <span class="badge-status" [ngClass]="statusMap[selectedOrder?.status]?.class">{{ statusMap[selectedOrder?.status]?.text }}</span></div>
+                        <div class="mb-4 text-dark"><span class="text-muted me-1">Tổng tiền:</span> <strong class="text-danger fs-5">{{ (selectedOrder?.total || 0).toLocaleString('vi-VN') }}đ</strong></div>
+                        <h5 class="fw-bold border-bottom pb-2 mb-3 mt-5">Ghi chú của khách</h5>
+                        <div class="bg-light p-3 rounded-3 text-dark" style="min-height: 80px;">{{ selectedOrder?.customerNote || 'Giao hàng nhanh giúp mình, mình cần gấp.' }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary px-4 py-2" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Báo Giá -->
+<div class="modal fade" id="quoteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content font-segoe border-0 shadow-lg rounded-3">
+            <div class="modal-header px-4 py-3" style="background-color: #198754; color: white; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                <h5 class="modal-title fw-bold m-0"><i class="bi bi-cash me-2"></i>Báo giá đơn custom #{{ selectedOrder?.id }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Giá báo (VNĐ)</label>
+                        <input type="number" class="form-control form-control-lg fs-6" [(ngModel)]="quotePrice" placeholder="Nhập giá tiền...">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ngày báo giá</label>
+                        <input type="date" class="form-control form-control-lg fs-6" [(ngModel)]="quoteDate">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Ghi chú báo giá</label>
+                        <textarea class="form-control" rows="4" [(ngModel)]="quoteNote" placeholder="Nhập thông tin báo giá, ưu đãi, thời gian giao hàng..."></textarea>
+                    </div>
+                </div>
+                <div class="bg-light p-4 rounded-3 text-dark mt-2">
+                    <div class="mb-2"><strong>Khách hàng:</strong> {{ selectedOrder?.customerName }}</div>
+                    <div class="mb-2"><strong>Sản phẩm:</strong> {{ selectedOrder?.product }}</div>
+                    <div><strong>Ghi chú:</strong> {{ selectedOrder?.customerNote || 'Chưa có ghi chú' }}</div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary px-4 py-2" data-bs-dismiss="modal" style="background-color: #6c757d; border-color: #6c757d;">Hủy</button>
+                <button type="button" class="btn btn-success px-4 py-2 fw-bold" (click)="submitQuote()" style="background-color: #198754; border-color: #198754;"><i class="bi bi-send me-1"></i> Gửi báo giá</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Modal Xem form Yêu cầu Custom -->
+<div class="modal fade" id="customFormModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content font-segoe" *ngIf="selectedOrder">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-file-text me-2"></i>Yêu cầu thiết kế #{{ selectedOrder.id }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold border-bottom pb-2">Thông tin khách hàng</h6>
+                        <p><strong>Tên:</strong> {{ selectedOrder.customerName }}</p>
+                        <p><strong>SĐT:</strong> {{ selectedOrder.phone || 'Chưa có' }}</p>
+                        <p><strong>Địa chỉ:</strong> {{ selectedOrder.address || 'Chưa có' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold border-bottom pb-2">Sản phẩm</h6>
+                        <p><strong>Tên:</strong> {{ selectedOrder.product }}</p>
+                        <p><strong>Ngày đặt:</strong> {{ selectedOrder.date }}</p>
+                        <p><strong>Trạng thái:</strong> <span class="badge-status" [ngClass]="statusMap[selectedOrder.status]?.class">{{ statusMap[selectedOrder.status]?.text }}</span></p>
+                    </div>
+                    <div class="col-12">
+                        <h6 class="fw-bold border-bottom pb-2">Chi tiết yêu cầu Custom</h6>
+                        <div class="bg-light p-3 rounded" *ngIf="selectedOrder.customDetails">
+                            <div class="row mb-1" *ngFor="let key of objectKeys(selectedOrder.customDetails)">
+                                <div class="col-4 fw-bold">{{ key }}:</div>
+                                <div class="col-8">{{ selectedOrder.customDetails[key] }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <h6 class="fw-bold border-bottom pb-2">Ghi chú của khách</h6>
+                        <div class="bg-light p-3 rounded">{{ selectedOrder.customerNote || 'Không có ghi chú' }}</div>
+                    </div>
+                    <div class="col-12" *ngIf="selectedOrder.quotedPrice > 0">
+                        <h6 class="fw-bold border-bottom pb-2 text-success">Báo giá đã gửi</h6>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <p><strong>Giá:</strong> {{ selectedOrder.quotedPrice.toLocaleString('vi-VN') }}đ</p>
+                            <p><strong>Ngày:</strong> {{ selectedOrder.quoteDate }}</p>
+                            <p *ngIf="selectedOrder.quoteNote"><strong>Ghi chú:</strong> {{ selectedOrder.quoteNote }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button *ngIf="selectedOrder.status === 'waiting_quote'" class="btn btn-success fw-bold" (click)="openQuoteForm(selectedOrder)"><i class="bi bi-cash-stack me-1"></i> Báo giá ngay</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Modal Sửa Báo Giá -->
+<div class="modal fade" id="editQuoteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content font-segoe" *ngIf="selectedOrder">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Sửa báo giá #{{ selectedOrder.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Giá mới (VNĐ)</label>
+                        <input type="number" class="form-control" [(ngModel)]="editQuotePrice">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ngày cập nhật</label>
+                        <input type="date" class="form-control" [(ngModel)]="editQuoteDate">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Ghi chú mới</label>
+                        <textarea class="form-control" rows="3" [(ngModel)]="editQuoteNote"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-warning fw-bold" (click)="updateQuote()"><i class="bi bi-save me-1"></i> Cập nhật</button>
+            </div>
+        </div>
+    </div>
+</div>

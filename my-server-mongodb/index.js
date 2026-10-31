@@ -1,30 +1,33 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+require('dotenv').config(); // Đọc file .env
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Kết nối MongoDB (hoặc chạy dữ liệu mẫu nếu chưa có mongo local)
-mongoose.connect('mongodb://localhost:27017/urii-ecommerce', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('Connected to MongoDB successfully!');
+// Kết nối MongoDB Atlas từ file .env
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/urii-ecommerce';
+
+mongoose.connect(mongoUri).then(() => {
+  console.log('Connected to MongoDB Atlas successfully!');
 }).catch(err => {
-  console.log('MongoDB connection error, running with mock data mode:', err.message);
+  console.log('MongoDB connection error:', err.message);
 });
 
-// Định nghĩa Schema & Model sản phẩm
+// Định nghĩa lại Schema khớp với MongoDB Atlas của nhóm
 const productSchema = new mongoose.Schema({
-  id: Number,
+  id: String,
   name: String,
+  slug: String,
   category: String,
   status: String,
-  price: Number,
+  currentPrice: Number,  // Khớp với DB trên cloud
+  originalPrice: Number,
   stock: Number,
-  image: String
+  image: String,
+  description: String
 });
 const Product = mongoose.model('Product', productSchema);
 
@@ -32,44 +35,20 @@ const Product = mongoose.model('Product', productSchema);
 app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find();
-    if (products.length === 0) {
-      // Trả về dữ liệu mẫu nếu database trống
-      return res.json([
-        { id: 1, name: 'Bộ Hạt Nhựa Ủi Perler Beads 24 Màu', category: 'hat-nhua', status: 'hot', price: 185000, stock: 50, image: 'assets/Urii-Logo.jpg' },
-        { id: 2, name: 'Khuôn Nhựa Định Hình Size Lớn', category: 'dung-cu', status: 'new', price: 35000, stock: 12, image: 'assets/Urii-Logo.jpg' }
-      ]);
-    }
-    res.json(products);
+    
+    // Map lại dữ liệu để chuyển "currentPrice" thành "price" cho đồng bộ với giao diện Angular hiện tại
+    const formattedProducts = products.map(p => ({
+      ...p.toObject(),
+      price: p.currentPrice || p.originalPrice || 0 // Đảm bảo luôn có trường price cho giao diện đọc
+    }));
+
+    res.json(formattedProducts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// API cập nhật sản phẩm
-app.put('/api/products/:id', async (req, res) => {
-  try {
-    const updated = await Product.findOneAndUpdate(
-      { $or: [{ id: req.params.id }, { _id: req.params.id }] },
-      req.body,
-      { new: true }
-    );
-    res.json({ success: true, updated });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// API xóa sản phẩm
-app.delete('/api/products/:id', async (req, res) => {
-  try {
-    await Product.findOneAndDelete({ $or: [{ id: req.params.id }, { _id: req.params.id }] });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

@@ -14,7 +14,7 @@ declare var bootstrap: any;
   templateUrl: './products-admin.html',
   styleUrls: ['./products-admin.css']
 })
-export class ProductsAdminComponent implements OnInit {
+export class ProductsAdmin implements OnInit {
   products: Product[] = [];
   currentPage = 1;
   itemsPerPage = 4;

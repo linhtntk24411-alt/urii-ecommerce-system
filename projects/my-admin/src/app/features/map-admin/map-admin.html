@@ -1,0 +1,144 @@
+<div style="width: 100%; max-width: 1400px; margin: 0 auto;">
+    
+    <!-- HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-1" style="font-size: 28px;">Quản lý Map mẫu</h1>
+            <p class="text-muted small m-0">Quản lý danh sách mẫu thiết kế hạt ủi (Perler Beads) trong hệ thống.</p>
+        </div>
+        <button class="btn btn-danger fw-bold px-4 py-2 rounded-3 shadow-sm" (click)="openModal(null)">
+            <i class="bi bi-plus-circle me-1"></i> Thêm mẫu mới
+        </button>
+    </div>
+
+    <!-- BẢNG DANH SÁCH MAP MẪU -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white">
+        <div class="card-body p-0">
+            <div class="table-responsive p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-muted" style="font-size: 13px; font-weight: 600;">
+                         <tr>
+                             <th class="ps-4 py-3" style="width: 80px;">Ảnh mẫu</th>
+                             <th class="py-3">Tên mẫu</th>
+                             <th class="py-3">Độ khó</th>
+                             <th class="py-3">Kích thước</th>
+                             <th class="py-3">Tổng hạt</th>
+                             <th class="pe-4 text-end py-3" style="width: 120px;">Hành động</th>
+                         </tr>
+                    </thead>
+                    <tbody class="fs-6">
+                        @for (m of pagedMaps; track m.map_id) {
+                        <tr>
+                            <td class="ps-4">
+                                <img [src]="getImagePath(m.main_image)" [alt]="m.map_name" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                            </td>
+                            <td><strong>{{ m.map_name }}</strong></td>
+                            <td><span class="badge" [ngClass]="getDifficultyBadgeClass(m.difficulty)">{{ m.difficulty || 'Chưa rõ' }}</span></td>
+                            <td>{{ m.grid_size || '--' }}</td>
+                            <td><span class="fw-bold text-danger">{{ m.total_beads || 0 }}</span> hạt</td>
+                            <td class="pe-4 text-end">
+                                <button class="btn-action-edit" (click)="openModal(m.map_id)"><i class="bi bi-pencil"></i></button>
+                                <button class="btn-action-delete" (click)="deleteMap(m.map_id)"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                        } @empty {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-5">Chưa có mẫu nào trong danh sách.</td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+                <div class="text-muted small">
+                    Hiển thị {{ maps.length ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ Math.min(currentPage * ITEMS_PER_PAGE, maps.length) }} trên tổng số {{ maps.length }} mẫu
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm m-0" *ngIf="getPageArray().length > 1">
+                        <li class="page-item" [class.disabled]="currentPage === 1">
+                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage - 1)">«</a>
+                        </li>
+                        @for (i of getPageArray(); track i) {
+                        <li class="page-item" [class.active]="currentPage === i">
+                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(i)">{{ i }}</a>
+                        </li>
+                        }
+                        <li class="page-item" [class.disabled]="currentPage === getPageArray().length">
+                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage + 1)">»</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ========== MODAL THÊM / SỬA MẪU ========== -->
+<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-danger" id="modalTitle">Thêm mẫu mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" [(ngModel)]="mapIdInput" name="mapIdInput">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tên mẫu <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" [(ngModel)]="mapName" name="mapName" placeholder="Ví dụ: Bạch tuộc tím cute" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tác giả <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" [(ngModel)]="mapAuthor" name="mapAuthor" placeholder="Tên tác giả" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Đường dẫn ảnh mẫu</label>
+                        <input type="text" class="form-control" [(ngModel)]="mapImage" name="mapImage" placeholder="assets/gallery_assets/...">
+                        <div class="mt-2" *ngIf="mapImage">
+                            <img [src]="getImagePath(mapImage)" class="img-thumbnail" style="max-height: 120px;">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Độ khó</label>
+                            <select class="form-select" [(ngModel)]="mapDifficulty" name="mapDifficulty">
+                                <option value="Dễ">Dễ</option>
+                                <option value="Trung bình">Trung bình</option>
+                                <option value="Khó">Khó</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Kích thước</label>
+                            <input type="text" class="form-control" [(ngModel)]="mapGridSize" name="mapGridSize" placeholder="Ví dụ: 32 x 32 ô">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Tổng số hạt</label>
+                            <input type="number" class="form-control" [(ngModel)]="mapTotalBeads" name="mapTotalBeads" placeholder="Ví dụ: 250">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Loại hạt</label>
+                            <input type="text" class="form-control" [(ngModel)]="mapBeadType" name="mapBeadType">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Thời gian hoàn thành</label>
+                        <input type="text" class="form-control" [(ngModel)]="mapTime" name="mapTime" placeholder="Ví dụ: 15-20 phút">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mô tả</label>
+                        <textarea class="form-control" rows="3" [(ngModel)]="mapDesc" name="mapDesc" placeholder="Mô tả ngắn về mẫu thiết kế..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger fw-bold px-4" (click)="saveMap()"><i class="bi bi-save"></i> Lưu mẫu</button>
+            </div>
+        </div>
+    </div>
+</div>

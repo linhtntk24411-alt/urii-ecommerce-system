@@ -1,0 +1,191 @@
+<div class="custom-order-wrapper">
+  <!-- HEADER -->
+  <div class="page-header text-center">
+    <h1>Đặt làm theo yêu cầu</h1>
+    <p>Biến ý tưởng của bạn thành những tác phẩm Perler Beads độc bản.</p>
+  </div>
+
+  <!-- STEPPER (Click được) -->
+  <div class="stepper-container">
+    <div class="stepper-line"></div>
+    
+    <div class="step" 
+         [class.active]="currentStep >= 1" 
+         [class.completed]="currentStep > 1" 
+         (click)="goToStep(1)" 
+         style="cursor: pointer;">
+      <div class="step-circle">1</div>
+      <span>Thông tin</span>
+    </div>
+    
+    <div class="step" 
+         [class.active]="currentStep >= 2" 
+         [class.completed]="currentStep > 2" 
+         (click)="goToStep(2)" 
+         style="cursor: pointer;">
+      <div class="step-circle">2</div>
+      <span>Hình ảnh</span>
+    </div>
+    
+    <div class="step" 
+         [class.active]="currentStep >= 3" 
+         (click)="goToStep(3)" 
+         style="cursor: pointer;">
+      <div class="step-circle">3</div>
+      <span>Hoàn tất</span>
+    </div>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="form-card">
+    <form [formGroup]="customOrderForm">
+      
+      <!-- ================= BƯỚC 1 ================= -->
+      <div class="step-content" *ngIf="currentStep === 1">
+        <div class="form-group">
+          <label>Tên yêu cầu thiết kế *</label>
+          <input type="text" formControlName="requestName" placeholder="Ví dụ: Chân dung thú cưng Corgi 20x20cm">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kích thước mong muốn (cm)</label>
+            <input type="text" formControlName="size" placeholder="VD: 15 x 15">
+          </div>
+          <div class="form-group">
+            <label>Loại hạt</label>
+            <select formControlName="beadType">
+              <option value="Hạt Perler 5mm (Midi Beads)">Hạt Perler 5mm (Midi Beads)</option>
+              <option value="Hạt Perler 2.6mm (Mini Beads)">Hạt Perler 2.6mm (Mini Beads)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Mô tả ý tưởng & ghi chú đặc biệt *</label>
+          <textarea formControlName="description" rows="4" placeholder="Hãy mô tả chi tiết màu sắc..."></textarea>
+        </div>
+
+        <div class="form-actions right">
+          <button type="button" class="btn-primary" (click)="nextStep()">Tiếp tục <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- ================= BƯỚC 2 ================= -->
+      <div class="step-content" *ngIf="currentStep === 2">
+        <div class="upload-layout">
+          <!-- Cột trái: Upload -->
+          <div class="upload-left">
+            <h3>Tải lên hình ảnh tham khảo</h3>
+            <p class="sub-text">Vui lòng tải lên hình ảnh rõ nét để chúng tôi có thể chuyển đổi chính xác nhất sang dạng Perler Beads cho bạn.</p>
+            
+            <div class="upload-area" (click)="fileInput.click()">
+              <input #fileInput type="file" hidden (change)="onFileSelected($event)" accept="image/*">
+              <div class="upload-icon"><i class="bi bi-image"></i></div>
+              <p>Kéo thả hoặc Click để tải lên</p>
+              <span>Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB/ảnh)</span>
+            </div>
+
+            <!-- Preview ảnh (nếu có) -->
+            <div class="image-preview" *ngIf="imagePreview">
+              <img [src]="imagePreview" alt="Ảnh xem trước">
+            </div>
+          </div>
+
+          <!-- Cột phải: Note -->
+          <div class="upload-right">
+            <div class="tip-box">
+              <h4><i class="bi bi-lightbulb"></i> Mẹo để có sản phẩm đẹp</h4>
+              <ul>
+                <li>Chọn ảnh có độ tương phản cao.</li>
+                <li>Hạn chế chi tiết quá nhỏ, phức tạp.</li>
+                <li>Ảnh chụp chính diện, không bị mờ.</li>
+              </ul>
+            </div>
+            <div class="form-group mt-4">
+              <label>Ghi chú thêm cho hình ảnh</label>
+              <textarea formControlName="imageNote" rows="3" placeholder="Ví dụ: Lấy phần chân dung..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions space-between">
+          <button type="button" class="btn-outline" (click)="prevStep()"><i class="bi bi-arrow-left"></i> Quay lại</button>
+          <button type="button" class="btn-primary" (click)="nextStep()">Tiếp tục <i class="bi bi-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- ================= BƯỚC 3 ================= -->
+      <div class="step-content" *ngIf="currentStep === 3">
+        <div class="confirm-layout">
+          <!-- Cột trái: Thông tin -->
+          <div class="confirm-info">
+            <h3>Xác nhận yêu cầu</h3>
+            <div class="info-row">
+              <span class="label">TÊN YÊU CẦU</span>
+              <span class="value">{{ customOrderForm.value.requestName || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">KÍCH THƯỚC</span>
+              <span class="value">{{ customOrderForm.value.size || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">LOẠI HẠT SỬ DỤNG</span>
+              <span class="value">{{ customOrderForm.value.beadType }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">MÔ TẢ THÊM</span>
+              <div class="desc-box">{{ customOrderForm.value.description || '-' }}</div>
+            </div>
+          </div>
+
+          <!-- Cột phải: Báo giá -->
+          <div class="confirm-quote">
+            <div class="quote-card">
+              <h3>Báo giá dự kiến</h3>
+              <div class="quote-row">
+                <span>Phí thiết kế (Map)</span>
+                <strong>50,000đ</strong>
+              </div>
+              <div class="quote-row">
+                <span>Nguyên liệu & Công làm</span>
+                <strong>150,000đ</strong>
+              </div>
+              <hr>
+              <div class="quote-row total">
+                <span>Tổng cộng</span>
+                <strong>200,000đ</strong>
+              </div>
+              <p class="quote-note">* Lưu ý: Đây là mức giá ước tính sơ bộ.</p>
+            </div>
+            
+            <button type="button" class="btn-primary w-100 mb-2" [disabled]="isSubmitting" (click)="onSubmit()">
+              <i class="bi bi-send"></i> {{ isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu ngay' }}
+            </button>
+            <button type="button" class="btn-outline w-100" (click)="prevStep()">Quay lại chỉnh sửa</button>
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- BOTTOM FEATURES (Icon dưới cùng) -->
+  <div class="bottom-features">
+    <div class="feature-item">
+      <i class="bi bi-palette"></i>
+      <h5>Tư vấn màu sắc</h5>
+      <p>Chúng tôi hỗ trợ phối màu chuẩn xác nhất.</p>
+    </div>
+    <div class="feature-item">
+      <i class="bi bi-clock-history"></i>
+      <h5>Phản hồi nhanh</h5>
+      <p>Nhận báo giá trong vòng 24h.</p>
+    </div>
+    <div class="feature-item">
+      <i class="bi bi-truck"></i>
+      <h5>Giao hàng toàn quốc</h5>
+      <p>Đóng gói chuyên nghiệp, an toàn.</p>
+    </div>
+  </div>
+</div>

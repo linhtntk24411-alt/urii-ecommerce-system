@@ -1,16 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { CustomOrderRequest } from './custom-order-request';
+import { BlogList } from './blog-list';
 
-describe('CustomOrderRequest', () => {
-  let component: CustomOrderRequest;
-  let fixture: ComponentFixture<CustomOrderRequest>;
+describe('BlogList', () => {
+  let component: BlogList;
+  let fixture: ComponentFixture<BlogList>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CustomOrderRequest],
+      imports: [BlogList],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(CustomOrderRequest);
+    fixture = TestBed.createComponent(BlogList);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

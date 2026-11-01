@@ -1,0 +1,176 @@
+.urii-footer {
+    background-color: #840001;
+    color: #ffffff;
+    font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+    margin-top: auto;
+}
+
+.footer-main {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 64px 48px 48px;
+    display: grid;
+    grid-template-columns: 1.3fr 0.9fr 1fr 1.3fr;
+    gap: 40px;
+    align-items: start; 
+}
+
+.footer-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0px; 
+    margin-top: -50px; 
+}
+
+.footer-logo img {
+    height: 150px;
+    width: auto;
+    object-fit: contain;
+    margin-bottom: -30px;
+}
+
+.footer-desc {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #ffffff; 
+    max-width: 320px;
+    margin-bottom: 20px;
+}
+
+.footer-socials {
+    display: flex;
+    gap: 12px;
+    margin-top: 0px;
+}
+
+.social-link {
+    width: 40px;
+    height: 38px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15); 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.social-link:hover {
+    background-color: #ffffff;
+    color: var(--urii-red);
+    transform: translateY(-2px);
+}
+
+.social-icon-bi {
+    color: #ffffff;
+    font-size: 18px;
+}
+.social-link:hover .social-icon-bi {
+    color: #840001; 
+}
+
+.footer-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.footer-col h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 22px;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.footer-col ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-col ul li a {
+    color: #ffffff; 
+    font-size: 15px;
+    text-decoration: none;
+    transition: color 0.2s ease, padding-left 0.2s ease;
+}
+
+.footer-col ul li a:hover {
+    color: #e5bdb7; 
+    padding-left: 4px;
+}
+
+/* Cột Liên hệ */
+.footer-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: #ffffff;
+}
+
+.contact-icon-bi {
+    font-size: 16px;
+    color: #ffffff; 
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Nút Admin trên Footer */
+.admin-div {
+    grid-column: 1 / -1;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding-top: 24px;
+    margin-top: 12px;
+}
+
+.admin-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: rgba(0, 0, 0, 0.25);
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.admin-link-btn:hover {
+    background-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Footer Bottom */
+.footer-bottom {
+    background-color: rgba(0, 0, 0, 0.18);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 22px 48px;
+    text-align: center;
+}
+
+.footer-bottom-inner {
+    max-width: 1440px;
+    margin: 0 auto;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+}

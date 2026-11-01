@@ -1,0 +1,104 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">MARKETING</p>
+    <h1>Promotions</h1>
+    <p class="page-description">Tạo và quản lý mã ưu đãi cho khách hàng.</p>
+  </div>
+  <button class="secondary-button" type="button" (click)="load()" [disabled]="loading()">↻ Làm mới</button>
+</section>
+
+@if (error()) { <div class="alert error-alert" role="alert">{{ error() }}</div> }
+@if (notice()) { <div class="alert success-alert" role="status">{{ notice() }}</div> }
+
+<section class="management-card">
+  <div class="card-heading">
+    <div>
+      <h2>{{ editingId() ? 'Chỉnh sửa chương trình' : 'Tạo chương trình khuyến mãi' }}</h2>
+      <p>Ngày bắt đầu và kết thúc được tính theo múi giờ tại cửa hàng.</p>
+    </div>
+    @if (editingId()) { <button class="text-button" type="button" (click)="cancelEdit()">Hủy chỉnh sửa</button> }
+  </div>
+  <form class="promotion-form" (ngSubmit)="save()">
+    <label>
+      Mã khuyến mãi
+      <input name="code" [(ngModel)]="form.code" required maxlength="40" placeholder="VD: WELCOME10">
+    </label>
+    <label>
+      Tên chương trình
+      <input name="name" [(ngModel)]="form.name" required maxlength="120">
+    </label>
+    <label>
+      Loại ưu đãi
+      <select name="type" [(ngModel)]="form.type">
+        <option value="percent">Giảm theo phần trăm</option>
+        <option value="fixed">Giảm số tiền</option>
+        <option value="shipping">Giảm phí vận chuyển</option>
+      </select>
+    </label>
+    <label>
+      Giá trị giảm
+      <input name="discountValue" type="number" [(ngModel)]="form.discountValue" min="0" required>
+    </label>
+    <label>
+      Đơn tối thiểu (đ)
+      <input name="minOrder" type="number" [(ngModel)]="form.minOrder" min="0">
+    </label>
+    <label>
+      Giảm tối đa (đ)
+      <input name="maxDiscount" type="number" [(ngModel)]="form.maxDiscount" min="0">
+    </label>
+    <label>
+      Số lượt phát hành
+      <input name="quantity" type="number" [(ngModel)]="form.quantity" min="0" placeholder="Không giới hạn">
+    </label>
+    <label>
+      Bắt đầu
+      <input name="startDate" type="date" [(ngModel)]="form.startDate">
+    </label>
+    <label>
+      Kết thúc
+      <input name="endDate" type="date" [(ngModel)]="form.endDate">
+    </label>
+    <label class="description-field">
+      Mô tả
+      <input name="description" [(ngModel)]="form.description" maxlength="400">
+    </label>
+    <label class="active-toggle">
+      <input name="isActive" type="checkbox" [(ngModel)]="form.isActive">
+      Kích hoạt chương trình
+    </label>
+    <div class="form-actions">
+      <button class="primary-button" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Đang lưu...' : editingId() ? 'Lưu thay đổi' : 'Tạo khuyến mãi' }}
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="management-card table-card">
+  <div class="card-heading">
+    <div>
+      <h2>Tất cả chương trình</h2>
+      <p>{{ promotions().length }} chương trình đang hiển thị (tối đa 100).</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>MÃ / TÊN</th><th>ƯU ĐÃI</th><th>ĐÃ DÙNG</th><th>THỜI GIAN</th><th>TRẠNG THÁI</th><th></th></tr></thead>
+      <tbody>
+        @for (promotion of promotions(); track promotion._id) {
+          <tr>
+            <td><strong class="promotion-code">{{ promotion.code }}</strong><small class="promotion-name">{{ promotion.name }}</small></td>
+            <td>{{ formatDiscount(promotion) }}</td>
+            <td>{{ promotion.used }}{{ promotion.quantity != null ? ' / ' + promotion.quantity : '' }}</td>
+            <td>{{ promotion.startDate || '—' }}<small class="promotion-name">đến {{ promotion.endDate || 'không thời hạn' }}</small></td>
+            <td><span class="status-badge" [class.inactive]="!promotion.isActive">{{ promotion.isActive ? 'Đang bật' : 'Đã tắt' }}</span></td>
+            <td class="actions"><button class="text-button" type="button" (click)="edit(promotion)">Sửa</button><button class="delete-button" type="button" (click)="remove(promotion)">Xóa</button></td>
+          </tr>
+        } @empty {
+          <tr><td class="empty-state" colspan="6">{{ loading() ? 'Đang tải...' : 'Chưa có chương trình khuyến mãi.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

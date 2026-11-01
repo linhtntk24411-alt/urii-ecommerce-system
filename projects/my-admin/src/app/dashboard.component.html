@@ -1,0 +1,48 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">OVERVIEW</p>
+    <h1>Dashboard</h1>
+    <p class="page-description">Tổng quan tình hình hoạt động của cửa hàng Urii.</p>
+  </div>
+  <button class="secondary-button" type="button" (click)="load()" [disabled]="loading()">↻ Làm mới</button>
+</section>
+
+@if (error()) {
+  <div class="alert error-alert" role="alert">{{ error() }}</div>
+}
+
+<section class="stats-grid" aria-label="Thống kê cửa hàng">
+  <article class="stat-card">
+    <span class="stat-icon peach">▣</span>
+    <span class="stat-label">Sản phẩm</span>
+    <strong>{{ stats()?.products ?? '—' }}</strong>
+    <small>Đang có trong cửa hàng</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-icon lavender">▤</span>
+    <span class="stat-label">Đơn hàng</span>
+    <strong>{{ stats()?.orders ?? '—' }}</strong>
+    <small>{{ stats()?.pendingOrders ?? '—' }} đơn chờ xác nhận</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-icon mint">♙</span>
+    <span class="stat-label">Người dùng</span>
+    <strong>{{ stats()?.users ?? '—' }}</strong>
+    <small>Tài khoản trong hệ thống</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-icon lemon">✳</span>
+    <span class="stat-label">Khuyến mãi</span>
+    <strong>{{ stats()?.promotions ?? '—' }}</strong>
+    <small>{{ stats()?.activePromotions ?? '—' }} chương trình đang bật</small>
+  </article>
+</section>
+
+<section class="welcome-panel">
+  <div class="welcome-copy">
+    <p class="eyebrow">URIi STORE MANAGEMENT</p>
+    <h2>Mọi hoạt động, trong tầm tay.</h2>
+    <p>Quản lý khách hàng và chương trình khuyến mãi tại các mục tương ứng ở thanh điều hướng.</p>
+  </div>
+  <div class="welcome-orbit" aria-hidden="true"><span>U</span></div>
+</section>

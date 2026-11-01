@@ -1,0 +1,40 @@
+:host { display: block; }
+.page-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 25px; }
+.page-heading h1 { margin: 4px 0 7px; font-size: 30px; letter-spacing: -1px; }
+.page-description { margin: 0; color: #777a84; }
+.eyebrow { margin: 0; color: #a27854; font-size: 11px; font-weight: 800; letter-spacing: 1.6px; }
+.secondary-button { padding: 10px 15px; border: 1px solid #e6e1d9; border-radius: 9px; background: #fff; cursor: pointer; }
+.management-card { margin-bottom: 20px; padding: 23px; border: 1px solid #ece8e1; border-radius: 14px; background: #fff; }
+.card-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+.card-heading h2 { margin: 0 0 6px; font-size: 17px; }
+.card-heading p { margin: 0; color: #858791; font-size: 13px; }
+.user-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.user-form label { display: grid; gap: 7px; color: #575963; font-size: 12px; font-weight: 700; }
+.user-form input, .user-form select { width: 100%; min-height: 41px; padding: 9px 11px; border: 1px solid #e5e3df; border-radius: 8px; background: #fff; color: #292a31; font: inherit; font-size: 13px; }
+.user-form input:focus, .user-form select:focus { outline: 2px solid #d5b293; outline-offset: 1px; }
+.password-field { grid-column: span 2; }
+.form-actions { display: flex; align-items: flex-end; }
+.primary-button { min-height: 41px; padding: 10px 16px; border: 0; border-radius: 8px; background: #292a31; color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.primary-button:disabled { opacity: .6; cursor: wait; }
+.text-button, .delete-button { border: 0; background: none; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.text-button { color: #8d6749; }
+.delete-button { color: #bd5b58; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th { padding: 10px 12px; border-bottom: 1px solid #eeeae4; color: #999ba2; font-size: 10px; letter-spacing: .8px; }
+td { padding: 13px 12px; border-bottom: 1px solid #f1efeb; color: #62646d; font-size: 12px; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+.user-cell { display: flex; align-items: center; gap: 10px; }
+.user-avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #f3e8dd; color: #8f674a; font-weight: 800; }
+.user-cell strong, .user-cell small { display: block; }
+.user-cell strong { color: #32333a; font-size: 12px; }
+.user-cell small { margin-top: 4px; color: #92949b; font-size: 11px; }
+.role-badge { padding: 5px 9px; border-radius: 20px; background: #edf4ee; color: #4a805a; font-size: 10px; font-weight: 800; }
+.admin-role { background: #f1edfc; color: #725eaa; }
+.actions { display: flex; align-items: center; gap: 12px; }
+.empty-state { padding: 35px; text-align: center; color: #92949b; }
+.alert { margin-bottom: 16px; padding: 11px 14px; border-radius: 8px; font-size: 13px; }
+.error-alert { background: #fff0ef; color: #a33e39; }
+.success-alert { background: #eaf5ed; color: #36734a; }
+@media (max-width: 800px) { .user-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .management-card { padding: 17px; } .user-form { grid-template-columns: 1fr; } .password-field { grid-column: auto; } }

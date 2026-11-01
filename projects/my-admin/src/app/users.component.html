@@ -1,0 +1,79 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">CUSTOMER MANAGEMENT</p>
+    <h1>Users</h1>
+    <p class="page-description">Quản lý tài khoản và thông tin khách hàng.</p>
+  </div>
+  <button class="secondary-button" type="button" (click)="load()" [disabled]="loading()">↻ Làm mới</button>
+</section>
+
+@if (error()) { <div class="alert error-alert" role="alert">{{ error() }}</div> }
+@if (notice()) { <div class="alert success-alert" role="status">{{ notice() }}</div> }
+
+<section class="management-card">
+  <div class="card-heading">
+    <div>
+      <h2>{{ editingId() ? 'Cập nhật người dùng' : 'Thêm người dùng' }}</h2>
+      <p>{{ editingId() ? 'Để trống mật khẩu nếu không muốn đổi.' : 'Tạo tài khoản mới cho khách hàng hoặc quản trị viên.' }}</p>
+    </div>
+    @if (editingId()) { <button class="text-button" type="button" (click)="cancelEdit()">Hủy chỉnh sửa</button> }
+  </div>
+  <form class="user-form" (ngSubmit)="save()">
+    <label>
+      Họ và tên
+      <input name="name" [(ngModel)]="form.name" required maxlength="120">
+    </label>
+    <label>
+      Email
+      <input name="email" type="email" [(ngModel)]="form.email" required>
+    </label>
+    <label>
+      Số điện thoại
+      <input name="phone" type="tel" [(ngModel)]="form.phone">
+    </label>
+    <label>
+      Vai trò
+      <select name="role" [(ngModel)]="form.role">
+        <option value="user">Người dùng</option>
+        <option value="admin">Quản trị viên</option>
+      </select>
+    </label>
+    <label class="password-field">
+      {{ editingId() ? 'Mật khẩu mới (không bắt buộc)' : 'Mật khẩu' }}
+      <input name="password" type="password" [(ngModel)]="form.password"
+        [required]="!editingId()" minlength="8" maxlength="72" autocomplete="new-password">
+    </label>
+    <div class="form-actions">
+      <button class="primary-button" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Đang lưu...' : editingId() ? 'Lưu thay đổi' : 'Tạo người dùng' }}
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="management-card table-card">
+  <div class="card-heading">
+    <div>
+      <h2>Danh sách người dùng</h2>
+      <p>{{ users().length }} tài khoản đang hiển thị (tối đa 100).</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>NGƯỜI DÙNG</th><th>ĐIỆN THOẠI</th><th>VAI TRÒ</th><th>NGÀY TẠO</th><th></th></tr></thead>
+      <tbody>
+        @for (user of users(); track user._id) {
+          <tr>
+            <td><div class="user-cell"><span class="user-avatar">{{ user.name.charAt(0).toUpperCase() }}</span><span><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span></div></td>
+            <td>{{ user.phone || '—' }}</td>
+            <td><span class="role-badge" [class.admin-role]="user.role === 'admin'">{{ user.role === 'admin' ? 'Admin' : 'User' }}</span></td>
+            <td>{{ user.createdAt ? (user.createdAt | date:'dd/MM/yyyy') : '—' }}</td>
+            <td class="actions"><button class="text-button" type="button" (click)="edit(user)">Sửa</button><button class="delete-button" type="button" (click)="remove(user)">Xóa</button></td>
+          </tr>
+        } @empty {
+          <tr><td class="empty-state" colspan="5">{{ loading() ? 'Đang tải...' : 'Chưa có người dùng nào.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

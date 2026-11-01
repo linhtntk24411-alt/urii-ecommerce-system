@@ -11,6 +11,8 @@ npm run dev
 
 The API listens on port `3002` by default. Static files in `public/` are served from the site root, so an image at `public/images/avatar_user.jpeg` is available at `/images/avatar_user.jpeg`. `CORS_ORIGINS` is a comma-separated list of allowed browser origins.
 
+Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT in the Socket.IO `auth.token` field; only admin tokens are accepted. Successful Product, Order, and User create, update, and delete operations broadcast `crud:changed` with `{ resource, action, id }`. Socket connections from origins outside `CORS_ORIGINS` are rejected.
+
 ## Seed data
 
 `npm run seed` is for development only; it refuses to run when `NODE_ENV=production`. It inserts fixture records that do not already exist and does not delete or overwrite database records. New fixture users get independent, randomly generated passwords that are bcrypt-hashed in MongoDB. Their one-time credentials are stored in the Git-ignored `my-server-mongodb/.seed-user-credentials.json`; keep that file private and remove it securely when no longer needed. Existing users with matching emails are preserved and their credentials are not changed.

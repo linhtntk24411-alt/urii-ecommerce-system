@@ -2,6 +2,7 @@ const Product = require('../models/Product');
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
+const { emitCrudChange } = require('../realtime');
 
 exports.getAllProducts = async (req, res) => {
   try {
@@ -42,6 +43,7 @@ exports.createProduct = async (req, res) => {
       id: req.body.id || `product-${randomUUID()}`
     });
     await newProduct.save();
+    emitCrudChange('products', 'created', newProduct._id);
     res.status(201).json(newProduct);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -82,6 +84,7 @@ exports.updateProduct = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
       return;
     }
+    emitCrudChange('products', 'updated', product._id);
     res.json(product);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -106,6 +109,7 @@ exports.deleteProduct = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
       return;
     }
+    emitCrudChange('products', 'deleted', product._id);
     res.json({ message: 'Đã xóa sản phẩm' });
   } catch (error) {
     console.error('Lỗi xóa sản phẩm:', error);

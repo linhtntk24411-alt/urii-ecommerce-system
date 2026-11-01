@@ -33,6 +33,7 @@ app.use(cors({
     callback(new Error('Origin is not allowed by CORS'));
   }
 }));
+app.set('allowedOrigins', allowedOrigins);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use((req, res, next) => {

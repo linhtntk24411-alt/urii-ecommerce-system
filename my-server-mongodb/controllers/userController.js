@@ -2,6 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
+const { emitCrudChange } = require('../realtime');
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -56,6 +57,7 @@ exports.createUser = async (req, res) => {
     });
     const safeUser = user.toObject();
     delete safeUser.password;
+    emitCrudChange('users', 'created', safeUser._id);
     res.status(201).json(safeUser);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -117,6 +119,7 @@ exports.updateUser = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy người dùng.' });
       return;
     }
+    emitCrudChange('users', 'updated', user._id);
     res.json(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -143,6 +146,7 @@ exports.deleteUser = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy người dùng.' });
       return;
     }
+    emitCrudChange('users', 'deleted', user._id);
     res.json({ message: 'Đã xóa người dùng.' });
   } catch (error) {
     console.error('Lỗi xóa người dùng:', error);

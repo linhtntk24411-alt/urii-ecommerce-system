@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
+const { emitCrudChange } = require('../realtime');
 
 exports.getAllOrders = async (req, res) => {
   try {
@@ -40,6 +41,7 @@ exports.createOrder = async (req, res) => {
       ...req.body,
       id: req.body.id || `order-${randomUUID()}`
     });
+    emitCrudChange('orders', 'created', order._id);
     res.status(201).json(order);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -80,6 +82,7 @@ exports.updateOrder = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
     }
+    emitCrudChange('orders', 'updated', order._id);
     res.json(order);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -105,6 +108,7 @@ exports.deleteOrder = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
     }
+    emitCrudChange('orders', 'deleted', order._id);
     res.json({ message: 'Đã xóa đơn hàng.' });
   } catch (error) {
     console.error('Lỗi xóa đơn hàng:', error);

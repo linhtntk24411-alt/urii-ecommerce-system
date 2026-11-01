@@ -1,27 +1,63 @@
 const assert = require('node:assert/strict');
+const http = require('node:http');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
+const { io: connectSocket } = require('socket.io-client');
 const app = require('../app');
+const { emitCrudChange, initializeRealtime } = require('../realtime');
 
 let server;
+let io;
 let baseUrl;
+const previousJwtSecret = process.env.JWT_SECRET;
 
 before(async () => {
-  server = app.listen(0, '127.0.0.1');
+  process.env.JWT_SECRET = 'test-secret-only';
+  server = http.createServer(app);
+  io = initializeRealtime(server, app.get('allowedOrigins'));
   await new Promise((resolve, reject) => {
     server.once('listening', resolve);
     server.once('error', reject);
+    server.listen(0, '127.0.0.1');
   });
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
 
 after(async () => {
-  if (server) {
-    await new Promise((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
-    });
+  if (io) {
+    await new Promise((resolve) => io.close(resolve));
+  }
+  if (previousJwtSecret === undefined) {
+    delete process.env.JWT_SECRET;
+  } else {
+    process.env.JWT_SECRET = previousJwtSecret;
   }
 });
+
+function openAdminSocket(token, extraOptions = {}) {
+  return new Promise((resolve, reject) => {
+    const socket = connectSocket(`${baseUrl}/admin`, {
+      auth: token ? { token } : {},
+      transports: ['websocket'],
+      reconnection: false,
+      timeout: 3000,
+      ...extraOptions
+    });
+    const timeout = setTimeout(() => {
+      socket.close();
+      reject(new Error('Timed out while connecting to the admin socket.'));
+    }, 4000);
+    socket.once('connect', () => {
+      clearTimeout(timeout);
+      resolve(socket);
+    });
+    socket.once('connect_error', (error) => {
+      clearTimeout(timeout);
+      socket.close();
+      reject(error);
+    });
+  });
+}
 
 test('health endpoint responds without a database connection', async () => {
   const response = await fetch(baseUrl);
@@ -86,6 +122,36 @@ test('rejects browser requests from origins outside the allow list', async () =>
     headers: { Origin: 'https://not-allowed.example' }
   });
   assert.equal(response.status, 403);
+});
+
+test('authenticates admin socket clients and broadcasts CRUD changes', async () => {
+  const token = jwt.sign({ id: 'admin-1', role: 'admin' }, process.env.JWT_SECRET);
+  const socket = await openAdminSocket(token);
+  try {
+    const event = new Promise((resolve) => socket.once('crud:changed', resolve));
+    emitCrudChange('products', 'created', 'product-1');
+    assert.deepEqual(await event, {
+      resource: 'products',
+      action: 'created',
+      id: 'product-1'
+    });
+  } finally {
+    socket.close();
+  }
+});
+
+test('rejects missing and non-admin socket credentials', async () => {
+  const userToken = jwt.sign({ id: 'user-1', role: 'user' }, process.env.JWT_SECRET);
+  await assert.rejects(openAdminSocket(null), /Unauthorized/);
+  await assert.rejects(openAdminSocket(userToken), /Forbidden/);
+});
+
+test('rejects socket handshakes from origins outside the allow list', async () => {
+  const token = jwt.sign({ id: 'admin-1', role: 'admin' }, process.env.JWT_SECRET);
+  await assert.rejects(
+    openAdminSocket(token, { extraHeaders: { Origin: 'https://not-allowed.example' } }),
+    /websocket error|xhr poll error/i
+  );
 });
 
 test('rejects malformed registration data before accessing the database', async () => {

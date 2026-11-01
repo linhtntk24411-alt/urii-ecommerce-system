@@ -1,7 +1,9 @@
 require('dotenv').config();
 
+const http = require('node:http');
 const mongoose = require('mongoose');
 const app = require('./app');
+const { initializeRealtime } = require('./realtime');
 
 const port = Number(process.env.PORT || 3002);
 
@@ -17,18 +19,20 @@ async function start() {
   }
 
   await mongoose.connect(process.env.MONGO_URI);
-  const server = app.listen(port, () => {
-    console.log(`Urii Backend đang chạy tại http://localhost:${port}`);
+  const server = http.createServer(app);
+  const io = initializeRealtime(server, app.get('allowedOrigins'));
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, () => {
+      server.removeListener('error', reject);
+      console.log(`Urii Backend đang chạy tại http://localhost:${port}`);
+      resolve();
+    });
   });
 
   const shutdown = async () => {
-    server.close(async (error) => {
-      if (error) {
-        console.error('Lỗi khi dừng HTTP server:', error);
-        process.exitCode = 1;
-      }
-      await mongoose.disconnect();
-    });
+    await new Promise((resolve) => io.close(resolve));
+    await mongoose.disconnect();
   };
 
   process.once('SIGINT', shutdown);

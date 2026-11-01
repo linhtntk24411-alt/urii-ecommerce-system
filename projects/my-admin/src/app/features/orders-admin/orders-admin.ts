@@ -1,6 +1,7 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AdminApiService } from '../../core/services/admin-api.service';
 
 declare var bootstrap: any;
 
@@ -12,6 +13,7 @@ declare var bootstrap: any;
   styleUrls: ['./orders-admin.css']
 })
 export class OrdersAdmin implements OnInit {
+  constructor(private adminApi: AdminApiService) {}
   // --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI DROPDOWN ---
   activeDropdownId: string | null = null;
 
@@ -96,30 +98,46 @@ export class OrdersAdmin implements OnInit {
   get statCancel() { return this.orders.filter(o => o.status === 'cancelled').length; }
 
   // --- Logic Load Data ---
-  loadOrders() {
-    // FIX SSR: Chỉ truy cập localStorage khi đang chạy trên Browser (client)
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const localOrdersSaved = localStorage.getItem('orders');
-      if (localOrdersSaved) {
-        this.originalOrders = JSON.parse(localOrdersSaved);
-      } else {
-        this.originalOrders = this.getDefaultOrders();
-        localStorage.setItem('orders', JSON.stringify(this.originalOrders));
-      }
-    } else {
-      // Khi chạy trên Server Node.js, lấy dữ liệu tĩnh tạm
-      this.originalOrders = this.getDefaultOrders();
-    }
-    
-    this.orders = [...this.originalOrders];
-  }
+ loadOrders() {
+    (this.adminApi.getOrders() as any).subscribe({
+      next: (res: any) => {
+        const orderList = Array.isArray(res) ? res : (res?.orders || res?.data || []);
 
-  getDefaultOrders() {
-    return [
-      { id: "DH001", customerName: "Nguyễn Văn A", customerAvatar: "NV", date: "15/10/2026", product: "Tranh Pixel Art", total: 150000, status: "pending" },
-      { id: "DH002", customerName: "Trần Thị B", customerAvatar: "TT", date: "16/10/2026", product: "Móc khóa DIY", total: 45000, status: "pending_approval", reason: "Đổi ý không mua nữa" },
-      { id: "DH098", customerName: "Lê Văn C", customerAvatar: "LV", date: "20/10/2026", product: "Tranh Custom (50x70)", total: 0, status: "waiting_quote", isCustomOrder: true, customDetails: {"Kích thước": "50x70cm"} }
-    ];
+        this.originalOrders = orderList.map((item: any) => {
+          // Lấy tên từ userName trên MongoDB Cloud
+          const name = item.userName || item.customerName || 'Khách hàng';
+          
+          // Xử lý chuỗi tiền tệ (ví dụ "251.750đ" -> số để tính toán nếu cần)
+          let rawTotal = item.total;
+          if (typeof rawTotal === 'string') {
+            rawTotal = Number(rawTotal.replace(/[^0-9]/g, '')) || 0;
+          }
+
+          // Ánh xạ trạng thái tiếng Việt từ DB sang mã code của giao diện
+          let statusCode = 'pending';
+          const dbStatus = (item.status || '').toLowerCase();
+          if (dbStatus.includes('giao') || dbStatus.includes('xác nhận')) statusCode = 'approved';
+          else if (dbStatus.includes('hoàn thành')) statusCode = 'completed';
+          else if (dbStatus.includes('hủy')) statusCode = 'cancelled';
+
+          return {
+            ...item,
+            id: item.id || item._id,
+            customerName: name, // Khớp với HTML
+            customerAvatar: name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'KH',
+            total: rawTotal,
+            status: item.statusType || statusCode
+          };
+        });
+
+        this.orders = [...this.originalOrders];
+      },
+      error: (err: any) => {
+        console.error('Lỗi tải đơn hàng:', err);
+        this.originalOrders = [];
+        this.orders = [];
+      }
+    });
   }
 
   saveOrders() {

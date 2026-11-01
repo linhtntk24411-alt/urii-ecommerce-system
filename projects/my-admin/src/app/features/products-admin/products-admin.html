@@ -66,13 +66,13 @@
                 <div class="col-md-3">
                     <select id="filter-category" [(ngModel)]="filterCategory" class="form-select bg-light border-0">
                         <option value="">Tất cả danh mục</option>
-                        <option value="hat-nhua">Hạt nhựa</option>
-                        <option value="dung-cu">Dụng cụ</option>
-                        <option value="handmade">Handmade</option>
-                        <option value="kit">Bộ Kit</option>
+                        <option value="BST">Bộ sưu tập</option>
+                        <option value="DC">Dụng cụ</option>
+                        <option value="HN">Hạt nhựa</option>
+                        <option value="KIT">Bộ Kit</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+               <div class="col-md-3">
                     <select id="filter-status" [(ngModel)]="filterStatus" class="form-select bg-light border-0">
                         <option value="">Tất cả trạng thái</option>
                         <option value="normal">Bình thường</option>
@@ -145,7 +145,7 @@
 
                             <!-- 4. Giá bán -->
                             <td class="text-danger fw-bold">
-                                {{ (p.price || 0).toLocaleString('vi-VN') }}đ
+                                {{ (p.currentPrice || 0).toLocaleString('vi-VN') }}đ
                             </td>
 
                             <!-- 5. Tồn kho -->

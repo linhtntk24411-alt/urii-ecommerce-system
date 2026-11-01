@@ -74,16 +74,50 @@ export class ProductsAdmin implements OnInit {
     this.renderProducts();
   }
 
-  renderProducts() {
+ renderProducts() {
     let filtered = this.products.filter(p => {
+      // 1. Lọc theo tên sản phẩm
       const matchName = p.name ? p.name.toLowerCase().includes(this.searchName.toLowerCase()) : false;
+      
+      // 2. Lọc theo danh mục
       const matchCat = !this.filterCategory || p.category === this.filterCategory;
-      const matchStatus = !this.filterStatus || p.status === this.filterStatus;
+
+      let matchStatus = true;
+      if (this.filterStatus) {
+        const prod: any = p; // Ép kiểu sang any để TypeScript không báo lỗi thiếu trường
+        const stock = prod.stock ?? 0;
+        
+        // Tính sản phẩm mới (tạo trong vòng 7 ngày gần đây)
+        let isNew = false;
+        if (prod.createdAt) {
+          const createdDate = new Date(prod.createdAt).getTime();
+          const now = new Date().getTime();
+          const daysDiff = (now - createdDate) / (1000 * 3600 * 24);
+          isNew = daysDiff <= 7;
+        }
+
+        // Kiểm tra điều kiện từng trạng thái
+        if (this.filterStatus === 'het-hang') {
+          matchStatus = (stock === 0);
+        } else if (this.filterStatus === 'sap-het') {
+          matchStatus = (stock > 0 && stock < 20);
+        } else if (this.filterStatus === 'normal') {
+          matchStatus = (stock >= 20 && stock <= 30); // Hoặc điều kiện stock > 30 tùy bạn chọn
+        } else if (this.filterStatus === 'new') {
+          matchStatus = isNew;
+        } else if (this.filterStatus === 'hot') {
+          matchStatus = (prod.isSale === true);
+        }
+      }
+
+      // 4. Lọc theo mức giá
       let matchPrice = true;
       if (this.filterPrice) {
         const [min, max] = this.filterPrice.split('-').map(Number);
-        matchPrice = p.price >= min && p.price <= max;
+        const priceToCompare = p.currentPrice || p.price || 0;
+        matchPrice = priceToCompare >= min && priceToCompare <= max;
       }
+
       return matchName && matchCat && matchStatus && matchPrice;
     });
 

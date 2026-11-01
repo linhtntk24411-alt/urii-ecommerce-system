@@ -1,11 +1,9 @@
 <div class="custom-order-wrapper">
-  <!-- HEADER -->
   <div class="page-header text-center">
     <h1>Đặt làm theo yêu cầu</h1>
     <p>Biến ý tưởng của bạn thành những tác phẩm Perler Beads độc bản.</p>
   </div>
 
-  <!-- STEPPER (Click được) -->
   <div class="stepper-container">
     <div class="stepper-line"></div>
     
@@ -36,7 +34,6 @@
     </div>
   </div>
 
-  <!-- MAIN CARD -->
   <div class="form-card">
     <form [formGroup]="customOrderForm">
       
@@ -86,13 +83,11 @@
               <span>Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB/ảnh)</span>
             </div>
 
-            <!-- Preview ảnh (nếu có) -->
             <div class="image-preview" *ngIf="imagePreview">
               <img [src]="imagePreview" alt="Ảnh xem trước">
             </div>
           </div>
 
-          <!-- Cột phải: Note -->
           <div class="upload-right">
             <div class="tip-box">
               <h4><i class="bi bi-lightbulb"></i> Mẹo để có sản phẩm đẹp</h4>
@@ -118,7 +113,6 @@
       <!-- ================= BƯỚC 3 ================= -->
       <div class="step-content" *ngIf="currentStep === 3">
         <div class="confirm-layout">
-          <!-- Cột trái: Thông tin -->
           <div class="confirm-info">
             <h3>Xác nhận yêu cầu</h3>
             <div class="info-row">
@@ -139,7 +133,6 @@
             </div>
           </div>
 
-          <!-- Cột phải: Báo giá -->
           <div class="confirm-quote">
             <div class="quote-card">
               <h3>Báo giá dự kiến</h3>
@@ -170,7 +163,6 @@
     </form>
   </div>
 
-  <!-- BOTTOM FEATURES (Icon dưới cùng) -->
   <div class="bottom-features">
     <div class="feature-item">
       <i class="bi bi-palette"></i>

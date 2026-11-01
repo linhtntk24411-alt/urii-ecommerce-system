@@ -25,11 +25,12 @@ interface BlogPost {
 @Component({
   selector: 'app-blog-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './blog-list.html',
   styleUrl: './blog-list.css'
 })
 export class BlogListComponent implements OnInit {
+  // Dữ liệu mẫu - Đã gán ảnh từ thư mục gallery_assets
   allBlogs: BlogPost[] = [
     {
       id: 1,
@@ -39,9 +40,9 @@ export class BlogListComponent implements OnInit {
       category: 'Hướng dẫn DIY',
       categorySlug: 'huong-dan-diy',
       author: 'Minh Anh',
-      avatar: 'assets/avatar-non.jpg',
+      avatar: 'assets/gallery_assets/mau-ca-heo.webp', 
       date: '24 Tháng 5, 2024',
-      image: 'assets/bg.jpg',
+      image: 'assets/gallery_assets/mau-ca-heo.webp', 
       likes: 128,
       comments: 10,
       views: 350,
@@ -56,9 +57,9 @@ export class BlogListComponent implements OnInit {
       category: 'Ý tưởng thiết kế',
       categorySlug: 'y-tuong-thiet-ke',
       author: 'Minh Anh',
-      avatar: 'assets/avatar-non.jpg',
+      avatar: 'assets/gallery_assets/mau-cao.webp',
       date: '22 Tháng 5, 2024',
-      image: 'assets/bg.jpg',
+      image: 'assets/gallery_assets/mau-cao.webp',
       likes: 86,
       comments: 3,
       views: 210,
@@ -72,9 +73,9 @@ export class BlogListComponent implements OnInit {
       category: 'Góc nghệ thuật',
       categorySlug: 'goc-nghe-thuat',
       author: 'Linh Chi',
-      avatar: 'assets/avatar-non.jpg',
+      avatar:'assets/gallery_assets/mau-hellokitty.webp',
       date: '20 Tháng 5, 2024',
-      image: 'assets/bg.jpg',
+      image: 'assets/gallery_assets/mau-hellokitty.webp', 
       likes: 215,
       comments: 3,
       views: 420,
@@ -88,9 +89,9 @@ export class BlogListComponent implements OnInit {
       category: 'Ý tưởng thiết kế',
       categorySlug: 'y-tuong-thiet-ke',
       author: 'Hoàng Nam',
-      avatar: 'assets/avatar-non.jpg',
+      avatar: 'assets/gallery_assets/mau-chim-canh-cut.webp', 
       date: '18 Tháng 5, 2024',
-      image: 'assets/bg.jpg',
+      image: 'assets/gallery_assets/mau-chim-canh-cut.webp', 
       likes: 154,
       comments: 2,
       views: 310,
@@ -104,9 +105,9 @@ export class BlogListComponent implements OnInit {
       category: 'Hướng dẫn DIY',
       categorySlug: 'huong-dan-diy',
       author: 'Linh Chi',
-      avatar: 'assets/avatar-non.jpg',
+      avatar:'assets/gallery_assets/mau-cherry.webp', 
       date: '15 Tháng 5, 2024',
-      image: 'assets/bg.jpg',
+      image: 'assets/gallery_assets/mau-cherry.webp', 
       likes: 212,
       comments: 2,
       views: 290,
@@ -120,9 +121,9 @@ export class BlogListComponent implements OnInit {
       category: 'Góc nghệ thuật',
       categorySlug: 'goc-nghe-thuat',
       author: 'Thùy Tú',
-      avatar: 'assets/avatar-non.jpg',
+      avatar: 'assets/gallery_assets/mau-ca-map-cut-e.webp', 
       date: '12 Tháng 5, 2024',
-      image: 'assets/bg.jpg',
+      image: 'assets/gallery_assets/mau-ca-map-cut-e.webp', 
       likes: 154,
       comments: 2,
       views: 180,
@@ -143,7 +144,6 @@ export class BlogListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Chỉ gọi localStorage khi chạy trên trình duyệt (Browser)
     if (isPlatformBrowser(this.platformId)) {
       const savedBookmarks = localStorage.getItem('bookmarks');
       if (savedBookmarks) {
@@ -210,10 +210,6 @@ export class BlogListComponent implements OnInit {
   get sidebarBlogs(): BlogPost[] {
     const featured = this.featuredBlog;
     return this.allBlogs.filter(b => b.id !== featured?.id).slice(0, 3);
-  }
-
-  viewDetail(slug: string): void {
-    this.router.navigate(['/blog-detail'], { queryParams: { slug: slug } });
   }
 
   goToCreateBlog(): void {

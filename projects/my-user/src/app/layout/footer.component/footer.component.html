@@ -1,6 +1,5 @@
 <footer class="urii-footer">
     <div class="footer-main">
-        <!-- CỘT LOGO -->
         <div class="footer-brand">
             <a routerLink="/" class="footer-logo">
                 <img src="assets/Urii-Logo.png" alt="Urii Logo">
@@ -21,8 +20,7 @@
             </div>
         </div>
 
-        <!-- CỘT KHÁM PHÁ -->
-        <div class="footer-col">
+        <div class="footer-col" [class.active]="activeCol === 'kham-pha'" (click)="toggleAccordion('kham-pha')">
             <h4>Khám phá</h4>
             <div class="footer-content">
                 <ul>
@@ -34,8 +32,7 @@
             </div>
         </div>
 
-        <!-- CỘT HỖ TRỢ -->
-        <div class="footer-col">
+        <div class="footer-col" [class.active]="activeCol === 'ho-tro'" (click)="toggleAccordion('ho-tro')">
             <h4>Hỗ trợ khách hàng</h4>
             <div class="footer-content">
                 <ul>
@@ -47,8 +44,7 @@
             </div>
         </div>
 
-        <!-- CỘT LIÊN HỆ -->
-        <div class="footer-col">
+        <div class="footer-col" [class.active]="activeCol === 'lien-he'" (click)="toggleAccordion('lien-he')">
             <h4>Liên hệ</h4>
             <div class="footer-content">
                 <div class="footer-contact">
@@ -68,7 +64,6 @@
             </div>
         </div>
 
-        <!-- ADMIN BUTTON -->
         <div class="admin-div" *ngIf="isAdmin">
             <a routerLink="/admin-dashboard" class="admin-link-btn">
                 <i class="bi bi-shield-lock"></i> Vào trang Quản trị

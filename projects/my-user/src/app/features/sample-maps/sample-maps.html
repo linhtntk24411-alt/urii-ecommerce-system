@@ -1,12 +1,10 @@
-<main class="container">       
-    <!-- Breadcrumb -->
+<main class="sample-maps-wrapper">       
     <nav class="breadcrumb-nav">
         <a class="breadcrumb-link" routerLink="/">Trang chủ</a>
         <span class="icon-arrow-nav">/</span>
         <span class="breadcrumb-current">Thư viện map mẫu</span>
     </nav>
 
-    <!-- Title Block -->
     <div class="page-title-block">
         <div class="title-left">
             <h1 class="page-main-title">Thư viện Map mẫu đa dạng từ Urii</h1>
@@ -23,13 +21,11 @@
 
     <div class="layout-sidebar-grid">
         
-        <!-- Sidebar Filter -->
         <aside class="filter-sidebar">
             <div class="sticky-wrapper">
                 <section class="filter-section">
-                    <h3 class="filter-section-title">Danh mục</h3>
+                    <h3 class="filter-section-title">DANH MỤC</h3>
                     <ul class="filter-menu-list">
-                        <!-- Dùng *ngFor cho danh mục -->
                         <li *ngFor="let cat of categories">
                             <button class="menu-btn" 
                                     [class.menu-btn-active]="selectedCategory === cat.name"
@@ -41,7 +37,7 @@
                 </section>
 
                 <section class="filter-section">
-                    <h3 class="filter-section-title">Độ khó</h3>
+                    <h3 class="filter-section-title">ĐỘ KHÓ</h3>
                     <div class="checkbox-group">
                         <label class="checkbox-label">
                             <input type="checkbox" class="custom-checkbox" (change)="onDifficultyChange('Dễ', $event)">
@@ -66,31 +62,28 @@
             </div>
         </aside>
 
-        <!-- Danh sách Map -->
         <div class="products-container">
-            <!-- Hiển thị khi không có map nào -->
-            <div *ngIf="paginatedMaps.length === 0" class="error-msg">
-                Không tìm thấy mẫu Perler Beads nào phù hợp với bộ lọc.
-                <button (click)="resetFilters()" class="btn-reset-filter" style="margin-top: 16px; padding: 8px 16px; background-color: #840001; color: white; border-radius: 8px;">
-                    Xóa bộ lọc
-                </button>
+            <!-- Trạng thái không có sản phẩm -->
+            <div *ngIf="paginatedMaps.length === 0" style="text-align: center; padding: 60px 20px; background-color: #fbf9f8; border-radius: 12px; border: 1px dashed #e5bdb7;">
+                <p style="font-size: 16px; color: #5c403b; margin-bottom: 20px; font-weight: 500;">
+                    Không tìm thấy mẫu Perler Beads nào phù hợp với bộ lọc.
+                </p>
             </div>
 
             <div class="products-items-grid">
-                <!-- Vòng lặp Render Map -->
                 <article class="pattern-card elevation-1" *ngFor="let map of paginatedMaps">
-                    <div class="card-image-area" style="cursor: pointer;" [routerLink]="['/gallery-detail']" [queryParams]="{id: map.map_id}">
-                        <img class="card-img" [src]="map.main_image" [alt]="map.map_name">
+                    <div class="card-image-area" [routerLink]="['/gallery-detail']" [queryParams]="{id: map.map_id}">
+                        <img class="card-img" [src]="map.main_image" [alt]="map.map_name" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
                         <div class="card-floating-badges">
                             <span class="badge-tag tag-popular" *ngIf="map.isPopular">
-                                <span class="material-symbols-outlined">star</span> Phổ biến
+                                <span class="material-symbols-outlined" style="font-size: 14px; font-variation-settings: 'FILL' 1;">star</span> Phổ biến
                             </span>
                             <span class="badge-tag tag-new" *ngIf="map.isNew">Mẫu mới</span>
                         </div>
                     </div>
                     <div class="card-body-content">
                         <div class="card-header-row">
-                            <h3 class="card-item-title" style="cursor: pointer;" [routerLink]="['/gallery-detail']" [queryParams]="{id: map.map_id}">
+                            <h3 class="card-item-title" [routerLink]="['/gallery-detail']" [queryParams]="{id: map.map_id}">
                                 {{ map.map_name }}
                             </h3>
                             <span class="difficulty-badge" [ngClass]="map.difficultyClass || 'badge-medium'">{{ map.difficulty }}</span>
@@ -102,10 +95,10 @@
                                 <span>Tổng: {{ map.total_beads }} hạt</span>
                             </div>
                             <div class="card-action-buttons">
-                                <button class="btn-icon-view" [routerLink]="['/gallery-detail']" [queryParams]="{id: map.map_id}">
+                                <button class="btn-icon-view" [routerLink]="['/gallery-detail']" [queryParams]="{id: map.map_id}" title="Xem chi tiết">
                                     <span class="material-symbols-outlined">visibility</span>
                                 </button>
-                                <button class="btn-action-primary" (click)="saveMap(map)">
+                                <button class="btn-action-primary" (click)="saveMap(map)" title="Lưu vào bộ sưu tập">
                                     <span class="material-symbols-outlined">menu_book</span>
                                 </button>
                             </div>
@@ -114,13 +107,11 @@
                 </article>
             </div>
 
-            <!-- Phân trang -->
             <div class="pagination-row" *ngIf="totalPages > 1">
                 <button class="page-nav-btn" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
                     <span class="material-symbols-outlined">chevron_left</span>
                 </button>
                 
-                <!-- Vòng lặp tạo nút số trang -->
                 <button class="page-number-btn" 
                         *ngFor="let page of [].constructor(totalPages); let i = index"
                         [class.page-number-active]="currentPage === (i + 1)"

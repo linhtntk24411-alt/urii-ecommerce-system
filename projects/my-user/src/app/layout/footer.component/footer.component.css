@@ -111,7 +111,6 @@
     padding-left: 4px;
 }
 
-/* Cột Liên hệ */
 .footer-contact {
     display: flex;
     flex-direction: column;
@@ -134,7 +133,6 @@
     flex-shrink: 0;
 }
 
-/* Nút Admin trên Footer */
 .admin-div {
     grid-column: 1 / -1;
     border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -160,7 +158,6 @@
     background-color: rgba(0, 0, 0, 0.45);
 }
 
-/* Footer Bottom */
 .footer-bottom {
     background-color: rgba(0, 0, 0, 0.18);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -173,4 +170,73 @@
     margin: 0 auto;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.75);
+}
+
+@media (max-width: 768px) {
+    .footer-main {
+        grid-template-columns: 1fr;
+        gap: 0; 
+        padding: 32px 24px;
+    }
+
+    .footer-brand {
+        align-items: center;
+        text-align: center;
+        margin-top: 0;
+        margin-bottom: 32px;
+    }
+    
+    .footer-logo img {
+        height: 100px;
+        margin-bottom: 10px;
+    }
+    
+    .footer-desc {
+        max-width: 100%;
+        margin-bottom: 16px;
+    }
+
+    .footer-col {
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 16px 0;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .footer-col h4 {
+        margin-bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-col h4::after {
+        content: '\2304';
+        font-family: Arial, sans-serif;
+        font-size: 20px;
+        font-weight: bold;
+        transition: transform 0.3s ease;
+    }
+
+    .footer-col.active h4::after {
+        transform: rotate(180deg);
+    }
+
+    .footer-content {
+        display: none;
+        padding-top: 16px;
+    }
+    
+    .footer-col.active .footer-content {
+        display: flex;
+    }
+
+    .footer-col:last-of-type {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    
+    .admin-div {
+        margin-top: 24px;
+        text-align: center;
+    }
 }

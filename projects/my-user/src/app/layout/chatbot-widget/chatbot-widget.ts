@@ -212,7 +212,6 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
-  // --- GỬI TIN NHẮN (HIỂN THỊ LẬP TỨC) ---
   sendMessage(): void {
     const text = this.userMessageText.trim();
     if (!text) return;
@@ -220,7 +219,6 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     this.userMessageText = '';
     const session = this.getCurrentSession();
 
-    // 1. Lưu & hiển thị tin nhắn User ngay lập tức
     const userMsg: ChatMessage = {
       text: text,
       sender: 'user',
@@ -238,10 +236,9 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     this.saveSessions(sessions);
 
     this.messages = [...session.messages];
-    this.cdr.detectChanges(); // Ép Angular render tin nhắn User ngay
+    this.cdr.detectChanges(); 
     this.scrollToBottom();
 
-    // 2. Phản hồi tự động từ Bot
     if (session.status === 'ai') {
       const reply = this.getFallbackReply(text);
 
@@ -260,7 +257,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       this.saveSessions(currentSessions);
 
       this.messages = [...freshSession.messages];
-      this.cdr.detectChanges(); // Ép Angular render tin nhắn Bot ngay lập tức
+      this.cdr.detectChanges(); 
       this.scrollToBottom();
     }
   }
@@ -300,12 +297,10 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       return;
     }
 
-    // Gán trực tiếp action vào input và gửi đi ngay lập tức
     this.userMessageText = action;
     this.sendMessage();
   }
 
-  // --- HỆ THỐNG PHẢN HỒI THÔNG MINH (NỘI DUNG CHUẨN GIAO DIỆN CŨ) ---
   private getFallbackReply(userMessage: string): any {
     const text = this.normalizeText(userMessage);
     if (this.containsAny(text, ['hi', 'hello', 'shop oi', 'ad oi', 'xin chao', 'cho hoi'])) {

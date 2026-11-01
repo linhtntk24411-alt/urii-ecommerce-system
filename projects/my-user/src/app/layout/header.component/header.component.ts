@@ -17,6 +17,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   cartCount: number = 0;
   
   isMobileMenuOpen: boolean = false;
+  isMobileProductOpen: boolean = true;
   isLogoutModalOpen: boolean = false;
   
   private storageListener: any;
@@ -64,6 +65,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
+  }
+
+  closeMobileMenu(): void {
+    this.isMobileMenuOpen = false;
+  }
+
+  toggleMobileProduct(event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+    this.isMobileProductOpen = !this.isMobileProductOpen;
   }
 
   openLogoutModal(): void {

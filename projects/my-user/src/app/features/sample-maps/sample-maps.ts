@@ -24,7 +24,7 @@ interface SampleMap {
   styleUrls: ['./sample-maps.css']
 })
 export class SampleMapsComponent implements OnInit {
-  // Dữ liệu mẫu (Bạn có thể thêm bớt tùy ý)
+  // Dữ liệu mẫu 
   allMaps: SampleMap[] = [
     { map_id: '1', map_name: 'Map mẫu: Bạch tuộc tím cute', main_image: 'assets/gallery_assets/mau-bach-tuoc.webp', categories: ['Con vật'], difficulty: 'Dễ', difficultyClass: 'badge-easy', grid_size: '32 x 32 ô', total_beads: 242, time: '15-20 phút', isPopular: true },
     { map_id: '2', map_name: 'Map mẫu: Bướm đêm dạ quang', main_image: 'assets/gallery_assets/mau-buom.webp', categories: ['Con vật'], difficulty: 'Trung bình', difficultyClass: 'badge-medium', grid_size: '26 x 20 ô', total_beads: 315, time: '35-45 phút' },
@@ -37,7 +37,6 @@ export class SampleMapsComponent implements OnInit {
   filteredMaps: SampleMap[] = [];
   paginatedMaps: SampleMap[] = [];
 
-  // Mảng danh mục (Đã fix lỗi bấm vào Con vật bị mất)
   categories = [
     { name: 'Tất cả mẫu', count: 0 },
     { name: 'Con vật', count: 0 },
@@ -52,7 +51,7 @@ export class SampleMapsComponent implements OnInit {
   currentSort: string = 'default';
 
   currentPage: number = 1;
-  itemsPerPage: number = 6; // Đổi thành 6 để hiển thị đẹp 2 hàng 3 cột
+  itemsPerPage: number = 6; 
   totalPages: number = 1;
 
   ngOnInit() {
@@ -142,5 +141,12 @@ export class SampleMapsComponent implements OnInit {
     } else {
       alert(`Mẫu "${map.map_name}" đã tồn tại trong danh sách lưu.`);
     }
+  }
+  resetFilters() {
+    this.selectedCategory = 'Tất cả mẫu';
+    this.selectedDifficulties = [];
+    this.currentSort = 'default';
+    this.currentPage = 1;
+    this.applyFilters();
   }
 }

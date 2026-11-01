@@ -12,7 +12,6 @@
 .page-header h1 { font-size: 32px; font-weight: 800; color: #1b1c1c; margin-bottom: 8px; }
 .page-header p { color: #5c403b; font-size: 15px; }
 
-/* STEPPER */
 .stepper-container {
   display: flex;
   justify-content: center;
@@ -56,7 +55,6 @@
 .step.active .step-circle { background-color: #840001; color: white; border-color: #840001; }
 .step.active span { color: #840001; }
 
-/* FORM CARD */
 .form-card {
   background: white;
   max-width: 900px;
@@ -67,7 +65,6 @@
   border: 1px solid #f0e6e4;
 }
 
-/* FORM ELEMENTS */
 .form-group { margin-bottom: 24px; }
 .form-group label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #5c403b; }
 .form-group input, .form-group select, .form-group textarea {
@@ -79,7 +76,6 @@
 }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-/* BUTTONS */
 .form-actions { margin-top: 32px; padding-top: 24px; border-top: 1px solid #f0e6e4; }
 .form-actions.right { display: flex; justify-content: flex-end; }
 .form-actions.space-between { display: flex; justify-content: space-between; }
@@ -99,7 +95,6 @@
 }
 .btn-outline:hover { background-color: #fdf5f5; }
 
-/* STEP 2 LAYOUT */
 .upload-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; }
 .upload-area {
   border: 2px dashed #e5bdb7; border-radius: 12px; background-color: #faf8f7;
@@ -116,7 +111,6 @@
 .tip-box h4 { font-size: 15px; color: #840001; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .tip-box ul { padding-left: 20px; font-size: 14px; color: #5c403b; line-height: 1.6; }
 
-/* STEP 3 LAYOUT */
 .confirm-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
 .confirm-info h3 { font-size: 20px; margin-bottom: 24px; }
 .info-row { margin-bottom: 20px; }
@@ -135,13 +129,11 @@
 .mb-2 { margin-bottom: 12px; }
 .mt-4 { margin-top: 24px; }
 
-/* BOTTOM FEATURES */
 .bottom-features { display: flex; justify-content: center; gap: 60px; max-width: 900px; margin: 50px auto 0; text-align: center; }
 .feature-item i { font-size: 24px; color: #840001; margin-bottom: 12px; }
 .feature-item h5 { font-size: 15px; margin-bottom: 4px; }
 .feature-item p { font-size: 13px; color: #888; }
 
-/* Responsive */
 @media (max-width: 768px) {
   .upload-layout, .confirm-layout, .form-row { grid-template-columns: 1fr; }
   .bottom-features { flex-direction: column; gap: 30px; }

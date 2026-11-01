@@ -11,32 +11,26 @@ import { CommonModule } from '@angular/common';
 })
 export class CustomOrderComponent {
   customOrderForm: FormGroup;
-  currentStep: number = 1; // Biến quản lý bước hiện tại (1, 2, 3)
+  currentStep: number = 1; 
   
-  // Các biến xử lý ảnh
   imagePreview: string | ArrayBuffer | null = null;
   base64Image: string = '';
   isSubmitting: boolean = false;
 
   constructor(private fb: FormBuilder) {
-    // Khởi tạo form chứa TẤT CẢ các trường của 3 bước
     this.customOrderForm = this.fb.group({
-      // Bước 1
       requestName: ['', Validators.required],
       size: [''],
       beadType: ['Hạt Perler 5mm (Midi Beads)'],
       description: ['', Validators.required],
-      // Bước 2
       imageNote: [''],
     });
   }
 
-  // Hàm chuyển bước TỰ DO (Click số 1,2,3 là qua)
   goToStep(step: number) {
     this.currentStep = step;
   }
 
-  // Hàm chuyển bước tuần tự (Dùng cho nút "Tiếp tục")
   nextStep() {
     if (this.currentStep === 1) {
       const step1Controls = ['requestName', 'description'];
@@ -64,7 +58,6 @@ export class CustomOrderComponent {
     }
   }
 
-  // Hàm xử lý Upload ảnh (Bước 2)
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
@@ -81,9 +74,7 @@ export class CustomOrderComponent {
     }
   }
 
-  // Hàm Submit (Bước 3)
   onSubmit() {
-    // Kiểm tra xem đã điền đủ thông tin chưa (đề phòng user nhảy cóc qua bước 3)
     if (this.customOrderForm.invalid) {
       alert('Vui lòng quay lại các bước trước để điền đầy đủ thông tin bắt buộc (*) trước khi gửi!');
       return; 
@@ -101,7 +92,6 @@ export class CustomOrderComponent {
     setTimeout(() => {
       alert('Đã gửi yêu cầu thiết kế thành công!');
       this.isSubmitting = false;
-      // Reset form và về bước 1
       this.customOrderForm.reset({ beadType: 'Hạt Perler 5mm (Midi Beads)' });
       this.imagePreview = null;
       this.base64Image = '';

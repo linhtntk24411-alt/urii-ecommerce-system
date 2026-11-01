@@ -11,6 +11,7 @@ import { RouterLink } from '@angular/router';
 })
 export class FooterComponent implements OnInit {
   isAdmin: boolean = false;
+  activeCol: string | null = null;
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
@@ -20,6 +21,14 @@ export class FooterComponent implements OnInit {
       if (role === 'admin') {
         this.isAdmin = true;
       }
+    }
+  }
+
+  toggleAccordion(col: string) {
+    if (this.activeCol === col) {
+      this.activeCol = null;
+    } else {
+      this.activeCol = col; 
     }
   }
 }

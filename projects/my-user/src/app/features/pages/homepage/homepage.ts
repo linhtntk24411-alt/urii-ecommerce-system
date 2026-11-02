@@ -7,7 +7,7 @@ import { RouterModule } from '@angular/router'; // Kích hoạt routerLink
   templateUrl: './homepage.html',
   styleUrls: ['./homepage.css'], // Thêm chữ s và ngoặc vuông ở đây
   standalone: true, 
-  imports: [CommonModule, RouterModule] 
+  imports: [CommonModule, RouterModule]
 })
 export class HomepageComponent implements OnInit {
   // Dữ liệu từ file JS cũ

@@ -12,6 +12,8 @@ const Blog = require('../models/Blog');
 const Comment = require('../models/Comment');
 const SampleMap = require('../models/SampleMap');
 const Voucher = require('../models/Voucher');
+const ChatSession = require('../models/ChatSession');
+const ChatbotFaq = require('../models/ChatbotFaq');
 const { getPagination } = require('../utils/pagination');
 const { insertMissing, prepareMaps, prepareNewUsers, seed } = require('../seed');
 const { buildProducts } = require('../convert_excel');
@@ -30,7 +32,9 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [Comment, readJSON('comments.json').comments],
     [SampleMap, readJSON('gallery.json')],
     [Voucher, readJSON('vouchers.json').vouchers],
-    [SavedMap, readJSON('saved_maps.json').maps]
+    [SavedMap, readJSON('saved_maps.json').maps],
+    [ChatSession, readJSON('chatbot.json').sessions],
+    [ChatbotFaq, readJSON('chatbot.json').faqs]
   ];
 
   for (const [Model, documents] of fixtures) {

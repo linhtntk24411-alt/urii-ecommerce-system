@@ -14,6 +14,8 @@ const Blog = require('./models/Blog');
 const Comment = require('./models/Comment');
 const User = require('./models/User');
 const SavedMap = require('./models/SavedMap');
+const ChatSession = require('./models/ChatSession');
+const ChatbotFaq = require('./models/ChatbotFaq');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -154,6 +156,15 @@ async function seed() {
   await insertMissing(Voucher, readJSON('vouchers.json').vouchers, 'code');
   await insertMissing(User, newUsers, 'email');
   await insertMissing(SavedMap, readJSON('saved_maps.json').maps, 'id');
+
+  const chatbotData = readJSON('chatbot.json');
+  if (chatbotData?.sessions) {
+    await insertMissing(ChatSession, chatbotData.sessions, 'sessionId');
+  }
+  if (chatbotData?.faqs) {
+    await insertMissing(ChatbotFaq, chatbotData.faqs, 'id');
+  }
+
   if (generatedCredentialsPath) {
     console.log(`Đã lưu mật khẩu tạm của user mới vào tệp riêng tư: ${generatedCredentialsPath}`);
   }

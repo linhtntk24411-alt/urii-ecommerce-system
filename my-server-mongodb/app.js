@@ -14,6 +14,7 @@ const commentRoutes = require('./routes/commentRoutes');
 const mapRoutes = require('./routes/mapRoutes');
 const voucherRoutes = require('./routes/voucherRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
@@ -57,6 +58,8 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/maps', mapRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/chatbot', chatRoutes);
 
 app.get('/', (req, res) => {
   res.json({ status: 'OK', message: 'Urii Backend đang chạy!' });

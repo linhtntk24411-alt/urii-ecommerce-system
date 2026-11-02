@@ -48,6 +48,25 @@ export interface DashboardStats {
   pendingOrders: number;
 }
 
+export interface ChatMessage {
+  text: string;
+  sender: 'user' | 'bot' | 'admin';
+  timestamp: number;
+  isSystemLog?: boolean;
+}
+
+export interface ChatSession {
+  _id?: string;
+  sessionId: string;
+  userName: string;
+  userEmail?: string;
+  avatar?: string;
+  status: 'ai' | 'waiting' | 'active';
+  unreadCount: number;
+  lastMessageTime: number;
+  messages: ChatMessage[];
+}
+
 interface LoginResponse {
   token: string;
   user: { id: string; name: string; email: string; role: string };
@@ -120,6 +139,24 @@ export class AdminApiService {
 
   async deletePromotion(id: string): Promise<void> {
     await firstValueFrom(this.http.delete<void>(`/api/vouchers/${encodeURIComponent(id)}`, this.options()));
+  }
+
+  async getChatSessions(status?: string, query?: string): Promise<{ sessions: ChatSession[]; sessionMap: Record<string, ChatSession> }> {
+    let url = '/api/chat/sessions';
+    const params = new URLSearchParams();
+    if (status && status !== 'all') params.set('status', status);
+    if (query) params.set('q', query);
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+    return firstValueFrom(this.http.get<{ sessions: ChatSession[]; sessionMap: Record<string, ChatSession> }>(url, this.options()));
+  }
+
+  async sendAdminChatMessage(sessionId: string, text: string): Promise<ChatSession> {
+    return firstValueFrom(this.http.post<ChatSession>(`/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`, { text, sender: 'admin' }, this.options()));
+  }
+
+  async updateChatSessionStatus(sessionId: string, status: 'ai' | 'waiting' | 'active', systemLog?: string): Promise<ChatSession> {
+    return firstValueFrom(this.http.put<ChatSession>(`/api/chat/sessions/${encodeURIComponent(sessionId)}/status`, { status, systemLog }, this.options()));
   }
 
   private options(): { headers: HttpHeaders } {

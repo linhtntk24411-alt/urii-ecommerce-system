@@ -195,14 +195,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     if (this.isBrowser) {
+      // 1. Vẽ Canvas 2D ngay lập tức (0ms) để biểu đồ luôn hiện diện trên màn hình
+      this.renderChartsImmediate();
+
+      // Redraw khi resize màn hình
+      window.addEventListener('resize', this.onResize);
+
+      // 2. Thử nạp Chart.js ngầm nếu mạng cho phép
       setTimeout(() => {
         void this.initChart();
         void this.initStatusChart();
-      }, 200);
+      }, 250);
     }
   }
 
   ngOnDestroy(): void {
+    if (this.isBrowser) {
+      window.removeEventListener('resize', this.onResize);
+    }
     if (this.chartInstance) {
       this.chartInstance.destroy();
     }
@@ -211,6 +221,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.toastTimer) {
       clearTimeout(this.toastTimer);
+    }
+  }
+
+  private onResize = (): void => {
+    this.renderChartsImmediate();
+  };
+
+  private renderChartsImmediate(): void {
+    const revCanvas =
+      this.revenueCanvas?.nativeElement ||
+      (document.getElementById('revenueChart') as HTMLCanvasElement);
+    if (revCanvas) {
+      this.drawFallbackBarChart(revCanvas, this.getChartDataset(this.chartDays()));
+    }
+    const statusCanvas =
+      this.orderStatusCanvas?.nativeElement ||
+      (document.getElementById('orderStatusChart') as HTMLCanvasElement);
+    if (statusCanvas) {
+      this.drawFallbackDoughnut(statusCanvas, this.orderStatusStats());
     }
   }
 
@@ -237,6 +266,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     } finally {
       this.loading.set(false);
       if (this.isBrowser) {
+        this.renderChartsImmediate();
         setTimeout(() => {
           if (!this.chartInstance) void this.initChart();
           void this.initStatusChart();
@@ -537,10 +567,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private async initChart(): Promise<void> {
     if (!this.isBrowser) return;
-    const canvas = this.revenueCanvas?.nativeElement;
+    const canvas =
+      this.revenueCanvas?.nativeElement ||
+      (document.getElementById('revenueChart') as HTMLCanvasElement);
     if (!canvas) return;
 
     const dataConfig = this.getChartDataset(this.chartDays());
+    this.drawFallbackBarChart(canvas, dataConfig);
+
     await this.ensureChartJs();
     const ChartClass = (window as any).Chart;
 
@@ -634,29 +668,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private drawFallbackBarChart(canvas: HTMLCanvasElement, cfg: { labels: string[]; actual: number[]; forecast: number[] }): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const parentW = canvas.parentElement?.clientWidth || 500;
-    const parentH = canvas.parentElement?.clientHeight || 200;
-    canvas.width = parentW * (window.devicePixelRatio || 1);
-    canvas.height = parentH * (window.devicePixelRatio || 1);
-    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
+    const parentW = canvas.parentElement?.clientWidth || canvas.getBoundingClientRect().width || 500;
+    const width = Math.max(parentW, 320);
+    const height = 200;
 
-    const width = parentW;
-    const height = parentH;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = '100%';
+    canvas.style.height = `${height}px`;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, width, height);
 
     const padLeft = 46;
-    const padBottom = 30;
-    const padTop = 20;
-    const padRight = 20;
+    const padBottom = 28;
+    const padTop = 18;
+    const padRight = 16;
     const chartW = width - padLeft - padRight;
     const chartH = height - padTop - padBottom;
 
     const maxVal = Math.max(...cfg.actual, ...cfg.forecast, 100000);
     const groups = cfg.labels.length;
     const groupW = chartW / groups;
-    const barW = Math.max(8, Math.min(22, (groupW - 14) / 2));
+    const barW = Math.max(10, Math.min(24, (groupW - 16) / 2));
 
-    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.strokeStyle = '#eeeeee';
+    ctx.lineWidth = 1;
     ctx.fillStyle = '#6c757d';
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'right';
@@ -677,20 +716,32 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       const actH = Math.max(4, (cfg.actual[idx] / maxVal) * chartH);
       const forH = Math.max(4, (cfg.forecast[idx] / maxVal) * chartH);
 
-      // Doanh thu (#840001)
-      ctx.fillStyle = '#840001';
-      ctx.fillRect(gx, padTop + chartH - actH, barW, actH);
+      // Doanh thu (#840001) với bo tròn góc trên
+      this.drawRoundedRect(ctx, gx, padTop + chartH - actH, barW, actH, 4, '#840001');
 
-      // Dự kiến (#ff9800)
-      ctx.fillStyle = '#ff9800';
-      ctx.fillRect(gx + barW + 4, padTop + chartH - forH, barW, forH);
+      // Dự kiến (#ff9800) với bo tròn góc trên
+      this.drawRoundedRect(ctx, gx + barW + 4, padTop + chartH - forH, barW, forH, 4, '#ff9800');
 
       // Nhãn trục X
       ctx.fillStyle = '#495057';
       ctx.textAlign = 'center';
-      ctx.font = '12px sans-serif';
+      ctx.font = '600 12px sans-serif';
       ctx.fillText(lbl, gx + barW + 2, height - 8);
     });
+  }
+
+  private drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, color: string): void {
+    ctx.fillStyle = color;
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+    ctx.fill();
   }
 
   private async updateChartData(days: 7 | 30 | 90): Promise<void> {
@@ -702,7 +753,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.chartInstance.update();
       return;
     }
-    const canvas = this.revenueCanvas?.nativeElement;
+    const canvas =
+      this.revenueCanvas?.nativeElement ||
+      (document.getElementById('revenueChart') as HTMLCanvasElement);
     if (canvas) {
       this.drawFallbackBarChart(canvas, cfg);
     }
@@ -736,10 +789,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private async initStatusChart(): Promise<void> {
     if (!this.isBrowser) return;
-    const canvas = this.orderStatusCanvas?.nativeElement;
+    const canvas =
+      this.orderStatusCanvas?.nativeElement ||
+      (document.getElementById('orderStatusChart') as HTMLCanvasElement);
     if (!canvas) return;
 
     const stats = this.orderStatusStats();
+    this.drawFallbackDoughnut(canvas, stats);
+
     await this.ensureChartJs();
     const ChartClass = (window as any).Chart;
 
@@ -769,9 +826,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             ]
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '72%',
+            responsive: false,
+            cutout: '68%',
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -804,17 +860,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private drawFallbackDoughnut(canvas: HTMLCanvasElement, stats: { completed: number; processing: number; pending: number; cancelled: number }): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const size = canvas.parentElement?.clientWidth || 140;
-    canvas.width = size * (window.devicePixelRatio || 1);
-    canvas.height = size * (window.devicePixelRatio || 1);
-    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
+    const size = 150;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
 
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, size, size);
 
     const cx = size / 2;
     const cy = size / 2;
-    const outerR = size / 2 - 8;
-    const innerR = outerR * 0.72;
+    const outerR = size / 2 - 6;
+    const innerR = outerR * 0.68;
 
     const data = [
       { val: stats.completed, color: '#137333' },
@@ -822,7 +882,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       { val: stats.pending, color: '#f59e0b' },
       { val: stats.cancelled, color: '#dc2626' }
     ];
-    const total = data.reduce((s, d) => s + d.val, 0) || 1;
+    let total = data.reduce((s, d) => s + d.val, 0);
+    if (total <= 0) {
+      data[0].val = 2;
+      data[1].val = 1;
+      data[2].val = 2;
+      data[3].val = 0;
+      total = 5;
+    }
 
     let startAngle = -Math.PI / 2;
     data.forEach((d) => {
@@ -835,9 +902,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       ctx.closePath();
       ctx.fill();
 
-      // Border between slices
+      // Đường viền trắng ngăn cách giữa các mảng
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
       startAngle += slice;

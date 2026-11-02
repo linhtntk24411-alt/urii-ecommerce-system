@@ -37,10 +37,10 @@ export class ProductsAdmin implements OnInit {
   startIdx = 0;
   mathMin = Math.min;
 
-  editData: any = { id: null, name: '', category: 'hat-nhua', status: 'normal', price: 0, stock: 0, image: '' };
+  editData: any = { id: null, name: '', category: 'HN', status: 'normal', price: 0, stock: 0, image: '' };
 
   categoriesMap: { [key: string]: string } = { 
-    "hat-nhua": "Hạt nhựa", "dung-cu": "Dụng cụ", "handmade": "Handmade", "kit": "Bộ Kit"
+    "HN": "Hạt nhựa", "DC": "Dụng cụ", "BST": "Bộ sưu tập", "KIT": "Bộ Kit", "TP": "Trọn bộ"
   };
 
   statusMap: { [key: string]: { text: string, class: string } } = { 

@@ -10,6 +10,7 @@ import { LoginAdmin } from './features/login-admin/login-admin';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { PromotionsComponent } from './features/promotions/promotions.component';
 import { UsersComponent } from './features/users/users.component';
+import { BlogsAdmin } from './features/blogs-admin/blogs-admin';
 
 const requireAdminLogin: CanActivateChildFn = () => {
   if (!isPlatformBrowser(inject(PLATFORM_ID))) {
@@ -35,7 +36,8 @@ export const routes: Routes = [
       { path: 'users', component: UsersComponent },
       { path: 'library', component: MapAdmin },
       { path: 'chatbot', component: SupportAdmin },
-      { path: '', redirectTo: 'products', pathMatch: 'full' }
+      {path: 'blogs', component: BlogsAdmin},
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   }
 ];

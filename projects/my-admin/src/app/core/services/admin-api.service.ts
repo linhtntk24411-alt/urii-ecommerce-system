@@ -112,6 +112,10 @@ export interface AdminBlog {
   likes?: number;
   comments?: number;
   views?: number;
+  thumbnail?: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'violated';
+  visible?: boolean;
+  createdAt?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
 }
 
@@ -863,8 +867,8 @@ export class AdminApiService {
         this.setCached('urii_admin_products', list);
         return list;
       }
-    } catch {
-      // Trả về cache nếu API lỗi
+    } catch (error) {
+      console.error('Lỗi tải sản phẩm từ API, sử dụng dữ liệu cache:', error);
     }
 
     return this.getInitialProducts();
@@ -1006,14 +1010,16 @@ export class AdminApiService {
 
       const list = Array.isArray(data)
         ? data
-        : (data?.blogs || data?.data || []);
+        : (data?.blogs ?? data?.data);
 
-      if (list.length > 0) {
+      if (Array.isArray(list)) {
         this.setCached('urii_admin_blogs', list);
         return list;
       }
-    } catch {
-      // Trả về cache nếu API lỗi
+
+      console.error('API bài viết trả về dữ liệu không hợp lệ:', data);
+    } catch (error) {
+      console.error('Lỗi tải bài viết từ API, sử dụng dữ liệu cache:', error);
     }
 
     return this.getInitialBlogs();

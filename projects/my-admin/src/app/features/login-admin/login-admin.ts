@@ -65,7 +65,7 @@ export class LoginAdmin {
         this.adminApi.setToken(response.token);
 
         // 3. Chuyển trang ngay lập tức
-        this.router.navigate(['/products']);
+        this.router.navigate(['/dashboard']);
       },
       error: (error) => {
         this.isLoading = false;

@@ -4,29 +4,29 @@
       <nav class="support-nav">
         <a class="support-nav-item" 
            [class.active]="activeTab === 'support-center'" 
-           (click)="selectTab('support-center')" 
-           style="cursor: pointer;">
+           routerLink="/support" 
+           [queryParams]="{tab: 'support-center'}">
           <span class="material-symbols-outlined">help</span>
           Trung tâm hỗ trợ
         </a>
         <a class="support-nav-item" 
            [class.active]="activeTab === 'faq'" 
-           (click)="selectTab('faq')" 
-           style="cursor: pointer;">
+           routerLink="/support" 
+           [queryParams]="{tab: 'faq'}">
           <span class="material-symbols-outlined">quiz</span>
           Câu hỏi thường gặp
         </a>
         <a class="support-nav-item" 
            [class.active]="activeTab === 'privacy-policy'" 
-           (click)="selectTab('privacy-policy')" 
-           style="cursor: pointer;">
+           routerLink="/support" 
+           [queryParams]="{tab: 'privacy-policy'}">
           <span class="material-symbols-outlined">shield</span>
           Chính sách bảo mật
         </a>
         <a class="support-nav-item" 
            [class.active]="activeTab === 'terms-of-service'" 
-           (click)="selectTab('terms-of-service')" 
-           style="cursor: pointer;">
+           routerLink="/support" 
+           [queryParams]="{tab: 'terms-of-service'}">
           <span class="material-symbols-outlined">description</span>
           Điều khoản sử dụng
         </a>

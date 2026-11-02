@@ -15,6 +15,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   userEmail: string = '';
   userAvatar: string = '';
   cartCount: number = 0;
+  notificationCount: number = 0; 
   
   isMobileMenuOpen: boolean = false;
   isMobileProductOpen: boolean = true;

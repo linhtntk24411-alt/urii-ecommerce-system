@@ -1,16 +1,15 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Kích hoạt pipe number, @for, @if
-import { RouterModule } from '@angular/router'; // Kích hoạt routerLink
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router'; 
 
 @Component({
   selector: 'app-homepage',
   templateUrl: './homepage.html',
-  styleUrls: ['./homepage.css'], // Thêm chữ s và ngoặc vuông ở đây
+  styleUrls: ['./homepage.css'], 
   standalone: true, 
-  imports: [CommonModule, RouterModule] 
+  imports: [CommonModule, RouterModule]
 })
 export class HomepageComponent implements OnInit {
-  // Dữ liệu từ file JS cũ
   valuesData = [
     { icon: 'bi-shield-check', title: 'Chất liệu an toàn', desc: 'Hạt nhựa nguyên sinh không độc hại, an toàn cho mọi lứa tuổi' },
     { icon: 'bi-truck', title: 'Giao hàng nhanh chóng', desc: 'Ship COD toàn quốc, kiểm hàng trước khi nhận' },

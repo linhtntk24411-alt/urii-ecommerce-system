@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-support',
@@ -13,19 +13,20 @@ export class SupportComponent implements OnInit {
   activeTab: string = 'support-center';
   activeFaqIndex: number | null = null;
 
-  constructor() {}
+  constructor(private route: ActivatedRoute) {}
 
   ngOnInit(): void {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabFromUrl = urlParams.get('tab');
-    if (tabFromUrl && ['support-center', 'faq', 'privacy-policy', 'terms-of-service'].includes(tabFromUrl)) {
-      this.activeTab = tabFromUrl;
-    }
-  }
-
-  selectTab(tabKey: string): void {
-    this.activeTab = tabKey;
-    this.activeFaqIndex = null;
+    this.route.queryParams.subscribe(params => {
+      const tabFromUrl = params['tab'];
+      const validTabs = ['support-center', 'faq', 'privacy-policy', 'terms-of-service'];
+      
+      if (tabFromUrl && validTabs.includes(tabFromUrl)) {
+        this.activeTab = tabFromUrl;
+      } else {
+        this.activeTab = 'support-center';
+      }
+      this.activeFaqIndex = null;
+    });
   }
 
   toggleFaq(index: number): void {

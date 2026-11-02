@@ -1,62 +1,62 @@
 <main>
-  <!-- HERO BANNER (Đã đưa .container vào trong từng slide để banner mở rộng tối đa) -->
   <section class="hero" aria-label="Banner nổi bật">
-    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
-      <!-- Nút tròn chuyển slide -->
-      <div class="carousel-indicators">
-        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true"></button>
-        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+    <div class="container">
+      <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+        <!-- Nút tròn chuyển slide -->
+        <div class="carousel-indicators">
+          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true"></button>
+          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
+          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+        </div>
+
+        <div class="carousel-inner">
+          <div class="carousel-item active hero-slide hero-slide--birthday">
+            <div class="hero-content">
+              <div class="hero-copy">
+                <p class="hero-label">Rạng rỡ sinh nhật</p>
+                <h1>BIRTHDAY MONTH</h1>
+                <p>Đón sinh nhật thêm rực rỡ cùng Urii! Khách hàng có sinh nhật trong tháng sẽ nhận ngay voucher giảm 50% để thỏa sức sáng tạo với những mẫu hạt nhựa ủi yêu thích.</p>
+                <a class="btn btn-urii btn-lg" href="#">Nhận Voucher Ngay</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="carousel-item hero-slide hero-slide--map">
+            <div class="hero-content">
+              <div class="hero-copy">
+                <p class="hero-label">Thư viện mẫu</p>
+                <h1>Sáng tạo không giới hạn cùng thư viện map có sẵn</h1>
+                <p>Khám phá các mẫu map đa dạng, giúp bạn hiện thực hóa mọi ý tưởng độc đáo.</p>
+                <a class="btn btn-urii btn-lg" routerLink="/sample-maps">Thư viện map mẫu</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="carousel-item hero-slide hero-slide--custom">
+            <div class="hero-content">
+              <div class="hero-copy">
+                <p class="hero-label">Custom Order</p>
+                <h1>Dịch vụ thiết kế theo yêu cầu</h1>
+                <p>Biến mọi hình ảnh cá nhân của bạn thành tranh hạt nhựa ủi độc đáo theo yêu cầu cá nhân.</p>
+                <a class="btn btn-urii btn-lg" routerLink="/custom-order">Đặt đơn Custom</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nút mũi tên qua lại -->
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Next</span>
+        </button>
       </div>
-
-      <div class="carousel-inner">
-        <div class="carousel-item active hero-slide hero-slide--birthday">
-          <div class="container hero-content">
-            <div class="hero-copy">
-              <p class="hero-label">Rạng rỡ sinh nhật</p>
-              <h1>BIRTHDAY MONTH</h1>
-              <p>Đón sinh nhật thêm rực rỡ cùng Urii! Khách hàng có sinh nhật trong tháng sẽ nhận ngay voucher giảm 50% để thỏa sức sáng tạo với những mẫu hạt nhựa ủi yêu thích.</p>
-              <a class="btn btn-urii btn-lg" href="#">Nhận Voucher Ngay</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="carousel-item hero-slide hero-slide--map">
-          <div class="container hero-content">
-            <div class="hero-copy">
-              <p class="hero-label">Thư viện mẫu</p>
-              <h1>Sáng tạo không giới hạn cùng thư viện map có sẵn</h1>
-              <p>Khám phá các mẫu map đa dạng, giúp bạn hiện thực hóa mọi ý tưởng độc đáo.</p>
-              <a class="btn btn-urii btn-lg" routerLink="/sample-maps">Thư viện map mẫu</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="carousel-item hero-slide hero-slide--custom">
-          <div class="container hero-content">
-            <div class="hero-copy">
-              <p class="hero-label">Custom Order</p>
-              <h1>Dịch vụ thiết kế theo yêu cầu</h1>
-              <p>Biến mọi hình ảnh cá nhân của bạn thành tranh hạt nhựa ủi độc đáo theo yêu cầu cá nhân.</p>
-              <a class="btn btn-urii btn-lg" routerLink="/custom-order">Đặt đơn Custom</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Nút mũi tên qua lại -->
-      <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-      </button>
-      <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-      </button>
     </div>
   </section>
 
-  <!-- VALUES SECTION -->
   <section class="section section--values">
     <div class="container">
       <div class="values-grid">
@@ -71,7 +71,6 @@
     </div>
   </section>
 
-  <!-- CATEGORIES SECTION -->
   <section class="section section--categories">
     <div class="container">
       <div class="section-header">
@@ -96,7 +95,6 @@
     </div>
   </section>
 
-  <!-- PRODUCTS SECTION -->
   <section class="section section--products">
     <div class="container">
       <div class="section-header">
@@ -150,7 +148,6 @@
     </div>
   </section>
 
-  <!-- HOW TO SECTION -->
   <section class="section section--howto">
     <div class="container">
       <div class="section-header section-header--center">
@@ -180,7 +177,6 @@
     </div>
   </section>
 
-  <!-- SERVICE BANNER -->
   <section class="section section--service">
     <div class="container">
       <div class="service-banner">
@@ -196,7 +192,6 @@
     </div>
   </section>
 
-  <!-- GALLERY SECTION -->
   <section class="section section--gallery">
     <div class="container text-center">
       <div class="section-header section-header--center">

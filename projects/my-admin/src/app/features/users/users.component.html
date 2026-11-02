@@ -20,7 +20,7 @@
 
   <!-- 2. Stats Cards (4 Columns) matching admin-users.html -->
   <div class="row g-4 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
       <div class="stat-card">
         <div class="stat-icon" style="background-color: #f4f7ee; color: var(--primary-green, #6B8E23);">
           <i class="bi bi-people-fill"></i>
@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
       <div class="stat-card">
         <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">
           <i class="bi bi-person-plus-fill"></i>
@@ -44,7 +44,7 @@
       </div>
     </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
       <div class="stat-card">
         <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
           <i class="bi bi-person-check-fill"></i>
@@ -56,7 +56,7 @@
       </div>
     </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
       <div class="stat-card">
         <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
           <i class="bi bi-person-x-fill"></i>
@@ -155,7 +155,7 @@
             <td><input class="form-check-input" type="checkbox"></td>
             <td>
               <div class="user-cell">
-                <img [src]="u.avatarUrl" [alt]="u.name" (error)="onImgError($event)">
+                <img [src]="u.avatarUrl" alt="" (error)="onImgError($event)">
                 <div>
                   <div class="user-name">{{ u.name }}</div>
                   <div class="user-email">{{ u.email }}</div>
@@ -226,67 +226,67 @@
 </div>
 
 <!-- Modal: Add / Edit User -->
-<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="showUserModal">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
-      <div class="modal-header border-bottom-0 px-4 pt-4">
-        <h5 class="modal-title fw-bold">
-          <i class="bi bi-person-badge me-2 text-success"></i>
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);" *ngIf="showUserModal">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 440px; margin: 1.5rem auto;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+      <div class="modal-header border-bottom-0 px-3 pt-3 pb-1">
+        <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-2 m-0 fs-6">
+          <i class="bi bi-person-badge text-success"></i>
           {{ isEditing ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới' }}
-        </h5>
+        </h6>
         <button type="button" class="btn-close" (click)="closeUserModal()"></button>
       </div>
-      <div class="modal-body px-4 pb-4">
+      <div class="modal-body px-3 py-2">
         <form (ngSubmit)="saveUser()">
-          <div class="row g-3">
+          <div class="row g-2">
             <div class="col-12">
-              <label class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" placeholder="Nhập họ và tên..."
+              <label class="form-label fw-semibold small mb-1">Họ và tên <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" placeholder="Nhập họ và tên..."
                 [(ngModel)]="form.name" name="name" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
-              <input type="email" class="form-control" placeholder="example@gmail.com"
+              <label class="form-label fw-semibold small mb-1">Email <span class="text-danger">*</span></label>
+              <input type="email" class="form-control form-control-sm" placeholder="example@gmail.com"
                 [(ngModel)]="form.email" name="email" required>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Số điện thoại</label>
-              <input type="text" class="form-control" placeholder="0901 234 567"
+              <label class="form-label fw-semibold small mb-1">Số điện thoại</label>
+              <input type="text" class="form-control form-control-sm" placeholder="0901 234 567"
                 [(ngModel)]="form.phone" name="phone">
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Vai trò</label>
-              <select class="form-select" [(ngModel)]="form.roleKey" name="roleKey">
+              <label class="form-label fw-semibold small mb-1">Vai trò</label>
+              <select class="form-select form-select-sm" [(ngModel)]="form.roleKey" name="roleKey">
                 <option value="customer">Khách hàng</option>
                 <option value="staff">Nhân viên</option>
                 <option value="admin">Quản trị viên</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Trạng thái</label>
-              <select class="form-select" [(ngModel)]="form.statusKey" name="statusKey">
+              <label class="form-label fw-semibold small mb-1">Trạng thái</label>
+              <select class="form-select form-select-sm" [(ngModel)]="form.statusKey" name="statusKey">
                 <option value="active">Đang hoạt động</option>
                 <option value="pending">Chờ xác minh</option>
                 <option value="locked">Bị khóa</option>
               </select>
             </div>
             <div class="col-md-6" *ngIf="!isEditing">
-              <label class="form-label fw-semibold">Mật khẩu khởi tạo</label>
-              <input type="text" class="form-control" [(ngModel)]="form.password" name="password">
+              <label class="form-label fw-semibold small mb-1">Mật khẩu</label>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="form.password" name="password">
             </div>
             <div [class]="isEditing ? 'col-12' : 'col-md-6'">
-              <label class="form-label fw-semibold">Ảnh đại diện (MongoDB)</label>
-              <select class="form-select" [(ngModel)]="form.avatar" name="avatar">
-                <option value="images/avatar1.png">Avatar 1 (Mặc định)</option>
-                <option value="images/avatar2.png">Avatar 2</option>
-                <option value="assets/avatar-non.jpg">Avatar Admin</option>
-              </select>
+              <label class="form-label fw-semibold small mb-1">Ảnh đại diện</label>
+              <div class="d-flex align-items-center gap-2">
+                <img [src]="form.avatar || 'images/avatar_user.jpeg'" (error)="onImgError($event)"
+                  style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0;" />
+                <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onAvatarFileChange($event)">
+              </div>
             </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
-            <button type="button" class="btn btn-light px-4" (click)="closeUserModal()">Hủy</button>
-            <button type="submit" class="btn btn-primary-green px-4">
+          <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+            <button type="button" class="btn btn-sm btn-light px-3" (click)="closeUserModal()">Hủy</button>
+            <button type="submit" class="btn btn-sm btn-primary-green px-3">
               <i class="bi bi-check2-circle me-1"></i> {{ isEditing ? 'Lưu thay đổi' : 'Thêm người dùng' }}
             </button>
           </div>

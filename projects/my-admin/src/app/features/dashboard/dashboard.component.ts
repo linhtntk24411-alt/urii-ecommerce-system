@@ -635,7 +635,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const parentW = canvas.parentElement?.clientWidth || 500;
-    const parentH = canvas.parentElement?.clientHeight || 260;
+    const parentH = canvas.parentElement?.clientHeight || 200;
     canvas.width = parentW * (window.devicePixelRatio || 1);
     canvas.height = parentH * (window.devicePixelRatio || 1);
     ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
@@ -804,7 +804,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private drawFallbackDoughnut(canvas: HTMLCanvasElement, stats: { completed: number; processing: number; pending: number; cancelled: number }): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const size = 180;
+    const size = canvas.parentElement?.clientWidth || 140;
     canvas.width = size * (window.devicePixelRatio || 1);
     canvas.height = size * (window.devicePixelRatio || 1);
     ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);

@@ -564,7 +564,7 @@ export class AdminApiService {
     return clean.replace(/^\/+/, '');
   }
 
-  resolveBackendImageUrl(imagePath?: string | null, fallback = 'assets/avatar-non.jpg'): string {
+  resolveBackendImageUrl(imagePath?: string | null, fallback = 'images/avatar_user.jpeg'): string {
     if (!imagePath || !imagePath.trim()) {
       return fallback;
     }
@@ -572,13 +572,21 @@ export class AdminApiService {
     if (
       clean.startsWith('http://') ||
       clean.startsWith('https://') ||
-      clean.startsWith('data:') ||
-      clean.startsWith('assets/')
+      clean.startsWith('data:')
     ) {
       return clean;
     }
+    if (clean.includes('avatar1.png')) {
+      return '/images/avatar_user1.jpeg';
+    }
+    if (clean.includes('avatar2.png')) {
+      return '/images/avatar_user2.jpeg';
+    }
+    if (clean.startsWith('assets/') || clean.startsWith('images/')) {
+      return clean.startsWith('/') ? clean : `/${clean}`;
+    }
     const normalized = clean.replace(/^\/+/, '');
-    return `${this.backendOrigin}/${normalized}`;
+    return `/${normalized}`;
   }
 
   // --- 1. QUẢN LÝ SẢN PHẨM (Code gốc của Lê) ---

@@ -95,7 +95,7 @@ export class UsersComponent implements OnInit {
   private mapUserView(u: AdminUser, idx = 0): UserView {
     const avatarUrl = this.api.resolveBackendImageUrl(
       u.avatar,
-      idx % 2 === 0 ? 'images/avatar1.png' : 'images/avatar2.png'
+      idx % 2 === 0 ? 'images/avatar_user.jpeg' : 'images/avatar_user1.jpeg'
     );
 
     const overrideRole = this.roleOverrides.get(u._id);
@@ -240,7 +240,7 @@ export class UsersComponent implements OnInit {
       password: 'User@12345',
       roleKey: 'customer',
       statusKey: 'active',
-      avatar: 'images/avatar1.png',
+      avatar: 'images/avatar_user.jpeg',
       address: 'TP. Hồ Chí Minh'
     };
     this.showUserModal = true;
@@ -256,10 +256,24 @@ export class UsersComponent implements OnInit {
       password: '',
       roleKey: user.roleKey,
       statusKey: user.statusKey,
-      avatar: user.avatar || 'images/avatar1.png',
+      avatar: user.avatarUrl || user.avatar || 'images/avatar_user.jpeg',
       address: user.addressDisplay
     };
     this.showUserModal = true;
+  }
+
+  onAvatarFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          this.form.avatar = reader.result;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   closeUserModal(): void {
@@ -419,8 +433,9 @@ export class UsersComponent implements OnInit {
 
   onImgError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    if (img && !img.src.includes('avatar-non.jpg')) {
-      img.src = 'assets/avatar-non.jpg';
+    if (img) {
+      img.onerror = null;
+      img.src = 'images/avatar_user.jpeg';
     }
   }
 

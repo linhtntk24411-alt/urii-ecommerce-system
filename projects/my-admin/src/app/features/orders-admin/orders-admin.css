@@ -27,6 +27,7 @@
     font-weight: 600;
     display: inline-block;
     font-family: 'Segoe UI', sans-serif;
+    white-space: nowrap;
 }
 .badge-status-pending { background-color: #fff3cd; color: #856404; }
 .badge-status-approved { background-color: #d1e7dd; color: #0f5132; }

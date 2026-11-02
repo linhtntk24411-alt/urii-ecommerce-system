@@ -17,7 +17,7 @@ declare var bootstrap: any;
 export class ProductsAdmin implements OnInit {
   products: Product[] = [];
   currentPage = 1;
-  itemsPerPage = 4;
+  itemsPerPage = 5;
 
   statTotal = 0;
   statWarning = 0;
@@ -53,20 +53,62 @@ export class ProductsAdmin implements OnInit {
 
   constructor(private adminApi: AdminApiService) {}
 
-  ngOnInit() {
-    this.adminApi.products$.subscribe(data => {
-      this.products = data;
-      this.updateStats();
-      this.renderProducts();
-    });
-  }
+//  ngOnInit() {
+//     // 1. Đăng ký lắng nghe dữ liệu sản phẩm như cũ
+//     this.adminApi.products$.subscribe(data => {
+//       this.products = data;
+//       this.updateStats();
+//       this.renderProducts();
+//     });
 
+//     // 2. BỔ SUNG THÊM: Gọi luôn hàm lấy dữ liệu từ API ngay khi vừa vào trang
+//     if (this.adminApi.loadProducts) {
+//       this.adminApi.loadProducts(); 
+//     }
+//   }
+ngOnInit() {
+  // Lắng nghe dữ liệu thay đổi từ service
+  this.adminApi.products$.subscribe({
+    next: (data) => {
+      if (data) {
+        this.products = data;
+        this.updateStats();
+        if (typeof this.renderProducts === 'function') {
+          this.renderProducts();
+        }
+      }
+    }
+  });
+
+  // Gọi ngay lập tức khi vào trang (bao gồm cả lúc F5)
+  this.adminApi.loadProducts();
+}
   updateStats() {
-    this.statTotal = this.products.length;
-    this.statWarning = this.products.filter(p => p.status === 'sap-het').length;
-    this.statDanger = this.products.filter(p => p.status === 'het-hang').length;
-    this.statNew = this.products.filter(p => p.status === 'new').length;
-    this.statHot = this.products.filter(p => p.status === 'hot').length;
+  this.statTotal = this.products.length;
+
+  this.statWarning = this.products.filter(p => {
+    const stock = Number((p as any).stock ?? 0);
+    return stock > 0 && stock < 20;
+  }).length;
+
+  this.statDanger = this.products.filter(p => {
+    const stock = Number((p as any).stock ?? 0);
+    return stock === 0;
+  }).length;
+
+  this.statNew = this.products.filter(p => {
+    const createdAt = (p as any).createdAt;
+
+    if (!createdAt) return false;
+
+    const createdDate = new Date(createdAt).getTime();
+    const daysDiff = (Date.now() - createdDate) / (1000 * 60 * 60 * 24);
+
+    return daysDiff >= 0 && daysDiff <= 7;
+  }).length;
+
+  // Chưa có dữ liệu số lượng bán nên chưa thể xác định sản phẩm hot
+  this.statHot = 0;
   }
 
   onFilter() {
@@ -200,4 +242,24 @@ export class ProductsAdmin implements OnInit {
       });
     }
   }
+
+  getDisplayStatus(p: Product): string {
+    const prod = p as any;
+    const stock = Number(prod.stock ?? 0);
+
+    if (stock === 0) return 'het-hang';
+    if (stock > 0 && stock < 20) return 'sap-het';
+    if (prod.isSale === true) return 'hot';
+
+    if (prod.createdAt) {
+      const createdDate = new Date(prod.createdAt).getTime();
+      const daysDiff = (Date.now() - createdDate) / (1000 * 60 * 60 * 24);
+
+      if (daysDiff >= 0 && daysDiff <= 7) return 'new';
+    }
+
+    return 'normal';
+  }
+
 }
+

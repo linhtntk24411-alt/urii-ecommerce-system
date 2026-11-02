@@ -1,4 +1,8 @@
 <div class="orders-container">
+    @if (orderLoadError) {
+        <div class="alert alert-warning" role="alert">{{ orderLoadError }}</div>
+    }
+
     <!-- Stats Cards -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
@@ -43,7 +47,7 @@
                     <label class="filter-label">Tìm kiếm</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control font-segoe" [(ngModel)]="searchQuery" placeholder="Mã đơn hoặc tên khách...">
+                        <input type="text" class="form-control font-segoe" [(ngModel)]="searchQuery" placeholder="Tên khách hoặc sản phẩm...">
                     </div>
                 </div>
                 <div class="col-6 col-md-2">
@@ -54,6 +58,7 @@
                         <option value="approved">Đã xác nhận</option>
                         <option value="completed">Hoàn thành</option>
                         <option value="cancelled">Đã hủy</option>
+                        <option value="processing">Đang gia công</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-2">

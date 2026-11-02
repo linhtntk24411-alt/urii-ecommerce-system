@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminApiService } from '../../core/services/admin-api.service';
@@ -13,7 +13,10 @@ declare var bootstrap: any;
   styleUrls: ['./orders-admin.css']
 })
 export class OrdersAdmin implements OnInit {
-  constructor(private adminApi: AdminApiService) {}
+  constructor(
+    private adminApi: AdminApiService,
+    private changeDetectorRef: ChangeDetectorRef
+  ) {}
   // --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI DROPDOWN ---
   activeDropdownId: string | null = null;
 
@@ -34,6 +37,7 @@ export class OrdersAdmin implements OnInit {
   // --- Data ---
   originalOrders: any[] = [];
   orders: any[] = [];
+  orderLoadError = '';
   
   // --- Pagination ---
   currentPage = 1;
@@ -99,43 +103,74 @@ export class OrdersAdmin implements OnInit {
 
   // --- Logic Load Data ---
  loadOrders() {
-    (this.adminApi.getOrders() as any).subscribe({
+    this.orderLoadError = '';
+    this.adminApi.getOrders().subscribe({
       next: (res: any) => {
-        const orderList = Array.isArray(res) ? res : (res?.orders || res?.data || []);
+        const orderList = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.orders)
+            ? res.orders
+            : null;
+        if (!orderList) {
+          console.error('API đơn hàng trả về dữ liệu không hợp lệ:', res);
+          return;
+        }
 
         this.originalOrders = orderList.map((item: any) => {
-          // Lấy tên từ userName trên MongoDB Cloud
-          const name = item.userName || item.customerName || 'Khách hàng';
-          
-          // Xử lý chuỗi tiền tệ (ví dụ "251.750đ" -> số để tính toán nếu cần)
-          let rawTotal = item.total;
-          if (typeof rawTotal === 'string') {
-            rawTotal = Number(rawTotal.replace(/[^0-9]/g, '')) || 0;
-          }
+          const name = item.userName || item.address?.name || 'Khách hàng';
 
-          // Ánh xạ trạng thái tiếng Việt từ DB sang mã code của giao diện
-          let statusCode = 'pending';
-          const dbStatus = (item.status || '').toLowerCase();
-          if (dbStatus.includes('giao') || dbStatus.includes('xác nhận')) statusCode = 'approved';
-          else if (dbStatus.includes('hoàn thành')) statusCode = 'completed';
-          else if (dbStatus.includes('hủy')) statusCode = 'cancelled';
+          const rawStatus = String(item.statusType || item.status || '')
+            .trim()
+            .toLowerCase();
+
+          const statusAliases: { [key: string]: string } = {
+            'pending': 'pending',
+            'chờ xác nhận': 'pending',
+            'approved': 'approved',
+            'đã xác nhận': 'approved',
+            'completed': 'completed',
+            'hoàn thành': 'completed',
+            'cancelled': 'cancelled',
+            'canceled': 'cancelled',
+            'đã hủy': 'cancelled',
+            'pending_approval': 'pending_approval',
+            'chờ duyệt': 'pending_approval',
+            'waiting_quote': 'waiting_quote',
+            'chờ báo giá': 'waiting_quote',
+            'processing': 'processing',
+            'đang gia công': 'processing'
+          };
 
           return {
             ...item,
-            id: item.id || item._id,
-            customerName: name, // Khớp với HTML
-            customerAvatar: name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'KH',
-            total: rawTotal,
-            status: item.statusType || statusCode
+            id: String(item.id || item._id || ''),
+            customerName: name,
+            customerAvatar: name.length >= 2
+              ? name.substring(0, 2).toUpperCase()
+              : 'KH',
+            phone: item.phone || item.address?.phone || '',
+            address: item.address?.address || item.address || '',
+            total: typeof item.total === 'string'
+              ? Number(item.total.replace(/[^0-9]/g, '')) || 0
+              : Number(item.total) || 0,
+            product: item.product || item.items?.map((p: any) =>
+              `${p.name} (x${p.quantity})`
+            ).join(', ') || '',
+            status: statusAliases[rawStatus] || 'pending'
           };
         });
 
         this.orders = [...this.originalOrders];
+        this.changeDetectorRef.markForCheck();
       },
       error: (err: any) => {
         console.error('Lỗi tải đơn hàng:', err);
+        this.orderLoadError = err.status === 401 || err.status === 403
+          ? 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại để xem đơn hàng.'
+          : 'Không thể tải đơn hàng. Vui lòng thử lại sau.';
         this.originalOrders = [];
         this.orders = [];
+        this.changeDetectorRef.markForCheck();
       }
     });
   }
@@ -160,7 +195,14 @@ export class OrdersAdmin implements OnInit {
     const search = this.searchQuery.toLowerCase().trim();
     let filteredRegular = this.originalOrders.filter(o => {
       if (o.isCustomOrder || o.status === 'pending_approval') return false;
-      const matchSearch = o.id.toLowerCase().includes(search) || o.customerName.toLowerCase().includes(search);
+      const productNames = Array.isArray(o.items)
+        ? o.items.map((item: any) => item.name || '').join(' ')
+        : '';
+      const matchSearch =
+        String(o.id || '').toLowerCase().includes(search) ||
+        String(o.customerName || '').toLowerCase().includes(search) ||
+        String(o.product || '').toLowerCase().includes(search) ||
+        productNames.toLowerCase().includes(search);
       const matchStatus = this.filterStatus === '' || o.status === this.filterStatus;
       let matchDate = true;
       if (this.filterDate) {
@@ -181,20 +223,39 @@ export class OrdersAdmin implements OnInit {
 
   // --- Actions ---
   updateOrderStatus(id: string, newStatus: string) {
-    const order = this.originalOrders.find(o => o.id === id);
-    if (order) {
-      order.status = newStatus;
-      this.saveOrders();
+  this.adminApi.updateOrder(id, {
+    statusType: newStatus
+  }).subscribe({
+    next: () => {
+      const order = this.originalOrders.find(o => o.id === id);
+      if (order) {
+        order.status = newStatus;
+        this.saveOrders();
+      }
       this.activeDropdownId = null;
+    },
+    error: (err) => {
+      console.error('Lỗi cập nhật trạng thái:', err);
+      alert('Không thể cập nhật trạng thái đơn hàng!');
     }
-  }
+  });
+ }
 
   deleteOrder(id: string) {
-    if (confirm(`Bạn có chắc chắn muốn xóa đơn hàng #${id} không?`)) {
-      this.originalOrders = this.originalOrders.filter(o => o.id !== id);
-      this.saveOrders();
-    }
+  if (confirm(`Bạn có chắc chắn muốn xóa đơn hàng #${id} không?`)) {
+    this.adminApi.deleteOrder(id).subscribe({
+      next: () => {
+        this.originalOrders = this.originalOrders.filter(o => o.id !== id);
+        this.saveOrders();
+        alert('Đã xóa đơn hàng!');
+      },
+      error: (err) => {
+        console.error('Lỗi xóa đơn hàng:', err);
+        alert('Không thể xóa đơn hàng!');
+      }
+    });
   }
+ }
 
   handleCancelRequest(id: string, isApproved: boolean) {
     const order = this.originalOrders.find(o => o.id === id);

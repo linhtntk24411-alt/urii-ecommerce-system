@@ -155,13 +155,13 @@
 
                             <!-- 6. Trạng thái (Mỗi trạng thái một màu chuẩn, rõ nét) -->
                             <td>
-                                @if (p.status === 'hot' || p.status === 'Bán chạy' || p.status === 'Đang Hot') {
+                                @if (getDisplayStatus(p) === 'hot') {
                                     <span class="badge rounded-pill px-3 py-1" style="background-color: #f8d7da !important; color: #840001 !important; font-weight: 600; font-size: 12px;">Bán chạy</span>
-                                } @else if (p.status === 'new' || p.status === 'Mới') {
+                                } @else if (getDisplayStatus(p) === 'new') {
                                     <span class="badge rounded-pill px-3 py-1" style="background-color: #d1e7dd !important; color: #0f5132 !important; font-weight: 600; font-size: 12px;">Mới</span>
-                                } @else if (p.status === 'sap-het' || p.status === 'Sắp hết hàng') {
+                                } @else if (getDisplayStatus(p) === 'sap-het') {
                                     <span class="badge rounded-pill px-3 py-1" style="background-color: #fff3cd !important; color: #664d03 !important; font-weight: 600; font-size: 12px;">Sắp hết hàng</span>
-                                } @else if (p.status === 'het-hang' || p.status === 'Hết hàng') {
+                                } @else if (getDisplayStatus(p) === 'het-hang') {
                                     <span class="badge rounded-pill px-3 py-1" style="background-color: #e2e3e5 !important; color: #383d41 !important; font-weight: 600; font-size: 12px;">Hết hàng</span>
                                 } @else {
                                     <span class="badge rounded-pill px-3 py-1" style="background-color: #c6efd2 !important; color: #029739 !important; font-weight: 600; font-size: 12px;">Bình thường</span>

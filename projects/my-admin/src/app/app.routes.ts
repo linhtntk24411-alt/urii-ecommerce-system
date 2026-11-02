@@ -5,6 +5,9 @@ import { OrdersAdmin } from './features/orders-admin/orders-admin';
 import { MapAdmin } from './features/map-admin/map-admin';
 import { SupportAdmin } from './features/support-admin/support-admin';
 import { LoginAdmin } from './features/login-admin/login-admin';
+import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { PromotionsComponent } from './features/promotions/promotions.component';
+import { UsersComponent } from './features/users/users.component';
 
 export const routes: Routes = [
   { path: '', component: LoginAdmin, pathMatch: 'full' },
@@ -12,8 +15,12 @@ export const routes: Routes = [
     path: '',
     component: AdminLayoutComponent,
     children: [
+      { path: 'dashboard', component: DashboardComponent },
       { path: 'products', component: ProductsAdmin },
       { path: 'orders', component: OrdersAdmin },
+      { path: 'coupons', component: PromotionsComponent },
+      { path: 'promotions', redirectTo: 'coupons', pathMatch: 'full' },
+      { path: 'users', component: UsersComponent },
       { path: 'library', component: MapAdmin },
       { path: 'chatbot', component: SupportAdmin },
       { path: '', redirectTo: 'products', pathMatch: 'full' }

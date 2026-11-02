@@ -1,0 +1,397 @@
+<div class="container-fluid py-2">
+  <!-- Toast Alert -->
+  <div *ngIf="toastMessage" class="alert alert-dismissible fade show shadow-sm mb-3"
+    [ngClass]="toastType === 'danger' ? 'alert-danger' : 'alert-success'" role="alert">
+    <i class="bi me-2" [ngClass]="toastType === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = ''"></button>
+  </div>
+
+  <!-- Summary Stat Cards (4 Columns) matching admin-coupons.html -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card">
+        <div class="stat-icon icon-total">
+          <i class="bi bi-ticket-perforated"></i>
+        </div>
+        <div class="stat-details">
+          <h6>Tổng mã giảm giá</h6>
+          <h3>{{ totalCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card">
+        <div class="stat-icon icon-active">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-details">
+          <h6>Đang hoạt động</h6>
+          <h3>{{ activeCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card">
+        <div class="stat-icon icon-expiring">
+          <i class="bi bi-clock-history"></i>
+        </div>
+        <div class="stat-details">
+          <h6>Sắp hết hạn</h6>
+          <h3>{{ expiringCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card">
+        <div class="stat-icon icon-expired">
+          <i class="bi bi-x-circle"></i>
+        </div>
+        <div class="stat-details">
+          <h6>Đã hết hạn</h6>
+          <h3>{{ expiredCount }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Action Bar -->
+  <div class="filter-bar">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <!-- Left Filters -->
+      <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+        <div class="search-input-box">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Tìm theo mã, tên..."
+              [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()">
+          </div>
+        </div>
+
+        <div class="select-filter-box">
+          <select class="form-select custom-select-arrow" [(ngModel)]="statusFilter" (change)="applyFilters()">
+            <option value="">Trạng thái (Tất cả)</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="expiring">Sắp hết hạn</option>
+            <option value="expired">Đã hết hạn</option>
+            <option value="inactive">Tạm ngưng</option>
+          </select>
+        </div>
+
+        <div class="date-filter-box">
+          <input type="date" class="form-control text-muted" title="Thời gian áp dụng"
+            [(ngModel)]="dateFilter" (change)="applyFilters()">
+        </div>
+
+        <div class="sort-filter-box">
+          <select class="form-select custom-select-arrow" [(ngModel)]="sortBy" (change)="applyFilters()">
+            <option value="newest">Sắp xếp: Mới nhất</option>
+            <option value="expiring">Sắp hết hạn</option>
+            <option value="discount-desc">Giảm giá cao - thấp</option>
+          </select>
+        </div>
+
+        <div class="action-btn-box d-flex gap-1">
+          <button class="btn btn-filter" type="button" (click)="applyFilters()">
+            <i class="bi bi-funnel me-1"></i> Lọc
+          </button>
+          <button *ngIf="searchQuery || statusFilter || dateFilter" class="btn btn-light border btn-reset" type="button"
+            title="Đặt lại bộ lọc" (click)="resetFilters()">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Action Button -->
+      <div class="action-add-box ms-auto">
+        <button type="button" class="btn btn-primary-custom" (click)="openCreateModal()">
+          <i class="bi bi-plus-lg"></i> Thêm mã giảm giá
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coupon Table Container matching admin-coupons.html -->
+  <div class="table-container">
+    <div class="table-responsive">
+      <table class="table table-coupons">
+        <thead>
+          <tr>
+            <th>Mã code</th>
+            <th>Tên chương trình</th>
+            <th>Mức giảm</th>
+            <th>Đơn tối thiểu</th>
+            <th>Thời gian áp dụng</th>
+            <th>Lượt dùng</th>
+            <th style="min-width: 150px;">Trạng thái</th>
+            <th class="text-end">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="isLoading">
+            <td colspan="8" class="text-center py-4 text-muted">
+              <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+              Đang tải dữ liệu mã giảm giá từ MongoDB...
+            </td>
+          </tr>
+
+          <tr *ngIf="!isLoading && pagedCoupons.length === 0">
+            <td colspan="8" class="text-center py-4 text-muted">
+              Không tìm thấy mã giảm giá phù hợp.
+            </td>
+          </tr>
+
+          <tr *ngFor="let c of pagedCoupons">
+            <td>
+              <span class="coupon-code">{{ c.code }}</span>
+            </td>
+            <td>
+              <div class="fw-bold text-dark">{{ c.name || ('Khuyến mãi ' + c.code) }}</div>
+              <small class="text-muted">{{ c.description || 'Áp dụng cho khách hàng Urii' }}</small>
+            </td>
+            <td class="fw-semibold text-success">{{ c.discountDisplay }}</td>
+            <td>{{ c.minOrderDisplay }}</td>
+            <td>
+              <div class="small">{{ c.dateRangeDisplay }}</div>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height: 6px; width: 60px;">
+                  <div class="progress-bar"
+                    [ngClass]="{
+                      'bg-success': c.computedStatus === 'active',
+                      'bg-warning': c.computedStatus === 'expiring',
+                      'bg-secondary': c.computedStatus === 'expired' || c.computedStatus === 'inactive'
+                    }"
+                    role="progressbar"
+                    [style.width.%]="c.usageRatio">
+                  </div>
+                </div>
+                <span class="small text-muted">{{ c.usageDisplay }}</span>
+              </div>
+            </td>
+            <td class="text-nowrap" style="min-width: 150px;">
+              <span class="badge-status"
+                [ngClass]="{
+                  'badge-active': c.computedStatus === 'active',
+                  'badge-expiring': c.computedStatus === 'expiring',
+                  'badge-expired': c.computedStatus === 'expired',
+                  'badge-inactive': c.computedStatus === 'inactive'
+                }">
+                {{ c.statusLabel }}
+              </span>
+            </td>
+            <td>
+              <div class="action-btns justify-content-end">
+                <button type="button" class="btn-action view" title="Xem chi tiết" (click)="openDetailModal(c)">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button type="button" class="btn-action edit" title="Chỉnh sửa" (click)="openEditModal(c)">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button type="button" class="btn-action delete" title="Xóa" (click)="confirmDelete(c)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="pagination-wrapper" *ngIf="filteredCoupons.length > 0">
+      <div class="text-muted small">
+        Hiển thị <strong>{{ showingFrom }}-{{ showingTo }}</strong> trong tổng số <strong>{{ filteredCoupons.length }}</strong> mã giảm giá
+      </div>
+      <nav aria-label="Page navigation">
+        <ul class="pagination">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" href="javascript:void(0)" (click)="changePage(currentPage - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          <li class="page-item" *ngFor="let page of pageNumbers" [class.active]="page === currentPage">
+            <a class="page-link" href="javascript:void(0)" (click)="changePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" href="javascript:void(0)" (click)="changePage(currentPage + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add / Edit Coupon (matching admin-coupon-form.html) -->
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="showFormModal">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-ticket-perforated me-2 text-success"></i>
+          {{ isEditing ? 'Chỉnh sửa mã giảm giá' : 'Thêm mã giảm giá mới' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeFormModal()"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <form (ngSubmit)="saveCoupon()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Mã giảm giá (Code) <span class="text-danger">*</span></label>
+              <input type="text" class="form-control text-uppercase" placeholder="VD: URII50K, SUMMER2026"
+                [(ngModel)]="form.code" name="code" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Tên chương trình <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" placeholder="VD: Siêu sale mùa hè"
+                [(ngModel)]="form.name" name="name" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold">Mô tả ngắn</label>
+              <input type="text" class="form-control" placeholder="VD: Giảm trực tiếp cho đơn hàng chăm sóc da..."
+                [(ngModel)]="form.description" name="description">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Loại khuyến mãi</label>
+              <select class="form-select" [(ngModel)]="form.type" name="type">
+                <option value="percent">Giảm theo phần trăm (%)</option>
+                <option value="fixed">Giảm số tiền cố định (VNĐ)</option>
+                <option value="shipping">Miễn phí vận chuyển</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                {{ form.type === 'percent' ? 'Mức giảm (%)' : 'Số tiền giảm (VNĐ)' }}
+              </label>
+              <input type="number" class="form-control" [(ngModel)]="form.discountValue" name="discountValue" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Giảm tối đa (VNĐ)</label>
+              <input type="number" class="form-control" [(ngModel)]="form.maxDiscount" name="maxDiscount" min="0"
+                placeholder="0 = Không giới hạn">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Đơn hàng tối thiểu (VNĐ)</label>
+              <input type="number" class="form-control" [(ngModel)]="form.minOrder" name="minOrder" min="0">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Tổng lượt sử dụng</label>
+              <input type="number" class="form-control" [(ngModel)]="form.quantity" name="quantity" min="1">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Trạng thái kích hoạt</label>
+              <select class="form-select" [(ngModel)]="form.isActive" name="isActive">
+                <option [ngValue]="true">Đang hoạt động</option>
+                <option [ngValue]="false">Tạm ngưng</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ngày bắt đầu</label>
+              <input type="date" class="form-control" [(ngModel)]="form.startDate" name="startDate">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ngày kết thúc</label>
+              <input type="date" class="form-control" [(ngModel)]="form.endDate" name="endDate">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+            <button type="button" class="btn btn-light px-4" (click)="closeFormModal()">Hủy</button>
+            <button type="submit" class="btn btn-primary-custom px-4">
+              <i class="bi bi-check2-circle"></i> {{ isEditing ? 'Lưu thay đổi' : 'Tạo mã giảm giá' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: View Coupon Detail -->
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="showDetailModal && selectedCoupon">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-header border-bottom-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold">Chi tiết mã giảm giá</h5>
+        <button type="button" class="btn-close" (click)="closeDetailModal()"></button>
+      </div>
+      <div class="modal-body px-4 pb-4">
+        <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: #F4F7F0;">
+          <div>
+            <span class="coupon-code fs-5">{{ selectedCoupon.code }}</span>
+            <div class="fw-bold mt-1">{{ selectedCoupon.name }}</div>
+          </div>
+          <span class="badge-status"
+            [ngClass]="{
+              'badge-active': selectedCoupon.computedStatus === 'active',
+              'badge-expiring': selectedCoupon.computedStatus === 'expiring',
+              'badge-expired': selectedCoupon.computedStatus === 'expired' || selectedCoupon.computedStatus === 'inactive'
+            }">
+            {{ selectedCoupon.statusLabel }}
+          </span>
+        </div>
+
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Mô tả:</span>
+            <span class="fw-semibold text-end">{{ selectedCoupon.description || 'Không có mô tả' }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Mức giảm:</span>
+            <span class="fw-bold text-success">{{ selectedCoupon.discountDisplay }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Đơn tối thiểu:</span>
+            <span class="fw-semibold">{{ selectedCoupon.minOrderDisplay }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Thời gian áp dụng:</span>
+            <span class="fw-semibold">{{ selectedCoupon.dateRangeDisplay }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Lượt đã sử dụng:</span>
+            <span class="fw-semibold">{{ selectedCoupon.usageDisplay }} ({{ selectedCoupon.usageRatio }}%)</span>
+          </li>
+        </ul>
+
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <button type="button" class="btn btn-light" (click)="closeDetailModal()">Đóng</button>
+          <button type="button" class="btn btn-primary-custom" (click)="closeDetailModal(); openEditModal(selectedCoupon)">
+            <i class="bi bi-pencil-square"></i> Chỉnh sửa
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Delete Confirmation (matching admin-coupons.html) -->
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="showDeleteModal && deletingCoupon">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-body text-center p-4">
+        <div class="text-danger mb-3">
+          <i class="bi bi-exclamation-circle" style="font-size: 3rem;"></i>
+        </div>
+        <h5 class="fw-bold mb-2">Xác nhận xóa</h5>
+        <p class="text-muted small mb-4">
+          Bạn có chắc chắn muốn xóa mã giảm giá <strong class="text-dark">{{ deletingCoupon.code }}</strong> không? Hành động này không thể hoàn tác.
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <button type="button" class="btn btn-light px-4" (click)="closeDeleteModal()">Hủy</button>
+          <button type="button" class="btn btn-danger px-4" style="border-radius: 8px;" (click)="deleteCoupon()">Xóa bỏ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

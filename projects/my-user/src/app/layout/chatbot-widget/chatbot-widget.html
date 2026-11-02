@@ -1,0 +1,86 @@
+<div class="chatbot-wrapper">
+    <section id="chat-window" class="chat-window" [class.hidden]="!isChatOpen">
+
+        <header class="chat-header">
+            <div class="avatar-container">
+                <img alt="Urii Mascot" class="bot-avatar-main" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKCfogwmg9DqaHtDqBGDh2EszSFoIZZh0_VFx8XTmsJvJQ6DvK6lTFpYUUQs4gkh03sU5B-CdJyukuKQI3rhRuKYPk2pen2JL5L9V5UXot14qDw1uz15BgBW1Jh-_7sxS2iwTvcE1_UVMGC7Wu4F-C4-vvBpA-xS01AIjeDjyDacX277JxX4u6OEYYqLtZWfvfEzFCFrgr5UPRDjkM8VL5YkMrne_f-MHbFHDpbTcGg_2j3mJ9MsLj1Od2yBZT76XH2Av_mLj0vLZu">
+                <span class="status-dot" [style.background-color]="statusDotColor ? '#22c55e' : '#f59e0b'"></span>
+            </div>
+            <div class="header-info">
+                <h2 class="bot-name">{{ botName }}</h2>
+                <p class="bot-status">{{ botStatus }}</p>
+            </div>
+            <nav class="header-actions">
+                <button id="btn-minimize" class="action-btn" (click)="closeChat()"><span class="material-symbols-outlined">remove</span></button>
+                <button id="btn-close" class="action-btn" (click)="closeChat()"><span class="material-symbols-outlined">close</span></button>
+            </nav>
+        </header>
+
+        <main id="chat-body" class="chat-body">
+            <div class="date-separator"><span>Hôm nay</span></div>
+
+            @for (msg of messages; track msg.timestamp) {
+                @if (msg.sender === 'bot' || msg.sender === 'admin') {
+                    <article class="message bot-message">
+                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKCfogwmg9DqaHtDqBGDh2EszSFoIZZh0_VFx8XTmsJvJQ6DvK6lTFpYUUQs4gkh03sU5B-CdJyukuKQI3rhRuKYPk2pen2JL5L9V5UXot14qDw1uz15BgBW1Jh-_7sxS2iwTvcE1_UVMGC7Wu4F-C4-vvBpA-xS01AIjeDjyDacX277JxX4u6OEYYqLtZWfvfEzFCFrgr5UPRDjkM8VL5YkMrne_f-MHbFHDpbTcGg_2j3mJ9MsLj1Od2yBZT76XH2Av_mLj0vLZu" class="bot-avatar-chat" alt="Bot">
+                        <div class="message-content-wrapper">
+                            <div class="message-bubble"><p [innerHTML]="msg.text.replace('\n', '<br>')"></p></div>
+                            @if (msg.chips && msg.chips.length > 0) {
+                                <div class="suggested-chips">
+                                    @for (chip of msg.chips; track chip.label) {
+                                        <button class="chip" (click)="handleChipClick(chip.action)">{{ chip.label }}</button>
+                                    }
+                                </div>
+                            }
+                            <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
+                        </div>
+                    </article>
+                } @else {
+                    <article class="message user-message">
+                        <div class="user-avatar-chat"><span class="material-symbols-outlined">person</span></div>
+                        <div class="message-content-wrapper">
+                            <div class="message-bubble"><p>{{ msg.text }}</p></div>
+                            <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
+                        </div>
+                    </article>
+                }
+            }
+
+            <div id="typing-indicator" class="typing-indicator" [class.hidden]="!isTyping">
+                <div class="typing-bubble">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="chat-footer">
+            <div class="input-container" style="position: relative;">
+                <button id="btn-plus" class="icon-btn" (click)="triggerFileInput()"><span class="material-symbols-outlined">add_circle</span></button>
+                <input type="file" id="chat-file-input" style="display: none;" multiple>
+                
+                <button id="btn-emoji" class="icon-btn" (click)="toggleEmojiPicker($event)"><span class="material-symbols-outlined">mood</span></button>
+                
+                <div id="emoji-picker" class="emoji-picker" [class.hidden]="!isEmojiPickerOpen">
+                    @for (emo of emojis; track emo) {
+                        <span (click)="addEmoji(emo)">{{ emo }}</span>
+                    }
+                </div>
+
+                <input id="chat-input" type="text" placeholder="Nhập tin nhắn..." [(ngModel)]="userMessageText" (keydown.enter)="sendMessage()">
+                <button id="btn-send" class="send-btn" (click)="sendMessage()">
+                    <span class="material-symbols-outlined filled-icon">send</span>
+                </button>
+            </div>
+            <p class="credits">Cung cấp bởi Urii AI Engine v2.0</p>
+        </footer>
+    </section>
+
+    <aside class="fab-container">
+        <button id="chat-fab" class="chat-fab" (click)="toggleChatWindow()">
+            <img src="/assets/chatbotai.png" alt="Chatbot" class="chat-fab-image">
+            <span class="pulse-ring"></span>
+        </button>
+    </aside>
+</div>

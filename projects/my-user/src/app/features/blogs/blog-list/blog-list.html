@@ -1,0 +1,131 @@
+<main class="blog-main">
+  <section class="blog-hero">
+    <div class="blog-hero__content">
+      <h1>Blog Cộng Đồng</h1>
+      <p>Khám phá thế giới sáng tạo đầy màu sắc với Perler Beads. Chia sẻ kinh nghiệm, hướng dẫn DIY và những mẫu thiết kế độc đáo từ cộng đồng Urii.</p>
+    </div>
+    <div class="blog-hero__cta">
+      <div class="blog-cta-hero">
+        <span class="material-symbols-outlined" style="font-size: 36px; color: #ffffff;">groups</span>
+        <div class="blog-cta-hero__text">
+          <h3>Tham gia cùng chúng tôi</h3>
+          <p>Chia sẻ tác phẩm của bạn và nhận những ưu đãi độc quyền từ Urii.</p>
+        </div>
+        <button class="btn-cta" (click)="goToCreateBlog()">Đăng bài ngay</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="blog-filter">
+    <div class="blog-filter__tabs">
+      <button class="blog-filter__tab" [class.active]="currentCategory === 'all'" (click)="selectCategory('all')">Tất cả</button>
+      <button class="blog-filter__tab" [class.active]="currentCategory === 'huong-dan-diy'" (click)="selectCategory('huong-dan-diy')">Hướng dẫn DIY</button>
+      <button class="blog-filter__tab" [class.active]="currentCategory === 'meo-vat'" (click)="selectCategory('meo-vat')">Mẹo vặt</button>
+      <button class="blog-filter__tab" [class.active]="currentCategory === 'y-tuong-thiet-ke'" (click)="selectCategory('y-tuong-thiet-ke')">Ý tưởng thiết kế</button>
+      <button class="blog-filter__tab" [class.active]="currentCategory === 'goc-nghe-thuat'" (click)="selectCategory('goc-nghe-thuat')">Góc nghệ thuật</button>
+    </div>
+    <div class="blog-filter__sort">
+      <span>Sắp xếp:</span>
+      <select (change)="onSortChange($event)">
+        <option value="newest">Mới nhất</option>
+        <option value="most-viewed">Xem nhiều nhất</option>
+        <option value="most-liked">Yêu thích nhất</option>
+      </select>
+    </div>
+  </div>
+
+  @if (currentCategory === 'all' && featuredBlog) {
+    <div class="blog-featured">
+      <!-- Featured Main -->
+      <div class="blog-featured__main" [routerLink]="['/blog-detail']" [queryParams]="{slug: featuredBlog.slug}">
+        <div class="blog-featured__image">
+          <img [src]="featuredBlog.image || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="featuredBlog.title" loading="lazy" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+          <span class="blog-featured__badge">Nổi bật</span>
+        </div>
+        <div class="blog-featured__body">
+          <div class="blog-featured__meta">
+            <img [src]="featuredBlog.avatar || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="featuredBlog.author" class="rounded-avatar" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+            <div>
+              <div class="name">{{ featuredBlog.author }}</div>
+              <div class="date">{{ featuredBlog.date }}</div>
+            </div>
+          </div>
+          <h2 class="blog-featured__title">{{ featuredBlog.title }}</h2>
+          <p class="blog-featured__excerpt">{{ featuredBlog.excerpt }}</p>
+          <div class="blog-featured__stats">
+            <span><span class="material-symbols-outlined" style="font-size: 16px; color: #840001; font-variation-settings: 'FILL' 1;">favorite</span> {{ featuredBlog.likes }}</span>
+            <span><span class="material-symbols-outlined" style="font-size: 16px;">chat_bubble</span> {{ featuredBlog.comments }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="blog-featured__sidebar">
+        <div class="blog-sidebar__card">
+          <h3>Bài viết mới nhất</h3>
+          <div class="blog-sidebar__list">
+            @for (blog of sidebarBlogs; track blog.id) {
+              <div class="blog-sidebar__item" [routerLink]="['/blog-detail']" [queryParams]="{slug: blog.slug}">
+                <img [src]="blog.image || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="blog.title" loading="lazy" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+                <div class="blog-sidebar__item-content">
+                  <div class="blog-sidebar__item-title">{{ blog.title }}</div>
+                  <div class="blog-sidebar__item-date">{{ blog.date }}</div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+ <div class="blog-grid-header">
+    <h2>Bài viết</h2>
+  </div>
+  <div class="blog-grid">
+    @for (blog of paginatedBlogs; track blog.id) {
+      <article class="blog-card" [routerLink]="['/blog-detail']" [queryParams]="{slug: blog.slug}">
+        <div class="blog-card__image">
+          <img [src]="blog.image || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="blog.title" loading="lazy" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+          <span class="blog-card__category" [style.background]="getCategoryColor(blog.categorySlug)">{{ blog.category }}</span>
+        </div>
+        <div class="blog-card__body">
+          <div class="blog-card__meta">
+            <img [src]="blog.avatar || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="blog.author" class="rounded-avatar" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+            <div>
+              <div class="name">{{ blog.author }}</div>
+              <div class="date">{{ blog.date }}</div>
+            </div>
+          </div>
+          <h3 class="blog-card__title">{{ blog.title }}</h3>
+          <p class="blog-card__excerpt">{{ blog.excerpt }}</p>
+          <div class="blog-card__footer">
+            <div class="blog-card__stats">
+              <span><span class="material-symbols-outlined" style="font-size: 16px; color: #840001; font-variation-settings: 'FILL' 1;">favorite</span> {{ blog.likes }}</span>
+              <span><span class="material-symbols-outlined" style="font-size: 16px;">chat_bubble</span> {{ blog.comments }}</span>
+            </div>
+            <div class="blog-card__bookmark" (click)="toggleBookmark(blog.id, $event)">
+              <span class="material-symbols-outlined" [style.font-variation-settings]="isBookmarked(blog.id) ? '\'FILL\' 1' : '\'FILL\' 0'">
+                bookmark
+              </span>
+            </div>
+          </div>
+        </div>
+      </article>
+    }
+  </div>
+
+  @if (totalPages > 1) {
+    <div class="blog-pagination">
+      <button [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+
+      @for (page of totalPagesArray; track page) {
+        <button [class.active]="page === currentPage" (click)="goToPage(page)">{{ page }}</button>
+      }
+
+      <button [disabled]="currentPage === totalPages" (click)="goToPage(currentPage + 1)">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+  }
+</main>

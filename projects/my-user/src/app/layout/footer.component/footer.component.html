@@ -1,0 +1,79 @@
+<footer class="urii-footer">
+    <div class="footer-main">
+        <div class="footer-brand">
+            <a routerLink="/" class="footer-logo">
+                <img src="assets/Urii-Logo.png" alt="Urii Logo">
+            </a>
+            <p class="footer-desc">
+                Nơi khơi nguồn đam mê sáng tạo Pixel Art với những hạt ủi nhiệt Perler Beads chất lượng nhất.
+            </p>
+            <div class="footer-socials">
+                <a href="https://www.facebook.com/UriiUicathegioi" class="social-link" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-facebook social-icon-bi"></i>
+                </a>
+                <a href="https://www.tiktok.com/@urii.uicathegioii" class="social-link" aria-label="TikTok" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-tiktok social-icon-bi"></i>
+                </a>
+                <a href="https://www.instagram.com/urii.uicathegioii/" class="social-link" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-instagram social-icon-bi"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-col" [class.active]="activeCol === 'kham-pha'" (click)="toggleAccordion('kham-pha')">
+            <h4>Khám phá</h4>
+            <div class="footer-content">
+                <ul>
+                    <li><a routerLink="/about">Về Urii</a></li>
+                    <li><a routerLink="/product">Sản phẩm mới</a></li>
+                    <li><a routerLink="/sample-maps">Thư viện map</a></li>
+                    <li><a routerLink="/blog-list">Blog cộng đồng</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-col" [class.active]="activeCol === 'ho-tro'" (click)="toggleAccordion('ho-tro')">
+            <h4>Hỗ trợ khách hàng</h4>
+            <div class="footer-content">
+                <ul>
+                    <li><a routerLink="/support" [queryParams]="{tab: 'support-center'}">Trung tâm hỗ trợ</a></li>
+                    <li><a routerLink="/support" [queryParams]="{tab: 'faq'}">Câu hỏi thường gặp</a></li>
+                    <li><a routerLink="/support" [queryParams]="{tab: 'privacy-policy'}">Chính sách bảo mật</a></li>
+                    <li><a routerLink="/support" [queryParams]="{tab: 'terms-of-service'}">Điều khoản sử dụng</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-col" [class.active]="activeCol === 'lien-he'" (click)="toggleAccordion('lien-he')">
+            <h4>Liên hệ</h4>
+            <div class="footer-content">
+                <div class="footer-contact">
+                    <div class="contact-item">
+                        <i class="bi bi-geo-alt-fill contact-icon-bi"></i>
+                        <span>Địa chỉ cửa hàng: 669 Đỗ Mười, KP3, Thủ Đức, TP. Hồ Chí Minh</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="bi bi-telephone-fill contact-icon-bi"></i>
+                        <span>Hotline: 0123 456 789</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="bi bi-envelope-fill contact-icon-bi"></i>
+                        <span>Email: uriiuicathegioi@gmail.com</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-div" *ngIf="isAdmin">
+            <a routerLink="/admin-dashboard" class="admin-link-btn">
+                <i class="bi bi-shield-lock"></i> Vào trang Quản trị
+            </a>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <div class="footer-bottom-inner">
+            © 2024 Urii Perler Beads. All rights reserved.
+        </div>
+    </div>
+</footer>

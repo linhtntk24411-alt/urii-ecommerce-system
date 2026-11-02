@@ -1,0 +1,98 @@
+<div class="blog-detail-wrapper">
+  <section class="blog-detail-banner" [style.background-image]="'url(' + blogData.image + ')'">
+    <div class="blog-detail-banner__overlay">
+      <div class="blog-detail-banner__container">
+        <span class="blog-detail-banner__category">{{ blogData.category }}</span>
+        <h1 class="blog-detail-banner__title">{{ blogData.title }}</h1>
+        <div class="blog-detail-banner__author">
+          <img class="blog-detail-banner__avatar" [src]="blogData.avatar" alt="Avatar" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'" />
+          <div>
+            <div class="blog-detail-banner__name">{{ blogData.author }}</div>
+            <div class="blog-detail-banner__date">{{ blogData.date }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <article class="blog-detail-content" [innerHTML]="blogData.content">
+  </article>
+  
+  <div class="blog-detail-actions">
+    <button class="blog-detail-actions__btn" (click)="toggleLike()">
+      <span class="material-symbols-outlined">favorite</span>
+      <span>{{ blogData.likes }}</span>
+    </button>
+    <button class="blog-detail-actions__btn" (click)="toggleBookmark()">
+      <span class="material-symbols-outlined">bookmark</span>
+      <span>Lưu</span>
+    </button>
+  </div>
+
+  <div class="blog-detail-tags">
+    <span class="blog-detail-tags__label">Tags:</span>
+    <a *ngFor="let tag of blogData.tags" href="#">#{{ tag }}</a>
+  </div>
+
+  <div class="blog-detail-author">
+    <img class="blog-detail-author__avatar" [src]="blogData.avatar" alt="Author" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'" />
+    <div class="blog-detail-author__info">
+      <h3 class="blog-detail-author__name">{{ blogData.author }}</h3>
+      <p class="blog-detail-author__desc">Thành viên yêu thích handmade và sáng tạo không ngừng.</p>
+      <div class="blog-detail-author__social">
+        <a href="#"><span class="material-symbols-outlined">language</span></a>
+        <a href="#"><span class="material-symbols-outlined">mail</span></a>
+      </div>
+    </div>
+  </div>
+
+  <section class="blog-detail-comments">
+    <h2 class="blog-detail-comments__title">Bình luận ({{ blogData.comments.length }})</h2>
+
+    <div class="blog-detail-comments__form">
+      <div class="blog-detail-comments__avatar-placeholder"></div>
+      <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+        <textarea class="blog-detail-comments__textarea" placeholder="Chia sẻ ý kiến của bạn..." rows="3"></textarea>
+        <button class="blog-detail-comments__submit" style="align-self:flex-end;">Gửi bình luận</button>
+      </div>
+    </div>
+
+    <div class="blog-detail-comments__list">
+      <div class="blog-detail-comments__item" *ngFor="let comment of blogData.comments">
+        <div class="comment-main">
+          <div class="blog-detail-comments__avatar">
+            <img [src]="comment.avatar" alt="Avatar" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'" />
+          </div>
+          <div style="flex:1;">
+            <div class="blog-detail-comments__header">
+              <span class="blog-detail-comments__username">{{ comment.author }}</span>
+              <span class="blog-detail-comments__time">{{ comment.time }}</span>
+            </div>
+            <p class="blog-detail-comments__text">{{ comment.content }}</p>
+            <button class="blog-detail-comments__reply">Trả lời</button>
+          </div>
+        </div>
+        <div class="comment-replies" *ngIf="comment.replies && comment.replies.length > 0">
+          <div class="blog-detail-comments__item" *ngFor="let reply of comment.replies">
+            <div class="comment-main">
+              <div class="blog-detail-comments__avatar">
+                <img [src]="reply.avatar" alt="Avatar" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'" />
+              </div>
+              <div style="flex:1;">
+                <div class="blog-detail-comments__header">
+                  <span class="blog-detail-comments__username">{{ reply.author }}</span>
+                  <span class="blog-detail-comments__time">{{ reply.time }}</span>
+                </div>
+                <p class="blog-detail-comments__text">{{ reply.content }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="blog-detail-comments__loadmore">
+      <button class="blog-detail-comments__loadmore-btn">Xem thêm</button>
+    </div>
+  </section>
+</div>

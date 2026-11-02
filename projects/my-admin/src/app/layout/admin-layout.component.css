@@ -453,6 +453,7 @@
   .admin-sidebar {
       position: fixed; /* Trả lại fixed cho mobile */
       left: -260px;
+      background-color: #FBF9F8 !important;
       transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
       z-index: 1050;
@@ -486,4 +487,21 @@
 /* Đảm bảo thẻ a của nav-item có position relative để vạch đỏ căn chuẩn bên phải */
 .sidebar-nav .nav-item {
     position: relative;
+}
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1040; /* Nằm dưới sidebar (1050) nhưng trên các thành phần khác */
+  backdrop-filter: blur(2px); /* Hiệu ứng mờ nhẹ cho đẹp mắt */
+  transition: opacity 0.3s ease;
+}
+
+/* Khi sidebar bật trên mobile thì hiện lớp phủ nền */
+.sidebar-overlay.active {
+  display: block;
 }

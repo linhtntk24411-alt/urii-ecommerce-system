@@ -1,0 +1,109 @@
+<div class="blog-create-wrapper">
+  <div class="blog-create-header">
+    <div>
+      <nav class="blog-create-breadcrumb">
+        <a routerLink="/blog-list">Blog cộng đồng</a>
+        <span class="material-symbols-outlined">chevron_right</span>
+        <span>Tạo bài viết mới</span>
+      </nav>
+      <h1 class="blog-create-title">Viết cảm hứng mới</h1>
+      <p class="blog-create-subtitle">Chia sẻ kỹ thuật, mẫu map hoặc hành trình sáng tạo hạt nhựa của bạn.</p>
+    </div>
+    <div class="blog-create-actions">
+      <button class="btn-draft" (click)="saveDraft()">Lưu bản nháp</button>
+      <button class="btn-publish" (click)="publish()">Xuất bản</button>
+    </div>
+  </div>
+
+  <div class="blog-create-editor" [formGroup]="blogForm">
+    
+    <div class="blog-create-metadata">
+      <div class="blog-create-metadata__left">
+        <div class="form-group">
+          <label>Tiêu đề bài viết</label>
+          <input type="text" formControlName="title" placeholder="Ví dụ: Cách ủi hạt Perler đều và đẹp cho người mới..." />
+        </div>
+        <div class="form-group">
+          <label>Chuyên mục</label>
+          <select formControlName="category">
+            <option value="huong-dan-diy">Hướng dẫn DIY</option>
+            <option value="y-tuong-thiet-ke">Ý tưởng thiết kế</option>
+            <option value="goc-nghe-thuat">Góc nghệ thuật</option>
+            <option value="meo-vat">Mẹo vặt</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="blog-create-metadata__right">
+        <div class="upload-area" (click)="triggerFileInput()">
+          <input type="file" #fileInput hidden (change)="onFileSelected($event)" accept="image/*" multiple />
+          <div class="upload-area__icon">
+            <span class="material-symbols-outlined">add_photo_alternate</span>
+          </div>
+          <div class="upload-area__text">
+            <p>Thêm ảnh vào bài viết</p>
+            <span>Kéo thả hoặc click để chọn ảnh</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="upload-preview-area" *ngIf="imagePreviewUrls.length > 0">
+      <div class="upload-preview__list">
+        <div class="preview-item" *ngFor="let url of imagePreviewUrls; let i = index">
+          <img [src]="url" alt="Preview" />
+          <span class="remove-image" (click)="removeImage(i)"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor-toolbar">
+      <button type="button" (click)="formatText('bold')" title="In đậm"><span class="material-symbols-outlined">format_bold</span></button>
+      <button type="button" (click)="formatText('italic')" title="In nghiêng"><span class="material-symbols-outlined">format_italic</span></button>
+      <button type="button" (click)="formatText('underline')" title="Gạch chân"><span class="material-symbols-outlined">format_underlined</span></button>
+      <span class="divider"></span>
+      <button type="button" (click)="formatText('formatBlock', 'h2')" title="Heading 2"><span class="material-symbols-outlined">format_h2</span></button>
+      <button type="button" (click)="formatText('formatBlock', 'h3')" title="Heading 3"><span class="material-symbols-outlined">format_h3</span></button>
+      <span class="divider"></span>
+      <button type="button" (click)="formatText('insertUnorderedList')" title="Danh sách"><span class="material-symbols-outlined">format_list_bulleted</span></button>
+      <button type="button" (click)="formatText('insertOrderedList')" title="Danh sách số"><span class="material-symbols-outlined">format_list_numbered</span></button>
+    </div>
+
+    <div class="editor-area">
+      <div class="editor-content" #editor contenteditable="true" (input)="onContentChange()" placeholder="Bắt đầu viết nội dung bài viết của bạn tại đây..."></div>
+    </div>
+
+    <div class="editor-footer">
+      <div class="editor-footer__left">
+        <span>Từ ngữ: {{ wordCount }}</span>
+        <span>{{ autoSaveMessage }}</span>
+      </div>
+      <div class="editor-footer__right">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>Sẵn sàng xuất bản</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="blog-create-seo">
+    <button type="button" class="seo-toggle" [class.open]="isSeoOpen" (click)="toggleSeo()">
+      <span class="material-symbols-outlined">sell</span>
+      <span>Cấu hình SEO &amp; Thẻ bài viết (Tùy chọn)</span>
+      <span class="material-symbols-outlined seo-arrow">arrow_forward</span>
+    </button>
+    <div class="seo-panel" *ngIf="isSeoOpen" [formGroup]="blogForm">
+      <div class="form-group">
+        <label>Meta Title</label>
+        <input type="text" formControlName="seoTitle" placeholder="Tiêu đề hiển thị trên công cụ tìm kiếm" />
+      </div>
+      <div class="form-group">
+        <label>Meta Description</label>
+        <textarea formControlName="seoDesc" rows="2" placeholder="Mô tả ngắn cho bài viết"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Thẻ (tags) cách nhau bằng dấu phẩy</label>
+        <input type="text" formControlName="tags" placeholder="Ví dụ: perler, handmade, hướng dẫn" />
+      </div>
+    </div>
+  </div>
+</div>

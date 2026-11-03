@@ -17,6 +17,9 @@ function commentFilter(value) {
   if (mongoose.isValidObjectId(value)) {
     filters.push({ _id: value });
   }
+  if (filters.length === 0) {
+    return { id: value };
+  }
   return { $or: filters };
 }
 

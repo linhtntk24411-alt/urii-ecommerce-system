@@ -1,4 +1,5 @@
 const Gallery = require('../models/Gallery');
+const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
@@ -8,7 +9,11 @@ function isRecord(value) {
 }
 
 function mapFilter(value) {
-  return { $or: [{ map_id: value }, { slug: value }] };
+  const filters = [{ map_id: value }, { slug: value }];
+  if (mongoose.isValidObjectId(value)) {
+    filters.push({ _id: value });
+  }
+  return { $or: filters };
 }
 
 exports.getAllGallery = async (req, res) => {

@@ -46,6 +46,12 @@ app.use((req, res, next) => {
   });
   next();
 });
+app.use('/images', express.static(path.join(__dirname, 'public/images'), {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0
+}));
+app.use('/api/images', express.static(path.join(__dirname, 'public/images'), {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0
+}));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0
 }));
@@ -60,7 +66,11 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/orders', orderRoutes);
 app.use('/api/order', orderRoutes);
+
 app.use('/api/custom-orders', customOrderRoutes);
+app.use('/api/custom-order', customOrderRoutes);
+app.use('/api/customer-orders', customOrderRoutes);
+app.use('/api/customer-order', customOrderRoutes);
 
 app.use('/api/blogs', blogRoutes);
 app.use('/api/blog', blogRoutes);
@@ -72,6 +82,10 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/comment', commentRoutes);
 
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/maps', galleryRoutes);
+app.use('/api/map', galleryRoutes);
+app.use('/api/sample-maps', galleryRoutes);
+app.use('/api/samplemaps', galleryRoutes);
 
 app.use('/api/saved-maps', savedMapRoutes);
 app.use('/api/saved-map', savedMapRoutes);

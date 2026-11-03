@@ -65,18 +65,42 @@ test('health endpoint responds without a database connection', async () => {
   assert.equal((await response.json()).status, 'OK');
 });
 
-test('only canonical gallery and custom order API paths are registered', async () => {
-  const legacyPaths = [
-    '/api/maps',
-    '/api/map',
-    '/api/sample-maps',
-    '/api/samplemaps',
-    '/api/customer-orders',
-    '/api/customer-order',
-    '/api/custom-order'
+test('configured API aliases resolve without 404', async () => {
+  const aliasRequests = [
+    ['/api/gallery', 'POST'],
+    ['/api/maps', 'POST'],
+    ['/api/map', 'POST'],
+    ['/api/sample-maps', 'POST'],
+    ['/api/samplemaps', 'POST'],
+    ['/api/promotions', 'POST'],
+    ['/api/promotion', 'POST'],
+    ['/api/voucher', 'POST'],
+    ['/api/savedmaps', 'GET'],
+    ['/api/saved_maps', 'GET'],
+    ['/api/saved-map', 'GET'],
+    ['/api/product', 'POST'],
+    ['/api/category', 'POST'],
+    ['/api/blog', 'POST'],
+    ['/api/order', 'POST'],
+    ['/api/comment', 'POST'],
+    ['/api/user', 'POST'],
+    ['/api/custom-orders', 'GET'],
+    ['/api/custom-order', 'GET'],
+    ['/api/customer-orders', 'GET'],
+    ['/api/customer-order', 'GET']
   ];
-  const responses = await Promise.all(legacyPaths.map((path) => fetch(`${baseUrl}${path}`)));
-  assert.ok(responses.every((response) => response.status === 404));
+  const responses = await Promise.all(aliasRequests.map(([path, method]) => (
+    fetch(`${baseUrl}${path}`, { method })
+  )));
+  assert.ok(responses.every((response) => response.status === 401));
+
+  const chatbotAlias = await fetch(`${baseUrl}/api/chatbot/match`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  });
+  assert.equal(chatbotAlias.status, 400);
+
 });
 
 test('serves image files from public/images', async () => {

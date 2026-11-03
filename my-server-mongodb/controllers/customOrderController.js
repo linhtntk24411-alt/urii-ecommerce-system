@@ -54,6 +54,15 @@ function validateCustomOrder(body, partial = false) {
 
 function customOrderFilter(value) {
   const filters = [{ id: value }];
+  if (typeof value === 'string') {
+    if (value.startsWith('custom-order-')) {
+      filters.push({ id: value.replace('custom-order-', 'customer-order-') });
+    } else if (value.startsWith('customer-order-')) {
+      filters.push({ id: value.replace('customer-order-', 'custom-order-') });
+    } else {
+      filters.push({ id: `customer-order-${value}` }, { id: `custom-order-${value}` });
+    }
+  }
   if (mongoose.isValidObjectId(value)) {
     filters.push({ _id: value });
   }

@@ -4,6 +4,14 @@ const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
 
+function productFilter(value) {
+  const filters = [{ id: value }, { slug: value }];
+  if (mongoose.isValidObjectId(value)) {
+    filters.push({ _id: value });
+  }
+  return { $or: filters };
+}
+
 exports.getAllProducts = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
@@ -17,9 +25,7 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
-    const product = mongoose.isValidObjectId(req.params.id)
-      ? await Product.findById(req.params.id).lean()
-      : await Product.findOne({ id: req.params.id }).lean();
+    const product = await Product.findOne(productFilter(req.params.id)).lean();
     if (!product) {
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
       return;
@@ -73,9 +79,7 @@ exports.updateProduct = async (req, res) => {
   delete updates.__v;
 
   try {
-    const filter = mongoose.isValidObjectId(req.params.id)
-      ? { _id: req.params.id }
-      : { id: req.params.id };
+    const filter = productFilter(req.params.id);
     const product = await Product.findOneAndUpdate(filter, updates, {
       new: true,
       runValidators: true
@@ -102,9 +106,7 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = mongoose.isValidObjectId(req.params.id)
-      ? await Product.findByIdAndDelete(req.params.id)
-      : await Product.findOneAndDelete({ id: req.params.id });
+    const product = await Product.findOneAndDelete(productFilter(req.params.id));
     if (!product) {
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
       return;
@@ -121,9 +123,7 @@ exports.deleteProduct = async (req, res) => {
 exports.updateStock = async (req, res) => {
   try {
     const { stock, delta, variantName } = req.body;
-    const filter = mongoose.isValidObjectId(req.params.id)
-      ? { _id: req.params.id }
-      : { id: req.params.id };
+    const filter = productFilter(req.params.id);
 
     const product = await Product.findOne(filter);
     if (!product) {

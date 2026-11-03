@@ -3,5 +3,10 @@
     "target": "http://localhost:3002",
     "secure": false,
     "changeOrigin": true
+  },
+  "/images": {
+    "target": "http://localhost:3002",
+    "secure": false,
+    "changeOrigin": true
   }
 }

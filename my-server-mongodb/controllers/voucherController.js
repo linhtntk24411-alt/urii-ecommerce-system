@@ -3,6 +3,14 @@ const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 
+function voucherFilter(value) {
+  const filters = [{ id: value }, { code: String(value).toUpperCase() }];
+  if (mongoose.isValidObjectId(value)) {
+    filters.push({ _id: value });
+  }
+  return { $or: filters };
+}
+
 function parseVoucherDate(value, endOfDay = false) {
   if (!value) {
     return null;
@@ -66,9 +74,9 @@ exports.getAllVouchers = async (req, res) => {
 
 exports.getVoucherById = async (req, res) => {
   try {
-    const voucher = mongoose.isValidObjectId(req.params.id)
-      ? await Voucher.findById(req.params.id).lean()
-      : await Voucher.findOne({ id: req.params.id }).lean();
+    const voucher = await Voucher.findOne(voucherFilter(req.params.id)).lean();
+
+
     if (!voucher) {
       res.status(404).json({ message: 'Không tìm thấy khuyến mãi.' });
       return;
@@ -123,9 +131,9 @@ exports.updateVoucher = async (req, res) => {
   }
 
   try {
-    const filter = mongoose.isValidObjectId(req.params.id)
-      ? { _id: req.params.id }
-      : { id: req.params.id };
+    const filter = voucherFilter(req.params.id);
+
+
     const voucher = await Voucher.findOneAndUpdate(filter, updates, {
       new: true,
       runValidators: true
@@ -151,9 +159,9 @@ exports.updateVoucher = async (req, res) => {
 
 exports.deleteVoucher = async (req, res) => {
   try {
-    const filter = mongoose.isValidObjectId(req.params.id)
-      ? { _id: req.params.id }
-      : { id: req.params.id };
+    const filter = voucherFilter(req.params.id);
+
+
     const voucher = await Voucher.findOneAndDelete(filter);
     if (!voucher) {
       res.status(404).json({ message: 'Không tìm thấy khuyến mãi.' });

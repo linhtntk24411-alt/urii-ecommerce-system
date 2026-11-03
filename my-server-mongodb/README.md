@@ -11,7 +11,7 @@ npm run dev
 
 The API listens on port `3002` by default. Static files in `public/` are served from the site root, so an image at `public/images/avatar_user.jpeg` is available at `/images/avatar_user.jpeg`. `CORS_ORIGINS` is a comma-separated list of allowed browser origins.
 
-Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT in the Socket.IO `auth.token` field; only admin tokens are accepted. Successful Product, Order, and User create, update, and delete operations broadcast `crud:changed` with `{ resource, action, id }`. Socket connections from origins outside `CORS_ORIGINS` are rejected.
+Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT in the Socket.IO `auth.token` field; only admin tokens are accepted. Successful Product, Order, User, Category, Blog, Comment, Gallery Map, Saved Map, Chat Session, and Chatbot FAQ create, update, and delete operations broadcast `crud:changed` with `{ resource, action, id }`. Socket connections from origins outside `CORS_ORIGINS` are rejected.
 
 ## Seed data
 
@@ -35,7 +35,7 @@ This command updates only stored passwords that are not already bcrypt hashes; i
 
 ## API access
 
-Product, category, blog, comment, map, and active-voucher reads are public. Product mutations and all order, user, admin-promotion, and dashboard endpoints require a bearer JWT for an admin account. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
+Product, category, blog, comment, gallery-map, FAQ, and active-voucher reads are public. Mutations for managed data, private user/order data, saved maps, chat administration, and dashboard endpoints require a bearer JWT for an admin account. Chat clients can create/update their session and send messages through the chat session endpoints. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
 
 Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin account:
 
@@ -45,6 +45,13 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 | Orders | `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`, `PUT/PATCH /api/orders/:id`, `DELETE /api/orders/:id` |
 | Users | `GET /api/users`, `GET /api/users/:id`, `POST /api/users`, `PUT/PATCH /api/users/:id`, `DELETE /api/users/:id` |
 | Promotions | `GET /api/vouchers/manage`, `GET /api/vouchers/:id`, `POST /api/vouchers`, `PUT/PATCH /api/vouchers/:id`, `DELETE /api/vouchers/:id` |
+| Categories | `GET /api/categories`, `GET /api/categories/:id`, `POST /api/categories`, `PUT/PATCH /api/categories/:id`, `DELETE /api/categories/:id` |
+| Blogs | `GET /api/blogs`, `GET /api/blogs/:slug`, `POST /api/blogs`, `PUT/PATCH /api/blogs/:id`, `DELETE /api/blogs/:id` |
+| Comments | `GET /api/comments`, `GET /api/comments/:id`, `POST /api/comments`, `PUT/PATCH /api/comments/:id`, `DELETE /api/comments/:id` |
+| Gallery maps | `GET /api/maps`, `GET /api/maps/:mapId`, `POST /api/maps`, `PUT/PATCH /api/maps/:mapId`, `DELETE /api/maps/:mapId` |
+| Saved maps | `GET /api/saved-maps`, `GET /api/saved-maps/:id`, `POST /api/saved-maps`, `PUT/PATCH /api/saved-maps/:id`, `DELETE /api/saved-maps/:id` |
+| Chatbot FAQs | `GET /api/chat/faqs`, `GET /api/chat/faqs/:id`, `POST /api/chat/faqs`, `PUT/PATCH /api/chat/faqs/:id`, `DELETE /api/chat/faqs/:id` |
+| Chat sessions | `GET /api/chat/sessions`, `GET /api/chat/sessions/:id`, `POST /api/chat/sessions`, `PUT/PATCH /api/chat/sessions/:id`, `DELETE /api/chat/sessions/:id` |
 | Dashboard | `GET /api/dashboard` |
 
-`GET /api/vouchers` remains public and only returns active, currently available vouchers. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.
+`GET /api/vouchers` remains public and only returns active, currently available vouchers. `POST /api/chat/match`, `POST /api/chat/sessions`, and `POST /api/chat/sessions/:id/messages` are public chatbot-client operations. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.

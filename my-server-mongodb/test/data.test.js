@@ -34,7 +34,9 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [Voucher, readJSON('vouchers.json').vouchers],
     [SavedMap, readJSON('saved_maps.json').maps],
     [ChatSession, readJSON('chatbot.json').sessions],
-    [ChatbotFaq, readJSON('chatbot.json').faqs]
+    [ChatSession, readJSON('chat_sessions.json')],
+    [ChatbotFaq, readJSON('chatbot.json').faqs],
+    [ChatbotFaq, readJSON('chatbot_faqs.json')]
   ];
 
   for (const [Model, documents] of fixtures) {

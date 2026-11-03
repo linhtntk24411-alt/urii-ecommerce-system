@@ -1,0 +1,123 @@
+[
+  {
+    "sessionId": "cs_001",
+    "userName": "Nguyễn Minh Anh",
+    "userEmail": "minhanh.uri@gmail.com",
+    "avatar": "images/avatar_user.jpeg",
+    "status": "waiting",
+    "unreadCount": 1,
+    "lastMessageTime": 1716196200000,
+    "messages": [
+      {
+        "text": "Xin chào Urii, mình vừa đặt đơn hàng #UR-82901 nhưng muốn đổi sang mẫu Perler Beads 72 màu có được không?",
+        "sender": "user",
+        "timestamp": 1716195600000
+      },
+      {
+        "text": "Chào bạn Minh Anh! Đơn hàng #UR-82901 của bạn hiện đang ở trạng thái 'Chờ xác nhận'. Bạn hoàn toàn có thể thay đổi sản phẩm trước khi kho đóng gói nhé.",
+        "sender": "bot",
+        "timestamp": 1716195620000
+      },
+      {
+        "text": "Dạ vâng, vậy bạn đổi giúp mình sang Bộ KIT Perler Beads 72 màu với ạ. Mình cần thêm nhân viên tư vấn xác nhận tiền chênh lệch.",
+        "sender": "user",
+        "timestamp": 1716196200000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_002",
+    "userName": "Trần Thị Bảo Ngọc",
+    "userEmail": "baongoc.uri@gmail.com",
+    "avatar": "images/avatar_user1.jpeg",
+    "status": "active",
+    "unreadCount": 0,
+    "lastMessageTime": 1716194400000,
+    "messages": [
+      {
+        "text": "Shop ơi, hạt ủi nhiệt 5mm và 2.6mm loại nào phù hợp cho bé 7 tuổi mới tập làm hơn ạ?",
+        "sender": "user",
+        "timestamp": 1716193200000
+      },
+      {
+        "text": "Chào Bảo Ngọc! Với bé 7 tuổi mới tập làm, Urii khuyên bạn nên chọn hạt 5mm (size Midi) vì hạt to, dễ gắp bằng nhíp nhựa và an toàn hơn cho các bé thao tác ạ.",
+        "sender": "bot",
+        "timestamp": 1716193215000
+      },
+      {
+        "text": "Nhân viên tư vấn đã bắt đầu tiếp quản cuộc trò chuyện.",
+        "sender": "admin",
+        "timestamp": 1716193500000,
+        "isSystemLog": true
+      },
+      {
+        "text": "Dạ chào chị Bảo Ngọc, em là Linh bên hỗ trợ Urii. Nếu bé thích mẫu công chúa hay pokemon thì bên em có set kèm mẫu in sẵn tỉ lệ 1:1 rất dễ làm ạ!",
+        "sender": "admin",
+        "timestamp": 1716194400000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_003",
+    "userName": "Lê Hoàng Long",
+    "userEmail": "hoanglong.design@gmail.com",
+    "avatar": "images/avatar_user2.jpeg",
+    "status": "waiting",
+    "unreadCount": 2,
+    "lastMessageTime": 1716195000000,
+    "messages": [
+      {
+        "text": "Mình muốn đặt thiết kế Map ủi nhiệt theo ảnh chụp chân dung kích thước 30x30cm.",
+        "sender": "user",
+        "timestamp": 1716194700000
+      },
+      {
+        "text": "Shop có nhận custom theo yêu cầu không và báo giá giúp mình với.",
+        "sender": "user",
+        "timestamp": 1716195000000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_004",
+    "userName": "Phạm Thu Thảo",
+    "userEmail": "thuthao.pham@gmail.com",
+    "avatar": "images/avatar_user3.jpeg",
+    "status": "ai",
+    "unreadCount": 0,
+    "lastMessageTime": 1716192000000,
+    "messages": [
+      {
+        "text": "Shop ơi có mã freeship không ạ?",
+        "sender": "user",
+        "timestamp": 1716191940000
+      },
+      {
+        "text": "Chào Thu Thảo! Bạn có thể nhập mã 'FREESHIP' để được giảm tối đa 30.000đ cho đơn hàng từ 200.000đ nhé!",
+        "sender": "bot",
+        "timestamp": 1716192000000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_005",
+    "userName": "Đỗ Quang Huy",
+    "userEmail": "quanghuy.uri@gmail.com",
+    "avatar": "images/avatar_user.jpeg",
+    "status": "ai",
+    "unreadCount": 0,
+    "lastMessageTime": 1716190200000,
+    "messages": [
+      {
+        "text": "Giao hàng hỏa tốc trong nội thành TP.HCM mất bao lâu vậy shop?",
+        "sender": "user",
+        "timestamp": 1716190140000
+      },
+      {
+        "text": "Dạ đơn hỏa tốc nội thành TP.HCM bên mình giao qua GrabExpress/Ahamove trong vòng 1-2 tiếng sau khi xác nhận đơn ạ!",
+        "sender": "bot",
+        "timestamp": 1716190200000
+      }
+    ]
+  }
+]

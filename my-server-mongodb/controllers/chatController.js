@@ -1,6 +1,21 @@
 const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
+const mongoose = require('mongoose');
+const { randomUUID } = require('node:crypto');
+const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function faqFilter(value) {
+  const filters = [{ id: value }];
+  if (mongoose.isValidObjectId(value)) {
+    filters.push({ _id: value });
+  }
+  return { $or: filters };
+}
 
 // Lấy danh sách tất cả các phiên chat (hỗ trợ lọc status & tìm kiếm)
 exports.getAllSessions = async (req, res) => {
@@ -51,6 +66,53 @@ exports.getSessionById = async (req, res) => {
   } catch (error) {
     console.error('Lỗi lấy phiên chat:', error);
     res.status(500).json({ message: 'Lỗi máy chủ.' });
+  }
+};
+
+exports.updateSession = async (req, res) => {
+  if (!isRecord(req.body)) {
+    res.status(400).json({ message: 'Dữ liệu phiên chat không hợp lệ.' });
+    return;
+  }
+
+  const allowedFields = [
+    'userName',
+    'userEmail',
+    'avatar',
+    'status',
+    'unreadCount',
+    'lastMessageTime',
+    'messages'
+  ];
+  const updates = Object.fromEntries(
+    allowedFields
+      .filter((field) => Object.hasOwn(req.body, field))
+      .map((field) => [field, req.body[field]])
+  );
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ message: 'Không có trường phiên chat hợp lệ để cập nhật.' });
+    return;
+  }
+
+  try {
+    const session = await ChatSession.findOneAndUpdate(
+      { sessionId: req.params.id },
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!session) {
+      res.status(404).json({ message: 'Không tìm thấy phiên chat.' });
+      return;
+    }
+    emitCrudChange('chat', 'update', session.sessionId);
+    res.json(session);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ message: 'Dữ liệu phiên chat không hợp lệ.' });
+      return;
+    }
+    console.error('Lỗi cập nhật phiên chat:', error);
+    res.status(500).json({ message: 'Không thể cập nhật phiên chat.' });
   }
 };
 
@@ -199,11 +261,106 @@ exports.deleteSession = async (req, res) => {
 // Lấy danh sách FAQ / Kịch bản phản hồi tự động của Bot
 exports.getFaqs = async (req, res) => {
   try {
-    const faqs = await ChatbotFaq.find().lean();
+    const { skip, limit } = getPagination(req.query);
+    const faqs = await ChatbotFaq.find().sort({ id: 1 }).skip(skip).limit(limit).lean();
     res.json(faqs);
   } catch (error) {
     console.error('Lỗi lấy danh sách FAQ:', error);
     res.status(500).json({ message: 'Không thể tải kịch bản chatbot.' });
+  }
+};
+
+exports.getFaqById = async (req, res) => {
+  try {
+    const faq = await ChatbotFaq.findOne(faqFilter(req.params.id)).lean();
+    if (!faq) {
+      res.status(404).json({ message: 'Không tìm thấy FAQ.' });
+      return;
+    }
+    res.json(faq);
+  } catch (error) {
+    console.error('Lỗi tải FAQ:', error);
+    res.status(500).json({ message: 'Không thể tải FAQ.' });
+  }
+};
+
+exports.createFaq = async (req, res) => {
+  if (!isRecord(req.body)) {
+    res.status(400).json({ message: 'Dữ liệu FAQ không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const faq = await ChatbotFaq.create({
+      ...req.body,
+      id: req.body.id || `faq-${randomUUID()}`
+    });
+    emitCrudChange('chatbotFaqs', 'created', faq.id);
+    res.status(201).json(faq);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ message: 'Dữ liệu FAQ không hợp lệ.' });
+      return;
+    }
+    if (error.code === 11000) {
+      res.status(409).json({ message: 'Mã FAQ đã tồn tại.' });
+      return;
+    }
+    console.error('Lỗi tạo FAQ:', error);
+    res.status(500).json({ message: 'Không thể tạo FAQ.' });
+  }
+};
+
+exports.updateFaq = async (req, res) => {
+  if (!isRecord(req.body)) {
+    res.status(400).json({ message: 'Dữ liệu FAQ không hợp lệ.' });
+    return;
+  }
+
+  const updates = { ...req.body };
+  delete updates._id;
+  delete updates.id;
+  delete updates.createdAt;
+  delete updates.updatedAt;
+  delete updates.__v;
+
+  try {
+    const faq = await ChatbotFaq.findOneAndUpdate(faqFilter(req.params.id), updates, {
+      new: true,
+      runValidators: true
+    });
+    if (!faq) {
+      res.status(404).json({ message: 'Không tìm thấy FAQ.' });
+      return;
+    }
+    emitCrudChange('chatbotFaqs', 'updated', faq.id);
+    res.json(faq);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ message: 'Dữ liệu FAQ không hợp lệ.' });
+      return;
+    }
+    if (error.code === 11000) {
+      res.status(409).json({ message: 'Mã FAQ đã tồn tại.' });
+      return;
+    }
+    console.error('Lỗi cập nhật FAQ:', error);
+    res.status(500).json({ message: 'Không thể cập nhật FAQ.' });
+  }
+};
+
+exports.deleteFaq = async (req, res) => {
+  try {
+    const faq = await ChatbotFaq.findOneAndDelete(faqFilter(req.params.id));
+    if (!faq) {
+      res.status(404).json({ message: 'Không tìm thấy FAQ.' });
+      return;
+    }
+    emitCrudChange('chatbotFaqs', 'deleted', faq.id);
+    res.json({ message: 'Đã xóa FAQ.' });
+  } catch (error) {
+    console.error('Lỗi xóa FAQ:', error);
+    res.status(500).json({ message: 'Không thể xóa FAQ.' });
   }
 };
 

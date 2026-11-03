@@ -157,12 +157,17 @@ async function seed() {
   await insertMissing(User, newUsers, 'email');
   await insertMissing(SavedMap, readJSON('saved_maps.json').maps, 'id');
 
-  const chatbotData = readJSON('chatbot.json');
-  if (chatbotData?.sessions) {
-    await insertMissing(ChatSession, chatbotData.sessions, 'sessionId');
+  const chatSessions = fs.existsSync(path.join(__dirname, 'data', 'chat_sessions.json'))
+    ? readJSON('chat_sessions.json')
+    : readJSON('chatbot.json')?.sessions;
+  if (chatSessions) {
+    await insertMissing(ChatSession, chatSessions, 'sessionId');
   }
-  if (chatbotData?.faqs) {
-    await insertMissing(ChatbotFaq, chatbotData.faqs, 'id');
+  const chatbotFaqs = fs.existsSync(path.join(__dirname, 'data', 'chatbot_faqs.json'))
+    ? readJSON('chatbot_faqs.json')
+    : readJSON('chatbot.json')?.faqs;
+  if (chatbotFaqs) {
+    await insertMissing(ChatbotFaq, chatbotFaqs, 'id');
   }
 
   if (generatedCredentialsPath) {

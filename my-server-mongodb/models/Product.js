@@ -9,13 +9,13 @@ const productSchema = new mongoose.Schema({
   isSale: Boolean,
   originalPrice: Number,
   currentPrice: Number,
-  stock: Number,
+  stock: { type: Number, default: 0, min: 0 },
   description: String,
   specifications: { type: Map, of: String },
   variants: [{ 
     name: String, 
     price: Number, 
-    stock: Number,
+    stock: { type: Number, default: 0, min: 0 },
     image: String // Link ảnh của từng biến thể
   }]
 }, { timestamps: true });

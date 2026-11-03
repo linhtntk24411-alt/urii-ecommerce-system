@@ -116,3 +116,54 @@ exports.deleteProduct = async (req, res) => {
     res.status(500).json({ message: 'Không thể xóa sản phẩm.' });
   }
 };
+
+// Cập nhật số lượng tồn kho của sản phẩm hoặc biến thể
+exports.updateStock = async (req, res) => {
+  try {
+    const { stock, delta, variantName } = req.body;
+    const filter = mongoose.isValidObjectId(req.params.id)
+      ? { _id: req.params.id }
+      : { id: req.params.id };
+
+    const product = await Product.findOne(filter);
+    if (!product) {
+      return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
+    }
+
+    if (variantName && Array.isArray(product.variants) && product.variants.length > 0) {
+      const variant = product.variants.find((v) => v.name === variantName);
+      if (!variant) {
+        return res.status(404).json({ message: `Không tìm thấy biến thể '${variantName}'.` });
+      }
+
+      if (typeof stock === 'number') {
+        variant.stock = Math.max(0, stock);
+      } else if (typeof delta === 'number') {
+        variant.stock = Math.max(0, (variant.stock || 0) + delta);
+      }
+
+      // Tự động tính lại tổng tồn kho của sản phẩm từ tất cả biến thể
+      product.stock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+    } else {
+      if (typeof stock === 'number') {
+        product.stock = Math.max(0, stock);
+      } else if (typeof delta === 'number') {
+        product.stock = Math.max(0, (product.stock || 0) + delta);
+      }
+    }
+
+    await product.save();
+    emitCrudChange('products', 'updated', product._id);
+
+    res.json({
+      success: true,
+      message: 'Cập nhật số lượng tồn kho thành công.',
+      productId: product.id,
+      stock: product.stock,
+      variants: product.variants
+    });
+  } catch (error) {
+    console.error('Lỗi cập nhật tồn kho:', error);
+    res.status(500).json({ message: 'Không thể cập nhật tồn kho.' });
+  }
+};

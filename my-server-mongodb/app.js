@@ -15,6 +15,7 @@ const mapRoutes = require('./routes/mapRoutes');
 const voucherRoutes = require('./routes/voucherRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const savedMapRoutes = require('./routes/savedMapRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
@@ -56,6 +57,7 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/maps', mapRoutes);
+app.use('/api/saved-maps', savedMapRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/chat', chatRoutes);

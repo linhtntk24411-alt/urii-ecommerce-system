@@ -10,6 +10,8 @@
     "seed:admin": "node seedAdmin.js",
     "migrate:passwords": "node migratePasswords.js",
     "convert:excel": "node convert_excel.js",
+    "upload": "node upload.js",
+    "upload:chatbot": "node upload_chatbot.js",
     "test": "node --test"
   },
   "keywords": [],

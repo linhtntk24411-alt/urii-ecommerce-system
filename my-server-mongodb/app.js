@@ -50,16 +50,43 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 app.use('/api/products', productRoutes);
+app.use('/api/product', productRoutes);
+
 app.use('/api/categories', categoryRoutes);
+app.use('/api/category', categoryRoutes);
+
 app.use('/api/auth', authRoutes);
+
 app.use('/api/orders', orderRoutes);
+app.use('/api/order', orderRoutes);
+
 app.use('/api/blogs', blogRoutes);
+app.use('/api/blog', blogRoutes);
+
 app.use('/api/users', userRoutes);
+app.use('/api/user', userRoutes);
+
 app.use('/api/comments', commentRoutes);
+app.use('/api/comment', commentRoutes);
+
 app.use('/api/maps', mapRoutes);
+app.use('/api/map', mapRoutes);
+app.use('/api/gallery', mapRoutes);
+app.use('/api/sample-maps', mapRoutes);
+app.use('/api/samplemaps', mapRoutes);
+
 app.use('/api/saved-maps', savedMapRoutes);
+app.use('/api/saved-map', savedMapRoutes);
+app.use('/api/savedmaps', savedMapRoutes);
+app.use('/api/saved_maps', savedMapRoutes);
+
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/voucher', voucherRoutes);
+app.use('/api/promotions', voucherRoutes);
+app.use('/api/promotion', voucherRoutes);
+
 app.use('/api/dashboard', dashboardRoutes);
+
 app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot', chatRoutes);
 

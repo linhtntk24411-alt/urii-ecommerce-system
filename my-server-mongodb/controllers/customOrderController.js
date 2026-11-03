@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
-const CustomerOrder = require('../models/CustomerOrder');
+const CustomOrder = require('../models/CustomOrder');
 const { getPagination } = require('../utils/pagination');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { emitCrudChange } = require('../realtime');
@@ -21,7 +21,7 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function validateCustomerOrder(body, partial = false) {
+function validateCustomOrder(body, partial = false) {
   if (!isRecord(body)) {
     return 'Dữ liệu yêu cầu đặt hàng không hợp lệ.';
   }
@@ -52,7 +52,7 @@ function validateCustomerOrder(body, partial = false) {
   return null;
 }
 
-function customerOrderFilter(value) {
+function customOrderFilter(value) {
   const filters = [{ id: value }];
   if (mongoose.isValidObjectId(value)) {
     filters.push({ _id: value });
@@ -60,17 +60,17 @@ function customerOrderFilter(value) {
   return { $or: filters };
 }
 
-exports.createCustomerOrder = async (req, res) => {
-  const validationError = validateCustomerOrder(req.body);
+exports.createCustomOrder = async (req, res) => {
+  const validationError = validateCustomOrder(req.body);
   if (validationError) {
     res.status(400).json({ message: validationError });
     return;
   }
 
   try {
-    const customerOrder = await CustomerOrder.create({
+    const customOrder = await CustomOrder.create({
       ...req.body,
-      id: `customer-order-${randomUUID()}`,
+      id: `custom-order-${randomUUID()}`,
       fullName: req.body.fullName.trim(),
       phone: req.body.phone.trim(),
       email: req.body.email.trim().toLowerCase(),
@@ -82,8 +82,8 @@ exports.createCustomerOrder = async (req, res) => {
       imageUrl: req.body.imageUrl.trim(),
       status: 'pending'
     });
-    emitCrudChange('customerOrders', 'created', customerOrder.id);
-    res.status(201).json(customerOrder);
+    emitCrudChange('customOrders', 'created', customOrder.id);
+    res.status(201).json(customOrder);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
@@ -98,36 +98,36 @@ exports.createCustomerOrder = async (req, res) => {
   }
 };
 
-exports.getAllCustomerOrders = async (req, res) => {
+exports.getAllCustomOrders = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
-    const customerOrders = await CustomerOrder.find()
+    const customOrders = await CustomOrder.find()
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
-    res.json(customerOrders);
+    res.json(customOrders);
   } catch (error) {
     console.error('Lỗi tải yêu cầu đặt hàng:', error);
     res.status(500).json({ message: 'Không thể tải danh sách yêu cầu đặt hàng.' });
   }
 };
 
-exports.getCustomerOrderById = async (req, res) => {
+exports.getCustomOrderById = async (req, res) => {
   try {
-    const customerOrder = await CustomerOrder.findOne(customerOrderFilter(req.params.id)).lean();
-    if (!customerOrder) {
+    const customOrder = await CustomOrder.findOne(customOrderFilter(req.params.id)).lean();
+    if (!customOrder) {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }
-    res.json(customerOrder);
+    res.json(customOrder);
   } catch (error) {
     console.error('Lỗi tải yêu cầu đặt hàng:', error);
     res.status(500).json({ message: 'Không thể tải yêu cầu đặt hàng.' });
   }
 };
 
-exports.updateCustomerOrder = async (req, res) => {
+exports.updateCustomOrder = async (req, res) => {
   if (!isRecord(req.body)) {
     res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
     return;
@@ -138,7 +138,7 @@ exports.updateCustomerOrder = async (req, res) => {
       .filter((field) => Object.hasOwn(req.body, field))
       .map((field) => [field, req.body[field]])
   );
-  const validationError = validateCustomerOrder(updates, true);
+  const validationError = validateCustomOrder(updates, true);
   if (validationError) {
     res.status(400).json({ message: validationError });
     return;
@@ -148,17 +148,17 @@ exports.updateCustomerOrder = async (req, res) => {
   }
 
   try {
-    const customerOrder = await CustomerOrder.findOneAndUpdate(
-      customerOrderFilter(req.params.id),
+    const customOrder = await CustomOrder.findOneAndUpdate(
+      customOrderFilter(req.params.id),
       updates,
       { new: true, runValidators: true }
     );
-    if (!customerOrder) {
+    if (!customOrder) {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }
-    emitCrudChange('customerOrders', 'updated', customerOrder.id);
-    res.json(customerOrder);
+    emitCrudChange('customOrders', 'updated', customOrder.id);
+    res.json(customOrder);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
@@ -169,14 +169,14 @@ exports.updateCustomerOrder = async (req, res) => {
   }
 };
 
-exports.deleteCustomerOrder = async (req, res) => {
+exports.deleteCustomOrder = async (req, res) => {
   try {
-    const customerOrder = await CustomerOrder.findOneAndDelete(customerOrderFilter(req.params.id));
-    if (!customerOrder) {
+    const customOrder = await CustomOrder.findOneAndDelete(customOrderFilter(req.params.id));
+    if (!customOrder) {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }
-    emitCrudChange('customerOrders', 'deleted', customerOrder.id);
+    emitCrudChange('customOrders', 'deleted', customOrder.id);
     res.json({ message: 'Đã xóa yêu cầu đặt hàng.' });
   } catch (error) {
     console.error('Lỗi xóa yêu cầu đặt hàng:', error);

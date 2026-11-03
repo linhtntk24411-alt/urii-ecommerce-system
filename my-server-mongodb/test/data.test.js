@@ -10,14 +10,14 @@ const Order = require('../models/Order');
 const SavedMap = require('../models/SavedMap');
 const Blog = require('../models/Blog');
 const Comment = require('../models/Comment');
-const SampleMap = require('../models/SampleMap');
+const Gallery = require('../models/Gallery');
 const Voucher = require('../models/Voucher');
 const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
-const CustomerOrder = require('../models/CustomerOrder');
+const CustomOrder = require('../models/CustomOrder');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
-const { insertMissing, prepareMaps, prepareNewUsers, seed } = require('../seed');
+const { insertMissing, prepareGallery, prepareNewUsers, seed } = require('../seed');
 const { buildProducts } = require('../convert_excel');
 const XLSX = require('xlsx');
 const { isVoucherAvailable } = require('../controllers/voucherController');
@@ -32,14 +32,14 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [Order, readJSON('orders.json').orders],
     [Blog, readJSON('blogs.json').blogs],
     [Comment, readJSON('comments.json').comments],
-    [SampleMap, readJSON('gallery.json')],
+    [Gallery, readJSON('gallery.json')],
     [Voucher, readJSON('vouchers.json').vouchers],
     [SavedMap, readJSON('saved_maps.json').maps],
     [ChatSession, readJSON('chatbot.json').sessions],
     [ChatSession, readJSON('chat_sessions.json')],
     [ChatbotFaq, readJSON('chatbot.json').faqs],
     [ChatbotFaq, readJSON('chatbot_faqs.json')],
-    [CustomerOrder, readJSON('customer_orders.json')]
+    [CustomOrder, readJSON('custom_orders.json')]
   ];
 
   for (const [Model, documents] of fixtures) {
@@ -54,9 +54,19 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
   assert.ok(readJSON('users.json').users.every((user) => user.password === '$GENERATE'));
 });
 
-test('customer order model accepts the requested fields and validates image URL', async () => {
-  const customerOrder = new CustomerOrder({
-    id: 'customer-order-test',
+test('gallery fixture and mongoose model use the gallery collection name', () => {
+  assert.equal(Gallery.modelName, 'Gallery');
+  assert.equal(Gallery.collection.collectionName, 'gallery');
+});
+
+test('custom order model uses the custom_orders collection', () => {
+  assert.equal(CustomOrder.modelName, 'CustomOrder');
+  assert.equal(CustomOrder.collection.collectionName, 'custom_orders');
+});
+
+test('custom order model accepts the requested fields and validates image URL', async () => {
+  const customOrder = new CustomOrder({
+    id: 'custom-order-test',
     fullName: 'Nguyễn An',
     phone: '0901234567',
     email: 'an@example.com',
@@ -67,11 +77,11 @@ test('customer order model accepts the requested fields and validates image URL'
     imageNote: 'Cắt nền giúp mình',
     imageUrl: 'https://example.com/uploaded-image.jpg'
   });
-  await assert.doesNotReject(customerOrder.validate());
-  assert.equal(customerOrder.status, 'pending');
+  await assert.doesNotReject(customOrder.validate());
+  assert.equal(customOrder.status, 'pending');
   await assert.rejects(
-    new CustomerOrder({
-      id: 'customer-order-invalid',
+    new CustomOrder({
+      id: 'custom-order-invalid',
       fullName: 'Nguyễn An',
       phone: '0901234567',
       email: 'an@example.com',
@@ -84,17 +94,17 @@ test('customer order model accepts the requested fields and validates image URL'
   );
 });
 
-test('customer order fixtures use existing customers and images available on this backend', () => {
-  const customerOrders = readJSON('customer_orders.json');
+test('custom order fixtures use existing customers and images available on this backend', () => {
+  const customOrders = readJSON('custom_orders.json');
   const existingCustomers = new Set(
     readJSON('users.json').users
       .filter((user) => user.role === 'user')
       .map((user) => `${user.name}|${user.phone}|${user.email}`)
   );
 
-  assert.ok(customerOrders.length > 1);
-  assert.ok(new Set(customerOrders.map((order) => order.email)).size > 1);
-  for (const order of customerOrders) {
+  assert.ok(customOrders.length > 1);
+  assert.ok(new Set(customOrders.map((order) => order.email)).size > 1);
+  for (const order of customOrders) {
     assert.ok(
       existingCustomers.has(`${order.fullName}|${order.phone}|${order.email}`),
       `${order.email} must match an existing customer`
@@ -158,7 +168,7 @@ test('seed inserts only missing records and does not replace existing data', asy
 });
 
 test('map seed creates slugs compatible with legacy unique slug indexes', () => {
-  const maps = prepareMaps([{ map_id: 'M01', map_name: 'Map mẫu' }]);
+  const maps = prepareGallery([{ map_id: 'M01', map_name: 'Map mẫu' }]);
   assert.equal(maps[0].slug, 'map-m01');
 });
 

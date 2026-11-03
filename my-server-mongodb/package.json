@@ -8,9 +8,12 @@
     "dev": "nodemon index.js",
     "seed": "node seed.js",
     "seed:admin": "node seedAdmin.js",
+    "migrate:gallery": "node migrateGalleryCollection.js",
+    "migrate:custom-orders": "node migrateCustomOrderCollection.js",
     "migrate:passwords": "node migratePasswords.js",
     "convert:excel": "node convert_excel.js",
     "upload": "node upload.js",
+    "upload:custom-orders": "node upload.js custom-orders",
     "upload:chatbot": "node upload_chatbot.js",
     "test": "node --test"
   },

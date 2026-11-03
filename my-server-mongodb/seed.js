@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
-const SampleMap = require('./models/SampleMap');
+const Gallery = require('./models/Gallery');
 const Voucher = require('./models/Voucher');
 const Order = require('./models/Order');
 const Blog = require('./models/Blog');
@@ -16,7 +16,7 @@ const User = require('./models/User');
 const SavedMap = require('./models/SavedMap');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
-const CustomerOrder = require('./models/CustomerOrder');
+const CustomOrder = require('./models/CustomOrder');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -80,7 +80,7 @@ async function insertMissing(Model, documents, key) {
   console.log(`Đã kiểm tra ${documents.length} bản ghi ${Model.modelName}; dữ liệu đang có được giữ nguyên.`);
 }
 
-function prepareMaps(maps) {
+function prepareGallery(maps) {
   return maps.map((map) => ({
     ...map,
     slug: map.slug || `map-${String(map.map_id).toLowerCase()}`
@@ -146,18 +146,18 @@ async function seed() {
   await insertMissing(Order, readJSON('orders.json').orders, 'id');
   await insertMissing(Blog, readJSON('blogs.json').blogs, 'slug');
   await insertMissing(Comment, readJSON('comments.json').comments, 'id');
-  const maps = prepareMaps(readJSON('gallery.json'));
-  await SampleMap.bulkWrite(maps.map(({ map_id, slug }) => ({
+  const gallery = prepareGallery(readJSON('gallery.json'));
+  await Gallery.bulkWrite(gallery.map(({ map_id, slug }) => ({
     updateOne: {
       filter: { map_id, slug: null },
       update: { $set: { slug } }
     }
   })), { ordered: true });
-  await insertMissing(SampleMap, maps, 'map_id');
+  await insertMissing(Gallery, gallery, 'map_id');
   await insertMissing(Voucher, readJSON('vouchers.json').vouchers, 'code');
   await insertMissing(User, newUsers, 'email');
   await insertMissing(SavedMap, readJSON('saved_maps.json').maps, 'id');
-  await insertMissing(CustomerOrder, readJSON('customer_orders.json'), 'id');
+  await insertMissing(CustomOrder, readJSON('custom_orders.json'), 'id');
 
   const chatSessions = fs.existsSync(path.join(__dirname, 'data', 'chat_sessions.json'))
     ? readJSON('chat_sessions.json')
@@ -192,7 +192,7 @@ if (require.main === module) {
 
 module.exports = {
   insertMissing,
-  prepareMaps,
+  prepareGallery,
   prepareNewUsers,
   saveGeneratedCredentials,
   seed

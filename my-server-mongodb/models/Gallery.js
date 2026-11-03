@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const mapSchema = new mongoose.Schema({
+const gallerySchema = new mongoose.Schema({
   map_id: { type: String, required: true, unique: true },
   slug: String,
   map_name: { type: String, required: true },
@@ -17,4 +17,4 @@ const mapSchema = new mongoose.Schema({
   related_product_ids: [String],
   time: String
 }, { timestamps: true });
-module.exports = mongoose.model('SampleMap', mapSchema);
+module.exports = mongoose.model('Gallery', gallerySchema, 'gallery');

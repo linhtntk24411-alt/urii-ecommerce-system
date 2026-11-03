@@ -65,6 +65,20 @@ test('health endpoint responds without a database connection', async () => {
   assert.equal((await response.json()).status, 'OK');
 });
 
+test('only canonical gallery and custom order API paths are registered', async () => {
+  const legacyPaths = [
+    '/api/maps',
+    '/api/map',
+    '/api/sample-maps',
+    '/api/samplemaps',
+    '/api/customer-orders',
+    '/api/customer-order',
+    '/api/custom-order'
+  ];
+  const responses = await Promise.all(legacyPaths.map((path) => fetch(`${baseUrl}${path}`)));
+  assert.ok(responses.every((response) => response.status === 404));
+});
+
 test('serves image files from public/images', async () => {
   const response = await fetch(`${baseUrl}/images/avatar-non.jpg`);
   assert.equal(response.status, 200);
@@ -86,10 +100,10 @@ test('requires admin authentication for private reads and all CRUD mutations', a
     fetch(`${baseUrl}/api/orders`, { method: 'POST' }),
     fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'PUT' }),
     fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'DELETE' }),
-    fetch(`${baseUrl}/api/customer-orders`),
-    fetch(`${baseUrl}/api/customer-orders/customer-order-1`, { method: 'GET' }),
-    fetch(`${baseUrl}/api/customer-orders/customer-order-1`, { method: 'PUT' }),
-    fetch(`${baseUrl}/api/customer-orders/customer-order-1`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/custom-orders`),
+    fetch(`${baseUrl}/api/custom-orders/custom-order-1`, { method: 'GET' }),
+    fetch(`${baseUrl}/api/custom-orders/custom-order-1`, { method: 'PUT' }),
+    fetch(`${baseUrl}/api/custom-orders/custom-order-1`, { method: 'DELETE' }),
     fetch(`${baseUrl}/api/vouchers/manage`),
     fetch(`${baseUrl}/api/vouchers`, { method: 'POST' }),
     fetch(`${baseUrl}/api/vouchers/WELCOME10`, { method: 'PATCH' }),
@@ -103,9 +117,9 @@ test('requires admin authentication for private reads and all CRUD mutations', a
     fetch(`${baseUrl}/api/comments`, { method: 'POST' }),
     fetch(`${baseUrl}/api/comments/1`, { method: 'PUT' }),
     fetch(`${baseUrl}/api/comments/1`, { method: 'DELETE' }),
-    fetch(`${baseUrl}/api/maps`, { method: 'POST' }),
-    fetch(`${baseUrl}/api/maps/map-1`, { method: 'PATCH' }),
-    fetch(`${baseUrl}/api/maps/map-1`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/gallery`, { method: 'POST' }),
+    fetch(`${baseUrl}/api/gallery/map-1`, { method: 'PATCH' }),
+    fetch(`${baseUrl}/api/gallery/map-1`, { method: 'DELETE' }),
     fetch(`${baseUrl}/api/saved-maps`),
     fetch(`${baseUrl}/api/saved-maps`, { method: 'POST' }),
     fetch(`${baseUrl}/api/saved-maps/map-1`, { method: 'PATCH' }),
@@ -121,8 +135,8 @@ test('requires admin authentication for private reads and all CRUD mutations', a
   assert.ok(responses.every((response) => response.status === 401));
 });
 
-test('rejects malformed public customer order submissions', async () => {
-  const response = await fetch(`${baseUrl}/api/customer-orders`, {
+test('rejects malformed public custom order submissions', async () => {
+  const response = await fetch(`${baseUrl}/api/custom-orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fullName: 'Nguyễn An' })

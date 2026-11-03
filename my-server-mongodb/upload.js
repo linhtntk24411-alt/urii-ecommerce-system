@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 // Import tất cả Models
 const Product = require('./models/Product');
 const Category = require('./models/Category');
-const SampleMap = require('./models/SampleMap');
+const Gallery = require('./models/Gallery');
 const Voucher = require('./models/Voucher');
 const Order = require('./models/Order');
 const Blog = require('./models/Blog');
@@ -16,6 +16,7 @@ const User = require('./models/User');
 const SavedMap = require('./models/SavedMap');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
+const CustomOrder = require('./models/CustomOrder');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -23,10 +24,10 @@ function readJSON(fileName) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-function prepareMaps(maps) {
-  return maps.map((map) => ({
-    ...map,
-    slug: map.slug || `map-${String(map.map_id).toLowerCase()}`
+function prepareGallery(gallery) {
+  return gallery.map((item) => ({
+    ...item,
+    slug: item.slug || `map-${String(item.map_id).toLowerCase()}`
   }));
 }
 
@@ -61,6 +62,13 @@ const MODULES = [
     getData: () => readJSON('orders.json')?.orders
   },
   {
+    name: 'Custom Orders (Đơn hàng thiết kế riêng)',
+    aliases: ['custom-orders'],
+    model: CustomOrder,
+    key: 'id',
+    getData: () => readJSON('custom_orders.json')
+  },
+  {
     name: 'Comments (Bình luận)',
     aliases: ['comment', 'comments', 'binhluan'],
     model: Comment,
@@ -68,13 +76,13 @@ const MODULES = [
     getData: () => readJSON('comments.json')?.comments
   },
   {
-    name: 'Gallery (Mẫu Map)',
-    aliases: ['map', 'maps', 'gallery', 'samplemap', 'maumap'],
-    model: SampleMap,
+    name: 'Gallery',
+    aliases: ['gallery'],
+    model: Gallery,
     key: 'map_id',
     getData: () => {
       const data = readJSON('gallery.json');
-      return data ? prepareMaps(data) : null;
+      return data ? prepareGallery(data) : null;
     }
   },
   {
@@ -144,36 +152,31 @@ const MODULES = [
 ];
 
 async function syncModule(mod) {
-  try {
-    let docs = typeof mod.getData === 'function' ? await mod.getData() : null;
-    if (!docs || !Array.isArray(docs) || docs.length === 0) {
-      console.log(`⚠️  [${mod.name}]: Không có dữ liệu để tải lên.`);
-      return;
+  const docs = typeof mod.getData === 'function' ? await mod.getData() : null;
+  if (!docs || !Array.isArray(docs) || docs.length === 0) {
+    throw new Error(`[${mod.name}] Không có dữ liệu hợp lệ để tải lên.`);
+  }
+
+  const operations = docs.map((doc) => ({
+    updateOne: {
+      filter: { [mod.key]: doc[mod.key] },
+      update: { $set: doc },
+      upsert: true
     }
+  }));
 
-    const operations = docs.map((doc) => ({
-      updateOne: {
-        filter: { [mod.key]: doc[mod.key] },
-        update: { $set: doc },
-        upsert: true
-      }
-    }));
+  const result = await mod.model.bulkWrite(operations, { ordered: false });
+  const inserted = result.upsertedCount || 0;
+  const modified = result.modifiedCount || 0;
+  const matched = result.matchedCount || 0;
+  const totalOnAtlas = await mod.model.countDocuments();
 
-    const result = await mod.model.bulkWrite(operations, { ordered: false });
-    const inserted = result.upsertedCount || 0;
-    const modified = result.modifiedCount || 0;
-    const matched = result.matchedCount || 0;
-    const totalOnAtlas = await mod.model.countDocuments();
-
-    if (inserted > 0) {
-      console.log(`✨ [${mod.name}]: ĐÃ THÊM MỚI ${inserted} bản ghi! (Tổng hiện có: ${totalOnAtlas})`);
-    } else if (modified > 0) {
-      console.log(`🔄 [${mod.name}]: Đã cập nhật ${modified} bản ghi thay đổi. (Tổng hiện có: ${totalOnAtlas})`);
-    } else {
-      console.log(`✔️  [${mod.name}]: Đã đồng bộ, không có mục mới (${matched} bản ghi giữ nguyên).`);
-    }
-  } catch (err) {
-    console.error(`❌ [${mod.name}] Lỗi:`, err.message);
+  if (inserted > 0) {
+    console.log(`✨ [${mod.name}]: ĐÃ THÊM MỚI ${inserted} bản ghi! (Tổng hiện có: ${totalOnAtlas})`);
+  } else if (modified > 0) {
+    console.log(`🔄 [${mod.name}]: Đã cập nhật ${modified} bản ghi thay đổi. (Tổng hiện có: ${totalOnAtlas})`);
+  } else {
+    console.log(`✔️  [${mod.name}]: Đã đồng bộ, không có mục mới (${matched} bản ghi giữ nguyên).`);
   }
 }
 
@@ -200,22 +203,24 @@ async function main() {
     targets = MODULES.filter((m) => m.aliases.includes(targetArg));
     if (targets.length === 0) {
       console.log(`⚠️  Không tìm thấy module khớp với "${targetArg}".`);
-      console.log(`👉 Bạn có thể dùng: products, categories, blogs, orders, comments, maps, vouchers, chatbot, users, hoặc không truyền tham số để sync tất cả.\n`);
+      console.log(`👉 Bạn có thể dùng: products, categories, blogs, orders, custom-orders, comments, gallery, vouchers, chatbot, users, hoặc không truyền tham số để sync tất cả.\n`);
       await mongoose.disconnect();
       return;
     }
   }
 
   console.log(`📦 Bắt đầu kiểm tra và tải dữ liệu mới lên MongoDB Atlas...\n`);
-  for (const mod of targets) {
-    await syncModule(mod);
+  try {
+    for (const mod of targets) {
+      await syncModule(mod);
+    }
+
+    console.log('\n====================================================');
+    console.log('🎉 ĐỒNG BỘ HOÀN TẤT! DỮ LIỆU ĐÃ SẴN SÀNG TRÊN MONGO ATLAS.');
+    console.log('====================================================');
+  } finally {
+    await mongoose.disconnect();
   }
-
-  console.log('\n====================================================');
-  console.log('🎉 ĐỒNG BỘ HOÀN TẤT! DỮ LIỆU ĐÃ SẴN SÀNG TRÊN MONGO ATLAS.');
-  console.log('====================================================');
-
-  await mongoose.disconnect();
 }
 
 main().catch((err) => {

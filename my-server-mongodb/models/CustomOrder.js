@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { isValidImageUrl } = require('../utils/imageUrl');
 
-const customerOrderSchema = new mongoose.Schema({
+const customOrderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   fullName: { type: String, required: true, trim: true },
   phone: { type: String, required: true, trim: true },
@@ -26,4 +26,4 @@ const customerOrderSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('CustomerOrder', customerOrderSchema);
+module.exports = mongoose.model('CustomOrder', customOrderSchema, 'custom_orders');

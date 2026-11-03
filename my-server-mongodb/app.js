@@ -11,12 +11,12 @@ const orderRoutes = require('./routes/orderRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const userRoutes = require('./routes/userRoutes');
 const commentRoutes = require('./routes/commentRoutes');
-const mapRoutes = require('./routes/mapRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
 const voucherRoutes = require('./routes/voucherRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const savedMapRoutes = require('./routes/savedMapRoutes');
-const customerOrderRoutes = require('./routes/customerOrderRoutes');
+const customOrderRoutes = require('./routes/customOrderRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
@@ -60,8 +60,7 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/orders', orderRoutes);
 app.use('/api/order', orderRoutes);
-app.use('/api/customer-orders', customerOrderRoutes);
-app.use('/api/customer-order', customerOrderRoutes);
+app.use('/api/custom-orders', customOrderRoutes);
 
 app.use('/api/blogs', blogRoutes);
 app.use('/api/blog', blogRoutes);
@@ -72,11 +71,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/comment', commentRoutes);
 
-app.use('/api/maps', mapRoutes);
-app.use('/api/map', mapRoutes);
-app.use('/api/gallery', mapRoutes);
-app.use('/api/sample-maps', mapRoutes);
-app.use('/api/samplemaps', mapRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 app.use('/api/saved-maps', savedMapRoutes);
 app.use('/api/saved-map', savedMapRoutes);

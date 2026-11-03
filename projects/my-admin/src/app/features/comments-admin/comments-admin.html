@@ -1,0 +1,319 @@
+<div class="admin-main-content">
+    <div style="width: 100%; max-width: 1400px; margin: 0 auto;">
+        
+        <!-- HEADER -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="fw-bold mb-1" style="font-size: 28px;">Quản lý bình luận</h1>
+                <p class="text-muted small m-0">Quản lý đánh giá sản phẩm và kiểm duyệt bình luận blog.</p>
+            </div>
+        </div>
+
+        <div *ngIf="commentsLoadError" class="alert alert-warning" role="alert">
+            {{ commentsLoadError }}
+            <button type="button" class="btn btn-sm btn-outline-warning ms-2" (click)="loadComments()">
+                Tải lại
+            </button>
+        </div>
+
+        <!-- Stats Cards (Tổng quan) -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                    <div class="card-body d-flex align-items-center gap-3 p-3">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-3 text-primary fs-4"><i class="bi bi-chat-dots"></i></div>
+                        <div><h6 class="text-muted small mb-1 fw-normal">Tổng bình luận</h6><h3 class="fw-bold mb-0 text-dark">{{ totalCount }}</h3></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                    <div class="card-body d-flex align-items-center gap-3 p-3">
+                        <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success fs-4"><i class="bi bi-check-circle"></i></div>
+                        <div><h6 class="text-muted small mb-1 fw-normal">Đã duyệt / Đã trả lời</h6><h3 class="fw-bold mb-0 text-success">{{ approvedCount }}</h3></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                    <div class="card-body d-flex align-items-center gap-3 p-3">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning fs-4"><i class="bi bi-clock"></i></div>
+                        <div><h6 class="text-muted small mb-1 fw-normal">Chờ duyệt / Chưa trả lời</h6><h3 class="fw-bold mb-0 text-warning">{{ pendingCount }}</h3></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                    <div class="card-body d-flex align-items-center gap-3 p-3">
+                        <div class="bg-danger bg-opacity-10 p-3 rounded-3 text-danger fs-4"><i class="bi bi-flag"></i></div>
+                        <div><h6 class="text-muted small mb-1 fw-normal">Bị gắn cờ vi phạm</h6><h3 class="fw-bold mb-0 text-danger">{{ flaggedCount }}</h3></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar Chung -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 p-3">
+            <div class="card-body p-0">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" [(ngModel)]="searchKeyword" class="form-control border-start-0 ps-0" placeholder="Tìm nội dung, tác giả...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select [(ngModel)]="filterType" class="form-select bg-light border-0">
+                            <option value="">Tất cả loại</option>
+                            <option value="product">Đánh giá sản phẩm</option>
+                            <option value="order">Phản hồi đơn hàng</option>
+                            <option value="blog">Bình luận blog</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select [(ngModel)]="filterStatus" class="form-select bg-light border-0">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="approved">Đã duyệt / Đã trả lời</option>
+                            <option value="pending">Chờ duyệt / Chưa trả lời</option>
+                            <option value="flagged">Vi phạm</option>
+                        </select>
+                    </div>
+                    <div class="col-md-auto">
+                        <button class="btn btn-danger w-100 fw-bold px-4" (click)="onFilterClick()">
+                            <i class="bi bi-funnel me-1"></i> Lọc
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG 1: ĐÁNH GIÁ SẢN PHẨM & PHẢN HỒI ĐƠN HÀNG -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white mb-5">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                <h4 class="fw-bold text-primary m-0"><i class="bi bi-star"></i> Đánh giá sản phẩm & Phản hồi đơn hàng</h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive p-0">
+                    <table class="table table-hover align-middle mb-0 table-comments">
+                        <thead class="text-muted small fw-bold bg-light">
+                            <tr>
+                                <th class="ps-4 py-3">Nội dung</th>
+                                <th class="py-3">Tác giả</th>
+                                <th class="py-3">Thuộc về</th>
+                                <th class="py-3">Ngày gửi</th>
+                                <th class="py-3">Trạng thái</th>
+                                <th class="pe-4 text-end py-3">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody class="fs-6">
+                            <tr *ngFor="let c of getPaginatedReviews()">
+                                <td class="ps-4">
+                                    <div class="comment-content" [title]="c.content">{{ c.content }}</div>
+                                    <div class="text-muted small mt-1">Trên: <strong>{{ c.targetName }}</strong></div>
+                                </td>
+                                <td>
+                                    <div class="author-info">
+                                        <img class="author-avatar bg-light border rounded-circle"
+                                             [src]="getAuthorAvatarUrl(c.authorAvatar)"
+                                             [alt]="'Ảnh đại diện ' + c.authorName"
+                                             (error)="onAuthorAvatarError($event)"
+                                             style="width:32px; height:32px;">
+                                        <span class="author-name">{{ c.authorName }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ c.targetType === 'product' ? 'Sản phẩm' : 'Đơn hàng' }}</td>
+                                <td>{{ c.date }}</td>
+                                <td>
+                                    <span class="badge-status" [ngClass]="statusMap[c.status]?.class || 'badge-status-pending'">
+                                        {{ statusMap[c.status]?.text || c.status }}
+                                    </span>
+                                </td>
+                                <td class="pe-4">
+                                    <div class="action-btn-group">
+                                        <button class="btn-action-icon text-secondary" (click)="viewCommentDetail(c)" title="Xem chi tiết bình luận">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <div class="dropdown d-inline-block">
+                                            <button class="btn-action-icon" data-bs-toggle="dropdown">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'approved'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'approved')">Đã trả lời</a></li>
+                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'pending'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'pending')">Chưa trả lời</a></li>
+                                                <li><a class="dropdown-item text-danger" href="javascript:void(0)" (click)="changeStatus(c.id, 'flagged')">Vi phạm</a></li>
+                                            </ul>
+                                        </div>
+                                        <button class="btn-action-icon text-danger" (click)="deleteComment(c.id)"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr *ngIf="getFilteredReviews().length === 0">
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    {{ isLoading ? 'Đang tải bình luận...' : 'Không có đánh giá nào.' }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="text-muted small">
+                        Hiển thị {{ getFilteredReviews().length > 0 ? (currentReviewPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ mathMin(currentReviewPage * ITEMS_PER_PAGE, getFilteredReviews().length) }} trên tổng số {{ getFilteredReviews().length }} đánh giá
+                    </div>
+                    <nav *ngIf="getReviewTotalPages() > 1">
+                        <ul class="pagination pagination-sm m-0">
+                            <li class="page-item" [ngClass]="{'disabled': currentReviewPage === 1}">
+                                <a class="page-link" href="javascript:void(0)" (click)="changeReviewPage(currentReviewPage - 1)">«</a>
+                            </li>
+                            <li class="page-item" *ngFor="let p of [].constructor(getReviewTotalPages()); let i = index" [ngClass]="{'active': currentReviewPage === i + 1}">
+                                <a class="page-link" href="javascript:void(0)" (click)="changeReviewPage(i + 1)">{{ i + 1 }}</a>
+                            </li>
+                            <li class="page-item" [ngClass]="{'disabled': currentReviewPage === getReviewTotalPages()}">
+                                <a class="page-link" href="javascript:void(0)" (click)="changeReviewPage(currentReviewPage + 1)">»</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG 2: BÌNH LUẬN BLOG -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white mb-5">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                <h4 class="fw-bold text-success m-0"><i class="bi bi-pencil-square"></i> Bình luận Blog</h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive p-0">
+                    <table class="table table-hover align-middle mb-0 table-comments">
+                        <thead class="text-muted small fw-bold bg-light">
+                            <tr>
+                                <th class="ps-4 py-3">Nội dung</th>
+                                <th class="py-3">Tác giả</th>
+                                <th class="py-3">Blog</th>
+                                <th class="py-3">Ngày gửi</th>
+                                <th class="py-3">Trạng thái</th>
+                                <th class="pe-4 text-end py-3">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody class="fs-6">
+                            <tr *ngFor="let c of getPaginatedBlogs()">
+                                <td class="ps-4">
+                                    <div class="comment-content" [title]="c.content">{{ c.content }}</div>
+                                    <div class="text-muted small mt-1">Trên blog: <strong>{{ c.targetName }}</strong></div>
+                                </td>
+                                <td>
+                                    <div class="author-info">
+                                        <img class="author-avatar bg-light border rounded-circle"
+                                             [src]="getAuthorAvatarUrl(c.authorAvatar)"
+                                             [alt]="'Ảnh đại diện ' + c.authorName"
+                                             (error)="onAuthorAvatarError($event)"
+                                             style="width:32px; height:32px;">
+                                        <span class="author-name">{{ c.authorName }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ c.targetName }}</td>
+                                <td>{{ c.date }}</td>
+                                <td>
+                                    <span class="badge-status" [ngClass]="statusMap[c.status]?.class || 'badge-status-pending'">
+                                        {{ statusMap[c.status]?.text || c.status }}
+                                    </span>
+                                </td>
+                                <td class="pe-4">
+                                    <div class="action-btn-group">
+                                        <button class="btn-action-icon text-secondary" (click)="viewCommentDetail(c)" title="Xem chi tiết bình luận">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <div class="dropdown d-inline-block">
+                                            <button class="btn-action-icon" data-bs-toggle="dropdown">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'approved'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'approved')">Đã duyệt</a></li>
+                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'pending'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'pending')">Chờ duyệt</a></li>
+                                                <li><a class="dropdown-item text-danger" href="javascript:void(0)" (click)="changeStatus(c.id, 'flagged')">Vi phạm</a></li>
+                                            </ul>
+                                        </div>
+                                        <button class="btn-action-icon text-danger" (click)="deleteComment(c.id)"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr *ngIf="getFilteredBlogs().length === 0">
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    {{ isLoading ? 'Đang tải bình luận...' : 'Không có bình luận blog nào.' }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="text-muted small">
+                        Hiển thị {{ getFilteredBlogs().length > 0 ? (currentBlogPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ mathMin(currentBlogPage * ITEMS_PER_PAGE, getFilteredBlogs().length) }} trên tổng số {{ getFilteredBlogs().length }} bình luận
+                    </div>
+                    <nav *ngIf="getBlogTotalPages() > 1">
+                        <ul class="pagination pagination-sm m-0">
+                            <li class="page-item" [ngClass]="{'disabled': currentBlogPage === 1}">
+                                <a class="page-link" href="javascript:void(0)" (click)="changeBlogPage(currentBlogPage - 1)">«</a>
+                            </li>
+                            <li class="page-item" *ngFor="let p of [].constructor(getBlogTotalPages()); let i = index" [ngClass]="{'active': currentBlogPage === i + 1}">
+                                <a class="page-link" href="javascript:void(0)" (click)="changeBlogPage(i + 1)">{{ i + 1 }}</a>
+                            </li>
+                            <li class="page-item" [ngClass]="{'disabled': currentBlogPage === getBlogTotalPages()}">
+                                <a class="page-link" href="javascript:void(0)" (click)="changeBlogPage(currentBlogPage + 1)">»</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- Modal Xem Chi Tiết Bình Luận -->
+<div class="modal fade" id="commentDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-chat-quote text-danger me-2"></i> Chi tiết bình luận</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" *ngIf="selectedComment">
+                <!-- Thông tin tài khoản bình luận -->
+                <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                    <img class="author-avatar bg-light border rounded-circle shadow-sm"
+                         [src]="getAuthorAvatarUrl(selectedComment.authorAvatar)"
+                         [alt]="'Ảnh đại diện ' + selectedComment.authorName"
+                         (error)="onAuthorAvatarError($event)"
+                         style="width:48px; height:48px;">
+                    <div>
+                        <h6 class="fw-bold mb-1 text-dark" style="font-size: 16px;">{{ selectedComment.authorName }}</h6>
+                        <span class="text-muted small"><i class="bi bi-clock me-1"></i> Ngày gửi: {{ selectedComment.date }}</span>
+                    </div>
+                </div>
+
+                <!-- Thuộc về đâu (Sản phẩm / Đơn hàng / Blog) -->
+                <div class="mb-3">
+                    <span class="text-muted small d-block mb-1">Thuộc về đối tượng:</span>
+                    <strong class="text-primary fs-6"><i class="bi bi-tag me-1"></i> {{ selectedComment.targetName }}</strong>
+                </div>
+
+                <!-- Nội dung bình luận chi tiết -->
+                <div class="mb-3">
+                    <span class="text-muted small d-block mb-1">Nội dung chi tiết:</span>
+                    <div class="p-3 bg-light rounded-3 text-dark fs-6" style="line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;">
+                        {{ selectedComment.content }}
+                    </div>
+                </div>
+
+                <!-- Trạng thái -->
+                <div>
+                    <span class="text-muted small d-block mb-1">Trạng thái kiểm duyệt:</span>
+                    <span class="badge-status" [ngClass]="statusMap[selectedComment.status]?.class || 'badge-status-pending'">
+                        {{ statusMap[selectedComment.status]?.text || selectedComment.status }}
+                    </span>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 bg-light py-3 px-4">
+                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>

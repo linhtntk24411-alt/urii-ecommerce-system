@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminApiService } from '../../core/services/admin-api.service';
+import { AdminApiService, AdminUser } from '../../core/services/admin-api.service';
 
 declare var bootstrap: any;
 
@@ -73,6 +73,7 @@ export class OrdersAdmin implements OnInit {
   };
 
   ngOnInit(): void {
+    this.loadCustomerAvatars();
     this.loadOrders();
   }
 
@@ -118,6 +119,10 @@ export class OrdersAdmin implements OnInit {
 
         this.originalOrders = orderList.map((item: any) => {
           const name = item.userName || item.address?.name || 'Khách hàng';
+          const customerImage = item.customerImage
+            || item.userAvatar
+            || this.customerAvatars.get(this.normalizeCustomerName(name))
+            || 'images/avatar-non.jpg';
 
           const rawStatus = String(item.statusType || item.status || '')
             .trim()
@@ -145,6 +150,7 @@ export class OrdersAdmin implements OnInit {
             ...item,
             id: String(item.id || item._id || ''),
             customerName: name,
+            customerImage,
             customerAvatar: name.length >= 2
               ? name.substring(0, 2).toUpperCase()
               : 'KH',
@@ -173,6 +179,54 @@ export class OrdersAdmin implements OnInit {
         this.changeDetectorRef.markForCheck();
       }
     });
+  }
+
+  private customerAvatars = new Map<string, string>();
+
+  private loadCustomerAvatars(): void {
+    this.setCustomerAvatars(this.adminApi.getInitialUsers());
+    this.adminApi.getUsers()
+      .then(users => this.setCustomerAvatars(users))
+      .catch(error => console.error('Lỗi tải ảnh đại diện khách hàng:', error));
+  }
+
+  private setCustomerAvatars(users: AdminUser[]): void {
+    this.customerAvatars = new Map(
+      users
+        .filter(user => user.avatar)
+        .map(user => [this.normalizeCustomerName(user.name), user.avatar as string])
+    );
+
+    const applyAvatar = (order: any) => ({
+      ...order,
+      customerImage: this.customerAvatars.get(this.normalizeCustomerName(order.customerName))
+        || order.customerImage
+        || 'images/avatar-non.jpg'
+    });
+
+    this.originalOrders = this.originalOrders.map(applyAvatar);
+    this.orders = this.orders.map(applyAvatar);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private normalizeCustomerName(name: string): string {
+    return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  }
+
+  getCustomerAvatarUrl(imagePath?: string): string {
+    const path = imagePath || 'images/avatar-non.jpg';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+      return path;
+    }
+    return this.adminApi.getLibraryMapImageUrl(path);
+  }
+
+  onCustomerAvatarError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    const fallbackUrl = this.getCustomerAvatarUrl('images/avatar-non.jpg');
+    if (image.src !== fallbackUrl) {
+      image.src = fallbackUrl;
+    }
   }
 
   saveOrders() {

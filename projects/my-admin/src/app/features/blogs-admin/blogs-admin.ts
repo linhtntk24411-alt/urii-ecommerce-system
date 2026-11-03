@@ -42,6 +42,8 @@ export class BlogsAdmin implements OnInit {
   newAuthor: string = '';
   newContent: string = '';
   previewThumbnail: string | null = null;
+  // Biến lưu thông tin bài viết đang xem chi tiết
+  selectedBlog: BlogAdminItem | null = null;
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -183,16 +185,6 @@ export class BlogsAdmin implements OnInit {
     }
   }
 
-  // Ẩn / Hiện bài viết
-  toggleVisibility(id: number | string): void {
-    const blog = this.blogs.find(b => b.id === id || b._id === id);
-    if (blog) {
-      blog.visible = blog.visible !== undefined ? !blog.visible : false;
-      // TODO: Gửi API cập nhật trạng thái visible lên MongoDB Cloud ở đây
-      this.cdr.detectChanges();
-    }
-  }
-
   // Thay đổi trạng thái qua Dropdown
   changeStatus(id: number | string, newStatus: BlogStatus): void {
     const blog = this.blogs.find(b => b.id === id || b._id === id);
@@ -210,6 +202,16 @@ export class BlogsAdmin implements OnInit {
     this.previewThumbnail = null;
     const modalElement = document.getElementById('createBlogModal');
     if (modalElement) {
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+    }
+  }
+  // Mở modal xem chi tiết bài viết
+  viewBlogDetail(blog: BlogAdminItem): void {
+    this.selectedBlog = blog;
+    const modalElement = document.getElementById('blogDetailModal');
+    if (modalElement) {
+      // @ts-ignore
       const modal = new bootstrap.Modal(modalElement);
       modal.show();
     }
@@ -271,4 +273,5 @@ export class BlogsAdmin implements OnInit {
 
     return this.adminApiService.getLibraryMapImageUrl(normalizedPath);
   }
+  
 }

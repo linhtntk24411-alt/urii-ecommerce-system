@@ -84,31 +84,19 @@ ngOnInit() {
   this.adminApi.loadProducts();
 }
   updateStats() {
-  this.statTotal = this.products.length;
+    this.statTotal = this.products.length;
 
-  this.statWarning = this.products.filter(p => {
-    const stock = Number((p as any).stock ?? 0);
-    return stock > 0 && stock < 20;
-  }).length;
+    // Đếm Sắp hết hàng (stock từ 1 đến dưới 15)
+    this.statWarning = this.products.filter(p => this.getDisplayStatus(p) === 'sap-het').length;
 
-  this.statDanger = this.products.filter(p => {
-    const stock = Number((p as any).stock ?? 0);
-    return stock === 0;
-  }).length;
+    // Đếm Hết hàng (stock = 0)
+    this.statDanger = this.products.filter(p => this.getDisplayStatus(p) === 'het-hang').length;
 
-  this.statNew = this.products.filter(p => {
-    const createdAt = (p as any).createdAt;
+    // Đếm Sản phẩm mới
+    this.statNew = this.products.filter(p => this.getDisplayStatus(p) === 'new').length;
 
-    if (!createdAt) return false;
-
-    const createdDate = new Date(createdAt).getTime();
-    const daysDiff = (Date.now() - createdDate) / (1000 * 60 * 60 * 24);
-
-    return daysDiff >= 0 && daysDiff <= 7;
-  }).length;
-
-  // Chưa có dữ liệu số lượng bán nên chưa thể xác định sản phẩm hot
-  this.statHot = 0;
+    // Đếm Sản phẩm hot
+    this.statHot = this.products.filter(p => this.getDisplayStatus(p) === 'hot').length;
   }
 
   onFilter() {
@@ -126,30 +114,9 @@ ngOnInit() {
 
       let matchStatus = true;
       if (this.filterStatus) {
-        const prod: any = p; // Ép kiểu sang any để TypeScript không báo lỗi thiếu trường
-        const stock = prod.stock ?? 0;
-        
-        // Tính sản phẩm mới (tạo trong vòng 7 ngày gần đây)
-        let isNew = false;
-        if (prod.createdAt) {
-          const createdDate = new Date(prod.createdAt).getTime();
-          const now = new Date().getTime();
-          const daysDiff = (now - createdDate) / (1000 * 3600 * 24);
-          isNew = daysDiff <= 7;
-        }
-
-        // Kiểm tra điều kiện từng trạng thái
-        if (this.filterStatus === 'het-hang') {
-          matchStatus = (stock === 0);
-        } else if (this.filterStatus === 'sap-het') {
-          matchStatus = (stock > 0 && stock < 20);
-        } else if (this.filterStatus === 'normal') {
-          matchStatus = (stock >= 20 && stock <= 30); // Hoặc điều kiện stock > 30 tùy bạn chọn
-        } else if (this.filterStatus === 'new') {
-          matchStatus = isNew;
-        } else if (this.filterStatus === 'hot') {
-          matchStatus = (prod.isSale === true);
-        }
+        // Lấy đúng trạng thái thực tế của sản phẩm từ hàm chuẩn hóa chung
+        const realStatus = this.getDisplayStatus(p);
+        matchStatus = (realStatus === this.filterStatus);
       }
 
       // 4. Lọc theo mức giá
@@ -242,24 +209,117 @@ ngOnInit() {
       });
     }
   }
+  // Hàm xử lý khi người dùng chọn file
+  onFileImport(event: any): void {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+
+    // 1. KIỂM TRA ĐỊNH DẠNG FILE (Chỉ nhận .csv)
+    if (!fileName.endsWith('.csv')) {
+      alert('❌ Lỗi định dạng! Vui lòng chọn file có định dạng .csv (Bạn có thể chuyển file Excel .xlsx sang .csv trước khi tải lên).');
+      event.target.value = '';
+      return;
+    }
+
+    // Đọc nội dung file CSV
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      const text = e.target.result;
+      this.parseCSVAndImport(text);
+      event.target.value = ''; // Reset input để có thể chọn lại file cũ nếu cần
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  // Hàm phân tích và kiểm tra tính hợp lệ của các cột dữ liệu
+  parseCSVAndImport(csvText: string): void {
+    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    if (lines.length < 2) {
+      alert('❌ Lỗi: File CSV trống hoặc không có dữ liệu sản phẩm!');
+      return;
+    }
+
+    // 2. KIỂM TRA TÊN CÁC CỘT DỮ LIỆU (HEADER)
+    // Đọc dòng đầu tiên và tách tên các cột
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    
+    // Đặt các cột bắt buộc phải có trong file để hệ thống nhận diện đúng
+    const requiredColumns = ['name', 'category', 'stock']; 
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+
+    if (missingColumns.length > 0) {
+      alert(`❌ Lỗi tên cột dữ liệu!\nFile của bạn đang thiếu các cột bắt buộc sau: [ ${missingColumns.join(', ')} ]\nHãy đảm bảo tên các cột trùng khớp với dữ liệu hiện tại (Ví dụ: name, category, stock, currentPrice, image...).`);
+      return;
+    }
+
+    let successCount = 0;
+
+    // Duyệt qua từng dòng dữ liệu sản phẩm bên dưới
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+
+      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const productObj: any = {};
+      
+      headers.forEach((header, index) => {
+        productObj[header] = values[index] !== undefined ? values[index] : '';
+      });
+
+      // Kiểm tra nếu có tên sản phẩm thì tiến hành thêm vào hệ thống
+      if (productObj.name) {
+        // Sinh ID tự động duy nhất cho mỗi sản phẩm khác nhau
+        const generatedId = Math.floor(100000000 + Math.random() * 900000000).toString();
+        
+        const newProduct = {
+          id: productObj.id || generatedId,
+          name: productObj.name,
+          slug: productObj.slug || productObj.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
+          category: productObj.category || 'TP',
+          image: productObj.image || 'assets/images/banner-home.webp',
+          originalPrice: Number(productObj.originalPrice) || 0,
+          currentPrice: Number(productObj.currentPrice) || Number(productObj.price) || 0,
+          stock: Number(productObj.stock) || 10,
+          description: productObj.description || '',
+          createdAt: new Date().toISOString()
+        };
+
+        // Gửi API thêm sản phẩm
+        this.adminApi.addProduct(newProduct).subscribe({
+          next: () => {
+            successCount++;
+            if (i === lines.length - 1 || successCount === lines.length - 1) {
+              this.adminApi.loadProducts();
+              alert(`✅ Nhập thành công ${successCount} sản phẩm từ file vào hệ thống!`);
+            }
+          },
+          error: (err) => console.error('Lỗi khi thêm sản phẩm từ file:', err)
+        });
+      }
+    }
+  }
 
   getDisplayStatus(p: Product): string {
     const prod = p as any;
     const stock = Number(prod.stock ?? 0);
 
+    // 1. Hết hàng ưu tiên số 1
     if (stock === 0) return 'het-hang';
-    if (stock > 0 && stock < 20) return 'sap-het';
-    if (prod.isSale === true) return 'hot';
 
+    // 2. Sắp hết hàng (< 15 đúng như yêu cầu của bạn)
+    if (stock > 0 && stock < 15) return 'sap-het';
+
+    // 4. Hàng Mới (Trong vòng 7 ngày)
     if (prod.createdAt) {
       const createdDate = new Date(prod.createdAt).getTime();
       const daysDiff = (Date.now() - createdDate) / (1000 * 60 * 60 * 24);
-
       if (daysDiff >= 0 && daysDiff <= 7) return 'new';
     }
 
+    // 5. Còn lại là Bình thường
     return 'normal';
   }
-
 }
-

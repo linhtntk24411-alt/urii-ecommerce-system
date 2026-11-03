@@ -115,9 +115,9 @@
                                             </td>
                                             <td class="pe-4">
                                                 <div class="action-btn-group">
-                                                    <!-- Nút Toggle Ẩn/Hiện -->
-                                                    <button class="btn-action-icon" [ngClass]="b.visible === false ? 'text-danger' : 'text-success'" (click)="toggleVisibility(b.id)" [title]="b.visible === false ? 'Hiện bài viết' : 'Tạm ẩn bài viết'">
-                                                        <i class="bi" [ngClass]="b.visible === false ? 'bi-eye-slash' : 'bi-eye'"></i>
+                                                    <!-- Nút Xem chi tiết bài viết -->
+                                                    <button class="btn-action-icon text-secondary" (click)="viewBlogDetail(b)" title="Xem chi tiết bài viết">
+                                                        <i class="bi bi-eye"></i>
                                                     </button>
                                                     
                                                     <!-- Nút Chỉnh sửa trạng thái (Dropdown) -->
@@ -234,6 +234,57 @@
             <div class="modal-footer border-top-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                 <button type="button" class="btn btn-danger px-4 fw-bold" (click)="submitNewBlog()"><i class="bi bi-save"></i> Lưu bài viết</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Xem Chi Tiết Bài Viết (Giao diện chuẩn Blog Detail) -->
+<div class="modal fade" id="blogDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background-color: var(--blog-detail-surface, #fcffff);">
+            <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-file-earmark-text text-danger me-2"></i> Xem chi tiết bài viết</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" *ngIf="selectedBlog">
+                <!-- Nội dung chính được bọc theo style blog-detail-main -->
+                <div class="blog-detail-main" style="max-width: 100%; padding: 24px 32px;">
+                    
+                    <!-- Banner -->
+                    <section class="blog-detail-banner mb-4" [style.background-image]="'url(' + formatImagePath(selectedBlog.thumbnail) + ')'" style="height: 350px; background-size: cover; background-position: center; border-radius: 12px; position: relative; overflow: hidden;">
+                        <div class="blog-detail-banner__overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 50%, transparent 100%); display: flex; align-items: flex-end; padding: 32px 24px;">
+                            <div class="blog-detail-banner__container" style="color: #fff; width: 100%;">
+                                <span class="blog-detail-banner__category" style="display: inline-block; background: #840001; padding: 4px 16px; border-radius: 9999px; font-size: 14px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px;">
+                                    {{ selectedBlog.status === 'approved' ? 'Đã duyệt' : (selectedBlog.status === 'pending' ? 'Chờ duyệt' : 'Vi phạm') }}
+                                </span>
+                                <h1 class="blog-detail-banner__title" style="font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: 16px;">{{ selectedBlog.title }}</h1>
+                                <div class="blog-detail-banner__author" style="display: flex; align-items: center; gap: 12px;">
+                                    <img class="blog-detail-banner__avatar" [src]="formatImagePath(selectedBlog.author?.avatar || 'https://i.pravatar.cc/150')" alt="Avatar" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; object-fit: cover;" />
+                                    <div>
+                                        <div class="blog-detail-banner__name" style="font-weight: 600; font-size: 15px;">{{ selectedBlog.author?.name }}</div>
+                                        <div class="blog-detail-banner__date" style="font-size: 13px; opacity: 0.8;">Ngày đăng: {{ selectedBlog.date }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- Nội dung bài viết -->
+                    <article class="blog-detail-content-wrapper" [innerHTML]="selectedBlog.content || 'Không có nội dung chi tiết cho bài viết này.'">
+                    </article>
+
+                    <!-- Author Bio giả lập nhỏ trong modal -->
+                    <div class="blog-detail-author mt-5 p-4 rounded-4" style="display: flex; gap: 20px; background: #f6f3f2; align-items: center;">
+                        <img class="blog-detail-author__avatar" [src]="formatImagePath(selectedBlog.author?.avatar || 'https://i.pravatar.cc/150')" alt="Author" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;" />
+                        <div>
+                            <h4 class="fw-bold mb-1" style="color: #840001; font-size: 18px;">{{ selectedBlog.author?.name }}</h4>
+                            <p class="text-muted small mb-0">Tác giả bài viết tại hệ thống cộng đồng Urii.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 bg-light py-3 px-4">
+                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>

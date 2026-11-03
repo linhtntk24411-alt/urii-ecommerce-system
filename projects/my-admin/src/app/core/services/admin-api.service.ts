@@ -119,6 +119,16 @@ export interface AdminBlog {
   approvalStatus?: 'pending' | 'approved' | 'rejected';
 }
 
+export interface AdminComment {
+  id: number;
+  blogId: number;
+  author: string;
+  avatar?: string;
+  content: string;
+  time?: string;
+  createdAt?: string;
+}
+
 interface LoginResponse {
   token: string;
   user: { id: string; name: string; email: string; role: string };
@@ -483,7 +493,6 @@ export class AdminApiService {
   private backendOrigin = 'http://localhost:3002';
 
   readonly token = signal<string | null>(null);
-  private authPromise: Promise<void> | null = null;
 
   // Token được truyền trực tiếp từ trang đăng nhập
   private currentAuthToken = '';
@@ -542,35 +551,6 @@ export class AdminApiService {
     }
   }
 
-  async ensureAuthenticated(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-
-    if (this.token() || this.currentAuthToken) {
-      return;
-    }
-
-    if (this.authPromise) {
-      return this.authPromise;
-    }
-
-    this.authPromise = (async () => {
-      try {
-        await this.login(
-          'admin@gmail.com',
-          '91qQMnJAa5kYBkzhW7YlTioy4Z_P2TZU'
-        );
-      } catch {
-        // Giữ cơ chế fallback của code gốc
-      } finally {
-        this.authPromise = null;
-      }
-    })();
-
-    return this.authPromise;
-  }
-
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await this.requestWithFallback<LoginResponse>(
       'POST',
@@ -600,6 +580,7 @@ export class AdminApiService {
       localStorage.removeItem('urii-admin-token');
       localStorage.removeItem('token');
       localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
     }
   }
 
@@ -831,6 +812,12 @@ export class AdminApiService {
     );
   }
 
+  getComments(): Observable<AdminComment[]> {
+    return this.http
+      .get<AdminComment[]>(`${this.baseUrl}/comments?page=1&limit=100`)
+      .pipe(timeout(8000));
+  }
+
   getInitialDashboard(): DashboardStats {
     const users = this.getInitialUsers();
     const promos = this.getInitialPromotions();
@@ -893,11 +880,7 @@ export class AdminApiService {
       authToken =
         localStorage.getItem('token') ||
         localStorage.getItem('adminToken') ||
-        'fake-admin-token-bypass-401';
-
-      if (!localStorage.getItem('token')) {
-        localStorage.setItem('token', 'fake-admin-token-bypass-401');
-      }
+        '';
     }
 
     const headers = new HttpHeaders({
@@ -1158,21 +1141,6 @@ export class AdminApiService {
     try {
       return await this.sendRequest<T>(method, fullUrl, body);
     } catch (error) {
-      if (
-        error instanceof HttpErrorResponse &&
-        error.status === 401 &&
-        !path.includes('/auth/login')
-      ) {
-        this.currentAuthToken = '';
-        this.token.set(null);
-
-        await this.ensureAuthenticated();
-
-        if (this.token() || this.currentAuthToken) {
-          return await this.sendRequest<T>(method, fullUrl, body);
-        }
-      }
-
       throw error;
     }
   }
@@ -1221,11 +1189,7 @@ export class AdminApiService {
         localStorage.getItem('urii-admin-token') ||
         localStorage.getItem('token') ||
         localStorage.getItem('adminToken') ||
-        'fake-admin-token-bypass-401';
-
-      if (!localStorage.getItem('token')) {
-        localStorage.setItem('token', 'fake-admin-token-bypass-401');
-      }
+        '';
     }
 
     return {

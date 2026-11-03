@@ -105,7 +105,10 @@
                         <td class="ps-4"><span class="order-id">#{{ o.id }}</span></td>
                         <td>
                             <div class="customer-info">
-                                <span class="customer-avatar">{{ o.customerAvatar || '--' }}</span>
+                                <img class="customer-avatar"
+                                     [src]="getCustomerAvatarUrl(o.customerImage)"
+                                     [alt]="'Ảnh đại diện ' + o.customerName"
+                                     (error)="onCustomerAvatarError($event)">
                                 <div class="customer-name font-segoe">{{ o.customerName }}</div>
                             </div>
                         </td>
@@ -229,7 +232,10 @@
                         <td class="ps-4"><span class="order-id">#{{ o.id }}</span></td>
                         <td>
                             <div class="customer-info">
-                                <span class="customer-avatar">{{ o.customerAvatar }}</span>
+                                <img class="customer-avatar"
+                                     [src]="getCustomerAvatarUrl(o.customerImage)"
+                                     [alt]="'Ảnh đại diện ' + o.customerName"
+                                     (error)="onCustomerAvatarError($event)">
                                 <div class="customer-name font-segoe">{{ o.customerName }}</div>
                             </div>
                         </td>

@@ -177,3 +177,17 @@
     background-color: #fff3cd !important;
     color: #664d03 !important;
 }
+/* --- Tùy chỉnh đồng bộ 2 nút cạnh nhau --- */
+.btn-custom-file {
+    background-color: #ffffff !important;  /* Luôn giữ nền trắng */
+    color: #dc3545 !important;             /* Chữ màu đỏ */
+    border: 1px solid #dc3545 !important;    /* Viền đỏ */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Khi rê chuột vào (hover): Giữ nguyên màu trắng hoặc đổi nhẹ sang nền trắng tinh khôi, không bị đổi màu nền khác */
+.btn-custom-file:hover {
+    background-color: #fff5f5 !important;  /* Nền hồng nhạt rất nhẹ hoặc giữ nguyên #ffffff nếu muốn trắng hoàn toàn */
+    color: #b02a37 !important;
+    border-color: #b02a37 !important;
+}

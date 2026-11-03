@@ -1,6 +1,7 @@
 import { Component, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { AdminApiService } from '../core/services/admin-api.service';
 
 @Component({
   selector: 'app-admin-layout',
@@ -11,6 +12,11 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
   styleUrls: ['./admin-layout.component.css']
 })
 export class AdminLayoutComponent {
+  constructor(
+    private adminApi: AdminApiService,
+    private router: Router
+  ) {}
+
   // Trạng thái đóng/mở menu trên mobile
   isMobileMenuOpen: boolean = false;
   
@@ -46,8 +52,8 @@ export class AdminLayoutComponent {
   // Xử lý đăng xuất
   onLogout(event: Event): void {
     event.preventDefault();
-    console.log('Xử lý đăng xuất tại đây...');
-    // Thêm logic xóa token và navigate về trang login
+    this.adminApi.logout();
+    this.router.navigateByUrl('/', { replaceUrl: true });
   }
 
   // Đóng thông báo khi click ra ngoài

@@ -118,9 +118,8 @@
 .order-id { font-weight: 700; color: #dc3545; }
 .customer-info { display: flex; align-items: center; gap: 12px; }
 .customer-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background-color: #e9ecef; display: flex; align-items: center; justify-content: center;
-    font-weight: 700; color: #555; font-size: 14px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background-color: #e9ecef; display: block; object-fit: cover; flex: 0 0 44px;
 }
 .customer-name { font-weight: 600; color: #333; }
 .order-total { font-weight: 700; color: #333; }

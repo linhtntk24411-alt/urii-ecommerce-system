@@ -183,14 +183,57 @@
     color: #dc3545;
 }
 
-/* ===== HIỆU ỨNG KHI BÀI VIẾT BỊ ẨN ===== */
-.blog-row-hidden {
-    opacity: 0.5;
-    background-color: #f8f9fa;
+/* --- BỐ CỤC MỚI: ẢNH MỘT BÊN, CHỮ MỘT BÊN --- */
+.blog-detail-content-wrapper {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #4a4a4a;
 }
-.blog-row-hidden .blog-thumb {
-    filter: grayscale(100%);
+
+/* Biến mỗi cặp nội dung hoặc cấu trúc trong bài thành dạng hàng ngang (Flexbox) */
+.blog-detail-content-wrapper p {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
 }
-.blog-row-hidden .blog-title {
-    color: #999;
+
+/* Định dạng cố định hình ảnh nằm gọn bên trái/phải */
+.blog-detail-content-wrapper img {
+    width: 300px !important;    /* Cố định chiều rộng vừa vặn */
+    height: 200px !important;   /* Cố định chiều cao để ảnh không bị bóp méo */
+    object-fit: cover;
+    border-radius: 12px;        /* Bo góc mềm mại */
+    flex-shrink: 0;             /* Không bị co ép kích thước */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin: 0 !important;       /* Xóa margin mặc định */
+}
+
+/* Phần chữ tự động giãn đều phần không gian còn lại */
+.blog-detail-content-wrapper p:has(img) {
+    background: #fdfbfb;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+}
+/* Đảm bảo hình ảnh phụ trong nội dung chữ không bị vỡ khung cột phải */
+.blog-detail-content img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 8px;
+    margin: 12px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    display: block;
+}
+
+/* Responsive cho màn hình nhỏ (Mobile) */
+@media (max-width: 768px) {
+    .blog-detail-content-wrapper p {
+        flex-direction: column;
+    }
+    .blog-detail-content-wrapper img {
+        width: 100% !important;
+        height: auto !important;
+    }
 }

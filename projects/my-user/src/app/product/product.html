@@ -1,0 +1,240 @@
+<main class="container my-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small mb-0 bg-white p-2 px-3 rounded-3 shadow-sm">
+      <li class="breadcrumb-item"><a routerLink="/" class="text-decoration-none text-secondary">Trang chủ</a></li>
+      <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">Sản phẩm</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <aside class="col-lg-3">
+      <div class="bg-white rounded-4 p-4 shadow-sm sticky-top product-filter-panel">
+        <h5 class="fw-bold text-primary-custom mb-4"><i class="bi bi-funnel"></i> Bộ lọc</h5>
+
+        <div class="mb-4">
+          <label class="fw-semibold small text-secondary d-block mb-2">Khoảng giá (VNĐ)</label>
+          <div class="form-check">
+            <input id="price1" class="form-check-input" type="checkbox"
+              [checked]="selectedPriceRanges.includes('under-50')"
+              (change)="toggleFilter(selectedPriceRanges, 'under-50', $event)">
+            <label class="form-check-label small" for="price1">Dưới 50.000</label>
+          </div>
+          <div class="form-check">
+            <input id="price2" class="form-check-input" type="checkbox"
+              [checked]="selectedPriceRanges.includes('50-200')"
+              (change)="toggleFilter(selectedPriceRanges, '50-200', $event)">
+            <label class="form-check-label small" for="price2">50.000 - 200.000</label>
+          </div>
+          <div class="form-check">
+            <input id="price3" class="form-check-input" type="checkbox"
+              [checked]="selectedPriceRanges.includes('over-200')"
+              (change)="toggleFilter(selectedPriceRanges, 'over-200', $event)">
+            <label class="form-check-label small" for="price3">Trên 200.000</label>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="fw-semibold small text-secondary d-block mb-2">Khuyến mãi</label>
+          <div class="form-check">
+            <input id="sale1" class="form-check-input" type="checkbox"
+              [checked]="selectedPromotions.includes('sale')"
+              (change)="toggleFilter(selectedPromotions, 'sale', $event)">
+            <label class="form-check-label small" for="sale1">Đang giảm giá</label>
+          </div>
+          <div class="form-check">
+            <input id="sale2" class="form-check-input" type="checkbox"
+              [checked]="selectedPromotions.includes('hot')"
+              (change)="toggleFilter(selectedPromotions, 'hot', $event)">
+            <label class="form-check-label small" for="sale2">Sản phẩm hot</label>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="fw-semibold small text-secondary d-block mb-2">Đánh giá</label>
+          <div class="rating-filter-group">
+            <button type="button" class="rating-filter-btn"
+              [class.active]="selectedRating === 'all'" (click)="setRatingFilter('all')">
+              <i class="bi bi-list-ul"></i> Tất cả
+            </button>
+            <button type="button" class="rating-filter-btn"
+              [class.active]="selectedRating === '4.5'" (click)="setRatingFilter('4.5')">
+              <span class="stars">★★★★★</span> 4.5+
+            </button>
+            <button type="button" class="rating-filter-btn"
+              [class.active]="selectedRating === '4.0'" (click)="setRatingFilter('4.0')">
+              <span class="stars">★★★★</span> 4.0+
+            </button>
+            <button type="button" class="rating-filter-btn"
+              [class.active]="selectedRating === '3.5'" (click)="setRatingFilter('3.5')">
+              <span class="stars">★★★☆</span> 3.5+
+            </button>
+            <button type="button" class="rating-filter-btn"
+              [class.active]="selectedRating === '3.0'" (click)="setRatingFilter('3.0')">
+              <span class="stars">★★★</span> 3.0+
+            </button>
+            <button type="button" class="rating-filter-btn"
+              [class.active]="selectedRating === 'below-3'" (click)="setRatingFilter('below-3')">
+              <span class="stars">★★☆</span> Dưới 3.0
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-outline-secondary w-100 rounded-pill py-2" (click)="clearFilters()">
+          <i class="bi bi-arrow-counterclockwise"></i> Xóa bộ lọc
+        </button>
+      </div>
+    </aside>
+
+    <section class="col-lg-9" aria-label="Danh sách sản phẩm">
+      <div class="d-flex flex-wrap align-items-center justify-content-between bg-white p-3 rounded-4 shadow-sm mb-4">
+        <p class="small text-secondary mb-0" aria-live="polite">{{ loading ? 'Đang tải...' : productCountText }}</p>
+        <div class="d-flex align-items-center gap-3">
+          <label for="sortSelect" class="d-none d-md-inline small text-secondary mb-0">Sắp xếp:</label>
+          <select id="sortSelect" class="form-select form-select-sm bg-white border-0 shadow-sm"
+            [value]="sortBy" (change)="onSortChange($event)"
+            style="width: auto; border-radius: 8px;">
+            <option value="popular">Phổ biến nhất</option>
+            <option value="price-asc">Giá: Thấp đến Cao</option>
+            <option value="price-desc">Giá: Cao đến Thấp</option>
+            <option value="sale">Giảm giá nhiều nhất</option>
+          </select>
+        </div>
+      </div>
+
+      @if (hasCategoryContext) {
+        <div class="alert alert-light border rounded-3 py-2 px-3 mb-4 small text-secondary">
+          @if (category) {
+            <strong>Danh mục:</strong> {{ getCategoryLabel(category) }}
+          }
+          @if (category && searchTerm) { · }
+          @if (searchTerm) {
+            <strong>Từ khóa:</strong> {{ searchTerm }}
+          }
+        </div>
+      }
+
+      @if (cartMessage) {
+        <div class="alert alert-info py-2" role="status">{{ cartMessage }}</div>
+      }
+
+      @if (statusMessage) {
+        <div class="alert alert-light py-2 d-flex align-items-center justify-content-between" role="status">
+          <span>{{ statusMessage }}</span>
+          @if (refreshFailed) {
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="loadProducts()">
+              Thử cập nhật lại
+            </button>
+          }
+        </div>
+      }
+
+      @if (loading) {
+        <div class="product-list" aria-label="Đang tải sản phẩm">
+          <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Đang tải...</span>
+            </div>
+          </div>
+        </div>
+      } @else if (errorMessage) {
+        <div class="col-12 text-center py-5">
+          <p class="text-danger">{{ errorMessage }}</p>
+          <button type="button" class="btn btn-primary mt-3" (click)="loadProducts()">
+            <i class="bi bi-arrow-repeat"></i> Thử lại
+          </button>
+        </div>
+      } @else if (pageProducts.length === 0) {
+        <div class="col-12 text-center py-5">
+          <p class="text-secondary">Không tìm thấy sản phẩm phù hợp</p>
+        </div>
+      } @else {
+        <div class="product-list">
+          @for (product of pageProducts; track product.id) {
+            <article class="product-card">
+              <div class="product-image-wrapper">
+                <a [href]="'/productdetail.html?id=' + product.id" class="d-block"
+                  [attr.aria-label]="'Xem chi tiết ' + product.name">
+                  <img [src]="product.image" [alt]="product.name" loading="lazy">
+                </a>
+                @if (hasDiscount(product)) {
+                  <span class="badge-discount">-{{ discountPercent(product) }}%</span>
+                  @if (product.isHot) {
+                    <span class="badge-hot"><i class="bi bi-fire"></i> Hot</span>
+                  }
+                } @else if (product.isHot) {
+                  <span class="badge-hot"><i class="bi bi-fire"></i> Hot</span>
+                }
+                <button type="button" class="cart-icon" [attr.aria-label]="'Thêm ' + product.name + ' vào giỏ hàng'"
+                  (click)="addToCart(product)">
+                  <i class="bi bi-cart-plus"></i>
+                </button>
+              </div>
+              <div class="product-info">
+                <h2 class="product-title" [title]="product.name">{{ product.name }}</h2>
+                <div class="product-price">
+                  <span class="current-price" [class.no-discount]="!hasDiscount(product)">
+                    {{ formatPrice(displayPrice(product)) }}
+                  </span>
+                  @if (hasDiscount(product)) {
+                    <span class="original-price">{{ formatPrice(product.originalPrice) }}</span>
+                  }
+                </div>
+                <div class="product-meta">
+                  <div class="product-rating" [attr.aria-label]="'Đánh giá ' + product.rating + ' trên 5'">
+                    <span class="stars">
+                      @for (icon of starIcons(product.rating); track $index) {
+                        <i [class]="icon"></i>
+                      }
+                    </span>
+                    <span class="rating-text">{{ product.rating }}</span>
+                    <span class="review-count">({{ product.reviews }})</span>
+                  </div>
+                  <div class="product-stock-info">
+                    <i class="bi bi-box-seam"></i>
+                    <span><span class="stock-number">{{ product.stock }}</span></span>
+                  </div>
+                </div>
+                <div class="product-actions">
+                  <button type="button" class="btn-buy" (click)="buyNow(product)">
+                    <i class="bi bi-bag"></i> Mua ngay
+                  </button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+
+      @if (!loading && !errorMessage && totalPages > 1) {
+        <nav aria-label="Phân trang" class="mt-4">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <button type="button" class="page-link rounded-3 border-0" aria-label="Trang trước"
+                [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            </li>
+            @for (item of paginationItems; track $index) {
+              <li class="page-item" [class.active]="item.page === currentPage" [class.disabled]="item.page === null">
+                @if (item.page === null) {
+                  <span class="page-link border-0">{{ item.label }}</span>
+                } @else {
+                  <button type="button" class="page-link rounded-3"
+                    [class.border-0]="item.page !== currentPage"
+                    [attr.aria-current]="item.page === currentPage ? 'page' : null"
+                    (click)="changePage(item.page)">{{ item.label }}</button>
+                }
+              </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <button type="button" class="page-link rounded-3 border-0" aria-label="Trang sau"
+                [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      }
+    </section>
+  </div>
+</main>

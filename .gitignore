@@ -44,7 +44,9 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 node_modules/
+*/node_modules/
 package.json
+*/package.json
 package-lock.json
-index.js
+*/package-lock.json
 .env

@@ -1,6 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Inject, PLATFORM_ID } from '@angular/core';
+import { BlogComment, BlogPost, BlogService } from '../../../core/services/blog.service';
+import { combineLatest, map } from 'rxjs';
 
 @Component({
   selector: 'app-blog-detail',
@@ -9,57 +12,234 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
   templateUrl: './blog-detail.html',
   styleUrl: './blog-detail.css'
 })
-export class BlogDetailComponent implements OnInit {
-  // Data giả lập bài viết
-  blogData = {
-    id: 1,
-    title: 'Chiều cuối tuần trốn thế giới bên góc bàn nhỏ',
-    category: 'Hướng dẫn DIY',
-    author: 'Minh Anh',
-    avatar: 'assets/gallery_assets/mau-ca-heo.webp', 
-    date: '24 Tháng 5, 2024',
-    image: 'assets/gallery_assets/mau-ca-heo.webp',
-    content: `
-      <p>Sau một tuần làm việc bù đầu, chiều thứ Bảy là khoảng thời gian mong đợi nhất để ngồi bên góc bàn đồ handmade. Không vội vã, không deadline, chỉ có những hạt nhựa nhỏ xíu và bản nhạc yêu thích.</p>
-      <b>1. Chuẩn bị nguyên liệu</b>
-      <p>Để bắt đầu, bạn cần chuẩn bị một bộ kit cơ bản bao gồm: bàn ủi (pegboard), giấy nến, nhíp gắp hạt và các màu hạt theo sở thích. Đừng quên một tách trà nóng để buổi chiều thêm trọn vẹn!</p>
-      <blockquote>"Handmade không chỉ là tạo ra sản phẩm, mà còn là quá trình chữa lành tâm hồn."</blockquote>
-      <b>2. Bắt đầu xếp hạt</b>
-      <p>Hãy bắt đầu từ những chi tiết nhỏ nhất, sau đó mới đến các mảng màu lớn. Kiên nhẫn là chìa khóa. Nếu lỡ xếp sai, đừng lo, bạn chỉ cần dùng nhíp gắp ra và làm lại.</p>
-      <img src="assets/gallery_assets/mau-ca-heo.webp" alt="Mẫu xếp hạt" />
-    `,
-    tags: ['DIY', 'Handmade', 'Chill'],
-    likes: 128,
-    comments: [
-      {
-        id: 1,
-        author: 'Linh Chi',
-        avatar: 'assets/gallery_assets/mau-hellokitty.webp',
-        content: 'Nhìn dễ thương quá, cuối tuần này mình cũng phải thử mới được!',
-        time: '2 giờ trước',
-        replies: [
-          {
-            id: 2,
-            author: 'Minh Anh',
-            avatar: 'assets/gallery_assets/mau-cao.webp',
-            content: 'Thử đi bạn ơi, làm cái này thư giãn lắm á!',
-            time: '1 giờ trước',
-            replies: []
-          }
-        ]
-      }
-    ]
-  };
+export class BlogDetailComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly blogService = inject(BlogService);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly bookmarksStorageKey = 'bookmarks';
+  private authChangeListener?: () => void;
 
-  constructor(private route: ActivatedRoute) {}
+  blogData: BlogPost | null = null;
+  blogComments: BlogComment[] = [];
+  isLoggedIn = false;
+  isLiked = false;
+  isBookmarked = false;
+  isCommentsLoading = false;
+  commentsErrorMessage = '';
+  isLoading = true;
+  errorMessage = '';
+
+  constructor(@Inject(PLATFORM_ID) private readonly platformId: Object) {}
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
-      const slug = params['slug'];
-      console.log('Đang xem bài viết có slug:', slug);
+    if (isPlatformBrowser(this.platformId)) {
+      this.syncAuthAndActions();
+      this.authChangeListener = () => {
+        this.syncAuthAndActions();
+        this.changeDetectorRef.markForCheck();
+      };
+      window.addEventListener('auth:changed', this.authChangeListener);
+    }
+
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).pipe(
+      map(([pathParams, queryParams]) =>
+        pathParams.get('slug') ?? queryParams.get('slug'),
+      ),
+    ).subscribe((value) => {
+      const slug = value?.trim();
+      if (!slug) {
+        this.blogData = null;
+        this.isLoading = false;
+        this.errorMessage = 'Không tìm thấy mã bài viết.';
+        this.changeDetectorRef.markForCheck();
+        return;
+      }
+
+      this.loadBlog(slug);
     });
   }
 
-  toggleLike() { console.log('Đã thích bài viết'); }
-  toggleBookmark() { console.log('Đã lưu bài viết'); }
+  ngOnDestroy(): void {
+    if (this.authChangeListener) {
+      window.removeEventListener('auth:changed', this.authChangeListener);
+    }
+  }
+
+  private loadBlog(slug: string): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.blogData = null;
+    this.blogComments = [];
+    this.commentsErrorMessage = '';
+
+    this.blogService.getBlogBySlug(slug).subscribe({
+      next: (blog) => {
+        this.blogData = blog ?? null;
+        this.errorMessage = blog ? '' : 'Không tìm thấy bài viết này.';
+        this.syncAuthAndActions();
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+        if (blog) this.loadComments(blog.id);
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi tải chi tiết bài viết:', error);
+        this.errorMessage = 'Không thể tải bài viết. Vui lòng thử lại.';
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private loadComments(blogId: string | number): void {
+    this.isCommentsLoading = true;
+    this.commentsErrorMessage = '';
+
+    this.blogService.getBlogComments(blogId).subscribe({
+      next: (comments) => {
+        this.blogComments = comments;
+        this.isCommentsLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi tải bình luận bài viết:', error);
+        this.blogComments = [];
+        this.isCommentsLoading = false;
+        this.commentsErrorMessage = 'Không thể tải bình luận. Vui lòng thử lại sau.';
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  formatCommentDate(value: string): string {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('vi-VN');
+  }
+
+  toggleLike(): void {
+    const blog = this.blogData;
+    const email = this.requireSignedInUser();
+    if (!blog || !email) return;
+
+    const storageKey = this.likesStorageKey(email);
+    const likedBlogIds = this.readIdSet(storageKey);
+    const blogId = String(blog.id);
+    if (likedBlogIds.has(blogId)) {
+      likedBlogIds.delete(blogId);
+      this.isLiked = false;
+    } else {
+      likedBlogIds.add(blogId);
+      this.isLiked = true;
+    }
+    this.writeIdSet(storageKey, likedBlogIds);
+  }
+
+  toggleBookmark(): void {
+    const blog = this.blogData;
+    if (!blog || !this.requireSignedInUser()) return;
+
+    const bookmarks = this.readBookmarks();
+    const blogId = String(blog.id);
+    if (bookmarks[blogId]) {
+      delete bookmarks[blogId];
+      this.isBookmarked = false;
+    } else {
+      bookmarks[blogId] = true;
+      this.isBookmarked = true;
+    }
+
+    try {
+      localStorage.setItem(this.bookmarksStorageKey, JSON.stringify(bookmarks));
+    } catch (error: unknown) {
+      console.error('Không thể lưu danh sách bài viết:', error);
+      this.showStorageError();
+      this.syncAuthAndActions();
+    }
+  }
+
+  get displayedLikeCount(): number {
+    return (this.blogData?.likes ?? 0) + (this.isLiked ? 1 : 0);
+  }
+
+  private syncAuthAndActions(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const email = localStorage.getItem('userEmail')?.trim().toLowerCase() ?? '';
+    this.isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' && email.length > 0;
+    if (!this.isLoggedIn || !this.blogData) {
+      this.isLiked = false;
+      this.isBookmarked = false;
+      return;
+    }
+
+    this.isLiked = this.readIdSet(this.likesStorageKey(email)).has(String(this.blogData.id));
+    this.isBookmarked = this.readBookmarks()[String(this.blogData.id)] === true;
+  }
+
+  private requireSignedInUser(): string | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+
+    const email = localStorage.getItem('userEmail')?.trim().toLowerCase() ?? '';
+    if (localStorage.getItem('isLoggedIn') === 'true' && email) return email;
+
+    void this.router.navigate(['/login'], {
+      queryParams: { returnUrl: this.router.url },
+    });
+    return null;
+  }
+
+  private likesStorageKey(email: string): string {
+    return `blogLikes:${email}`;
+  }
+
+  private readIdSet(key: string): Set<string> {
+    const stored = localStorage.getItem(key);
+    if (!stored) return new Set();
+
+    try {
+      const ids: unknown = JSON.parse(stored);
+      if (Array.isArray(ids) && ids.every((id) => typeof id === 'string')) {
+        return new Set(ids);
+      }
+      throw new Error('Stored blog IDs are not a string array');
+    } catch (error: unknown) {
+      console.error(`Không thể đọc dữ liệu bài viết đã lưu (${key}):`, error);
+      return new Set();
+    }
+  }
+
+  private writeIdSet(key: string, ids: Set<string>): void {
+    try {
+      localStorage.setItem(key, JSON.stringify([...ids]));
+    } catch (error: unknown) {
+      console.error('Không thể lưu trạng thái yêu thích bài viết:', error);
+      this.showStorageError();
+      this.syncAuthAndActions();
+    }
+  }
+
+  private readBookmarks(): Record<string, boolean> {
+    const stored = localStorage.getItem(this.bookmarksStorageKey);
+    if (!stored) return {};
+
+    try {
+      const bookmarks: unknown = JSON.parse(stored);
+      if (typeof bookmarks === 'object' && bookmarks !== null && !Array.isArray(bookmarks)) {
+        return Object.fromEntries(
+          Object.entries(bookmarks).filter(([, value]) => value === true),
+        );
+      }
+      throw new Error('Stored blog bookmarks are not an object');
+    } catch (error: unknown) {
+      console.error('Không thể đọc danh sách bài viết đã lưu:', error);
+      return {};
+    }
+  }
+
+  private showStorageError(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      window.alert('Không thể lưu thay đổi trên thiết bị này. Vui lòng kiểm tra bộ nhớ trình duyệt.');
+    }
+  }
 }

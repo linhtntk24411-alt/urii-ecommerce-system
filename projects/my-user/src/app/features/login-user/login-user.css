@@ -152,8 +152,15 @@
 }
 
 .password-icon {
+  align-items: center;
+  background: transparent;
+  border: 0;
   color: #765858;
+  cursor: pointer;
+  display: flex;
   height: 20px;
+  justify-content: center;
+  padding: 0;
   position: absolute;
   right: 13px;
   top: 10px;
@@ -163,6 +170,7 @@
 .password-icon svg {
   fill: none;
   height: 100%;
+  pointer-events: none;
   stroke: currentColor;
   stroke-width: 1.8;
   width: 100%;
@@ -173,6 +181,17 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
+}
+
+.password-change-link {
+  background: none;
+  border: 0;
+  font-family: inherit;
+  padding: 0;
+}
+
+.password-change-link:hover {
+  text-decoration: underline;
 }
 
 .primary-button {
@@ -187,6 +206,84 @@
   font-weight: 700;
   height: 42px;
   width: 100%;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.auth-error {
+  color: #b90000;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.password-change-backdrop {
+  align-items: center;
+  background: rgba(32, 20, 20, 0.48);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 2000;
+}
+
+.password-change-dialog {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(30, 0, 0, 0.22);
+  box-sizing: border-box;
+  max-height: min(90vh, 760px);
+  max-width: 440px;
+  overflow-y: auto;
+  padding: 30px;
+  position: relative;
+  width: 100%;
+}
+
+.password-change-dialog > .auth-title {
+  margin-bottom: 6px;
+  padding-right: 28px;
+}
+
+.password-change-dialog > .auth-subtitle {
+  margin-bottom: 22px;
+}
+
+.password-change-close {
+  background: transparent;
+  border: 0;
+  color: #755f5f;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+  padding: 4px 8px;
+  position: absolute;
+  right: 12px;
+  top: 10px;
+}
+
+.password-change-dialog .password-hints {
+  margin: 0 0 14px;
+}
+
+.password-change-submit {
+  margin-top: 12px;
+}
+
+.password-change-result p {
+  color: #276738;
+  line-height: 1.5;
+  margin: 18px 0;
+}
+
+.password-reset-demo-note {
+  color: #755f5f;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 14px;
 }
 
 .divider {

@@ -34,10 +34,25 @@
     </div>
   </div>
 
-  @if (currentCategory === 'all' && featuredBlog) {
+  @if (isLoading) {
+    <p class="text-center py-5" role="status">Đang tải bài viết...</p>
+  }
+
+  @if (errorMessage) {
+    <div class="text-center py-5" role="alert">
+      <p>{{ errorMessage }}</p>
+      <button class="btn-cta" type="button" (click)="loadBlogs()">Thử lại</button>
+    </div>
+  }
+
+  @if (!isLoading && !errorMessage && allBlogs.length === 0) {
+    <p class="text-center py-5">Chưa có bài viết nào.</p>
+  }
+
+  @if (!isLoading && !errorMessage && currentCategory === 'all' && featuredBlog) {
     <div class="blog-featured">
       <!-- Featured Main -->
-      <div class="blog-featured__main" [routerLink]="['/blog-detail']" [queryParams]="{slug: featuredBlog.slug}">
+      <div class="blog-featured__main" [routerLink]="['/blog-detail', featuredBlog.slug]">
         <div class="blog-featured__image">
           <img [src]="featuredBlog.image || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="featuredBlog.title" loading="lazy" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
           <span class="blog-featured__badge">Nổi bật</span>
@@ -64,7 +79,7 @@
           <h3>Bài viết mới nhất</h3>
           <div class="blog-sidebar__list">
             @for (blog of sidebarBlogs; track blog.id) {
-              <div class="blog-sidebar__item" [routerLink]="['/blog-detail']" [queryParams]="{slug: blog.slug}">
+              <div class="blog-sidebar__item" [routerLink]="['/blog-detail', blog.slug]">
                 <img [src]="blog.image || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="blog.title" loading="lazy" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
                 <div class="blog-sidebar__item-content">
                   <div class="blog-sidebar__item-title">{{ blog.title }}</div>
@@ -77,12 +92,12 @@
       </div>
     </div>
   }
- <div class="blog-grid-header">
+ <div class="blog-grid-header" *ngIf="!isLoading && !errorMessage && allBlogs.length > 0">
     <h2>Bài viết</h2>
   </div>
-  <div class="blog-grid">
+  <div class="blog-grid" *ngIf="!isLoading && !errorMessage && allBlogs.length > 0">
     @for (blog of paginatedBlogs; track blog.id) {
-      <article class="blog-card" [routerLink]="['/blog-detail']" [queryParams]="{slug: blog.slug}">
+      <article class="blog-card" [routerLink]="['/blog-detail', blog.slug]">
         <div class="blog-card__image">
           <img [src]="blog.image || 'assets/gallery_assets/mau-ca-heo.webp'" [alt]="blog.title" loading="lazy" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
           <span class="blog-card__category" [style.background]="getCategoryColor(blog.categorySlug)">{{ blog.category }}</span>
@@ -113,7 +128,7 @@
     }
   </div>
 
-  @if (totalPages > 1) {
+  @if (!isLoading && !errorMessage && totalPages > 1) {
     <div class="blog-pagination">
       <button [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">
         <span class="material-symbols-outlined">chevron_left</span>

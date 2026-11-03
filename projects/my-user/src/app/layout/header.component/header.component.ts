@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 
@@ -22,10 +22,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
   isLogoutModalOpen: boolean = false;
   
   private storageListener: any;
+  private authChangeListener: (() => void) | null = null;
 
   constructor(
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -34,18 +36,29 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.updateCartBadge();
 
       this.storageListener = (e: StorageEvent) => {
-        if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'cart_count') {
+        if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'cart_count') {
           this.checkAuthStatus();
           this.updateCartBadge();
+          this.changeDetectorRef.markForCheck();
         }
       };
+      this.authChangeListener = () => {
+        this.checkAuthStatus();
+        this.changeDetectorRef.markForCheck();
+      };
       window.addEventListener('storage', this.storageListener);
+      window.addEventListener('auth:changed', this.authChangeListener);
     }
   }
 
   ngOnDestroy(): void {
-    if (isPlatformBrowser(this.platformId) && this.storageListener) {
-      window.removeEventListener('storage', this.storageListener);
+    if (isPlatformBrowser(this.platformId)) {
+      if (this.storageListener) {
+        window.removeEventListener('storage', this.storageListener);
+      }
+      if (this.authChangeListener) {
+        window.removeEventListener('auth:changed', this.authChangeListener);
+      }
     }
   }
 
@@ -56,6 +69,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.userName = localStorage.getItem('userName') || 'Khách hàng';
       this.userEmail = localStorage.getItem('userEmail') || '';
       this.userAvatar = localStorage.getItem('userAvatar') || '';
+    } else {
+      this.userName = '';
+      this.userEmail = '';
+      this.userAvatar = '';
     }
   }
 
@@ -89,8 +106,13 @@ export class HeaderComponent implements OnInit, OnDestroy {
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userAvatar');
+    localStorage.removeItem('userRole');
     this.isLoggedIn = false;
+    this.userName = '';
+    this.userEmail = '';
+    this.userAvatar = '';
     this.isLogoutModalOpen = false;
+    window.dispatchEvent(new Event('auth:changed'));
     this.router.navigate(['/login']);
   }
 }

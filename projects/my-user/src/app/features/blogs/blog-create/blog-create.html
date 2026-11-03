@@ -10,10 +10,15 @@
       <p class="blog-create-subtitle">Chia sẻ kỹ thuật, mẫu map hoặc hành trình sáng tạo hạt nhựa của bạn.</p>
     </div>
     <div class="blog-create-actions">
-      <button class="btn-draft" (click)="saveDraft()">Lưu bản nháp</button>
-      <button class="btn-publish" (click)="publish()">Xuất bản</button>
+      <button type="button" class="btn-draft" (click)="saveDraft()">Lưu bản nháp</button>
+      <button type="button" class="btn-publish" [disabled]="isPublishing" (click)="publish()">
+        {{ isPublishing ? 'Đang đăng...' : 'Xuất bản' }}
+      </button>
     </div>
   </div>
+
+  <p *ngIf="errorMessage" class="blog-create-error" role="alert">{{ errorMessage }}</p>
+  <p *ngIf="successMessage" class="blog-create-success" role="status">{{ successMessage }}</p>
 
   <div class="blog-create-editor" [formGroup]="blogForm">
     
@@ -52,7 +57,7 @@
       <div class="upload-preview__list">
         <div class="preview-item" *ngFor="let url of imagePreviewUrls; let i = index">
           <img [src]="url" alt="Preview" />
-          <span class="remove-image" (click)="removeImage(i)"></span>
+          <span class="remove-image" (click)="removeImage(i, $event)"></span>
         </div>
       </div>
     </div>

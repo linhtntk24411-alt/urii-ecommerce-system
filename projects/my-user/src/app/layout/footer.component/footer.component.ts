@@ -13,7 +13,9 @@ export class FooterComponent implements OnInit {
   isAdmin: boolean = false;
   activeCol: string | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+  ) {}
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {

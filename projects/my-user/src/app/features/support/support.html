@@ -4,29 +4,25 @@
       <nav class="support-nav">
         <a class="support-nav-item" 
            [class.active]="activeTab === 'support-center'" 
-           routerLink="/support" 
-           [queryParams]="{tab: 'support-center'}">
+           routerLink="/support/support-center">
           <span class="material-symbols-outlined">help</span>
           Trung tâm hỗ trợ
         </a>
         <a class="support-nav-item" 
            [class.active]="activeTab === 'faq'" 
-           routerLink="/support" 
-           [queryParams]="{tab: 'faq'}">
+           routerLink="/support/faq">
           <span class="material-symbols-outlined">quiz</span>
           Câu hỏi thường gặp
         </a>
         <a class="support-nav-item" 
            [class.active]="activeTab === 'privacy-policy'" 
-           routerLink="/support" 
-           [queryParams]="{tab: 'privacy-policy'}">
+           routerLink="/support/privacy-policy">
           <span class="material-symbols-outlined">shield</span>
           Chính sách bảo mật
         </a>
         <a class="support-nav-item" 
            [class.active]="activeTab === 'terms-of-service'" 
-           routerLink="/support" 
-           [queryParams]="{tab: 'terms-of-service'}">
+           routerLink="/support/terms-of-service">
           <span class="material-symbols-outlined">description</span>
           Điều khoản sử dụng
         </a>
@@ -95,49 +91,13 @@
           <p class="faq-sub-desc">Tổng hợp các câu hỏi phổ biến nhất từ khách hàng của Urii.</p>
           
           <div class="faq-list">
-            <div class="faq-item" [class.active]="activeFaqIndex === 0">
-              <div class="faq-question" (click)="toggleFaq(0)">
-                <span>Tôi có thể đặt hàng như thế nào?</span>
+            <div class="faq-item" *ngFor="let faq of faqs; let i = index" [class.active]="activeFaqIndex === i">
+              <button type="button" class="faq-question" [attr.aria-expanded]="activeFaqIndex === i" (click)="toggleFaq(i)">
+                <span>{{ faq.question }}</span>
                 <span class="material-symbols-outlined">expand_more</span>
-              </div>
-              <div class="faq-answer" *ngIf="activeFaqIndex === 0">
-                Bạn có thể đặt hàng trực tiếp trên website bằng cách chọn sản phẩm, thêm vào giỏ hàng và tiến hành thanh toán. Nếu cần hỗ trợ, hãy gọi hotline 1900 1234.
-              </div>
-            </div>
-            <div class="faq-item" [class.active]="activeFaqIndex === 1">
-              <div class="faq-question" (click)="toggleFaq(1)">
-                <span>Thời gian giao hàng là bao lâu?</span>
-                <span class="material-symbols-outlined">expand_more</span>
-              </div>
-              <div class="faq-answer" *ngIf="activeFaqIndex === 1">
-                Thời gian giao hàng nội thành TP.HCM là 1-2 ngày, các tỉnh thành khác từ 3-5 ngày làm việc.
-              </div>
-            </div>
-            <div class="faq-item" [class.active]="activeFaqIndex === 2">
-              <div class="faq-question" (click)="toggleFaq(2)">
-                <span>Phí vận chuyển được tính như thế nào?</span>
-                <span class="material-symbols-outlined">expand_more</span>
-              </div>
-              <div class="faq-answer" *ngIf="activeFaqIndex === 2">
-                Phí vận chuyển được tính dựa trên trọng lượng đơn hàng và địa chỉ giao hàng. Miễn phí ship cho đơn hàng từ 500.000đ.
-              </div>
-            </div>
-            <div class="faq-item" [class.active]="activeFaqIndex === 3">
-              <div class="faq-question" (click)="toggleFaq(3)">
-                <span>Tôi có thể hủy đơn hàng không?</span>
-                <span class="material-symbols-outlined">expand_more</span>
-              </div>
-              <div class="faq-answer" *ngIf="activeFaqIndex === 3">
-                Bạn có thể hủy đơn hàng trong vòng 2 giờ sau khi đặt nếu đơn hàng chưa được xử lý.
-              </div>
-            </div>
-            <div class="faq-item" [class.active]="activeFaqIndex === 4">
-              <div class="faq-question" (click)="toggleFaq(4)">
-                <span>Sản phẩm có được bảo hành không?</span>
-                <span class="material-symbols-outlined">expand_more</span>
-              </div>
-              <div class="faq-answer" *ngIf="activeFaqIndex === 4">
-                Chúng tôi bảo hành 1 đổi 1 trong vòng 3 ngày nếu sản phẩm bị lỗi từ nhà sản xuất.
+              </button>
+              <div class="faq-answer" *ngIf="activeFaqIndex === i">
+                {{ faq.answer }}
               </div>
             </div>
           </div>

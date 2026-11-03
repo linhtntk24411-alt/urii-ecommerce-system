@@ -10,8 +10,8 @@ import { BlogCreateComponent } from './features/blogs/blog-create/blog-create';
 import { SupportComponent } from './features/support/support';
 import { About } from './features/about/about';
 import { PageNotFoundComponent } from './features/page-not-found/page-not-found';
-import { Product } from './product/product';
-import { ProductDetail } from './product-detail/product-detail';
+import { Product } from './features/product/product';
+import { ProductDetail } from './features/product-detail/product-detail';
 
 export const routes: Routes = [
   { path: '', component: HomepageComponent },

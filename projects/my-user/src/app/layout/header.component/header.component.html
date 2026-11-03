@@ -28,18 +28,39 @@
                 <li><a routerLink="/" class="nav-link" (click)="closeMobileMenu()">Trang chủ</a></li>
                 
                 <li class="nav-dropdown" [class.mobile-open]="isMobileProductOpen">
-                    <a class="nav-link nav-dropdown-toggle" (click)="toggleMobileProduct($event)">
-                        Sản phẩm
-                        <svg class="dropdown-arrow-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <div class="nav-product-heading">
+                        <a routerLink="/products" class="nav-link nav-dropdown-toggle" (click)="closeMobileMenu()">Sản phẩm</a>
+                        <button type="button" class="nav-product-expand" (click)="toggleMobileProduct()"
+                            [attr.aria-expanded]="isMobileProductOpen"
+                            [attr.aria-label]="isMobileProductOpen ? 'Thu gọn danh mục sản phẩm' : 'Mở danh mục sản phẩm'">
+                            <svg class="dropdown-arrow-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </a>
+                            </svg>
+                        </button>
+                    </div>
                     
                     <ul class="dropdown-menu">
-                        <li><a routerLink="/product" [queryParams]="{category: 'kit'}" (click)="closeMobileMenu()"><span class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg></span>Bộ kit</a></li>
-                        <li><a routerLink="/product" [queryParams]="{category: 'tool'}" (click)="closeMobileMenu()"><span class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg></span>Dụng cụ</a></li>
-                        <li><a routerLink="/product" [queryParams]="{category: 'bead'}" (click)="closeMobileMenu()"><span class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg></span>Hạt lẻ</a></li>
-                        <li><a routerLink="/product" [queryParams]="{category: 'accessory'}" (click)="closeMobileMenu()"><span class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg></span>Phụ kiện handmade</a></li>
+                        <li><a href="/products" (click)="closeMobileMenu()">Tất cả sản phẩm</a></li>
+                        <li>
+                            <a href="/products?category=kit" (click)="closeMobileMenu()">
+                                <span class="drop-icon"><i class="bi bi-box-seam"></i></span>Bộ kit
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/products?category=tool" (click)="closeMobileMenu()">
+                                <span class="drop-icon"><i class="bi bi-wrench"></i></span>Dụng cụ
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/products?category=bead" (click)="closeMobileMenu()">
+                                <span class="drop-icon"><i class="bi bi-grid"></i></span>Hạt lẻ
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/products?category=accessory" (click)="closeMobileMenu()">
+                                <span class="drop-icon"><i class="bi bi-gift"></i></span>Phụ kiện handmade
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 

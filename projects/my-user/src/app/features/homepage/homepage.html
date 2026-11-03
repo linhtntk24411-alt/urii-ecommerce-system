@@ -108,7 +108,7 @@
         @for (item of bestSellers; track item.id) {
           <article class="product-card">
             <div class="product-card__media">
-              <a [routerLink]="['/product', item.id]" class="d-block">
+              <a routerLink="/products" class="d-block">
                 <img [src]="item.image" [alt]="item.name" />
               </a>
               @if (item.isSale) {

@@ -72,9 +72,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.isMobileMenuOpen = false;
   }
 
-  toggleMobileProduct(event: Event): void {
-    event.stopPropagation();
-    event.preventDefault();
+  toggleMobileProduct(): void {
     this.isMobileProductOpen = !this.isMobileProductOpen;
   }
 

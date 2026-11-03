@@ -16,6 +16,7 @@ const voucherRoutes = require('./routes/voucherRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const savedMapRoutes = require('./routes/savedMapRoutes');
+const customerOrderRoutes = require('./routes/customerOrderRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
@@ -59,6 +60,8 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/orders', orderRoutes);
 app.use('/api/order', orderRoutes);
+app.use('/api/customer-orders', customerOrderRoutes);
+app.use('/api/customer-order', customerOrderRoutes);
 
 app.use('/api/blogs', blogRoutes);
 app.use('/api/blog', blogRoutes);

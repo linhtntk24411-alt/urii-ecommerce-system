@@ -11,7 +11,7 @@ npm run dev
 
 The API listens on port `3002` by default. Static files in `public/` are served from the site root, so an image at `public/images/avatar_user.jpeg` is available at `/images/avatar_user.jpeg`. `CORS_ORIGINS` is a comma-separated list of allowed browser origins.
 
-Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT in the Socket.IO `auth.token` field; only admin tokens are accepted. Successful Product, Order, User, Category, Blog, Comment, Gallery Map, Saved Map, Chat Session, and Chatbot FAQ create, update, and delete operations broadcast `crud:changed` with `{ resource, action, id }`. Socket connections from origins outside `CORS_ORIGINS` are rejected.
+Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT in the Socket.IO `auth.token` field; only admin tokens are accepted. Successful Product, Order, Customer Order, User, Category, Blog, Comment, Gallery Map, Saved Map, Chat Session, and Chatbot FAQ create, update, and delete operations broadcast `crud:changed` with `{ resource, action, id }`. Socket connections from origins outside `CORS_ORIGINS` are rejected.
 
 ## Seed data
 
@@ -35,7 +35,7 @@ This command updates only stored passwords that are not already bcrypt hashes; i
 
 ## API access
 
-Product, category, blog, comment, gallery-map, FAQ, and active-voucher reads are public. Mutations for managed data, private user/order data, saved maps, chat administration, and dashboard endpoints require a bearer JWT for an admin account. Chat clients can create/update their session and send messages through the chat session endpoints. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
+Product, category, blog, comment, gallery-map, FAQ, active-voucher reads, and customer-order submissions are public. Mutations for managed data, private user/order data, saved maps, chat administration, and dashboard endpoints require a bearer JWT for an admin account. Chat clients can create/update their session and send messages through the chat session endpoints. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
 
 Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin account:
 
@@ -43,6 +43,7 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 | --- | --- |
 | Products | `GET /api/products`, `GET /api/products/:id`, `POST /api/products`, `PUT/PATCH /api/products/:id`, `DELETE /api/products/:id` |
 | Orders | `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`, `PUT/PATCH /api/orders/:id`, `DELETE /api/orders/:id` |
+| Customer orders | `POST /api/customer-orders` (public); admin: `GET /api/customer-orders`, `GET /api/customer-orders/:id`, `PUT/PATCH /api/customer-orders/:id`, `DELETE /api/customer-orders/:id` |
 | Users | `GET /api/users`, `GET /api/users/:id`, `POST /api/users`, `PUT/PATCH /api/users/:id`, `DELETE /api/users/:id` |
 | Promotions | `GET /api/vouchers/manage`, `GET /api/vouchers/:id`, `POST /api/vouchers`, `PUT/PATCH /api/vouchers/:id`, `DELETE /api/vouchers/:id` |
 | Categories | `GET /api/categories`, `GET /api/categories/:id`, `POST /api/categories`, `PUT/PATCH /api/categories/:id`, `DELETE /api/categories/:id` |
@@ -55,3 +56,13 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 | Dashboard | `GET /api/dashboard` |
 
 `GET /api/vouchers` remains public and only returns active, currently available vouchers. `POST /api/chat/match`, `POST /api/chat/sessions`, and `POST /api/chat/sessions/:id/messages` are public chatbot-client operations. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.
+
+Customer order submission accepts `fullName`, `phone`, `email`, `requestName`, `size`, `beadType`, `imageUrl`, and optional `description` and `imageNote`. `imageUrl` can be a portable backend path such as `/images/gallery_assets/mau-ca-heo.webp` or an absolute HTTP(S) URL. When using a relative path, the frontend should resolve it against the configured backend base URL (for example, `new URL(imageUrl, API_BASE_URL)`) so the image loads from the backend on any machine. New requests start with status `pending`.
+
+The development seed also inserts records from `data/customer_orders.json` when their `id` is not already in MongoDB. Fixture image paths are relative to the backend and do not hardcode a machine name or address.
+
+```sh
+curl -X POST http://localhost:3002/api/customer-orders \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Nguyễn An","phone":"0901234567","email":"an@example.com","requestName":"Móc khóa thú cưng","size":"15 x 15","beadType":"Hạt Perler 5mm (Midi Beads)","description":"Màu sắc sáng, lấy phần chân dung","imageNote":"Cắt nền giúp mình","imageUrl":"/images/gallery_assets/mau-ca-heo.webp"}'
+```

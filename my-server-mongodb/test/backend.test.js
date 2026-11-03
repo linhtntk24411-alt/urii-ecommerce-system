@@ -86,6 +86,10 @@ test('requires admin authentication for private reads and all CRUD mutations', a
     fetch(`${baseUrl}/api/orders`, { method: 'POST' }),
     fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'PUT' }),
     fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/customer-orders`),
+    fetch(`${baseUrl}/api/customer-orders/customer-order-1`, { method: 'GET' }),
+    fetch(`${baseUrl}/api/customer-orders/customer-order-1`, { method: 'PUT' }),
+    fetch(`${baseUrl}/api/customer-orders/customer-order-1`, { method: 'DELETE' }),
     fetch(`${baseUrl}/api/vouchers/manage`),
     fetch(`${baseUrl}/api/vouchers`, { method: 'POST' }),
     fetch(`${baseUrl}/api/vouchers/WELCOME10`, { method: 'PATCH' }),
@@ -115,6 +119,16 @@ test('requires admin authentication for private reads and all CRUD mutations', a
 
   const responses = await Promise.all(requests);
   assert.ok(responses.every((response) => response.status === 401));
+});
+
+test('rejects malformed public customer order submissions', async () => {
+  const response = await fetch(`${baseUrl}/api/customer-orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fullName: 'Nguyễn An' })
+  });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).message, /phone/);
 });
 
 test('rejects authenticated non-admin users from admin-only APIs', async () => {

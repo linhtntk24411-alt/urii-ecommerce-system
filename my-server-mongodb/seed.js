@@ -16,6 +16,7 @@ const User = require('./models/User');
 const SavedMap = require('./models/SavedMap');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
+const CustomerOrder = require('./models/CustomerOrder');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -156,6 +157,7 @@ async function seed() {
   await insertMissing(Voucher, readJSON('vouchers.json').vouchers, 'code');
   await insertMissing(User, newUsers, 'email');
   await insertMissing(SavedMap, readJSON('saved_maps.json').maps, 'id');
+  await insertMissing(CustomerOrder, readJSON('customer_orders.json'), 'id');
 
   const chatSessions = fs.existsSync(path.join(__dirname, 'data', 'chat_sessions.json'))
     ? readJSON('chat_sessions.json')

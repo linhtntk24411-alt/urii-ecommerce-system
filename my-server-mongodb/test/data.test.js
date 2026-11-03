@@ -14,6 +14,8 @@ const SampleMap = require('../models/SampleMap');
 const Voucher = require('../models/Voucher');
 const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
+const CustomerOrder = require('../models/CustomerOrder');
+const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
 const { insertMissing, prepareMaps, prepareNewUsers, seed } = require('../seed');
 const { buildProducts } = require('../convert_excel');
@@ -36,7 +38,8 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [ChatSession, readJSON('chatbot.json').sessions],
     [ChatSession, readJSON('chat_sessions.json')],
     [ChatbotFaq, readJSON('chatbot.json').faqs],
-    [ChatbotFaq, readJSON('chatbot_faqs.json')]
+    [ChatbotFaq, readJSON('chatbot_faqs.json')],
+    [CustomerOrder, readJSON('customer_orders.json')]
   ];
 
   for (const [Model, documents] of fixtures) {
@@ -49,6 +52,61 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     }
   }
   assert.ok(readJSON('users.json').users.every((user) => user.password === '$GENERATE'));
+});
+
+test('customer order model accepts the requested fields and validates image URL', async () => {
+  const customerOrder = new CustomerOrder({
+    id: 'customer-order-test',
+    fullName: 'Nguyễn An',
+    phone: '0901234567',
+    email: 'an@example.com',
+    requestName: 'Móc khóa thú cưng',
+    size: '15 x 15',
+    beadType: 'Hạt Perler 5mm (Midi Beads)',
+    description: 'Màu sắc sáng, lấy phần chân dung',
+    imageNote: 'Cắt nền giúp mình',
+    imageUrl: 'https://example.com/uploaded-image.jpg'
+  });
+  await assert.doesNotReject(customerOrder.validate());
+  assert.equal(customerOrder.status, 'pending');
+  await assert.rejects(
+    new CustomerOrder({
+      id: 'customer-order-invalid',
+      fullName: 'Nguyễn An',
+      phone: '0901234567',
+      email: 'an@example.com',
+      requestName: 'Móc khóa thú cưng',
+      size: '15 x 15',
+      beadType: 'Hạt Perler 5mm (Midi Beads)',
+      imageUrl: 'javascript:alert(1)'
+    }).validate(),
+    { name: 'ValidationError' }
+  );
+});
+
+test('customer order fixtures use existing customers and images available on this backend', () => {
+  const customerOrders = readJSON('customer_orders.json');
+  const existingCustomers = new Set(
+    readJSON('users.json').users
+      .filter((user) => user.role === 'user')
+      .map((user) => `${user.name}|${user.phone}|${user.email}`)
+  );
+
+  assert.ok(customerOrders.length > 1);
+  assert.ok(new Set(customerOrders.map((order) => order.email)).size > 1);
+  for (const order of customerOrders) {
+    assert.ok(
+      existingCustomers.has(`${order.fullName}|${order.phone}|${order.email}`),
+      `${order.email} must match an existing customer`
+    );
+    assert.ok(order.imageUrl.startsWith('/images/'));
+    assert.ok(isValidImageUrl(order.imageUrl));
+    const imagePath = order.imageUrl.replace(/^\/+/, '');
+    assert.ok(
+      fs.existsSync(path.join(__dirname, '..', 'public', imagePath)),
+      `${order.imageUrl} must point to an image served by this backend`
+    );
+  }
 });
 
 test('local image references in JSON fixtures exist under public/images', () => {

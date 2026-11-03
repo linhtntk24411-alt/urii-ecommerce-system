@@ -1,0 +1,151 @@
+﻿<div class="container py-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small mb-0 bg-white p-2 px-3 rounded-3 shadow-sm">
+      <li class="breadcrumb-item"><a routerLink="/" class="text-decoration-none text-secondary">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a routerLink="/products" class="text-decoration-none text-secondary">Sản phẩm</a></li>
+      <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">{{ product?.name || 'Chi tiết sản phẩm' }}</li>
+    </ol>
+  </nav>
+
+  <div *ngIf="isLoading" class="loading-spinner text-center py-5">
+    <div class="spinner-border text-primary-custom" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger" role="alert">
+    {{ errorMessage }}
+    <button
+      *ngIf="isBrowser"
+      type="button"
+      class="btn btn-sm btn-outline-danger ms-2"
+      (click)="retryLoad()"
+    >
+      Thử lại
+    </button>
+  </div>
+
+  <div *ngIf="!isLoading && product" class="product-detail-wrap">
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="bg-white rounded-4 p-3 shadow-sm">
+          <div class="product-main-image mb-3">
+            <img [src]="productImages[imageIndex]" [alt]="product.name" />
+          </div>
+          <div class="d-flex gap-2 overflow-auto pb-2">
+            <img
+              *ngFor="let image of productImages; let i = index"
+              [src]="image"
+              [alt]="product.name + ' ' + i"
+              class="product-gallery-thumb"
+              [class.active]="i === imageIndex"
+              (click)="imageIndex = i"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="bg-white rounded-4 p-4 shadow-sm">
+          <h1 class="fw-bold fs-3 mb-2 text-dark">{{ product.name }}</h1>
+
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="stars-display">
+              <i *ngFor="let icon of starIcons(product.rating)" [class]="icon"></i>
+            </div>
+            <span class="text-secondary small fw-semibold">{{ product.rating }} ({{ product.reviews }} đánh giá)</span>
+            <span class="text-secondary small">|</span>
+            <span class="text-secondary small">Đã bán {{ product.reviews * 3 }}</span>
+          </div>
+
+          <div class="bg-light p-3 rounded-3 mb-3">
+            <span class="fs-2 fw-bold text-danger">{{ formatPrice(displayPrice) }}</span>
+            <span *ngIf="hasDiscount" class="text-decoration-line-through text-secondary ms-2">
+              {{ formatPrice(product.originalPrice) }}
+            </span>
+            <span *ngIf="hasDiscount" class="badge bg-danger bg-opacity-10 text-danger ms-2 py-2 px-3">
+              -{{ discountPercent }}%
+            </span>
+          </div>
+
+          <div class="mb-3" *ngIf="product.variants && product.variants.length > 0">
+            <label class="fw-semibold small text-secondary d-block mb-2">Phân loại sản phẩm</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                type="button"
+                *ngFor="let variant of product.variants"
+                class="variant-option"
+                [class.active]="selectedVariant?.name === variant.name"
+                (click)="selectVariant(variant)"
+              >
+                <div class="variant-name">{{ variant.name }}</div>
+                <div class="variant-desc">{{ formatPrice(variant.price ?? displayPrice) }}</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="fw-semibold small text-secondary d-block mb-2">Số lượng</label>
+            <div class="d-flex align-items-center gap-3">
+              <div class="d-flex align-items-center">
+                <button class="qty-btn rounded-start" type="button" (click)="decreaseQuantity()">-</button>
+                <input type="number" class="qty-input" [value]="quantity" min="1" (input)="quantity = +($any($event.target).value || 1)" />
+                <button class="qty-btn rounded-end" type="button" (click)="increaseQuantity()">+</button>
+              </div>
+              <span class="text-secondary small">{{ availableStock }} sản phẩm có sẵn</span>
+            </div>
+          </div>
+
+          <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+            <button class="btn btn-outline-primary-custom flex-fill py-3 rounded-pill fw-semibold" type="button" (click)="addToCart()">
+              <i class="bi bi-cart-plus me-2"></i>Thêm vào giỏ hàng
+            </button>
+            <button class="btn btn-primary-custom flex-fill py-3 rounded-pill fw-semibold" type="button" (click)="buyNow()">
+              <i class="bi bi-bag me-2"></i>Mua ngay
+            </button>
+          </div>
+
+          <div class="row g-2 mt-3">
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 text-secondary small">
+                <i class="bi bi-truck text-danger"></i>
+                <span>Giao hàng toàn quốc</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 text-secondary small">
+                <i class="bi bi-shield-check text-danger"></i>
+                <span>Hàng chính hãng 100%</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 text-secondary small">
+                <i class="bi bi-arrow-repeat text-danger"></i>
+                <span>Đổi trả trong 7 ngày</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="d-flex align-items-center gap-2 text-secondary small">
+                <i class="bi bi-gift text-danger"></i>
+                <span>Tặng kèm map mẫu</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="bg-white rounded-4 shadow-sm overflow-hidden">
+        <ul class="nav nav-tabs-custom border-bottom px-4 pt-2" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active" type="button">Mô tả sản phẩm</button>
+          </li>
+        </ul>
+        <div class="p-4">
+          <p class="mb-0 text-secondary">{{ product.description }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

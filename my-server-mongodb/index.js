@@ -33,6 +33,7 @@ app.get("/api/products", async (req, res) => {
             projection: {
                 _id: 1,
                 id: 1,
+                slug: 1,
                 name: 1,
                 productName: 1,
                 category: 1,

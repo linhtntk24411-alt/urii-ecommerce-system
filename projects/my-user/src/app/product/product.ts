@@ -9,6 +9,7 @@ interface ProductVariant {
 
 interface ProductItem {
   id: string | number;
+  slug?: string;
   name: string;
   category: string;
   description: string;
@@ -389,6 +390,9 @@ export class Product implements OnInit {
       if (id === null || typeof name !== 'string') {
         return [];
       }
+      const slug = typeof item['slug'] === 'string' && item['slug'].trim()
+        ? item['slug'].trim()
+        : this.slugify(name);
 
       const variants = Array.isArray(item['variants'])
         ? item['variants'].flatMap((variant): ProductVariant[] =>
@@ -410,6 +414,7 @@ export class Product implements OnInit {
 
       return [{
         id,
+        slug,
         name,
         category: typeof categoryName === 'string' ? categoryName : '',
         description: typeof item['description'] === 'string' ? item['description'] : '',
@@ -424,6 +429,17 @@ export class Product implements OnInit {
         variants,
       }];
     });
+  }
+
+  private slugify(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
   }
 
   private readCachedProducts(): ProductItem[] {

@@ -152,7 +152,7 @@
           @for (product of pageProducts; track product.id) {
             <article class="product-card">
               <div class="product-image-wrapper">
-                <a [href]="'/productdetail.html?id=' + product.id" class="d-block"
+                <a [routerLink]="['/product-detail', product.slug]" class="d-block"
                   [attr.aria-label]="'Xem chi tiết ' + product.name">
                   <img [src]="product.image" [alt]="product.name" loading="lazy">
                 </a>

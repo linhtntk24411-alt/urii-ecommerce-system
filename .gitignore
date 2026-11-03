@@ -8,6 +8,7 @@
 
 # Node
 /node_modules
+**/node_modules/
 npm-debug.log
 yarn-error.log
 
@@ -42,3 +43,12 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+node_modules/
+*/node_modules/
+package.json
+*/package.json
+package-lock.json
+*/package-lock.json
+.env
+index.js
+*/index.js

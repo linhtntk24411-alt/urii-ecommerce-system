@@ -104,11 +104,19 @@
         </div>
         <a class="section-link" routerLink="/products">Xem tất cả →</a>
       </div>
-      <div class="product-grid">
-        @for (item of bestSellers; track item.id) {
+      <p *ngIf="isLoading" class="text-center py-4" role="status">Đang tải sản phẩm...</p>
+      <div *ngIf="errorMessage" class="text-center py-4" role="alert">
+        <p>{{errorMessage}}</p>
+        <button class="btn btn-urii btn-sm" type="button" (click)="loadBestSellers()">Thử lại</button>
+      </div>
+      <p *ngIf="!isLoading && !errorMessage && bestSellers.length === 0" class="text-center py-4">
+        Chưa có sản phẩm để hiển thị.
+      </p>
+      <div *ngIf="!isLoading && !errorMessage && bestSellers.length > 0" class="product-grid">
+        <ng-container *ngFor="let item of bestSellers; trackBy: trackProduct">
           <article class="product-card">
             <div class="product-card__media">
-              <a routerLink="/products" class="d-block">
+              <a [routerLink]="['/product-detail', item.slug]" class="d-block">
                 <img [src]="item.image" [alt]="item.name" />
               </a>
               @if (item.isSale) {
@@ -143,7 +151,7 @@
               </div>
             </div>
           </article>
-        }
+        </ng-container>
       </div>
     </div>
   </section>
@@ -185,7 +193,7 @@
           <h2>Biến bức ảnh của bạn thành sản phẩm hạt nhựa ủi!</h2>
           <p>Gửi hình ảnh bạn muốn thực hiện, Urii sẽ tư vấn và giúp bạn hoàn thiện sản phẩm</p>
           <div class="service-banner__actions">
-            <a class="btn btn-light fw-bold text-urii" routerLink="/custom-order">Gửi yêu cầu ngay</a>
+            <a class="btn btn-light fw-bold text-urii service-banner__button" routerLink="/custom-order">Gửi yêu cầu ngay</a>
           </div>
         </div>
       </div>

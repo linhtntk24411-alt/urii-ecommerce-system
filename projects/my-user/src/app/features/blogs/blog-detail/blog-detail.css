@@ -112,6 +112,14 @@
 
 .blog-detail-actions__btn:hover { background: rgba(132,0,1,0.05); border-color: #840001; }
 .blog-detail-actions__btn span.material-symbols-outlined { font-size: 20px; color: #840001; }
+.blog-detail-actions__btn.active {
+  background: rgba(132, 0, 1, 0.08);
+  border-color: #840001;
+  color: #840001;
+}
+.blog-detail-actions__btn.active span.material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
 
 .blog-detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
 .blog-detail-tags__label { font-weight: 600; color: #5c403b; margin-right: 8px; }

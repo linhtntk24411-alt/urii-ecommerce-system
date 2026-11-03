@@ -1,7 +1,20 @@
-import { Component, ElementRef, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { BlogService, CreateBlogPost } from '../../../core/services/blog.service';
+
+interface BlogDraft {
+  title: string;
+  category: string;
+  content: string;
+  tags: string;
+  seoTitle: string;
+  seoDesc: string;
+  imagePreviewUrls: string[];
+}
 
 @Component({
   selector: 'app-blog-create',
@@ -10,20 +23,29 @@ import { Router, RouterLink } from '@angular/router';
   templateUrl: './blog-create.html',
   styleUrl: './blog-create.css'
 })
-export class BlogCreateComponent {
-  @ViewChild('editor') editor!: ElementRef;
-  @ViewChild('fileInput') fileInput!: ElementRef; 
+export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('editor') editor?: ElementRef<HTMLDivElement>;
+  @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
 
   blogForm: FormGroup;
   imagePreviewUrls: string[] = [];
-  isSeoOpen: boolean = false;
+  isSeoOpen = false;
   wordCount: number = 0;
-  autoSaveMessage: string = 'Đã lưu tự động';
-  isSaving: boolean = false;
+  autoSaveMessage = 'Chưa lưu';
+  isSaving = false;
+  isPublishing = false;
+  errorMessage = '';
+  successMessage = '';
+
+  private readonly maxImageBytes = 6 * 1024 * 1024;
+  private readonly draftStorageKey = 'blogDraft';
+  private autoSaveTimer?: ReturnType<typeof setTimeout>;
+  private formChanges?: Subscription;
 
   constructor(
     private fb: FormBuilder,
     private router: Router,
+    private blogService: BlogService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
     this.blogForm = this.fb.group({
@@ -36,79 +58,353 @@ export class BlogCreateComponent {
     });
   }
 
-  triggerFileInput() {
+  ngOnInit(): void {
+    this.restoreDraft();
+    this.formChanges = this.blogForm.valueChanges.subscribe(() => this.scheduleAutoSave());
+  }
+
+  ngAfterViewInit(): void {
+    const content = this.blogForm.get('content')?.value ?? '';
+    if (this.editor) {
+      this.editor.nativeElement.innerHTML = content;
+      this.updateWordCount();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
+    this.formChanges?.unsubscribe();
+  }
+
+  triggerFileInput(): void {
     if (this.fileInput) {
       this.fileInput.nativeElement.click();
     }
   }
 
-  onFileSelected(event: any) {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      for (let file of files) {
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (e: any) => {
-            this.imagePreviewUrls.push(e.target.result);
-          };
-          reader.readAsDataURL(file);
-        }
-      }
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    this.errorMessage = '';
+
+    if (files.length === 0) return;
+    const supportedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+    if (files.some((file) => !supportedImageTypes.includes(file.type))) {
+      this.errorMessage = 'Chỉ hỗ trợ ảnh PNG, JPG, WEBP hoặc GIF.';
+      return;
     }
-    event.target.value = '';
+    if (files.reduce((total, file) => total + file.size, 0) +
+      this.imagePreviewUrls.reduce((total, image) => total + this.dataUrlSize(image), 0) > this.maxImageBytes) {
+      this.errorMessage = 'Tổng dung lượng ảnh không được vượt quá 6MB.';
+      return;
+    }
+
+    try {
+      const previews = await Promise.all(files.map((file) => this.readImage(file)));
+      this.imagePreviewUrls = [...this.imagePreviewUrls, ...previews];
+      this.scheduleAutoSave();
+    } catch (error: unknown) {
+      console.error('Lỗi đọc ảnh bài viết:', error);
+      this.errorMessage = 'Không thể đọc ảnh đã chọn. Vui lòng thử lại.';
+    }
   }
 
-  removeImage(index: number) {
+  removeImage(index: number, event: Event): void {
+    event.stopPropagation();
     this.imagePreviewUrls.splice(index, 1);
+    this.scheduleAutoSave();
   }
 
-  onContentChange() {
-    const text = this.editor.nativeElement.innerText || '';
-    this.wordCount = text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-    this.blogForm.patchValue({ content: this.editor.nativeElement.innerHTML });
-    this.autoSave();
+  onContentChange(): void {
+    const editor = this.editor?.nativeElement;
+    if (!editor) return;
+
+    this.blogForm.patchValue({ content: editor.innerHTML }, { emitEvent: false });
+    this.updateWordCount();
+    this.scheduleAutoSave();
   }
 
-  autoSave() {
-    this.isSaving = true;
-    setTimeout(() => {
-      const now = new Date();
-      this.autoSaveMessage = `Đã lưu tự động lúc ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-      this.isSaving = false;
-    }, 1000);
-  }
+  formatText(command: string, value = ''): void {
+    const editor = this.editor?.nativeElement;
+    if (!editor) return;
 
-  formatText(command: string, value: string = '') {
     document.execCommand(command, false, value);
-    this.editor.nativeElement.focus();
+    editor.focus();
+    this.onContentChange();
   }
 
-  toggleSeo() {
+  toggleSeo(): void {
     this.isSeoOpen = !this.isSeoOpen;
   }
 
-  saveDraft() {
-    const data = { ...this.blogForm.value, status: 'draft', date: new Date().toISOString() };
-    this.saveToLocalStorage(data);
-    alert('Đã lưu bản nháp thành công!');
+  saveDraft(): void {
+    const saved = this.persistDraft();
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    if (saved) {
+      this.showDialog('Đã lưu bản nháp thành công!');
+    } else {
+      this.showDialog(this.errorMessage || 'Không thể lưu bản nháp. Vui lòng thử lại.');
+    }
   }
 
-  publish() {
-    if (this.blogForm.invalid) {
-      alert('Vui lòng nhập Tiêu đề và Nội dung bài viết!');
+  publish(): void {
+    if (this.isPublishing) return;
+
+    const title = String(this.blogForm.get('title')?.value ?? '').trim();
+    const content = String(this.blogForm.get('content')?.value ?? '');
+    if (!title || !this.contentText(content).trim()) {
+      this.blogForm.get('title')?.markAsTouched();
+      this.errorMessage = 'Vui lòng nhập Tiêu đề và Nội dung bài viết!';
+      this.showDialog(this.errorMessage);
       return;
     }
-    const data = { ...this.blogForm.value, status: 'published', date: new Date().toISOString() };
-    this.saveToLocalStorage(data);
-    alert('Bài viết đã được xuất bản!');
-    this.router.navigate(['/blog-list']);
+
+    if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
+    this.isSaving = false;
+    const post = this.createPost(title, content);
+    this.isPublishing = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.blogService.createBlog(post).subscribe({
+      next: () => {
+        this.isPublishing = false;
+        this.removeDraft();
+        this.successMessage = this.errorMessage || 'Bài viết đã được xuất bản thành công!';
+        this.showDialog(this.successMessage);
+        void this.router.navigate(['/blog-list']);
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi đăng bài blog:', error);
+        this.isPublishing = false;
+        this.errorMessage = this.getPublishErrorMessage(error);
+        this.showDialog(this.errorMessage);
+      },
+    });
   }
 
-  saveToLocalStorage(data: any) {
-    if (isPlatformBrowser(this.platformId)) {
-      let posts = JSON.parse(localStorage.getItem('userBlogs') || '[]');
-      posts.push({ ...data, id: Date.now() });
-      localStorage.setItem('userBlogs', JSON.stringify(posts));
+  private getPublishErrorMessage(error: unknown): string {
+    if (!(error instanceof HttpErrorResponse)) {
+      return 'Không thể đăng bài viết lúc này. Vui lòng thử lại.';
     }
+
+    if (error.status === 0) {
+      return 'Không kết nối được máy chủ. Vui lòng kiểm tra backend rồi thử lại.';
+    }
+    if (error.status === 413) {
+      return 'Ảnh hoặc nội dung quá lớn. Vui lòng giảm dung lượng ảnh rồi thử lại.';
+    }
+    if (error.status === 503) {
+      return 'Máy chủ chưa kết nối được cơ sở dữ liệu. Vui lòng thử lại sau.';
+    }
+
+    const serverMessage = typeof error.error?.message === 'string' ? error.error.message : '';
+    if (serverMessage === 'Image must be a supported base64 image') {
+      return 'Ảnh bìa không hợp lệ. Hãy chọn ảnh PNG, JPG, WEBP hoặc GIF bằng nút Thêm ảnh.';
+    }
+    if (serverMessage === 'Title, content, and category are required') {
+      return 'Vui lòng nhập tiêu đề, nội dung và chọn chuyên mục trước khi đăng.';
+    }
+
+    return `Không thể đăng bài viết lúc này (mã lỗi ${error.status}). Vui lòng thử lại.`;
+  }
+
+  private showDialog(message: string): void {
+    if (isPlatformBrowser(this.platformId)) {
+      alert(message);
+    }
+  }
+
+  private createPost(title: string, content: string): CreateBlogPost {
+    const categorySlug = String(this.blogForm.get('category')?.value ?? 'huong-dan-diy');
+    const category = this.categoryName(categorySlug);
+    const excerpt = this.contentText(content).trim().slice(0, 240);
+    const now = new Date().toISOString();
+    const tags = String(this.blogForm.get('tags')?.value ?? '')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    return {
+      title,
+      slug: this.slugify(title),
+      summary: excerpt,
+      excerpt,
+      content: this.includeAttachedImages(content),
+      author: 'Urii',
+      avatar: 'assets/gallery_assets/mau-ca-heo.webp',
+      date: now,
+      image: this.imagePreviewUrls[0] ?? '',
+      category,
+      categorySlug,
+      likes: 0,
+      comments: 0,
+      views: 0,
+      isFeatured: false,
+      tags,
+      seoTitle: String(this.blogForm.get('seoTitle')?.value ?? '').trim(),
+      seoDesc: String(this.blogForm.get('seoDesc')?.value ?? '').trim(),
+    };
+  }
+
+  private persistDraft(): boolean {
+    if (!isPlatformBrowser(this.platformId)) return false;
+
+    if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
+    this.isSaving = false;
+    try {
+      localStorage.setItem(this.draftStorageKey, JSON.stringify(this.getDraft()));
+      this.autoSaveMessage = 'Đã lưu bản nháp';
+      this.successMessage = 'Bản nháp đã được lưu trên thiết bị này.';
+      this.errorMessage = '';
+      return true;
+    } catch (error: unknown) {
+      console.error('Lỗi lưu bản nháp blog:', error);
+      this.errorMessage = 'Không thể lưu bản nháp. Vui lòng kiểm tra dung lượng trình duyệt.';
+      return false;
+    }
+  }
+
+  private scheduleAutoSave(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
+    this.isSaving = true;
+    this.autoSaveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(this.draftStorageKey, JSON.stringify(this.getDraft()));
+        const now = new Date();
+        this.autoSaveMessage = `Đã lưu tự động lúc ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        this.errorMessage = '';
+      } catch (error: unknown) {
+        console.error('Lỗi tự động lưu bản nháp blog:', error);
+        this.errorMessage = 'Không thể tự động lưu bản nháp.';
+      } finally {
+        this.isSaving = false;
+      }
+    }, 800);
+  }
+
+  private restoreDraft(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    try {
+      const storedDraft = localStorage.getItem(this.draftStorageKey);
+      if (!storedDraft) return;
+
+      const draft: unknown = JSON.parse(storedDraft);
+      if (!this.isDraft(draft)) {
+        this.errorMessage = 'Bản nháp đã lưu không đúng định dạng.';
+        return;
+      }
+      this.blogForm.patchValue({
+        title: draft.title,
+        category: draft.category,
+        content: draft.content,
+        tags: draft.tags,
+        seoTitle: draft.seoTitle,
+        seoDesc: draft.seoDesc,
+      });
+      this.imagePreviewUrls = draft.imagePreviewUrls;
+      this.autoSaveMessage = 'Đã khôi phục bản nháp';
+    } catch (error: unknown) {
+      console.error('Lỗi khôi phục bản nháp blog:', error);
+      this.errorMessage = 'Không thể khôi phục bản nháp đã lưu.';
+    }
+  }
+
+  private removeDraft(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      localStorage.removeItem(this.draftStorageKey);
+    } catch (error: unknown) {
+      console.error('Lỗi xóa bản nháp blog sau khi đăng:', error);
+      this.errorMessage = 'Bài đã đăng nhưng không thể xóa bản nháp khỏi thiết bị.';
+    }
+  }
+
+  private getDraft(): BlogDraft {
+    return {
+      title: String(this.blogForm.get('title')?.value ?? ''),
+      category: String(this.blogForm.get('category')?.value ?? 'huong-dan-diy'),
+      content: String(this.blogForm.get('content')?.value ?? ''),
+      tags: String(this.blogForm.get('tags')?.value ?? ''),
+      seoTitle: String(this.blogForm.get('seoTitle')?.value ?? ''),
+      seoDesc: String(this.blogForm.get('seoDesc')?.value ?? ''),
+      imagePreviewUrls: [...this.imagePreviewUrls],
+    };
+  }
+
+  private readImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') resolve(reader.result);
+        else reject(new Error('Invalid image data'));
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('Could not read image'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private contentText(content: string): string {
+    const container = document.createElement('div');
+    container.innerHTML = content;
+    return container.textContent ?? '';
+  }
+
+  private includeAttachedImages(content: string): string {
+    const attachedImages = this.imagePreviewUrls.slice(1)
+      .map((image) => `<p><img src="${image}" alt="Ảnh bài viết"></p>`)
+      .join('');
+    return `${content}${attachedImages}`;
+  }
+
+  private updateWordCount(): void {
+    const text = this.editor?.nativeElement.innerText ?? '';
+    this.wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  private dataUrlSize(image: string): number {
+    const base64 = image.split(',')[1] ?? '';
+    return Math.ceil(base64.length * 3 / 4);
+  }
+
+  private categoryName(categorySlug: string): string {
+    const names: Record<string, string> = {
+      'huong-dan-diy': 'Hướng dẫn DIY',
+      'y-tuong-thiet-ke': 'Ý tưởng thiết kế',
+      'goc-nghe-thuat': 'Góc nghệ thuật',
+      'meo-vat': 'Mẹo vặt',
+    };
+    return names[categorySlug] ?? 'Khác';
+  }
+
+  private slugify(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  private isDraft(value: unknown): value is BlogDraft {
+    if (typeof value !== 'object' || value === null) return false;
+    const draft = value as Record<string, unknown>;
+    return typeof draft['title'] === 'string'
+      && typeof draft['category'] === 'string'
+      && typeof draft['content'] === 'string'
+      && typeof draft['tags'] === 'string'
+      && typeof draft['seoTitle'] === 'string'
+      && typeof draft['seoDesc'] === 'string'
+      && Array.isArray(draft['imagePreviewUrls'])
+      && draft['imagePreviewUrls'].every((image) =>
+        typeof image === 'string'
+        && /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(image));
   }
 }

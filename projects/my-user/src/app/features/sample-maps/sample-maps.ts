@@ -1,19 +1,12 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { PLATFORM_ID } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { MapService, SampleMap } from '../../core/services/map.service';
 
-interface SampleMap {
-  map_id: string;
-  map_name: string;
-  main_image: string;
-  categories: string[];
-  difficulty: string;
-  difficultyClass: string;
-  grid_size: string;
-  total_beads: number;
-  time: string;
-  isPopular?: boolean;
-  isNew?: boolean;
+interface SavedMap {
+  id: string | number;
+  [key: string]: unknown;
 }
 
 @Component({
@@ -24,27 +17,17 @@ interface SampleMap {
   styleUrls: ['./sample-maps.css']
 })
 export class SampleMapsComponent implements OnInit {
-  // Dữ liệu mẫu 
-  allMaps: SampleMap[] = [
-    { map_id: '1', map_name: 'Map mẫu: Bạch tuộc tím cute', main_image: 'assets/gallery_assets/mau-bach-tuoc.webp', categories: ['Con vật'], difficulty: 'Dễ', difficultyClass: 'badge-easy', grid_size: '32 x 32 ô', total_beads: 242, time: '15-20 phút', isPopular: true },
-    { map_id: '2', map_name: 'Map mẫu: Bướm đêm dạ quang', main_image: 'assets/gallery_assets/mau-buom.webp', categories: ['Con vật'], difficulty: 'Trung bình', difficultyClass: 'badge-medium', grid_size: '26 x 20 ô', total_beads: 315, time: '35-45 phút' },
-    { map_id: '3', map_name: 'Map mẫu: Cá heo xanh tinh nghịch', main_image: 'assets/gallery_assets/mau-ca-heo.webp', categories: ['Con vật'], difficulty: 'Dễ', difficultyClass: 'badge-easy', grid_size: '25 x 22 ô', total_beads: 198, time: '15 phút', isNew: true },
-    { map_id: '4', map_name: 'Map mẫu: Cá mập ôm phao', main_image: 'assets/gallery_assets/mau-ca-map-cut-e.webp', categories: ['Con vật'], difficulty: 'Khó', difficultyClass: 'badge-hard', grid_size: '60 x 60 ô', total_beads: 1450, time: '70-85 phút' },
-    { map_id: '5', map_name: 'Map mẫu: Cá ngựa đại dương', main_image: 'assets/gallery_assets/mau-ca-ngua.webp', categories: ['Con vật'], difficulty: 'Dễ', difficultyClass: 'badge-easy', grid_size: '32 x 32 ô', total_beads: 218, time: '20 phút' },
-    { map_id: '6', map_name: 'Map mẫu: Cáo lửa rực rỡ', main_image: 'assets/gallery_assets/mau-cao.webp', categories: ['Con vật'], difficulty: 'Dễ', difficultyClass: 'badge-easy', grid_size: '32 x 32 ô', total_beads: 286, time: '20-25 phút' },
-  ];
+  private readonly mapService = inject(MapService);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  allMaps: SampleMap[] = [];
 
   filteredMaps: SampleMap[] = [];
   paginatedMaps: SampleMap[] = [];
 
-  categories = [
-    { name: 'Tất cả mẫu', count: 0 },
-    { name: 'Con vật', count: 0 },
-    { name: 'Hoạt hình', count: 0 },
-    { name: 'Logo', count: 0 },
-    { name: 'Trang trí', count: 0 },
-    { name: 'Trái cây', count: 0 }
-  ];
+  categories = [{ name: 'Tất cả mẫu', count: 0 }];
+  readonly pageNumbers: number[] = [];
   
   selectedCategory: string = 'Tất cả mẫu';
   selectedDifficulties: string[] = [];
@@ -53,20 +36,59 @@ export class SampleMapsComponent implements OnInit {
   currentPage: number = 1;
   itemsPerPage: number = 6; 
   totalPages: number = 1;
+  isLoading = true;
+  errorMessage = '';
+  savedMapIds = new Set<string>();
+  saveMessage = '';
 
   ngOnInit() {
-    this.updateCategoryCounts();
-    this.applyFilters();
+    if (this.isBrowser) {
+      this.loadSavedMaps();
+      this.loadMaps();
+    }
+  }
+
+  loadMaps(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.mapService.getMaps().subscribe({
+      next: (maps) => {
+        this.allMaps = maps;
+        this.updateCategoryCounts();
+        this.applyFilters();
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi tải thư viện map:', error);
+        this.allMaps = [];
+        this.updateCategoryCounts();
+        this.applyFilters();
+        this.errorMessage = 'Không thể tải thư viện map. Vui lòng thử lại.';
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
   }
 
   updateCategoryCounts() {
-    this.categories.forEach(cat => {
-      if (cat.name === 'Tất cả mẫu') {
-        cat.count = this.allMaps.length;
-      } else {
-        cat.count = this.allMaps.filter(m => m.categories.includes(cat.name)).length;
-      }
+    const categoryCounts = new Map<string, number>();
+    this.allMaps.forEach(map => {
+      new Set(map.categories).forEach(category => {
+        categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+      });
     });
+
+    this.categories = [
+      { name: 'Tất cả mẫu', count: this.allMaps.length },
+      ...[...categoryCounts]
+        .sort(([first], [second]) => first.localeCompare(second, 'vi'))
+        .map(([name, count]) => ({ name, count })),
+    ];
+    if (!this.categories.some(category => category.name === this.selectedCategory)) {
+      this.selectedCategory = 'Tất cả mẫu';
+    }
   }
 
   selectCategory(categoryName: string) {
@@ -87,6 +109,7 @@ export class SampleMapsComponent implements OnInit {
 
   onSortChange(event: any) {
     this.currentSort = event.target.value;
+    this.currentPage = 1;
     this.applyFilters();
   }
 
@@ -98,50 +121,94 @@ export class SampleMapsComponent implements OnInit {
     });
 
     if (this.currentSort === 'name-az') {
-      this.filteredMaps.sort((a, b) => a.map_name.localeCompare(b.map_name, 'vi'));
+      this.filteredMaps.sort((a, b) => a.title.localeCompare(b.title, 'vi'));
     } else if (this.currentSort === 'beads-asc') {
-      this.filteredMaps.sort((a, b) => a.total_beads - b.total_beads);
+      this.filteredMaps.sort((a, b) => a.totalBeads - b.totalBeads);
     }
 
     this.updatePagination();
   }
 
   updatePagination() {
-    this.totalPages = Math.ceil(this.filteredMaps.length / this.itemsPerPage);
-    if (this.currentPage > this.totalPages) {
-      this.currentPage = 1;
-    }
+    this.totalPages = Math.max(1, Math.ceil(this.filteredMaps.length / this.itemsPerPage));
+    this.currentPage = Math.min(Math.max(this.currentPage, 1), this.totalPages);
+    this.pageNumbers.splice(0, this.pageNumbers.length, ...Array.from({ length: this.totalPages }, (_, index) => index + 1));
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     this.paginatedMaps = this.filteredMaps.slice(startIndex, startIndex + this.itemsPerPage);
   }
 
   changePage(page: number) {
-    if (page >= 1 && page <= this.totalPages) {
-      this.currentPage = page;
-      this.updatePagination();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    if (!Number.isInteger(page) || page < 1 || page > this.totalPages || page === this.currentPage) return;
+
+    this.currentPage = page;
+    this.updatePagination();
+    if (this.isBrowser) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  trackPage(_index: number, page: number): number {
+    return page;
   }
 
   saveMap(map: SampleMap) {
-    let savedMaps = JSON.parse(localStorage.getItem('savedMaps') || '[]');
-    const isExist = savedMaps.some((item: any) => item.id === map.map_id);
+    if (!this.isBrowser) return;
 
-    if (!isExist) {
-      savedMaps.push({
-        id: map.map_id,
-        title: map.map_name,
-        author: "Urii Thiết kế",
-        image: map.main_image,
+    const savedMaps = this.readSavedMaps();
+    if (!savedMaps) return;
+    const alreadySaved = savedMaps.some((savedMap) => String(savedMap.id) === map.id);
+    const nextSavedMaps = alreadySaved
+      ? savedMaps.filter((savedMap) => String(savedMap.id) !== map.id)
+      : [...savedMaps, {
+        id: map.id,
+        title: map.title,
+        author: 'Urii Thiết kế',
+        image: map.image,
         rating: 5.0,
-        liked: true
-      });
-      localStorage.setItem('savedMaps', JSON.stringify(savedMaps));
-      alert(`Đã lưu "${map.map_name}" vào danh sách của bạn!`);
-    } else {
-      alert(`Mẫu "${map.map_name}" đã tồn tại trong danh sách lưu.`);
+        liked: true,
+      }];
+
+    try {
+      localStorage.setItem('savedMaps', JSON.stringify(nextSavedMaps));
+      this.savedMapIds = new Set(nextSavedMaps.map((savedMap) => String(savedMap.id)));
+      this.saveMessage = alreadySaved
+        ? `Đã bỏ lưu "${map.title}".`
+        : `Đã lưu "${map.title}" vào bộ sưu tập.`;
+    } catch (error: unknown) {
+      console.error('Không thể cập nhật bộ sưu tập map:', error);
+      this.saveMessage = 'Không thể cập nhật bộ sưu tập. Vui lòng kiểm tra bộ nhớ trình duyệt.';
     }
   }
+
+  isMapSaved(mapId: string): boolean {
+    return this.savedMapIds.has(mapId);
+  }
+
+  private loadSavedMaps(): void {
+    const savedMaps = this.readSavedMaps();
+    if (!savedMaps) return;
+    this.savedMapIds = new Set(savedMaps.map((map) => String(map.id)));
+  }
+
+  private readSavedMaps(): SavedMap[] | null {
+    try {
+      const stored = localStorage.getItem('savedMaps');
+      if (!stored) return [];
+
+      const parsed: unknown = JSON.parse(stored);
+      if (!Array.isArray(parsed)) throw new Error('Stored maps collection has an invalid format');
+      const savedMaps = parsed.filter((map): map is SavedMap =>
+        typeof map === 'object'
+        && map !== null
+        && 'id' in map
+        && (typeof map['id'] === 'string' || typeof map['id'] === 'number'));
+      if (savedMaps.length !== parsed.length) throw new Error('Stored maps collection has an invalid format');
+      return savedMaps;
+    } catch (error: unknown) {
+      console.error('Không thể đọc bộ sưu tập map đã lưu:', error);
+      this.saveMessage = 'Không thể đọc bộ sưu tập map trên thiết bị này.';
+      return null;
+    }
+  }
+
   resetFilters() {
     this.selectedCategory = 'Tất cả mẫu';
     this.selectedDifficulties = [];

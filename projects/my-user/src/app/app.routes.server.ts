@@ -6,6 +6,30 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server,
   },
   {
+    path: 'blog-detail/:slug',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'sample-maps-detail/:slug',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'support/support-center',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'support/faq',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'support/privacy-policy',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'support/terms-of-service',
+    renderMode: RenderMode.Server,
+  },
+  {
     path: '**',
     renderMode: RenderMode.Prerender,
   },

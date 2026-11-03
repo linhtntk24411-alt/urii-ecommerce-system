@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { combineLatest, map } from 'rxjs';
+import { MapService, SampleMap } from '../../core/services/map.service';
 
 @Component({
   selector: 'app-sample-maps-detail',
@@ -10,54 +12,79 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
   styleUrls: ['./sample-maps-detail.css']
 })
 export class SampleMapsDetailComponent implements OnInit {
-  mapId: string = '';
-  
-  // Dữ liệu giả lập
-  mapDetail = {
-    id: '1',
-    name: 'Map mẫu: Cá heo xanh tinh nghịch',
-    image: 'assets/gallery_assets/mau-ca-heo.webp',
-    difficulty: 'Dễ',
-    gridSize: '25 x 22 ô',
-    totalBeads: 198,
-    time: '15 phút',
-    pegboard: 'Bàn ủi 15x15cm',
-    description: 'Mẫu Cá heo xanh được thiết kế với phối màu Gradient xanh dương tươi sáng, rất thích hợp để làm móc khóa hoặc trang trí góc học tập. Mẫu này sử dụng hạt Perler 5mm tiêu chuẩn.'
-  };
+  private readonly route = inject(ActivatedRoute);
+  private readonly mapService = inject(MapService);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
-  constructor(private route: ActivatedRoute) {}
+  mapDetail: SampleMap | null = null;
+  isLoading = true;
+  errorMessage = '';
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(params => {
-      if (params['id']) {
-        this.mapId = params['id'];
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).pipe(
+      map(([pathParams, queryParams]) => ({
+        slug: pathParams.get('slug')?.trim(),
+        id: queryParams.get('id')?.trim(),
+      })),
+    ).subscribe(({ slug, id }) => {
+      if (slug) {
+        this.loadMap(this.mapService.getMapBySlug(slug));
+      } else if (id) {
+        this.loadMap(this.mapService.getMapById(id));
+      } else {
+        this.mapDetail = null;
+        this.isLoading = false;
+        this.errorMessage = 'Không tìm thấy mã map.';
+        this.changeDetectorRef.markForCheck();
       }
     });
   }
 
-  saveMap() {
-    let savedMaps = JSON.parse(localStorage.getItem('savedMaps') || '[]');
-    const isExist = savedMaps.some((item: any) => item.id === this.mapDetail.id);
+  private loadMap(request: ReturnType<MapService['getMapBySlug']>): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.mapDetail = null;
+
+    request.subscribe({
+      next: (sampleMap) => {
+        this.mapDetail = sampleMap ?? null;
+        this.errorMessage = sampleMap ? '' : 'Không tìm thấy map này.';
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi tải chi tiết map:', error);
+        this.errorMessage = 'Không thể tải map. Vui lòng thử lại.';
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  saveMap(): void {
+    const map = this.mapDetail;
+    if (!map) return;
+
+    const savedMaps = JSON.parse(localStorage.getItem('savedMaps') || '[]');
+    const isExist = savedMaps.some((item: { id: string }) => item.id === map.id);
 
     if (!isExist) {
       savedMaps.push({
-        id: this.mapDetail.id,
-        title: this.mapDetail.name,
-        author: "Urii Thiết kế",
-        image: this.mapDetail.image,
+        id: map.id,
+        title: map.title,
+        author: 'Urii Thiết kế',
+        image: map.image,
         rating: 5.0,
-        liked: true
+        liked: true,
       });
       localStorage.setItem('savedMaps', JSON.stringify(savedMaps));
-      alert(`Đã lưu "${this.mapDetail.name}" vào danh sách của bạn!`);
+      alert(`Đã lưu "${map.title}" vào danh sách của bạn!`);
     } else {
-      alert(`Mẫu "${this.mapDetail.name}" đã tồn tại trong danh sách lưu.`);
+      alert(`Mẫu "${map.title}" đã tồn tại trong danh sách lưu.`);
     }
   }
-  scrollToGuide() {
-    const element = document.getElementById('guideSection');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+
+  scrollToGuide(): void {
+    document.getElementById('guideSection')?.scrollIntoView({ behavior: 'smooth' });
   }
 }

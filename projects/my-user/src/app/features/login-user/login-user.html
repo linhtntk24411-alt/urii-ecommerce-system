@@ -17,24 +17,33 @@
       <label class="auth-tab" for="register-mode">Đăng ký</label>
     </div>
 
-    <section class="auth-panel login-panel" aria-label="Đăng nhập">
+    <form class="auth-panel login-panel" aria-label="Đăng nhập" [formGroup]="loginForm" (ngSubmit)="login()">
       <div class="field-group">
         <label class="field-label" for="login-email">Email</label>
-        <input class="field-input" id="login-email" type="email" placeholder="example@gmail.com" autocomplete="email">
+        <input class="field-input" id="login-email" type="email" placeholder="example@gmail.com" autocomplete="email" formControlName="email">
       </div>
       <div class="field-group">
         <div class="field-heading">
           <label class="field-label" for="login-password">Mật khẩu</label>
-          <span class="text-link">Quên mật khẩu?</span>
+          <button class="text-link password-change-link" type="button" (click)="openPasswordReset()">Quên mật khẩu?</button>
         </div>
         <div class="password-field">
-          <input class="field-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password">
-          <span class="password-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </span>
+          <input class="field-input" id="login-password" [type]="isPasswordVisible ? 'text' : 'password'" placeholder="••••••••" autocomplete="current-password" formControlName="password">
+          <button
+            class="password-icon"
+            type="button"
+            [attr.aria-label]="isPasswordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+            [attr.aria-pressed]="isPasswordVisible"
+            (click)="togglePasswordVisibility()">
+            <svg *ngIf="!isPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg *ngIf="isPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.7 15.7 0 0 1-3.1 3.9M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 1.9-.2 2.7-.5"/></svg>
+          </button>
         </div>
       </div>
-      <button class="primary-button" type="button">Tiếp tục</button>
+      <p *ngIf="errorMessage" class="auth-error" role="alert">{{ errorMessage }}</p>
+      <button class="primary-button" type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Đang đăng nhập...' : 'Tiếp tục' }}
+      </button>
 
       <div class="divider"><span>HOẶC</span></div>
       <div class="social-buttons">
@@ -55,7 +64,7 @@
         </button>
       </div>
       <p class="auth-help">Bạn gặp khó khăn? <span class="text-link">Trung tâm trợ giúp</span></p>
-    </section>
+    </form>
 
     <section class="auth-panel register-panel" aria-label="Đăng ký">
       <div class="field-group">
@@ -115,3 +124,35 @@
   </section>
 
 </main>
+
+<div
+  *ngIf="isPasswordResetOpen"
+  class="password-change-backdrop"
+  (click)="closePasswordReset()">
+  <section
+    class="password-change-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="password-reset-title"
+    (click)="$event.stopPropagation()">
+    <button class="password-change-close" type="button" aria-label="Đóng" (click)="closePasswordReset()">×</button>
+    <h2 id="password-reset-title" class="auth-title">Quên mật khẩu</h2>
+    <p class="auth-subtitle">Nhập email đã đăng ký để nhận hướng dẫn đặt lại mật khẩu.</p>
+
+    <form *ngIf="!passwordResetMessage" [formGroup]="passwordResetForm" (ngSubmit)="sendPasswordResetNotice()">
+      <div class="field-group">
+        <label class="field-label" for="reset-email">Email</label>
+        <input class="field-input" id="reset-email" type="email" autocomplete="email" formControlName="email">
+      </div>
+
+      <button class="primary-button password-change-submit" type="submit" [disabled]="isSendingResetNotice">
+        {{ isSendingResetNotice ? 'Đang xử lý...' : 'Gửi yêu cầu' }}
+      </button>
+    </form>
+
+    <div *ngIf="passwordResetMessage" class="password-change-result" role="status">
+      <p>{{ passwordResetMessage }}</p>
+      <button class="primary-button" type="button" (click)="closePasswordReset()">Đóng</button>
+    </div>
+  </section>
+</div>

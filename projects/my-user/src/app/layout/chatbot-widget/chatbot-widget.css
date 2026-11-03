@@ -38,8 +38,8 @@
 }
 
 .chat-fab {
-    width: 72px;
-    height: 72px;
+    width: 64px;
+    height: 64px;
     padding: 0;
     border: none;
     background: transparent;
@@ -75,11 +75,11 @@
 }
 
 .chat-window {
-    width: 360px !important;
-    min-width: 360px !important;
-    max-width: 360px !important;
-    height: 540px !important;
-    max-height: 80vh !important;
+    width: min(340px, calc(100vw - 32px));
+    min-width: 0;
+    max-width: 340px;
+    height: 500px;
+    max-height: calc(100vh - 112px);
     background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -353,3 +353,22 @@
 }
 .emoji-picker span:hover { transform: scale(1.2); }
 .emoji-picker.hidden { display: none !important; }
+
+@media (max-width: 480px) {
+    .chatbot-wrapper {
+        bottom: 16px;
+        right: 16px;
+    }
+
+    .chat-window {
+        width: min(320px, calc(100vw - 32px));
+        max-width: calc(100vw - 32px);
+        height: 460px;
+        max-height: calc(100vh - 96px);
+    }
+
+    .chat-fab {
+        width: 58px;
+        height: 58px;
+    }
+}

@@ -1,7 +1,9 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { delay, finalize, map, Observable } from 'rxjs';
 
 interface ChatMessage {
   text: string;
@@ -20,6 +22,18 @@ interface ChatSession {
   messages: ChatMessage[];
 }
 
+interface ChatbotReply {
+  text: string;
+  chips?: { label: string; action: string }[];
+}
+
+interface ChatbotFaq {
+  intent: string;
+  keywords: string[];
+  response: string;
+  quickReplies: { label: string; action: string }[];
+}
+
 @Component({
   selector: 'app-chatbot-widget',
   standalone: true,
@@ -35,7 +49,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   
   botName: string = 'Trợ lý ảo Urii';
   botStatus: string = 'Đang trực tuyến';
-  statusDotColor: boolean = true; // true: xanh (AI), false: vàng/đỏ (Nhân viên)
+  statusDotColor: boolean = true; 
   
   messages: ChatMessage[] = [];
   emojis: string[] = ['😊', '😂', '🥰', '👍', '🔥', '❤️', '✨', '⭐', '😭', '😮'];
@@ -43,11 +57,13 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   private currentSessionId: string = '';
   private memoryStorage: { [key: string]: string } = {};
   private syncInterval: any;
+  private pendingBotReplies = 0;
+  private readonly http = inject(HttpClient);
 
   constructor(
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private cdr: ChangeDetectorRef // Inject ChangeDetectorRef để ép Angular render giao diện tức thì
+    private cdr: ChangeDetectorRef 
   ) {}
 
   ngOnInit(): void {
@@ -72,7 +88,6 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
-  // Toggle mở/đóng cửa sổ chat
   toggleChatWindow(): void {
     this.isChatOpen = !this.isChatOpen;
     if (this.isChatOpen) {
@@ -99,7 +114,6 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     if (fileInput) fileInput.click();
   }
 
-  // --- QUẢN LÝ SESSION & LOCALSTORAGE AN TOÀN SSR ---
   private safeGetItem(key: string): string | null {
     try {
       return localStorage.getItem(key);
@@ -168,22 +182,43 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       this.messages = [...session.messages];
       this.updateHeaderStatus(session.status);
     } else {
-      const welcome: ChatMessage = {
-        text: "Xin chào, Urii có thể giúp gì cho bạn?",
-        chips: [
-          { label: 'Xem giá bộ Kit', action: 'Xem giá bộ Kit' },
-          { label: 'Màu sắc có sẵn', action: 'Màu sắc có sẵn' }
-        ],
-        timestamp: Date.now(),
-        sender: 'bot'
-      };
-      session.messages.push(welcome);
-      const sessions = this.getSessions();
-      sessions[session.sessionId] = session;
-      this.saveSessions(sessions);
-
-      this.messages = [...session.messages];
-      this.updateHeaderStatus('ai');
+      this.pendingBotReplies += 1;
+      this.isTyping = true;
+      this.getWelcomeReply().pipe(
+        finalize(() => {
+          this.pendingBotReplies = Math.max(0, this.pendingBotReplies - 1);
+          this.isTyping = this.pendingBotReplies > 0;
+          this.cdr.detectChanges();
+        }),
+      ).subscribe({
+        next: (reply) => {
+          const currentSession = this.getCurrentSession();
+          if (currentSession.messages.length === 0) {
+            currentSession.messages.push({
+              ...reply,
+              timestamp: Date.now(),
+              sender: 'bot',
+            });
+            currentSession.lastMessageTime = Date.now();
+            const sessions = this.getSessions();
+            sessions[currentSession.sessionId] = currentSession;
+            this.saveSessions(sessions);
+          }
+          this.messages = [...currentSession.messages];
+          this.updateHeaderStatus(currentSession.status);
+          this.cdr.detectChanges();
+          this.scrollToBottom();
+        },
+        error: (error: unknown) => {
+          console.error('Lỗi tải lời chào chatbot:', error);
+          this.messages = [{
+            text: 'Không thể kết nối trợ lý lúc này. Bạn vui lòng thử lại sau nhé.',
+            sender: 'bot',
+            timestamp: Date.now(),
+          }];
+          this.cdr.detectChanges();
+        },
+      });
     }
     this.cdr.detectChanges();
   }
@@ -240,26 +275,165 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     this.scrollToBottom();
 
     if (session.status === 'ai') {
-      const reply = this.getFallbackReply(text);
+      this.requestBotReply(text, session.sessionId);
+    }
+  }
 
-      const botMsg: ChatMessage = {
-        text: typeof reply === 'string' ? reply : (reply.text || ''),
-        sender: 'bot',
-        timestamp: Date.now(),
-        chips: typeof reply === 'object' ? reply.chips : undefined
-      };
+  private requestBotReply(text: string, sessionId: string): void {
+    this.pendingBotReplies += 1;
+    this.isTyping = true;
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
-      const currentSessions = this.getSessions();
-      const freshSession = currentSessions[session.sessionId] || session;
-      freshSession.messages.push(botMsg);
-      freshSession.lastMessageTime = Date.now();
-      currentSessions[freshSession.sessionId] = freshSession;
-      this.saveSessions(currentSessions);
+    this.getBotReply(text).pipe(
+      finalize(() => {
+        this.pendingBotReplies = Math.max(0, this.pendingBotReplies - 1);
+        this.isTyping = this.pendingBotReplies > 0;
+        this.cdr.detectChanges();
+      }),
+    ).subscribe({
+      next: (reply) => this.appendBotReply(reply, sessionId),
+      error: (error: unknown) => {
+        console.error('Lỗi tạo phản hồi chatbot:', error);
+        this.appendBotReply({
+          text: 'Xin lỗi, Urii chưa thể phản hồi lúc này. Bạn vui lòng thử lại sau nhé.',
+        }, sessionId);
+      },
+    });
+  }
 
+  private appendBotReply(reply: ChatbotReply, sessionId: string): void {
+    const currentSessions = this.getSessions();
+    const freshSession = currentSessions[sessionId];
+    if (!freshSession) return;
+
+    freshSession.messages.push({
+      text: reply.text,
+      sender: 'bot',
+      timestamp: Date.now(),
+      chips: reply.chips,
+    });
+    freshSession.lastMessageTime = Date.now();
+    currentSessions[sessionId] = freshSession;
+    this.saveSessions(currentSessions);
+
+    if (sessionId === this.currentSessionId) {
       this.messages = [...freshSession.messages];
-      this.cdr.detectChanges(); 
+      this.cdr.detectChanges();
       this.scrollToBottom();
     }
+  }
+
+  private getBotReply(userMessage: string): Observable<ChatbotReply> {
+    return this.getFaqs().pipe(
+      map((response) => this.findFaqReply(response, userMessage)),
+      delay(1000),
+    );
+  }
+
+  private getWelcomeReply(): Observable<ChatbotReply> {
+    return this.getFaqs().pipe(
+      map((response) => {
+        const greeting = this.toFaqs(response)
+          .map((faq) => this.parseFaq(faq))
+          .find((faq) => faq?.intent === 'greeting');
+        return greeting
+          ? { text: greeting.response, chips: greeting.quickReplies }
+          : { text: 'Xin chào! Urii chưa có lời chào khả dụng. Bạn có thể nhập câu hỏi để mình tìm trong danh sách trợ giúp nhé.' };
+      }),
+      delay(1000),
+    );
+  }
+
+  private getFaqs(): Observable<unknown> {
+    return this.http.get<unknown>('/api/chatbot/faqs');
+  }
+
+  private findFaqReply(response: unknown, userMessage: string): ChatbotReply {
+    const normalizedMessage = this.normalizeText(userMessage);
+    const paddedMessage = ` ${normalizedMessage} `;
+    let bestMatch: { faq: ChatbotFaq; score: number } | undefined;
+
+    for (const record of this.toFaqs(response)) {
+      const faq = this.parseFaq(record);
+      if (!faq) continue;
+
+      const matchedKeyword = faq.keywords
+        .map((keyword) => this.normalizeText(keyword))
+        .filter((keyword) => keyword && paddedMessage.includes(` ${keyword} `))
+        .sort((first, second) => second.length - first.length)[0];
+      if (matchedKeyword && (!bestMatch || matchedKeyword.length > bestMatch.score)) {
+        bestMatch = { faq, score: matchedKeyword.length };
+      }
+    }
+
+    if (bestMatch) {
+      return {
+        text: bestMatch.faq.response,
+        chips: bestMatch.faq.quickReplies.length ? bestMatch.faq.quickReplies : undefined,
+      };
+    }
+
+    const fallbackChips = this.toFaqs(response)
+      .map((record) => this.parseFaq(record)?.quickReplies ?? [])
+      .find((chips) => chips.length > 0);
+    return {
+      text: 'Dạ Urii chưa tìm thấy thông tin phù hợp. Bạn thử hỏi cách khác hoặc chọn một gợi ý bên dưới nhé.',
+      chips: fallbackChips,
+    };
+  }
+
+  private toFaqs(response: unknown): unknown[] {
+    if (Array.isArray(response)) return response;
+    return this.isRecord(response) && Array.isArray(response['faqs'])
+      ? response['faqs']
+      : [];
+  }
+
+  private parseFaq(value: unknown): ChatbotFaq | null {
+    if (!this.isRecord(value) || typeof value['response'] !== 'string') return null;
+
+    const keywords = Array.isArray(value['keywords'])
+      ? value['keywords'].filter((keyword): keyword is string => typeof keyword === 'string')
+      : [];
+    const quickReplies = Array.isArray(value['quickReplies'])
+      ? value['quickReplies'].flatMap((item): { label: string; action: string }[] => {
+          if (typeof item === 'string' && item.trim()) {
+            const text = item.trim();
+            return [{ label: text, action: text }];
+          }
+          if (!this.isRecord(item)) return [];
+          const label = this.toText(item['label'] ?? item['text'] ?? item['title'] ?? item['question']);
+          const action = this.toText(item['action'] ?? item['value']) || label;
+          return label ? [{ label, action }] : [];
+        })
+      : [];
+
+    return {
+      intent: this.normalizeText(this.toText(value['intent'])),
+      keywords,
+      response: value['response'],
+      quickReplies,
+    };
+  }
+
+  private normalizeText(value: string): string {
+    return value
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private toText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   handleChipClick(action: string): void {
@@ -268,7 +442,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       return;
     }
 
-    if (action === 'Tư vấn từ nhân viên') {
+    if (['Tư vấn từ nhân viên', 'Gặp tư vấn viên', 'Tư vấn viên'].includes(action)) {
       const session = this.getCurrentSession();
       const userMsg: ChatMessage = {
         text: 'Tư vấn từ nhân viên',
@@ -279,13 +453,6 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       session.status = 'waiting';
       session.unreadCount = (session.unreadCount || 0) + 1;
 
-      const botMsg: ChatMessage = {
-        text: 'Dạ, Urii đã gửi yêu cầu hỗ trợ đến nhân viên tư vấn. Bạn vui lòng đợi một chút nhé, nhân viên sẽ phản hồi bạn ngay ạ! ✨',
-        sender: 'bot',
-        timestamp: Date.now()
-      };
-      session.messages.push(botMsg);
-
       const sessions = this.getSessions();
       sessions[session.sessionId] = session;
       this.saveSessions(sessions);
@@ -294,42 +461,12 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       this.updateHeaderStatus('waiting');
       this.cdr.detectChanges();
       this.scrollToBottom();
+      this.requestBotReply(action, session.sessionId);
       return;
     }
 
     this.userMessageText = action;
     this.sendMessage();
-  }
-
-  private getFallbackReply(userMessage: string): any {
-    const text = this.normalizeText(userMessage);
-    if (this.containsAny(text, ['hi', 'hello', 'shop oi', 'ad oi', 'xin chao', 'cho hoi'])) {
-      return 'Dạ Urii xin chào bạn! Chúc bạn một ngày mới nhiều niềm vui. Bạn cần Urii hỗ trợ thông tin gì về bộ Kit hạt ủi sáng tạo ạ? ✨';
-    }
-    if (this.containsAny(text, ['mau', 'color', 'sac', 'bao nhieu mau'])) {
-      return 'Bộ Kit Standard 24 màu bao gồm:\n\n🔴 Đỏ, 🟠 Cam, 🟡 Vàng\n🟢 Xanh Lá, 🔵 Xanh Dương\n💜 Tím, 🩶 Xám, ⚫ Đen\n⚪ Trắng, 🩷 Hồng, 🟤 Nâu\n\n+ Các màu pastel nhạt: Hồng nhạt, Xanh nhạt, Vàng nhạt...\n\nMỗi màu có số lượng hạt đủ để tạo nhiều tác phẩm đẹp!';
-    }
-    if (this.containsAny(text, ['gia', 'bao nhieu tien', 'price', 'tien'])) {
-      return 'Dạ hiện tại bên Urii có sẵn đầy đủ 24 màu hạt nhựa lẻ cho bạn thoải mái lựa chọn ạ. Tất cả các màu đều đồng giá như nhau:\n\n🛍️ Giá gói hạt nhựa lẻ: 35.000đ/gói (Mỗi gói có khoảng 500 hạt)\n\nNgoài ra bên mình còn có các phụ kiện bán rời nếu bạn cần mua thêm:\n- Bảng khuôn nhựa lẻ (15x15cm): 50.000đ/cái\n- Nhíp sắt chuyên dụng: 25.000đ/cái\n- Giấy ủi chịu nhiệt: 10.000đ/xấp (5 tờ)\n\n🎁 Đặc biệt: Khi bạn đặt mua nhiều gói hạt hoặc mua combo kèm phụ kiện, Urii sẽ TẶNG KÈM thêm giấy ủi miễn phí cho mình nha!\n\nBạn muốn lấy những màu nào hoặc cần mua thêm phụ kiện gì không, nhắn em lên đơn cho mình liền nhé! ✨';
-    }
-    if (this.containsAny(text, ['dat', 'mua', 'order'])) {
-      return 'Bạn có thể đặt hàng trực tiếp trên hệ thống hoặc gửi yêu cầu thiết kế riêng qua tính năng Custom Order của Urii nhé!';
-    }
-    return {
-      text: 'Dạ hiện tại em chưa hiểu rõ ý của bạn lắm ạ. 🥺\n\nNếu bạn cần hỗ trợ từ nhân viên, hãy bấm nút dưới đây để gửi yêu cầu nhanh nha!',
-      chips: [
-        { label: '🛒 Gửi Yêu Cầu Đặt Hàng', action: 'Yêu cầu đặt hàng' },
-        { label: '🧑‍💻 Tư vấn từ nhân viên', action: 'Tư vấn từ nhân viên' }
-      ]
-    };
-  }
-
-  private normalizeText(value: string): string {
-    return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
-  }
-
-  private containsAny(text: string, keywords: string[]): boolean {
-    return keywords.some(keyword => text.includes(keyword));
   }
 
   private scrollToBottom(): void {

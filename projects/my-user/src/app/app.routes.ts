@@ -16,6 +16,7 @@ import { ProductDetail } from './features/product-detail/product-detail';
 export const routes: Routes = [
   { path: '', component: HomepageComponent },
   { path: 'products', component: Product },
+  { path: 'favorites', component: Product, data: { favoritesOnly: true } },
   { path: 'product-detail/:slug', component: ProductDetail },
   { path: 'custom-order', component: CustomOrderComponent },
   { path: 'blog-list', component: BlogListComponent },

@@ -1,7 +1,8 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FavoriteProductsService } from '../../core/services/favorite-products.service';
 
 interface ProductVariant {
   name: string;
@@ -46,7 +47,10 @@ type SortOption = 'popular' | 'price-asc' | 'price-desc' | 'sale';
 })
 export class Product implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly favorites = inject(FavoriteProductsService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly itemsPerPage = 9;
 
@@ -60,6 +64,7 @@ export class Product implements OnInit {
   cartMessage = '';
   category = '';
   searchTerm = '';
+  favoritesOnly = false;
   selectedPriceRanges: string[] = [];
   selectedPromotions: string[] = [];
   selectedRating = 'all';
@@ -73,6 +78,12 @@ export class Product implements OnInit {
         this.searchTerm = params.get('search') ?? '';
         this.applyFilters();
       });
+    this.favoritesOnly = this.route.snapshot.data['favoritesOnly'] === true;
+    if (this.favoritesOnly && this.isBrowser && !this.isLoggedIn()) {
+      window.alert('Bạn cần đăng nhập để sử dụng chức năng sản phẩm yêu thích.');
+      void this.router.navigate(['/login']);
+      return;
+    }
 
     if (this.isBrowser) {
       void this.loadProducts();
@@ -116,6 +127,33 @@ export class Product implements OnInit {
 
   get hasCategoryContext(): boolean {
     return Boolean(this.category || this.searchTerm);
+  }
+
+  isFavorite(productId: string | number): boolean {
+    return this.favorites.has(productId);
+  }
+
+  toggleFavorite(product: ProductItem): void {
+    if (!this.isLoggedIn()) {
+      window.alert('Bạn cần đăng nhập để sử dụng chức năng này.');
+      return;
+    }
+
+    try {
+      const saved = this.favorites.toggle(product.id);
+      if (this.favoritesOnly && !saved) {
+        this.applyFilters();
+      }
+      window.alert(saved
+        ? 'Đã lưu vào Sản phẩm yêu thích.'
+        : 'Đã xóa khỏi Sản phẩm yêu thích.');
+    } catch {
+      window.alert('Không thể lưu sản phẩm yêu thích. Vui lòng thử lại.');
+    }
+  }
+
+  private isLoggedIn(): boolean {
+    return this.isBrowser && window.localStorage.getItem('isLoggedIn') === 'true';
   }
 
   getCategoryLabel(category: string): string {
@@ -217,16 +255,8 @@ export class Product implements OnInit {
 
   async loadProducts(): Promise<void> {
     const cachedProducts = this.readCachedProducts();
-    if (cachedProducts.length > 0) {
-      this.allProducts = cachedProducts;
-      this.loading = false;
-      this.applyFilters();
-      this.statusMessage = 'Đang cập nhật danh sách sản phẩm...';
-    } else {
-      this.loading = true;
-      this.statusMessage = '';
-    }
-
+    this.loading = true;
+    this.statusMessage = '';
     this.errorMessage = '';
     this.refreshFailed = false;
 
@@ -250,6 +280,8 @@ export class Product implements OnInit {
       console.error('Lỗi tải sản phẩm từ MongoDB:', error);
       this.loading = false;
       if (cachedProducts.length > 0) {
+        this.allProducts = cachedProducts;
+        this.applyFilters();
         this.statusMessage = 'Không thể cập nhật. Đang hiển thị danh sách đã lưu.';
         this.refreshFailed = true;
       } else {
@@ -257,6 +289,8 @@ export class Product implements OnInit {
         this.allProducts = [];
         this.filteredProducts = [];
       }
+    } finally {
+      this.changeDetectorRef.markForCheck();
     }
   }
 
@@ -303,6 +337,11 @@ export class Product implements OnInit {
 
   private applyFilters(): void {
     let filtered = [...this.allProducts];
+
+    if (this.favoritesOnly) {
+      const favoriteIds = new Set(this.favorites.getProductIds());
+      filtered = filtered.filter((product) => favoriteIds.has(String(product.id)));
+    }
 
     if (this.category) {
       const categoryCodes: Record<string, string[]> = {

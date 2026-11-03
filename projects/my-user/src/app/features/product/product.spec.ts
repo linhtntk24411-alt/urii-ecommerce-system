@@ -8,6 +8,7 @@ describe('Product', () => {
   let fixture: ComponentFixture<Product>;
 
   beforeEach(async () => {
+    window.localStorage.removeItem('products');
     await TestBed.configureTestingModule({
       imports: [Product],
       providers: [provideRouter([])],
@@ -92,6 +93,34 @@ describe('Product', () => {
     fetchSpy.mockRestore();
   });
 
+  it('should prefer API products over cached products', async () => {
+    window.localStorage.setItem('products', JSON.stringify([{
+      id: 'cached-product',
+      name: 'Sản phẩm cũ',
+      category: 'KIT',
+      originalPrice: 50000,
+    }]));
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{
+        id: 'api-product',
+        name: 'Sản phẩm mới từ API',
+        category: 'KIT',
+        originalPrice: 75000,
+      }]), { status: 200 }),
+    );
+    component.allProducts = [];
+    component.filteredProducts = [];
+
+    const loadPromise = component.loadProducts();
+    expect(component.allProducts).toEqual([]);
+    await loadPromise;
+
+    expect(component.allProducts.map((product) => product.name)).toEqual(['Sản phẩm mới từ API']);
+
+    fetchSpy.mockRestore();
+    window.localStorage.removeItem('products');
+  });
+
   it('should show cached products while the API is unavailable', async () => {
     window.localStorage.setItem('products', JSON.stringify([{
       id: 'cached-product',
@@ -111,5 +140,36 @@ describe('Product', () => {
     fetchSpy.mockRestore();
     consoleSpy.mockRestore();
     window.localStorage.removeItem('products');
+  });
+
+  it('should require login before saving a favorite product', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const product = {
+      id: 'favorite-product',
+      name: 'Sản phẩm yêu thích',
+      category: 'KIT',
+      description: '',
+      image: '',
+      originalPrice: 50000,
+      isSale: false,
+      isHot: false,
+      rating: 0,
+      reviews: 0,
+      stock: 1,
+      variants: [],
+    };
+
+    component.toggleFavorite(product);
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('đăng nhập'));
+    expect(window.localStorage.getItem('favoriteProducts')).toBeNull();
+
+    window.localStorage.setItem('isLoggedIn', 'true');
+    component.toggleFavorite(product);
+    expect(window.localStorage.getItem('favoriteProducts')).toBe('["favorite-product"]');
+    expect(alertSpy).toHaveBeenLastCalledWith(expect.stringContaining('Đã lưu'));
+
+    window.localStorage.removeItem('isLoggedIn');
+    window.localStorage.removeItem('favoriteProducts');
+    alertSpy.mockRestore();
   });
 });

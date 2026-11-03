@@ -1,12 +1,14 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FavoriteProductsService } from '../../core/services/favorite-products.service';
 
 interface ProductVariant {
   name: string;
   price?: number;
   stock?: number;
+  image?: string;
 }
 
 interface ProductItem {
@@ -34,18 +36,23 @@ interface ProductItem {
 })
 export class ProductDetail implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
   readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   product: ProductItem | null = null;
   quantity = 1;
   selectedVariant: ProductVariant | null = null;
+  selectedVariantIndex = 0;
   imageIndex = 0;
   isLoading = true;
   errorMessage = '';
+  statusMessage = '';
+  isFavorite = false;
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly favorites: FavoriteProductsService,
   ) {}
 
   ngOnInit(): void {
@@ -92,6 +99,9 @@ export class ProductDetail implements OnInit {
   }
 
   get productImages(): string[] {
+    if (this.selectedVariant?.image) {
+      return [this.selectedVariant.image];
+    }
     if (this.product?.images?.length) {
       return this.product.images;
     }
@@ -125,8 +135,27 @@ export class ProductDetail implements OnInit {
     this.quantity = Math.max(1, this.quantity - 1);
   }
 
-  selectVariant(variant: ProductVariant): void {
+  selectProductVariant(variant: ProductVariant, index: number): void {
     this.selectedVariant = variant;
+    this.selectedVariantIndex = index;
+    this.imageIndex = 0;
+  }
+
+  toggleFavorite(): void {
+    if (!this.product) return;
+    if (!this.isBrowser || window.localStorage.getItem('isLoggedIn') !== 'true') {
+      window.alert('Bạn cần đăng nhập để sử dụng chức năng này.');
+      return;
+    }
+
+    try {
+      this.isFavorite = this.favorites.toggle(this.product.id);
+      window.alert(this.isFavorite
+        ? 'Đã lưu vào Sản phẩm yêu thích.'
+        : 'Đã xóa khỏi Sản phẩm yêu thích.');
+    } catch {
+      window.alert('Không thể lưu sản phẩm yêu thích. Vui lòng thử lại.');
+    }
   }
 
   addToCart(): void {
@@ -169,6 +198,8 @@ export class ProductDetail implements OnInit {
   async loadProduct(slug: string): Promise<void> {
     this.isLoading = true;
     this.errorMessage = '';
+    this.statusMessage = '';
+    const cachedProduct = this.readCachedProducts().find((item) => item.slug === slug);
 
     try {
       const response = await window.fetch('/api/products');
@@ -180,23 +211,56 @@ export class ProductDetail implements OnInit {
       const products = this.parseProducts(data);
       const found = products.find((item) => item.slug === slug);
       if (!found) {
+        if (cachedProduct) {
+          this.setProduct(cachedProduct);
+          this.statusMessage = 'Không tìm thấy sản phẩm trên server. Đang hiển thị dữ liệu đã lưu.';
+          return;
+        }
         this.product = null;
         this.errorMessage = 'Không tìm thấy sản phẩm này.';
         return;
       }
 
-      this.product = found;
-      this.selectedVariant = found.variants?.[0] ?? null;
-      this.quantity = 1;
-      this.imageIndex = 0;
+      this.setProduct(found);
+      this.isFavorite = this.favorites.has(found.id);
+      try {
+        window.localStorage.setItem('products', JSON.stringify(products));
+      } catch (error) {
+        console.error('Không thể lưu bộ nhớ đệm sản phẩm:', error);
+      }
     } catch (error) {
       console.error('Lỗi tải sản phẩm từ MongoDB:', error);
-      this.product = null;
-      this.errorMessage = error instanceof Error
-        ? error.message
-        : 'Không thể tải sản phẩm từ server. Vui lòng thử lại.';
+      if (cachedProduct) {
+        this.setProduct(cachedProduct);
+        this.statusMessage = 'Không thể kết nối server. Đang hiển thị dữ liệu đã lưu.';
+      } else {
+        this.product = null;
+        this.errorMessage = error instanceof Error
+          ? error.message
+          : 'Không thể tải sản phẩm từ server. Vui lòng thử lại.';
+      }
     } finally {
       this.isLoading = false;
+      this.changeDetectorRef.markForCheck();
+    }
+  }
+
+  private setProduct(product: ProductItem): void {
+    this.product = product;
+    this.selectedVariant = product.variants?.[0] ?? null;
+    this.selectedVariantIndex = 0;
+    this.isFavorite = this.favorites.has(product.id);
+    this.quantity = 1;
+    this.imageIndex = 0;
+  }
+
+  private readCachedProducts(): ProductItem[] {
+    try {
+      const saved = window.localStorage.getItem('products');
+      return saved ? this.parseProducts(JSON.parse(saved)) : [];
+    } catch (error) {
+      console.error('Không thể đọc bộ nhớ đệm sản phẩm:', error);
+      return [];
     }
   }
 
@@ -235,6 +299,7 @@ export class ProductDetail implements OnInit {
             name: variant['name'],
             price: this.toNumber(variant['price']),
             stock: this.toNumber(variant['stock']),
+            image: typeof variant['image'] === 'string' ? variant['image'] : undefined,
           }];
         })
         : [];

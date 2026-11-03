@@ -2,7 +2,9 @@
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small mb-0 bg-white p-2 px-3 rounded-3 shadow-sm">
       <li class="breadcrumb-item"><a routerLink="/" class="text-decoration-none text-secondary">Trang chủ</a></li>
-      <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">Sản phẩm</li>
+      <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">
+        {{ favoritesOnly ? 'Sản phẩm yêu thích' : 'Sản phẩm' }}
+      </li>
     </ol>
   </nav>
 
@@ -145,7 +147,9 @@
         </div>
       } @else if (pageProducts.length === 0) {
         <div class="col-12 text-center py-5">
-          <p class="text-secondary">Không tìm thấy sản phẩm phù hợp</p>
+          <p class="text-secondary">
+            {{ favoritesOnly ? 'Bạn chưa có sản phẩm yêu thích nào.' : 'Không tìm thấy sản phẩm phù hợp' }}
+          </p>
         </div>
       } @else {
         <div class="product-list">
@@ -156,6 +160,12 @@
                   [attr.aria-label]="'Xem chi tiết ' + product.name">
                   <img [src]="product.image" [alt]="product.name" loading="lazy">
                 </a>
+                <button type="button" class="favorite-icon" [class.active]="isFavorite(product.id)"
+                  [attr.aria-pressed]="isFavorite(product.id)"
+                  [attr.aria-label]="(isFavorite(product.id) ? 'Xóa khỏi' : 'Lưu vào') + ' sản phẩm yêu thích: ' + product.name"
+                  (click)="toggleFavorite(product)">
+                  <i [class]="isFavorite(product.id) ? 'bi bi-heart-fill' : 'bi bi-heart'"></i>
+                </button>
                 @if (hasDiscount(product)) {
                   <span class="badge-discount">-{{ discountPercent(product) }}%</span>
                   @if (product.isHot) {

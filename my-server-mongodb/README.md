@@ -11,6 +11,8 @@ npm run dev
 
 The API listens on port `3002` by default. Static files in `public/` are served from the site root, so an image at `public/images/avatar_user.jpeg` is available at `/images/avatar_user.jpeg`. `CORS_ORIGINS` is a comma-separated list of allowed browser origins.
 
+For local development only, `NODE_ENV=development` and `ALLOW_PUBLIC_USER_READS=true` allow unauthenticated `GET /api/users` and `GET /api/users/:id` requests from localhost. Password hashes are always excluded. This exposes user profile data from the configured database, so use only with test data; the option is ignored outside development and requests not originating from loopback still require an admin token. Keep `ALLOW_PUBLIC_USER_READS=false` or unset it outside local testing.
+
 Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT in the Socket.IO `auth.token` field; only admin tokens are accepted. Successful Product, Order, Custom Order, User, Category, Blog, Comment, Gallery, Saved Map, Chat Session, and Chatbot FAQ create, update, and delete operations broadcast `crud:changed` with `{ resource, action, id }`. Socket connections from origins outside `CORS_ORIGINS` are rejected.
 
 ## Seed data

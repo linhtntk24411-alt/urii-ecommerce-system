@@ -12,9 +12,13 @@ let server;
 let io;
 let baseUrl;
 const previousJwtSecret = process.env.JWT_SECRET;
+const previousNodeEnv = process.env.NODE_ENV;
+const previousPublicUserReads = process.env.ALLOW_PUBLIC_USER_READS;
 
 before(async () => {
   process.env.JWT_SECRET = 'test-secret-only';
+  process.env.NODE_ENV = 'test';
+  process.env.ALLOW_PUBLIC_USER_READS = 'false';
   server = http.createServer(app);
   io = initializeRealtime(server, app.get('allowedOrigins'));
   await new Promise((resolve, reject) => {
@@ -33,6 +37,16 @@ after(async () => {
     delete process.env.JWT_SECRET;
   } else {
     process.env.JWT_SECRET = previousJwtSecret;
+  }
+  if (previousNodeEnv === undefined) {
+    delete process.env.NODE_ENV;
+  } else {
+    process.env.NODE_ENV = previousNodeEnv;
+  }
+  if (previousPublicUserReads === undefined) {
+    delete process.env.ALLOW_PUBLIC_USER_READS;
+  } else {
+    process.env.ALLOW_PUBLIC_USER_READS = previousPublicUserReads;
   }
 });
 
@@ -236,6 +250,77 @@ test('serves image files from public/images', async () => {
   const response = await fetch(`${baseUrl}/images/avatar-non.jpg`);
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type'), /^image\/jpeg/);
+});
+
+test('allows localhost user reads only with the development opt-in and never returns password hashes', async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousPublicReads = process.env.ALLOW_PUBLIC_USER_READS;
+  process.env.NODE_ENV = 'development';
+  process.env.ALLOW_PUBLIC_USER_READS = 'true';
+  const find = mock.method(User, 'find', () => {
+    const query = {
+      select(selection) {
+        assert.equal(selection, '-password');
+        return query;
+      },
+      sort() {
+        return query;
+      },
+      skip() {
+        return query;
+      },
+      limit() {
+        return query;
+      },
+      async lean() {
+        return [{ _id: 'user-id', email: 'user@example.test', address: 'test address' }];
+      }
+    };
+    return query;
+  });
+  const findById = mock.method(User, 'findById', () => {
+    const query = {
+      select(selection) {
+        assert.equal(selection, '-password');
+        return query;
+      },
+      async lean() {
+        return { _id: '507f1f77bcf86cd799439011', email: 'user@example.test' };
+      }
+    };
+    return query;
+  });
+
+  try {
+    const listResponse = await fetch(`${baseUrl}/api/users`);
+    assert.equal(listResponse.status, 200);
+    const users = await listResponse.json();
+    assert.equal(users[0].address, 'test address');
+    assert.equal(Object.hasOwn(users[0], 'password'), false);
+
+    const userResponse = await fetch(
+      `${baseUrl}/api/users/507f1f77bcf86cd799439011`
+    );
+    assert.equal(userResponse.status, 200);
+    assert.equal(Object.hasOwn(await userResponse.json(), 'password'), false);
+
+    process.env.NODE_ENV = 'production';
+    const productionResponse = await fetch(`${baseUrl}/api/users`);
+    assert.equal(productionResponse.status, 401);
+  } finally {
+    find.mock.restore();
+    findById.mock.restore();
+    if (previousNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+    if (previousPublicReads === undefined) {
+      delete process.env.ALLOW_PUBLIC_USER_READS;
+    } else {
+      process.env.ALLOW_PUBLIC_USER_READS = previousPublicReads;
+    }
+  }
 });
 
 test('requires admin authentication for private reads and all CRUD mutations', async () => {

@@ -37,9 +37,12 @@ const { prepareSavedMaps } = require('../utils/savedMaps');
 const { prepareLikedProducts } = require('../utils/likedProducts');
 const { prepareLikedBlogs } = require('../utils/likedBlogs');
 const {
+  applyProductRatings,
   buildCartResponse,
+  calculateProductRatingStats,
   prepareCartFixtures,
-  prepareReviewFixtures
+  prepareReviewFixtures,
+  syncProductRating
 } = require('../utils/commerceFixtures');
 
 const dataPath = (name) => path.join(__dirname, '..', 'data', name);
@@ -444,6 +447,41 @@ test('cart and review fixtures use real products and delivered customer orders',
   assert.equal(reviewedOrders.length, 16);
   assert.ok(unreviewedOrders.every((order) => !reviews.some((review) => review.orderId === order.id)));
   assert.ok(reviewedOrders.every((order) => reviews.some((review) => review.orderId === order.id)));
+
+  const ratingStats = calculateProductRatingStats(reviews);
+  for (const product of products) {
+    const expected = ratingStats.get(product.id);
+    assert.equal(product.rating, expected.rating, `Product ${product.id} rating must match reviews`);
+    assert.equal(product.reviewCount, expected.reviewCount, `Product ${product.id} reviewCount must match reviews`);
+  }
+
+  // Verify dynamic recalculation when new reviews are added
+  const updatedProducts = applyProductRatings(products, [
+    ...reviews,
+    { productId: '1075483767', rating: 3 },
+    { productId: '1075483767', rating: 4 }
+  ]);
+  const updatedFirst = updatedProducts.find((p) => p.id === '1075483767');
+  assert.equal(updatedFirst.reviewCount, 3);
+  assert.equal(updatedFirst.rating, 4);
+
+  let updatedProductPayload = null;
+  const syncResult = await syncProductRating('1075483767', {
+    ReviewModel: {
+      aggregate: async () => [{ _id: '1075483767', reviewCount: 3, ratingSum: 13 }]
+    },
+    ProductModel: {
+      findOneAndUpdate: async (filter, update) => {
+        updatedProductPayload = { filter, update };
+        return {};
+      }
+    }
+  });
+  assert.deepEqual(syncResult, { productId: '1075483767', rating: 4.33, reviewCount: 3 });
+  assert.deepEqual(updatedProductPayload, {
+    filter: { id: '1075483767' },
+    update: { $set: { rating: 4.33, reviewCount: 3 } }
+  });
 });
 
 test('custom order model uses the custom_orders collection', () => {

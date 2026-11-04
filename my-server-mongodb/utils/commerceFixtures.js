@@ -265,10 +265,105 @@ function prepareReviewFixtures(reviewData, users, products) {
   return { orders, reviews };
 }
 
+function calculateProductRatingStats(reviews) {
+  if (!Array.isArray(reviews)) {
+    throw new TypeError('Reviews must be an array.');
+  }
+
+  const buckets = new Map();
+  for (const review of reviews) {
+    if (!review?.productId || !Number.isFinite(review.rating)) continue;
+    const current = buckets.get(review.productId) || { sum: 0, count: 0 };
+    current.sum += review.rating;
+    current.count += 1;
+    buckets.set(review.productId, current);
+  }
+
+  const statsByProductId = new Map();
+  for (const [productId, { sum, count }] of buckets.entries()) {
+    statsByProductId.set(productId, {
+      rating: count > 0 ? Number((sum / count).toFixed(2)) : 0,
+      reviewCount: count
+    });
+  }
+  return statsByProductId;
+}
+
+function applyProductRatings(products, reviews) {
+  if (!Array.isArray(products)) {
+    throw new TypeError('Products must be an array.');
+  }
+  const statsByProductId = calculateProductRatingStats(reviews);
+  return products.map((product) => {
+    const stats = statsByProductId.get(product.id) || { rating: 0, reviewCount: 0 };
+    return {
+      ...product,
+      rating: stats.rating,
+      reviewCount: stats.reviewCount
+    };
+  });
+}
+
+async function syncProductRating(productId, { ReviewModel, ProductModel } = {}) {
+  const aggregate = await ReviewModel.aggregate([
+    { $match: { productId } },
+    {
+      $group: {
+        _id: '$productId',
+        reviewCount: { $sum: 1 },
+        ratingSum: { $sum: '$rating' }
+      }
+    }
+  ]);
+  const summary = aggregate[0];
+  const reviewCount = summary?.reviewCount || 0;
+  const rating = reviewCount > 0 ? Number((summary.ratingSum / reviewCount).toFixed(2)) : 0;
+
+  await ProductModel.findOneAndUpdate(
+    { id: productId },
+    { $set: { rating, reviewCount } },
+    { new: true }
+  );
+
+  return { productId, rating, reviewCount };
+}
+
+async function syncAllProductRatings({ ReviewModel, ProductModel } = {}) {
+  const aggregate = await ReviewModel.aggregate([
+    {
+      $group: {
+        _id: '$productId',
+        reviewCount: { $sum: 1 },
+        ratingSum: { $sum: '$rating' }
+      }
+    }
+  ]);
+
+  if (aggregate.length === 0) return [];
+
+  const operations = aggregate.map((entry) => ({
+    updateOne: {
+      filter: { id: entry._id },
+      update: {
+        $set: {
+          rating: Number((entry.ratingSum / entry.reviewCount).toFixed(2)),
+          reviewCount: entry.reviewCount
+        }
+      }
+    }
+  }));
+
+  return ProductModel.bulkWrite(operations, { ordered: true });
+}
+
 module.exports = {
+  applyProductRatings,
   buildCartResponse,
+  calculateProductRatingStats,
   getProductPrice,
   normalizeCartItem,
   prepareCartFixtures,
-  prepareReviewFixtures
+  prepareReviewFixtures,
+  syncAllProductRatings,
+  syncProductRating
 };

@@ -24,7 +24,7 @@ const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareLikedProducts } = require('./utils/likedProducts');
 const { prepareLikedBlogs } = require('./utils/likedBlogs');
-const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
+const { prepareCartFixtures, prepareReviewFixtures, syncAllProductRatings } = require('./utils/commerceFixtures');
 const { isBcryptHash } = require('./utils/userPassword');
 
 function readJSON(fileName) {
@@ -223,6 +223,7 @@ async function seed() {
   await insertMissing(Cart, carts, 'userId');
   await insertMissing(Order, reviewOrders, 'id');
   await insertMissing(Review, reviews, 'id');
+  await syncAllProductRatings({ ReviewModel: Review, ProductModel: Product });
   const savedMapFixtures = readJSON('saved_maps.json');
   const savedMapUsers = await User.find({
     _id: { $in: savedMapFixtures.users.map((user) => user.userId) },

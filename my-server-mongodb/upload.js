@@ -23,7 +23,7 @@ const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareLikedProducts } = require('./utils/likedProducts');
 const { prepareLikedBlogs } = require('./utils/likedBlogs');
-const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
+const { prepareCartFixtures, prepareReviewFixtures, syncAllProductRatings } = require('./utils/commerceFixtures');
 const { prepareUserPassword } = require('./utils/userPassword');
 
 function readJSON(fileName) {
@@ -262,6 +262,10 @@ async function syncModule(mod) {
     console.log(`🔄 [${mod.name}]: Đã cập nhật ${modified} bản ghi thay đổi. (Tổng hiện có: ${totalOnAtlas})`);
   } else {
     console.log(`✔️  [${mod.name}]: Đã đồng bộ, không có mục mới (${matched} bản ghi giữ nguyên).`);
+  }
+
+  if (mod.model === Review) {
+    await syncAllProductRatings({ ReviewModel: Review, ProductModel: Product });
   }
 }
 

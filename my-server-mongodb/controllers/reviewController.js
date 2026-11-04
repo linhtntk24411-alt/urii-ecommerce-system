@@ -6,6 +6,8 @@ const Review = require('../models/Review');
 const User = require('../models/User');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
+const { syncProductRating } = require('../utils/commerceFixtures');
+const { emitCrudChange } = require('../realtime');
 
 async function getCustomerId(req, res) {
   const id = req.auth?.id;
@@ -179,7 +181,16 @@ exports.createReview = async (req, res) => {
       content: content.trim(),
       media
     });
-    res.status(201).json(review);
+    const ratingStats = await syncProductRating(productId, {
+      ReviewModel: Review,
+      ProductModel: Product
+    });
+    emitCrudChange('products', 'updated', product._id || product.id);
+    res.status(201).json({
+      ...(typeof review.toObject === 'function' ? review.toObject() : review),
+      productRating: ratingStats.rating,
+      productReviewCount: ratingStats.reviewCount
+    });
   } catch (error) {
     sendReviewError(res, error);
   }

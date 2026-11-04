@@ -9,6 +9,8 @@ const productSchema = new mongoose.Schema({
   isSale: Boolean,
   originalPrice: Number,
   currentPrice: Number,
+  rating: { type: Number, default: 0, min: 0, max: 5 },
+  reviewCount: { type: Number, default: 0, min: 0 },
   stock: { type: Number, default: 0, min: 0 },
   description: String,
   specifications: { type: Map, of: String },

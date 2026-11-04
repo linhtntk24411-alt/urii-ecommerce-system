@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
+const { applyProductRatings } = require('./utils/commerceFixtures');
 
-function buildProducts(rows) {
+function buildProducts(rows, reviews = []) {
   if (!Array.isArray(rows)) {
     throw new TypeError('Excel rows must be an array.');
   }
@@ -29,6 +30,8 @@ function buildProducts(rows) {
         isSale: comparePrice > price,
         originalPrice: comparePrice,
         currentPrice: price,
+        rating: 0,
+        reviewCount: 0,
         stock: 0,
         description: row['Mô tả'] || '',
         specifications: {
@@ -50,11 +53,15 @@ function buildProducts(rows) {
     product.stock += stock;
   }
 
-  return Array.from(products.values());
+  const list = Array.from(products.values());
+  return Array.isArray(reviews) && reviews.length > 0
+    ? applyProductRatings(list, reviews)
+    : list;
 }
 
 function convertExcel() {
   const excelFilePath = path.join(__dirname, 'data', 'Urii_Product.xlsx');
+  const reviewFilePath = path.join(__dirname, 'data', 'review_orders.json');
   const outputFilePath = path.join(__dirname, 'data', 'products.json');
   const workbook = XLSX.readFile(excelFilePath);
   const sheetName = workbook.SheetNames[0];
@@ -62,8 +69,11 @@ function convertExcel() {
     throw new Error('File Excel không có trang tính.');
   }
 
+  const reviews = fs.existsSync(reviewFilePath)
+    ? JSON.parse(fs.readFileSync(reviewFilePath, 'utf8')).reviews || []
+    : [];
   const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-  const products = buildProducts(rows);
+  const products = buildProducts(rows, reviews);
   if (products.length === 0) {
     throw new Error('Không tìm thấy sản phẩm hợp lệ trong file Excel.');
   }

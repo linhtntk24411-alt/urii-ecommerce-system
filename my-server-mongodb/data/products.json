@@ -9,6 +9,8 @@
       "isSale": true,
       "originalPrice": 20000,
       "currentPrice": 15000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 98,
       "description": "Bút chế tác hạt có thể thu vào có đầu 2,6mm (0,10in) để đặt hạt chính xác, để tạo ra các thiết kế nghệ thuật hạt phức tạp với độ chính xác chuyên nghiệp.",
       "specifications": {
@@ -40,6 +42,8 @@
       "isSale": true,
       "originalPrice": 79000,
       "currentPrice": 69000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 44,
       "description": "DIY KIT",
       "specifications": {
@@ -65,6 +69,8 @@
       "isSale": true,
       "originalPrice": 13500,
       "currentPrice": 12000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 40,
       "description": "Mô hình thành phẩm làm từ hạt nhựa ủi Perler cao cấp, thiết kế pixel art dễ thương, thích hợp làm phụ kiện trang trí, quà tặng hoặc sưu tầm.",
       "specifications": {
@@ -108,6 +114,8 @@
       "isSale": true,
       "originalPrice": 18000,
       "currentPrice": 15000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 80,
       "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu A1, 10g khoảng 1000 hạt; chất liệu nhựa, dùng làm đồ chơi DIY/sáng tạo cho trẻ em, xuất xứ Trung Quốc.",
       "specifications": {
@@ -175,6 +183,8 @@
       "isSale": true,
       "originalPrice": 18000,
       "currentPrice": 15000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 100,
       "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu B1, khoảng 1000 hạt, an toàn cho trẻ em, dùng xếp hình sáng tạo.",
       "specifications": {
@@ -254,6 +264,8 @@
       "isSale": true,
       "originalPrice": 18000,
       "currentPrice": 15000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 100,
       "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu C1, khoảng 1000 hạt, an toàn cho trẻ em, dùng xếp hình sáng tạo.",
       "specifications": {
@@ -333,6 +345,8 @@
       "isSale": true,
       "originalPrice": 18000,
       "currentPrice": 15000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 80,
       "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu F1, 10g khoảng 1000 hạt; chất liệu nhựa, dùng làm đồ chơi DIY/sáng tạo cho trẻ em, xuất xứ Trung Quốc.",
       "specifications": {
@@ -400,6 +414,8 @@
       "isSale": true,
       "originalPrice": 18000,
       "currentPrice": 15000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 30,
       "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu G1, 10g khoảng 1000 hạt; chất liệu nhựa, dùng làm đồ chơi DIY/sáng tạo cho trẻ em, xuất xứ Trung Quốc.",
       "specifications": {
@@ -437,6 +453,8 @@
       "isSale": true,
       "originalPrice": 18000,
       "currentPrice": 15000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 100,
       "description": "Gói bổ sung hạt nhựa ủi 2.6mm Urii mã màu H1, khoảng 1000 hạt, an toàn cho trẻ em, dùng xếp hình sáng tạo.",
       "specifications": {
@@ -516,6 +534,8 @@
       "isSale": true,
       "originalPrice": 78000,
       "currentPrice": 68000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 321,
       "description": "Bộ hạt xếp hình Combo Handmade DIY cao cấp giúp kích thích sự sáng tạo và rèn luyện tính kiên nhẫn cho trẻ em. Hạt nhựa lên màu chuẩn, bề mặt nhẵn mịn, dễ ủi kết dính. Bộ sản phẩm đi kèm bàn ủi an toàn, tiện lợi, là lựa chọn làm quà tặng sinh nhật vô cùng độc đáo cho các bé.",
       "specifications": {
@@ -571,6 +591,8 @@
       "isSale": true,
       "originalPrice": 5000,
       "currentPrice": 4300,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 300,
       "description": "Hộp nhựa đựng đồ đa năng bằng chất liệu nhựa PP trong suốt, có nắp gài chắc chắn. Giúp phân loại, lưu trữ các loại hạt nhựa perler, phụ kiện hoặc dụng cụ làm sản phẩm handmade một cách ngăn nắp, dễ tìm kiếm và chống bụi bẩn.",
       "specifications": {
@@ -608,6 +630,8 @@
       "isSale": true,
       "originalPrice": 20000,
       "currentPrice": 15000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 50,
       "description": "Kẹp nhựa gắp hạt nhựa perler chuyên dụng với thiết kế đầu nhọn, thân kẹp có rãnh chống trượt giúp cầm nắm chắc chắn. Sản phẩm hỗ trợ gắp và sắp xếp các hạt nhựa nhỏ vào bảng khuôn một cách dễ dàng và chuẩn xác.",
       "specifications": {
@@ -633,6 +657,8 @@
       "isSale": true,
       "originalPrice": 6700,
       "currentPrice": 5000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 70,
       "description": "Khuôn nhựa vuông (pegboard) chuyên dụng xếp hạt nhựa ủi perler, thiết kế thông minh có khớp nối giúp dễ dàng ghép nhiều tấm lại với nhau để làm các mô hình kích thước lớn. Thân khuôn có vạch lưới caro giúp dễ định vị kẻ ô chính xác khi xếp hạt.",
       "specifications": {
@@ -664,6 +690,8 @@
       "isSale": true,
       "originalPrice": 20000,
       "currentPrice": 15000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 50,
       "description": "Nhíp gắp hạt nhựa perler chuyên dụng với thiết kế đầu cong nhọn, chất liệu nhựa cứng cáp, giúp bạn dễ dàng gắp và sắp xếp các hạt nhựa nhỏ vào khuôn một cách chính xác và nhanh chóng.",
       "specifications": {
@@ -689,6 +717,8 @@
       "isSale": true,
       "originalPrice": 25000,
       "currentPrice": 15000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 42,
       "description": "Vải nướng hạt nhựa Perler cao cấp từ thương hiệu Urii. Thiết kế cải tiến với đường khâu cạnh bo viền chắc chắn chống tưa rách và chất liệu trong suốt giúp bạn dễ dàng quan sát độ nóng chảy của hạt trong lúc ủi. Sản phẩm chịu nhiệt độ cao, chống dính hoàn hảo và dùng được cho mọi hoạt động ép nhiệt thủ công DIY.",
       "specifications": {
@@ -714,6 +744,8 @@
       "isSale": true,
       "originalPrice": 28000,
       "currentPrice": 18000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 42,
       "description": "Vải ủi tạo độ bóng (Glossy Ironing Fabric) chuyên dụng cho hạt nhựa perler. Khác với giấy ủi thông thường, loại vải cách nhiệt chịu nhiệt độ cao này giúp bề mặt hạt nhựa sau khi nóng chảy đạt độ bóng loáng, mịn màng như gương cực kỳ đẹp mắt. Sản phẩm có độ bền bỉ vượt trội, chống dính hoàn hảo và dễ dàng tái sử dụng nhiều lần cho các dự án DIY thủ công.",
       "specifications": {
@@ -739,6 +771,8 @@
       "isSale": true,
       "originalPrice": 15000,
       "currentPrice": 8000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 42,
       "description": "",
       "specifications": {
@@ -764,6 +798,8 @@
       "isSale": true,
       "originalPrice": 15000,
       "currentPrice": 8000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 42,
       "description": "Vải ủi (giấy ủi) chịu nhiệt chuyên dụng dùng trong làm mô hình hạt nhựa ủi perler. Sản phẩm giúp truyền nhiệt đều từ bàn ủi sang hạt nhựa mà không làm chảy hay dính hạt vào bề mặt bàn ủi, có thể tái sử dụng nhiều lần, đảm bảo bề mặt mô hình sau khi ủi nhẵn mịn và đẹp mắt.",
       "specifications": {
@@ -789,6 +825,8 @@
       "isSale": true,
       "originalPrice": 15000,
       "currentPrice": 8000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 42,
       "description": "",
       "specifications": {
@@ -814,6 +852,8 @@
       "isSale": true,
       "originalPrice": 32000,
       "currentPrice": 22000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 240,
       "description": "Vải ủi tạo hiệu ứng kim tuyến (Glitter Ironing Fabric) độc đáo dành riêng cho các tín đồ handmade làm hạt nhựa perler. Khác với giấy ủi thường, loại vải cách nhiệt này giúp truyền một lớp hiệu ứng ánh kim tuyến lấp lánh, mịn màng lên bề mặt mô hình sau khi nóng chảy. Sản phẩm có độ bền cao, chống dính hoàn hảo và dễ dàng tái sử dụng nhiều lần.",
       "specifications": {
@@ -845,6 +885,8 @@
       "isSale": true,
       "originalPrice": 30000,
       "currentPrice": 25000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 410,
       "description": "Bộ khay căn chỉnh hạt nhựa ủi perler là dụng cụ hỗ trợ đắc lực cho các tín đồ đam mê làm đồ thủ công handmade. Thiết kế khay gồm các rãnh định vị thông minh giúp hạt tự động gom lại, lật đúng chiều và xếp thẳng hàng, giúp bạn dễ dàng dùng nhíp gắp hạt hoặc đổ trực tiếp vào bảng khuôn xếp hình một cách nhanh chóng, tiết kiệm tối đa thời gian.",
       "specifications": {
@@ -894,6 +936,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa bạch tuyết phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -919,6 +963,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa cẩm tú cầu phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -944,6 +990,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa hồng đỏ phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -969,6 +1017,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa hồng phấn phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -994,6 +1044,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa lài phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa' độc quyền. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler cao cấp.",
       "specifications": {
@@ -1019,6 +1071,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa linh lan phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -1044,6 +1098,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa tím phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa' độc quyền. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler cao cấp.",
       "specifications": {
@@ -1069,6 +1125,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa tử la lan phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -1094,6 +1152,8 @@
       "isSale": true,
       "originalPrice": 65000,
       "currentPrice": 45000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 10,
       "description": "Mô hình bó hoa tulip phối cùng mèo Hello Kitty nằm trong bộ sưu tập 'Ươm Hoa'.",
       "specifications": {
@@ -1119,6 +1179,8 @@
       "isSale": true,
       "originalPrice": 80000,
       "currentPrice": 60000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 101,
       "description": "Cặp móc khóa thành phẩm Hello Kitty Cô dâu & Chú rể được làm thủ công tỉ mỉ từ hạt nhựa ủi Perler chất lượng cao. Với thiết kế pixel art dễ thương, chú rể lịch lãm trong bộ vest và cô dâu lộng lẫy trong chiếc váy cưới thắt nơ. Sản phẩm đi kèm móc treo chắc chắn, là món quà cưới, quà kỷ niệm cặp đôi vô cùng độc đáo và ý nghĩa.",
       "specifications": {
@@ -1144,6 +1206,8 @@
       "isSale": true,
       "originalPrice": 49999,
       "currentPrice": 35000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 100,
       "description": "Móc khóa thành phẩm được làm thủ công từ hạt nhựa ủi Perler chất lượng cao, mô phỏng nhân vật mèo Hello Kitty đeo mắt kính thời trang độc đáo theo phong cách pixel art. Sản phẩm đi kèm móc treo chắc chắn, thích hợp để trang trí chìa khóa, balo, cặp sách hoặc dùng làm quà tặng cho các bạn nhỏ và những ai yêu thích Hello Kitty.",
       "specifications": {
@@ -1169,6 +1233,8 @@
       "isSale": true,
       "originalPrice": 50000,
       "currentPrice": 35000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 60,
       "description": "Móc khóa thành phẩm được làm thủ công tỉ mỉ từ hạt nhựa ủi Perler cao cấp, mô phỏng theo tạo hình pixel cực kỳ dễ thương của 3 anh em nhà gấu trong phim We Bare Bears. Sản phẩm đi kèm móc treo nhựa cứng cáp, phù hợp làm móc chìa khóa, treo balo, túi xách hoặc làm quà tặng ý nghĩa cho bạn bè.",
       "specifications": {
@@ -1206,6 +1272,8 @@
       "isSale": true,
       "originalPrice": 67000,
       "currentPrice": 55000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 11,
       "description": "Móc khóa thành phẩm nhân vật cầu thủ Haaland tuyển quốc gia Na Uy thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo theo phong cách pixel art. Bộ móc khóa gồm charm cầu thủ, áo đấu tương ứng, cúp vàng danh giá và tag tên cầu thủ độc đáo. Thích hợp làm móc khóa xe, balo hoặc quà tặng cho các fan bóng đá chân chính.",
       "specifications": {
@@ -1231,6 +1299,8 @@
       "isSale": true,
       "originalPrice": 67000,
       "currentPrice": 55000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 14,
       "description": "Móc khóa thành phẩm nhân vật cầu thủ Mbappe tuyển quốc gia Pháp thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
       "specifications": {
@@ -1256,6 +1326,8 @@
       "isSale": true,
       "originalPrice": 67000,
       "currentPrice": 55000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 13,
       "description": "Móc khóa thành phẩm nhân vật cầu thủ Messi tuyển quốc gia Argentina thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
       "specifications": {
@@ -1281,6 +1353,8 @@
       "isSale": true,
       "originalPrice": 67000,
       "currentPrice": 55000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 12,
       "description": "Móc khóa thành phẩm nhân vật cầu thủ Neymar Jr tuyển quốc gia Brazil thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
       "specifications": {
@@ -1306,6 +1380,8 @@
       "isSale": true,
       "originalPrice": 67000,
       "currentPrice": 55000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 15,
       "description": "Móc khóa thành phẩm nhân vật cầu thủ Ronaldo tuyển quốc gia Bồ Đào Nha thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
       "specifications": {
@@ -1331,6 +1407,8 @@
       "isSale": true,
       "originalPrice": 67000,
       "currentPrice": 55000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 16,
       "description": "Móc khóa thành phẩm nhân vật cầu thủ Yamal tuyển quốc gia Tây Ban Nha thuộc bộ sưu tập 'World Cup'. Sản phẩm làm thủ công từ hạt nhựa ủi Perler phối màu sắc sảo.",
       "specifications": {
@@ -1356,6 +1434,8 @@
       "isSale": true,
       "originalPrice": 260000,
       "currentPrice": 155000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 21,
       "description": "Trọn bộ combo bao gồm 6 chiếc móc khóa thành phẩm được làm thủ công từ hạt nhựa ủi Perler cao cấp. Thiết kế độc đáo mô phỏng theo hình ảnh các con tem thư (Stamp) cách điệu từ các em búp bê doll chính thức của nhóm nhạc NMIXX. Mỗi sản phẩm đều được phối màu sắc sảo theo phong cách pixel art dễ thương, viền răng cưa giống như một chiếc tem thật. Thích hợp để treo balo, bóp viết hoặc làm quà tặng sưu tầm ý nghĩa cho các NSWER.",
       "specifications": {
@@ -1381,6 +1461,8 @@
       "isSale": true,
       "originalPrice": 40000,
       "currentPrice": 30000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 20,
       "description": "Móc khóa thành phẩm nhân vật trong tựa game Genshin Impact. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler phối màu chuẩn xác theo phong cách pixel art chibi siêu đáng yêu. Bộ móc khóa bền, chắc chắn, thích hợp decor balo, túi xách, chìa khóa xe hoặc làm quà tặng ý nghĩa cho các nhà lữ hành.",
       "specifications": {
@@ -1406,6 +1488,8 @@
       "isSale": true,
       "originalPrice": 45000,
       "currentPrice": 35000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 18,
       "description": "Móc khóa thành phẩm nhân vật trong tựa game Genshin Impact. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler phối màu chuẩn xác theo phong cách pixel art chibi siêu đáng yêu. Bộ móc khóa bền, chắc chắn, thích hợp decor balo, túi xách, chìa khóa xe hoặc làm quà tặng ý nghĩa cho các nhà lữ hành.",
       "specifications": {
@@ -1431,6 +1515,8 @@
       "isSale": true,
       "originalPrice": 35000,
       "currentPrice": 28000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 19,
       "description": "Móc khóa thành phẩm nhân vật trong tựa game Genshin Impact. Sản phẩm được làm thủ công từ hạt nhựa ủi Perler phối màu chuẩn xác theo phong cách pixel art chibi siêu đáng yêu. Bộ móc khóa bền, chắc chắn, thích hợp decor balo, túi xách, chìa khóa xe hoặc làm quà tặng ý nghĩa cho các nhà lữ hành.",
       "specifications": {
@@ -1456,6 +1542,8 @@
       "isSale": true,
       "originalPrice": 14900,
       "currentPrice": 10000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 17,
       "description": "Bút chấm hạt nhựa Perler thiết kế hai đầu (bút đậu đôi) tiện lợi, giúp bạn dễ dàng gắp và xếp các hạt nhựa kích thước nhỏ 2.6mm một cách nhanh chóng, chính xác. Kiểu dáng dễ thương phong cách Hàn Quốc với điểm nhấn hình cỏ bốn lá may mắn. Sản phẩm là dụng cụ không thể thiếu cho người mới bắt đầu và các \"tín đồ\" đam mê bộ môn xếp hạt nhựa uốn/ủi Perler Bead.",
       "specifications": {
@@ -1481,6 +1569,8 @@
       "isSale": true,
       "originalPrice": 75000,
       "currentPrice": 55000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 15,
       "description": "Sản phẩm dây móc khóa thành phẩm được làm thủ công tỉ mỉ từ hạt nhựa uốn/ủi Perler cao cấp. Thiết kế độc đáo kết nối 3 tầng charm pixel nghệ thuật: tầng trên cùng là charm gấu hồng ngôi sao, tầng giữa là nhân vật cô bé anime tóc vàng thắt nơ hồng dễ thương, và tầng dưới cùng là charm bánh bao/thú nhỏ xinh xắn. Toàn bộ dây được liên kết chắc chắn bằng khoen kim loại và đi kèm móc khóa nơ hồng ngọt ngào. Phù hợp để làm phụ kiện treo balo, túi xách thời trang hoặc quà tặng thủ công cho bạn bè.",
       "specifications": {
@@ -1506,6 +1596,8 @@
       "isSale": true,
       "originalPrice": 45000,
       "currentPrice": 30000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 100,
       "description": "Móc khóa thành phẩm hình chú chó 'rách' (chó rách nát / meme ngộ nghĩnh) phiên bản đặc biệt lấp lánh, được làm thủ công từ hạt nhựa uốn/ủi Perler kết hợp hiệu ứng kim tuyến độc đáo. Với phong cách thiết kế hài hước, độc lạ và cực kỳ 'vô tri', chiếc móc khóa này sẽ là phụ kiện tạo điểm nhấn siêu lầy lội cho balo, túi xách, chìa khóa xe của bạn, hoặc trở thành món quà tặng handmade 'bựa' và cá tính dành cho bạn bè.",
       "specifications": {
@@ -1531,6 +1623,8 @@
       "isSale": true,
       "originalPrice": 39999,
       "currentPrice": 15000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 180,
       "description": "Móc khóa thành phẩm hình ngôi sao lấp lánh được làm thủ công tỉ mỉ từ những hạt nhựa ủi Perler chất lượng. Sản phẩm phối màu hài hòa theo phong cách pixel art trẻ trung, năng động. Móc khóa có độ bền cao, không phai màu, thích hợp dùng làm phụ kiện tạo điểm nhấn cho chìa khóa, balo, túi xách hoặc làm món quà tặng nhỏ xinh, ý nghĩa dành tặng bạn bè và người thân.",
       "specifications": {
@@ -1604,6 +1698,8 @@
       "isSale": true,
       "originalPrice": 45000,
       "currentPrice": 30000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 101,
       "description": "Móc khóa thành phẩm nhân vật Hello Kitty phiên bản meme biểu cảm 'vô tri' cực kỳ hài hước và lầy lội. Sản phẩm được làm thủ công tỉ mỉ từ hạt nhựa uốn/ủi Perler chất lượng cao theo phong cách pixel art độc đáo. Vừa giữ được nét đáng yêu quen thuộc của Kitty, vừa mang tính giải trí cao nhờ biểu cảm meme độc lạ. Đây là phụ kiện hoàn hảo để tạo điểm nhấn cho balo, túi xách, chìa khóa hoặc làm quà tặng bất ngờ, thú vị cho bạn bè.",
       "specifications": {
@@ -1629,6 +1725,8 @@
       "isSale": true,
       "originalPrice": 25000,
       "currentPrice": 23000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 25,
       "description": "Móc khóa thành phẩm hình chiếc nơ xinh xắn được làm thủ công từ hạt nhựa ủi Perler phối màu pastel ngọt ngào. Sản phẩm có thiết kế nhỏ gọn, trọng lượng nhẹ, đi kèm dây móc tiện lợi, rất thích hợp dùng làm phụ kiện trang trí điện thoại, ốp lưng, balo, bóp viết hoặc làm quà tặng thủ công đáng yêu cho bạn bè, người thân.",
       "specifications": {
@@ -1654,6 +1752,8 @@
       "isSale": true,
       "originalPrice": 35000,
       "currentPrice": 25000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 45,
       "description": "Móc khóa thành phẩm hình chú chó Snoopy tinh nghịch và đáng yêu được làm thủ công tỉ mỉ từ những hạt nhựa ủi Perler chất lượng cao. Thiết kế mang phong cách pixel art cổ điển với hai tông màu trắng đen đặc trưng phối cùng các phụ kiện nhỏ xinh. Sản phẩm bền màu, gọn nhẹ, thích hợp làm phụ kiện trang trí balo, túi xách, chìa khóa hoặc làm quà tặng lưu niệm dễ thương cho các fan của chú chó Snoopy.",
       "specifications": {
@@ -1679,6 +1779,8 @@
       "isSale": true,
       "originalPrice": 49000,
       "currentPrice": 37000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 50,
       "description": "Móc khóa thành phẩm hình chú vịt vàng dễ thương được làm thủ công từ những hạt nhựa ủi Perler chất lượng cao. Với thiết kế pixel art ngộ nghĩnh, tông màu vàng nổi bật phối cùng chiếc mỏ cam xinh xắn, chiếc móc khóa này là phụ kiện hoàn hảo để làm điệu cho balo, túi xách, chìa khóa xe hoặc làm món quà tặng handmade nhỏ nhắn, ý nghĩa cho bạn bè.",
       "specifications": {
@@ -1704,6 +1806,8 @@
       "isSale": true,
       "originalPrice": 50000,
       "currentPrice": 34000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 53,
       "description": "",
       "specifications": {
@@ -1729,6 +1833,8 @@
       "isSale": true,
       "originalPrice": 50000,
       "currentPrice": 34000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 49,
       "description": "Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản nhân vật chú chó tai dài Cinnamoroll siêu đáng yêu thuộc vũ trụ Sanrio. Gói sản phẩm nhỏ gọn được bọc túi bảo vệ kiên cố, bao gồm đầy đủ nguyên liệu cho bé và các bạn trẻ tập tành làm đồ thủ công: 1 túi hạt nhựa Perler tuyển chọn (chủ đạo màu trắng, xanh, pastel), 1 khay khuôn nhựa xếp hạt vuông mini trong suốt, 1 nhíp gắp nhựa tiện lợi và giấy ủi đi kèm. Đây là dòng sản phẩm giáo dục giải trí lành mạnh, kích thích tư duy thẩm mỹ, sự tập trung và khéo léo của đôi tay, thành phẩm có thể làm móc khóa treo balo, phụ kiện bóp viết xinh xắn.",
       "specifications": {
@@ -1754,6 +1860,8 @@
       "isSale": true,
       "originalPrice": 50000,
       "currentPrice": 34000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 50,
       "description": "Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản nhân vật Hello Kitty thắt nơ hồng siêu dễ thương thuộc vũ trụ Sanrio. Gói sản phẩm nhỏ gọn được bọc túi bảo vệ kiên cố, bao gồm đầy đủ nguyên liệu cho bé và các bạn trẻ tập tành làm đồ thủ công: 1 túi hạt nhựa Perler tuyển chọn (chủ đạo màu trắng, hồng, đỏ, pastel), 1 khay khuôn nhựa xếp hạt vuông mini trong suốt, 1 nhíp gắp nhựa tiện lợi màu hồng và giấy ủi đi kèm. Đây là dòng sản phẩm giáo dục giải trí lành mạnh, kích thích tư duy thẩm mỹ, sự tập trung và khéo léo của đôi tay, thành phẩm có thể làm móc khóa treo balo, phụ kiện bóp viết xinh xắn.",
       "specifications": {
@@ -1779,6 +1887,8 @@
       "isSale": true,
       "originalPrice": 50000,
       "currentPrice": 34000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 48,
       "description": "Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler các nhân vật hoạt hình Sanrio siêu dễ thương (Pompompurin, Cinnamoroll,...). Gói sản phẩm nhỏ gọn, tiện lợi bao gồm đầy đủ nguyên liệu cho người mới bắt đầu: túi hạt nhựa Perler đa sắc màu, 1 bảng khuôn xếp hạt nhựa trong suốt mini, 1 nhíp gắp nhựa tiện lợi và giấy ủi đi kèm. Đây là món đồ chơi sáng tạo lý tưởng giúp bé rèn luyện sự khéo tay, kiên nhẫn hoặc làm quà tặng handmade, móc khóa cặp sách vô cùng đáng yêu.",
       "specifications": {
@@ -1804,6 +1914,8 @@
       "isSale": true,
       "originalPrice": 150000,
       "currentPrice": 125000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 46,
       "description": "Bộ KIT tự làm (DIY) móc khóa hạt nhựa uốn/ủi Perler nhân vật chuột lang nước Capybara vô tri siêu dễ thương. Bộ sản phẩm bao gồm đầy đủ nguyên liệu cho người mới bắt đầu: hạt nhựa Perler với các tông màu chuẩn, bảng khuôn xếp hạt, giấy ủi chuyên dụng, nhíp gắp và phụ kiện móc khóa đi kèm. Thích hợp làm quà tặng sáng tạo hoặc hoạt động giải trí giải tỏa căng thẳng.",
       "specifications": {
@@ -1829,6 +1941,8 @@
       "isSale": true,
       "originalPrice": 40000,
       "currentPrice": 25000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 54,
       "description": "Bộ KIT DIY tự làm móc khóa hạt nhựa uốn/ủi Perler nhân vật Hello Kitty đáng yêu với đầy đủ nguyên vật liệu đi kèm giúp bạn dễ dàng hoàn thành sản phẩm tại nhà. Trọn bộ sản phẩm bao gồm: 1 gói hạt nhựa đa sắc màu, 1 tấm khay nhựa cố định mẫu (khuôn xếp hạt), 1 nhíp gắp nhựa tiện lợi, 1 tờ ảnh mẫu hướng dẫn, giấy ủi chuyên dụng và dây móc khóa đi kèm. Dòng sản phẩm giải trí sáng tạo lành mạnh giúp rèn luyện sự khéo léo, kiên nhẫn và tính tỉ mỉ. Lưu ý: Bộ sản phẩm chưa bao gồm bàn ủi, quý khách tự chuẩn bị bàn ủi gia đình hoặc bàn ủi mini để sấy nhiệt định hình thành phẩm.",
       "specifications": {
@@ -1854,6 +1968,8 @@
       "isSale": true,
       "originalPrice": 40000,
       "currentPrice": 25000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 55,
       "description": "Bộ KIT DIY tự làm móc khóa hạt nhựa uốn/ủi Perler hình chú Voi Xanh đội mũ đỏ ngộ nghĩnh với đầy đủ nguyên vật liệu đi kèm giúp bạn dễ dàng hoàn thành sản phẩm tại nhà. Trọn bộ sản phẩm bao gồm: 1 gói hạt nhựa màu sắc tiêu chuẩn (xanh dương, hồng, đỏ, đen, trắng), 1 tấm khay nhựa cố định mẫu (khuôn xếp hạt), 1 nhíp gắp nhựa tiện lợi, 1 tờ ảnh mẫu hướng dẫn, giấy ủi chuyên dụng và dây móc khóa bi màu xanh đi kèm. Sản phẩm là món đồ chơi giải trí sáng tạo lành mạnh giúp rèn luyện sự khéo léo, kiên nhẫn và tính tỉ mỉ cho cả trẻ em và người lớn. Lưu ý: Bộ sản phẩm chưa bao gồm bàn ủi, quý khách tự chuẩn bị bàn ủi gia đình hoặc bàn ủi mini để sấy nhiệt định hình thành phẩm.",
       "specifications": {
@@ -1879,6 +1995,8 @@
       "isSale": true,
       "originalPrice": 439000,
       "currentPrice": 250000,
+      "rating": 5,
+      "reviewCount": 1,
       "stock": 47,
       "description": "Bộ Vali DIY hạt ghép ủi nhiệt hoạt hình dễ thương là món đồ chơi giáo dục trí tuệ và sáng tạo cao cấp dành cho trẻ em. Sản phẩm được thiết kế gọn gàng trong một chiếc vali nhựa tiện lợi, giúp bé dễ dàng sắp xếp và mang theo bên mình. Bộ sản phẩm bao gồm hàng ngàn hạt nhựa Perler sắc màu an toàn, khuôn tạo hình đa dạng, giấy ủi chuyên dụng, nhíp gắp và các phụ kiện đi kèm để bé tự do sáng tạo nên những bức tranh 3D sinh động, móc khóa hoạt hình hoặc mô hình lắp ráp độc đáo. Trò chơi giúp kích thích tư duy logic, rèn luyện sự kiên nhẫn, khéo léo của đôi tay và phát triển khả năng phối màu nghệ thuật ở trẻ.",
       "specifications": {
@@ -1904,6 +2022,8 @@
       "isSale": true,
       "originalPrice": 80000,
       "currentPrice": 70000,
+      "rating": 3,
+      "reviewCount": 1,
       "stock": 51,
       "description": "Combo siêu tiết kiệm gồm 2 Bộ KIT mini tự làm (DIY) đồ chơi xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản cặp bài trùng Sanrio cực hot: Chú chó tai dài Cinnamoroll đáng yêu và Cô thỏ tinh nghịch Kuromi cá tính. Trọn bộ combo cung cấp đầy đủ nguyên liệu độc lập cho mỗi gói bao gồm: 2 túi hạt nhựa Perler đa sắc màu cao cấp, 2 khay khuôn nhựa xếp hạt vuông trong suốt mini, 2 nhíp gắp nhựa tiện lợi và giấy ủi chuyên dụng đi kèm từng bộ. Đây là sự lựa chọn hoàn hảo để các bé rèn luyện tính kiên nhẫn, đôi tay khéo léo cùng bạn bè, hoặc làm quà tặng đôi handmade độc đáo để treo balo, bóp viết.",
       "specifications": {
@@ -1929,6 +2049,8 @@
       "isSale": true,
       "originalPrice": 150000,
       "currentPrice": 100000,
+      "rating": 4,
+      "reviewCount": 1,
       "stock": 52,
       "description": "Set trọn bộ 4 gói KIT mini tự làm (DIY) xếp hình hạt đậu hạt nhựa uốn/ủi Perler phiên bản giới hạn tập hợp đầy đủ 4 nhân vật Sanrio được yêu thích nhất hiện nay bao gồm: Chú chó Pompompurin tai nâu tinh nghịch, Cô mèo Hello Kitty nơ hồng điệu đà, Cô thỏ Kuromi cá tính và Chú chó tai dài Cinnamoroll đáng yêu. Mỗi gói KIT nhỏ gọn trong set đều được đóng gói riêng biệt và trang bị đầy đủ nguyên liệu độc lập bao gồm: 1 túi hạt nhựa Perler sắc màu theo đúng tone màu nhân vật, 1 khay khuôn nhựa xếp hạt vuông trong suốt mini, 1 nhíp gắp nhựa tiện lợi và giấy ủi chuyên dụng. Đây là set sản phẩm tuyệt vời dành cho các bé rèn luyện tính kiên nhẫn, phối màu sáng tạo hoặc làm quà tặng nhóm, quà tặng cặp đôi handmade độc đáo.",
       "specifications": {

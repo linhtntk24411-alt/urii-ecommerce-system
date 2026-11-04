@@ -1,5 +1,6 @@
 const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
@@ -17,6 +18,23 @@ function faqFilter(value) {
   return { $or: filters };
 }
 
+async function enrichSessions(sessions) {
+  const userIds = [...new Set(sessions.map((s) => s.userId).filter(Boolean).map(String))];
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds } }).select('name email avatar').lean()
+    : [];
+  const usersById = new Map(users.map((u) => [String(u._id), u]));
+  return sessions.map((session) => {
+    const user = session.userId ? usersById.get(String(session.userId)) : null;
+    return {
+      ...session,
+      userName: session.userName || user?.name || 'Khách vãng lai',
+      userEmail: session.userEmail || user?.email || '',
+      avatar: session.avatar || user?.avatar || 'images/avatar_user.jpeg'
+    };
+  });
+}
+
 // Lấy danh sách tất cả các phiên chat (hỗ trợ lọc status & tìm kiếm)
 exports.getAllSessions = async (req, res) => {
   try {
@@ -27,15 +45,17 @@ exports.getAllSessions = async (req, res) => {
       filter.status = status;
     }
 
-    if (q) {
-      filter.$or = [
-        { userName: { $regex: q, $options: 'i' } },
-        { userEmail: { $regex: q, $options: 'i' } },
-        { 'messages.text': { $regex: q, $options: 'i' } }
-      ];
-    }
+    const rawSessions = await ChatSession.find(filter).sort({ lastMessageTime: -1 }).lean();
+    let sessions = await enrichSessions(rawSessions);
 
-    const sessions = await ChatSession.find(filter).sort({ lastMessageTime: -1 }).lean();
+    if (q) {
+      const needle = String(q).toLowerCase().trim();
+      sessions = sessions.filter((s) => (
+        (s.userName && s.userName.toLowerCase().includes(needle))
+        || (s.userEmail && s.userEmail.toLowerCase().includes(needle))
+        || (s.messages || []).some((m) => m.text && m.text.toLowerCase().includes(needle))
+      ));
+    }
 
     // Map dạng object { [sessionId]: session } tương thích cho SupportAdmin & client
     const sessionMap = {};
@@ -62,7 +82,8 @@ exports.getSessionById = async (req, res) => {
     if (!session) {
       return res.status(404).json({ message: 'Không tìm thấy phiên trò chuyện.' });
     }
-    res.json(session);
+    const [enriched] = await enrichSessions([session]);
+    res.json(enriched);
   } catch (error) {
     console.error('Lỗi lấy phiên chat:', error);
     res.status(500).json({ message: 'Lỗi máy chủ.' });
@@ -76,6 +97,7 @@ exports.updateSession = async (req, res) => {
   }
 
   const allowedFields = [
+    'userId',
     'userName',
     'userEmail',
     'avatar',
@@ -105,7 +127,8 @@ exports.updateSession = async (req, res) => {
       return;
     }
     emitCrudChange('chat', 'update', session.sessionId);
-    res.json(session);
+    const [enriched] = await enrichSessions([session.toObject()]);
+    res.json(enriched);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu phiên chat không hợp lệ.' });
@@ -119,7 +142,7 @@ exports.updateSession = async (req, res) => {
 // Tạo mới hoặc cập nhật một phiên chat
 exports.createOrUpdateSession = async (req, res) => {
   try {
-    const { sessionId, userName, userEmail, avatar, status, message } = req.body;
+    const { sessionId, userId, userName, userEmail, avatar, status, message } = req.body;
     const id = sessionId || `cs_${Date.now()}`;
 
     let session = await ChatSession.findOne({ sessionId: id });
@@ -127,7 +150,8 @@ exports.createOrUpdateSession = async (req, res) => {
     if (!session) {
       session = new ChatSession({
         sessionId: id,
-        userName: userName || 'Khách vãng lai',
+        ...(userId && mongoose.isValidObjectId(userId) ? { userId } : {}),
+        userName: userName || (userId ? undefined : 'Khách vãng lai'),
         userEmail: userEmail || '',
         avatar: avatar || 'images/avatar_user.jpeg',
         status: status || 'ai',
@@ -152,7 +176,8 @@ exports.createOrUpdateSession = async (req, res) => {
 
     await session.save();
     emitCrudChange('chat', 'update', session.sessionId);
-    res.status(200).json(session);
+    const [enriched] = await enrichSessions([session.toObject()]);
+    res.status(200).json(enriched);
   } catch (error) {
     console.error('Lỗi tạo/cập nhật phiên chat:', error);
     res.status(500).json({ message: 'Không thể lưu phiên chat.' });
@@ -194,7 +219,8 @@ exports.addMessage = async (req, res) => {
 
     await session.save();
     emitCrudChange('chat', 'message', session.sessionId);
-    res.json(session);
+    const [enriched] = await enrichSessions([session.toObject()]);
+    res.json(enriched);
   } catch (error) {
     console.error('Lỗi gửi tin nhắn:', error);
     res.status(500).json({ message: 'Không thể gửi tin nhắn.' });
@@ -235,7 +261,8 @@ exports.updateStatus = async (req, res) => {
     await session.save();
 
     emitCrudChange('chat', 'status', session.sessionId);
-    res.json(session);
+    const [enriched] = await enrichSessions([session.toObject()]);
+    res.json(enriched);
   } catch (error) {
     console.error('Lỗi cập nhật trạng thái chat:', error);
     res.status(500).json({ message: 'Không thể cập nhật trạng thái.' });

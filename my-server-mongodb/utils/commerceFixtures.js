@@ -153,7 +153,7 @@ function prepareReviewFixtures(reviewData, users, products) {
   const reviewedProductIds = new Set();
   const orders = reviewData.orders.map((order) => {
     const user = usersById.get(String(order.userId));
-    if (!user || !order.id || order.statusType !== 'completed'
+    if (!user || !order.id || order.statusId !== 'completed'
       || !Array.isArray(order.items) || order.items.length === 0
       || !Number.isFinite(new Date(order.deliveredAt).getTime())) {
       throw new Error(`Order "${order.id}" must be a delivered order with a valid customer and items.`);
@@ -180,40 +180,29 @@ function prepareReviewFixtures(reviewData, users, products) {
       const pricing = getProductPrice(product, variantIndex);
       return {
         productId: product.id,
-        name: product.name,
-        price: pricing.price,
+        unitPrice: pricing.price,
         quantity: 1,
-        image: product.image || '',
         variantIndex,
         variantName: pricing.variantName || 'Mặc định'
       };
     });
 
     const deliveredAt = new Date(order.deliveredAt);
-    const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.unitPrice, 0);
     return {
       id: order.id,
       userId: user._id,
-      userName: user.name,
       date: `${String(deliveredAt.getUTCDate()).padStart(2, '0')}/${String(deliveredAt.getUTCMonth() + 1).padStart(2, '0')}/${deliveredAt.getUTCFullYear()}`,
-      status: 'Đã giao',
-      statusType: 'completed',
+      statusId: 'completed',
       showReview: false,
-      total: `${subtotal.toLocaleString('vi-VN')}đ`,
-      icon: 'task_alt',
+      totalAmount: subtotal,
       items,
-      payment: { method: 'Thanh toán khi nhận hàng (COD)', status: 'Đã thanh toán' },
+      payment: { methodId: 'cod', statusId: 'paid' },
       shipping: {
-        carrier: 'Giao hàng tiết kiệm',
-        method: 'Giao hàng tiêu chuẩn',
+        methodId: 'ghtk_standard',
         trackingNumber: `GHK-${order.id}`,
         fee: 0,
         estimatedDelivery: deliveredAt
-      },
-      address: {
-        name: user.name,
-        phone: user.phone || '',
-        address: user.address || ''
       },
       deliveredAt
     };

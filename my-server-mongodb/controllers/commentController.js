@@ -1,5 +1,6 @@
 const Comment = require('../models/Comment');
 const Blog = require('../models/Blog');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
@@ -23,10 +24,27 @@ function commentFilter(value) {
   return { $or: filters };
 }
 
+async function enrichComments(comments) {
+  const userIds = [...new Set(comments.map((c) => c.userId).filter(Boolean).map(String))];
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds } }).select('name avatar').lean()
+    : [];
+  const usersById = new Map(users.map((u) => [String(u._id), u]));
+  return comments.map((comment) => {
+    const user = comment.userId ? usersById.get(String(comment.userId)) : null;
+    return {
+      ...comment,
+      author: comment.author || user?.name || 'Khách hàng',
+      avatar: comment.avatar || user?.avatar || 'images/avatar-non.jpg'
+    };
+  });
+}
+
 exports.getAllComments = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
-    res.json(await Comment.find().sort({ id: 1 }).skip(skip).limit(limit).lean());
+    const comments = await Comment.find().sort({ id: 1 }).skip(skip).limit(limit).lean();
+    res.json(await enrichComments(comments));
   } catch (error) {
     console.error('Lỗi tải bình luận:', error);
     res.status(500).json({ message: 'Không thể tải danh sách bình luận.' });
@@ -40,7 +58,8 @@ exports.getCommentById = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy bình luận.' });
       return;
     }
-    res.json(comment);
+    const [enriched] = await enrichComments([comment]);
+    res.json(enriched);
   } catch (error) {
     console.error('Lỗi tải bình luận:', error);
     res.status(500).json({ message: 'Không thể tải bình luận.' });
@@ -53,11 +72,13 @@ exports.createComment = async (req, res) => {
     return;
   }
 
-  const { author, blogId, content } = req.body;
-  if (typeof author !== 'string' || !author.trim()
+  const { userId, author, blogId, content } = req.body;
+  const hasValidUser = typeof userId === 'string' && mongoose.isValidObjectId(userId);
+  const hasValidAuthor = typeof author === 'string' && Boolean(author.trim());
+  if ((!hasValidUser && !hasValidAuthor)
     || !Number.isSafeInteger(Number(blogId)) || Number(blogId) < 1
     || typeof content !== 'string' || !content.trim()) {
-    res.status(400).json({ message: 'Mã bài viết, tên tác giả và nội dung bình luận là bắt buộc.' });
+    res.status(400).json({ message: 'Mã bài viết, tác giả (userId hoặc author) và nội dung bình luận là bắt buộc.' });
     return;
   }
 
@@ -75,11 +96,12 @@ exports.createComment = async (req, res) => {
       ...req.body,
       id,
       blogId: Number(blogId),
-      author: author.trim(),
+      ...(hasValidAuthor ? { author: author.trim() } : {}),
       content: content.trim()
     });
     emitCrudChange('comments', 'created', comment._id);
-    res.status(201).json(comment);
+    const [enriched] = await enrichComments([comment.toObject()]);
+    res.status(201).json(enriched);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu bình luận không hợp lệ.' });
@@ -128,7 +150,8 @@ exports.updateComment = async (req, res) => {
       return;
     }
     emitCrudChange('comments', 'updated', comment._id);
-    res.json(comment);
+    const [enriched] = await enrichComments([comment.toObject()]);
+    res.json(enriched);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu bình luận không hợp lệ.' });

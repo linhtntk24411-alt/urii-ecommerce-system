@@ -3,7 +3,6 @@
     {
       "id": "UR-REVIEW-001",
       "userId": "6ade4310c044b23d6c6a8681",
-      "statusType": "completed",
       "deliveredAt": "2026-10-01T00:00:00.000Z",
       "items": [
         {
@@ -22,12 +21,12 @@
           "productId": "1075486162",
           "variantIndex": 3
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-002",
       "userId": "6ade4310c044b23d6c6a8682",
-      "statusType": "completed",
       "deliveredAt": "2026-10-02T00:00:00.000Z",
       "items": [
         {
@@ -46,12 +45,12 @@
           "productId": "1075486167",
           "variantIndex": 1
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-003",
       "userId": "6ade4310c044b23d6c6a8683",
-      "statusType": "completed",
       "deliveredAt": "2026-10-03T00:00:00.000Z",
       "items": [
         {
@@ -70,12 +69,12 @@
           "productId": "1075486182",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-004",
       "userId": "6ade4310c044b23d6c6a8684",
-      "statusType": "completed",
       "deliveredAt": "2026-10-04T00:00:00.000Z",
       "items": [
         {
@@ -94,12 +93,12 @@
           "productId": "1075502449",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-005",
       "userId": "6ade4310c044b23d6c6a8685",
-      "statusType": "completed",
       "deliveredAt": "2026-10-05T00:00:00.000Z",
       "items": [
         {
@@ -118,12 +117,12 @@
           "productId": "1075502458",
           "variantIndex": 1
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-006",
       "userId": "6ade4310c044b23d6c6a8686",
-      "statusType": "completed",
       "deliveredAt": "2026-10-06T00:00:00.000Z",
       "items": [
         {
@@ -142,12 +141,12 @@
           "productId": "1075503653",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-007",
       "userId": "6ade4310c044b23d6c6a8681",
-      "statusType": "completed",
       "deliveredAt": "2026-10-07T00:00:00.000Z",
       "items": [
         {
@@ -166,12 +165,12 @@
           "productId": "1075503661",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-008",
       "userId": "6ade4310c044b23d6c6a8682",
-      "statusType": "completed",
       "deliveredAt": "2026-10-08T00:00:00.000Z",
       "items": [
         {
@@ -190,12 +189,12 @@
           "productId": "1075503666",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-009",
       "userId": "6ade4310c044b23d6c6a8683",
-      "statusType": "completed",
       "deliveredAt": "2026-10-09T00:00:00.000Z",
       "items": [
         {
@@ -214,12 +213,12 @@
           "productId": "1075504624",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-010",
       "userId": "6ade4310c044b23d6c6a8684",
-      "statusType": "completed",
       "deliveredAt": "2026-10-10T00:00:00.000Z",
       "items": [
         {
@@ -238,12 +237,12 @@
           "productId": "1075506391",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-011",
       "userId": "6ade4310c044b23d6c6a8685",
-      "statusType": "completed",
       "deliveredAt": "2026-10-11T00:00:00.000Z",
       "items": [
         {
@@ -262,12 +261,12 @@
           "productId": "1075506395",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-012",
       "userId": "6ade4310c044b23d6c6a8686",
-      "statusType": "completed",
       "deliveredAt": "2026-10-12T00:00:00.000Z",
       "items": [
         {
@@ -286,12 +285,12 @@
           "productId": "1075506400",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-013",
       "userId": "6ade4310c044b23d6c6a8681",
-      "statusType": "completed",
       "deliveredAt": "2026-10-13T00:00:00.000Z",
       "items": [
         {
@@ -310,12 +309,12 @@
           "productId": "1075506444",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-014",
       "userId": "6ade4310c044b23d6c6a8682",
-      "statusType": "completed",
       "deliveredAt": "2026-10-14T00:00:00.000Z",
       "items": [
         {
@@ -334,12 +333,12 @@
           "productId": "1075506448",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-015",
       "userId": "6ade4310c044b23d6c6a8683",
-      "statusType": "completed",
       "deliveredAt": "2026-10-15T00:00:00.000Z",
       "items": [
         {
@@ -358,24 +357,24 @@
           "productId": "1075506452",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-REVIEW-016",
       "userId": "6ade4310c044b23d6c6a8684",
-      "statusType": "completed",
       "deliveredAt": "2026-10-16T00:00:00.000Z",
       "items": [
         {
           "productId": "1075506453",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-UNREVIEWED-001",
       "userId": "6ade4310c044b23d6c6a8685",
-      "statusType": "completed",
       "deliveredAt": "2026-10-17T00:00:00.000Z",
       "items": [
         {
@@ -386,24 +385,24 @@
           "productId": "1075486161",
           "variantIndex": 1
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-UNREVIEWED-002",
       "userId": "6ade4310c044b23d6c6a8686",
-      "statusType": "completed",
       "deliveredAt": "2026-10-18T00:00:00.000Z",
       "items": [
         {
           "productId": "1075502443",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     },
     {
       "id": "UR-UNREVIEWED-003",
       "userId": "6ade4310c044b23d6c6a8681",
-      "statusType": "completed",
       "deliveredAt": "2026-10-19T00:00:00.000Z",
       "items": [
         {
@@ -414,7 +413,8 @@
           "productId": "1075506402",
           "variantIndex": 0
         }
-      ]
+      ],
+      "statusId": "completed"
     }
   ],
   "reviews": [
@@ -911,7 +911,7 @@
       "media": [
         {
           "type": "video",
-          "url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+          "url": "https://down-zl-vn.vod.susercontent.com/api/v4/11110103/mms/vn-11110103-6va0m-moyxu1qyd79q3e.16000051780375112.mp4"
         }
       ]
     },
@@ -923,7 +923,7 @@
       "media": [
         {
           "type": "video",
-          "url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+          "url": "https://down-bs-vn.vod.susercontent.com/api/v4/11110103/mms/th-11110103-6v98o-mubj4ukosefaf6.16000051792033543.mp4"
         }
       ]
     },
@@ -935,7 +935,7 @@
       "media": [
         {
           "type": "video",
-          "url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+          "url": "https://down-ws-vn.vod.susercontent.com/api/v4/11110103/mms/vn-11110103-6vasg-mt54sbnfbhfo82.16000051789467040.mp4"
         }
       ]
     }

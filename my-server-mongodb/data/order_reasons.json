@@ -1,0 +1,213 @@
+{
+  "cancelReasons": [
+    {
+      "id": "CANCEL_CHANGE_MIND",
+      "label": "Tôi đổi ý, không muốn mua nữa",
+      "appliesTo": ["normal"],
+      "hideWhenCustomInProduction": true
+    },
+    {
+      "id": "CANCEL_WRONG_INFO",
+      "label": "Đặt nhầm sản phẩm / sai phân loại / sai kích thước",
+      "appliesTo": ["normal", "custom"],
+      "allowEditInstead": true
+    },
+    {
+      "id": "CANCEL_WRONG_ADDRESS",
+      "label": "Nhập sai địa chỉ / số điện thoại",
+      "appliesTo": ["normal", "custom"],
+      "allowEditInstead": true
+    },
+    {
+      "id": "CANCEL_DUPLICATE",
+      "label": "Đặt trùng đơn",
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "CANCEL_FIND_CHEAPER",
+      "label": "Tìm được giá tốt hơn",
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "CANCEL_SHIPPING_SLOW",
+      "label": "Thời gian giao hàng quá lâu",
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "CANCEL_SELLER_NO_RESPONSE",
+      "label": "Shop không phản hồi / không xác nhận đơn",
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "CANCEL_PAYMENT_ISSUE",
+      "label": "Không thanh toán được / muốn đổi phương thức",
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "CANCEL_OUT_OF_STOCK",
+      "label": "Shop báo hết hàng / không đủ nguyên liệu",
+      "appliesTo": ["normal", "custom"],
+      "initiatedBy": "seller"
+    },
+    {
+      "id": "CANCEL_CUSTOM_DESIGN_REJECT",
+      "label": "Không đồng ý với bản thiết kế / báo giá custom",
+      "appliesTo": ["custom"]
+    },
+    {
+      "id": "CANCEL_OTHER",
+      "label": "Lý do khác",
+      "appliesTo": ["normal", "custom"],
+      "requiresNote": true
+    },
+    {
+      "id": "CUSTOM_REJECT_QUOTE",
+      "label": "Không đồng ý báo giá custom",
+      "appliesTo": ["custom"],
+      "feePolicy": "free"
+    },
+    {
+      "id": "CUSTOM_CHANGE_REQUEST",
+      "label": "Muốn sửa thiết kế trước khi sản xuất",
+      "appliesTo": ["custom"],
+      "feePolicy": "free"
+    },
+    {
+      "id": "CUSTOM_CANCEL_IN_PRODUCTION",
+      "label": "Hủy đơn custom khi đã vào sản xuất",
+      "appliesTo": ["custom"],
+      "feePolicy": "may_charge_design_fee"
+    }
+  ],
+  "returnReasons": [
+    {
+      "id": "NOT_RECEIVED_LATE",
+      "label": "Giao quá thời gian cam kết",
+      "group": "not_received",
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "NOT_RECEIVED_LOST",
+      "label": "Đơn vị vận chuyển báo mất hàng",
+      "group": "not_received",
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "NOT_RECEIVED_FAKE_STATUS",
+      "label": "Trạng thái đã giao nhưng tôi chưa nhận",
+      "group": "not_received",
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "WRONG_ITEM",
+      "label": "Giao sai sản phẩm / sai mẫu",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "WRONG_VARIANT",
+      "label": "Sai phân loại, màu hoặc kích thước",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "MISSING_QUANTITY",
+      "label": "Thiếu số lượng / thiếu phụ kiện",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "DAMAGED",
+      "label": "Hàng bị vỡ, móp hoặc gãy",
+      "group": "defect",
+      "requiresMedia": { "images": 1, "videos": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "DEFECTIVE",
+      "label": "Hàng lỗi kỹ thuật",
+      "group": "defect",
+      "requiresMedia": { "images": 1, "videos": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "NOT_AS_DESCRIBED",
+      "label": "Không giống mô tả / hình ảnh",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "FAKE_COUNTERFEIT",
+      "label": "Hàng giả / nhái thương hiệu",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "EXPIRED",
+      "label": "Hết hạn sử dụng",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "POOR_QUALITY",
+      "label": "Chất lượng kém so với giá",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["normal", "custom"]
+    },
+    {
+      "id": "CUSTOM_WRONG_DESIGN",
+      "label": "Sản phẩm custom không giống bản thiết kế đã duyệt",
+      "group": "defect",
+      "requiresMedia": { "images": 1 },
+      "appliesTo": ["custom"],
+      "feePolicy": "seller_pays_shipping"
+    },
+    {
+      "id": "CUSTOM_QUALITY_ISSUE",
+      "label": "Sản phẩm custom bị lỗi hạt, bong hoặc lệch màu",
+      "group": "defect",
+      "requiresMedia": { "images": 1, "videos": 1 },
+      "appliesTo": ["custom"]
+    },
+    {
+      "id": "CUSTOM_DAMAGED_SHIPPING",
+      "label": "Sản phẩm custom hư hỏng khi vận chuyển",
+      "group": "defect",
+      "requiresMedia": { "images": 1, "videos": 1 },
+      "appliesTo": ["custom"],
+      "videoNote": "Khuyến nghị video mở hộp"
+    },
+    {
+      "id": "RETURN_CHANGE_MIND",
+      "label": "Tôi đổi ý, không cần nữa",
+      "group": "no_need",
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "RETURN_WRONG_ORDER",
+      "label": "Đặt nhầm",
+      "group": "no_need",
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "RETURN_NO_LONGER_NEEDED",
+      "label": "Không còn nhu cầu sử dụng",
+      "group": "no_need",
+      "appliesTo": ["normal"]
+    },
+    {
+      "id": "RETURN_OTHER",
+      "label": "Lý do khác",
+      "group": "no_need",
+      "appliesTo": ["normal", "custom"],
+      "requiresNote": true
+    }
+  ]
+}

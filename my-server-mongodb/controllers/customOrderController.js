@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const CustomOrder = require('../models/CustomOrder');
+const User = require('../models/User');
+const Gallery = require('../models/Gallery');
 const { getPagination } = require('../utils/pagination');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { emitCrudChange } = require('../realtime');
 
 const customerFields = [
+  'userId',
+  'mapId',
   'fullName',
   'phone',
   'email',
@@ -26,10 +30,36 @@ function validateCustomOrder(body, partial = false) {
     return 'Dữ liệu yêu cầu đặt hàng không hợp lệ.';
   }
 
-  const requiredFields = ['fullName', 'phone', 'email', 'requestName', 'size', 'beadType', 'imageUrl'];
-  for (const field of requiredFields) {
+  if (!partial) {
+    const hasUserId = typeof body.userId === 'string' && mongoose.isValidObjectId(body.userId);
+    if (!hasUserId) {
+      for (const field of ['fullName', 'phone', 'email']) {
+        if (typeof body[field] !== 'string' || !body[field].trim()) {
+          return `Trường ${field} là bắt buộc.`;
+        }
+      }
+    }
+  } else if (body.userId !== undefined && !mongoose.isValidObjectId(body.userId)) {
+    return 'userId không hợp lệ.';
+  }
+
+  for (const field of ['requestName', 'size', 'beadType']) {
     if ((!partial || Object.hasOwn(body, field))
       && (typeof body[field] !== 'string' || !body[field].trim())) {
+      return `Trường ${field} là bắt buộc.`;
+    }
+  }
+
+  if (!partial) {
+    const hasMapId = typeof body.mapId === 'string' && Boolean(body.mapId.trim());
+    const hasImageUrl = typeof body.imageUrl === 'string' && Boolean(body.imageUrl.trim());
+    if (!hasMapId && !hasImageUrl) {
+      return 'Trường imageUrl là bắt buộc.';
+    }
+  }
+
+  for (const field of ['fullName', 'phone', 'email', 'mapId', 'imageUrl']) {
+    if (partial && Object.hasOwn(body, field) && (typeof body[field] !== 'string' || !body[field].trim())) {
       return `Trường ${field} là bắt buộc.`;
     }
   }
@@ -69,6 +99,31 @@ function customOrderFilter(value) {
   return { $or: filters };
 }
 
+async function enrichCustomOrders(customOrders) {
+  const userIds = [...new Set(customOrders.map((item) => item.userId).filter(Boolean).map(String))];
+  const mapIds = [...new Set(customOrders.map((item) => item.mapId).filter(Boolean))];
+  const [users, maps] = await Promise.all([
+    userIds.length ? User.find({ _id: { $in: userIds } }).select('name phone email').lean() : [],
+    mapIds.length ? Gallery.find({ map_id: { $in: mapIds } }).select('map_id main_image').lean() : []
+  ]);
+  const usersById = new Map(users.map((user) => [String(user._id), user]));
+  const mapsById = new Map(maps.map((map) => [map.map_id, map]));
+  return customOrders.map((order) => {
+    const user = order.userId ? usersById.get(String(order.userId)) : null;
+    const map = order.mapId ? mapsById.get(order.mapId) : null;
+    const mainImage = map?.main_image
+      ? (map.main_image.startsWith('/') ? map.main_image : `/${map.main_image}`)
+      : null;
+    return {
+      ...order,
+      fullName: order.fullName || user?.name || '',
+      phone: order.phone || user?.phone || '',
+      email: order.email || user?.email || '',
+      imageUrl: order.imageUrl || mainImage || ''
+    };
+  });
+}
+
 exports.createCustomOrder = async (req, res) => {
   const validationError = validateCustomOrder(req.body);
   if (validationError) {
@@ -77,22 +132,26 @@ exports.createCustomOrder = async (req, res) => {
   }
 
   try {
-    const customOrder = await CustomOrder.create({
+    const payload = {
       ...req.body,
       id: `custom-order-${randomUUID()}`,
-      fullName: req.body.fullName.trim(),
-      phone: req.body.phone.trim(),
-      email: req.body.email.trim().toLowerCase(),
       requestName: req.body.requestName.trim(),
       size: req.body.size.trim(),
       beadType: req.body.beadType.trim(),
       description: typeof req.body.description === 'string' ? req.body.description.trim() : '',
       imageNote: typeof req.body.imageNote === 'string' ? req.body.imageNote.trim() : '',
-      imageUrl: req.body.imageUrl.trim(),
       status: 'pending'
-    });
+    };
+    if (typeof req.body.fullName === 'string') payload.fullName = req.body.fullName.trim();
+    if (typeof req.body.phone === 'string') payload.phone = req.body.phone.trim();
+    if (typeof req.body.email === 'string') payload.email = req.body.email.trim().toLowerCase();
+    if (typeof req.body.mapId === 'string') payload.mapId = req.body.mapId.trim();
+    if (typeof req.body.imageUrl === 'string') payload.imageUrl = req.body.imageUrl.trim();
+
+    const customOrder = await CustomOrder.create(payload);
     emitCrudChange('customOrders', 'created', customOrder.id);
-    res.status(201).json(customOrder);
+    const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
+    res.status(201).json(enriched);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
@@ -115,7 +174,7 @@ exports.getAllCustomOrders = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .lean();
-    res.json(customOrders);
+    res.json(await enrichCustomOrders(customOrders));
   } catch (error) {
     console.error('Lỗi tải yêu cầu đặt hàng:', error);
     res.status(500).json({ message: 'Không thể tải danh sách yêu cầu đặt hàng.' });
@@ -129,7 +188,8 @@ exports.getCustomOrderById = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }
-    res.json(customOrder);
+    const [enriched] = await enrichCustomOrders([customOrder]);
+    res.json(enriched);
   } catch (error) {
     console.error('Lỗi tải yêu cầu đặt hàng:', error);
     res.status(500).json({ message: 'Không thể tải yêu cầu đặt hàng.' });
@@ -167,7 +227,8 @@ exports.updateCustomOrder = async (req, res) => {
       return;
     }
     emitCrudChange('customOrders', 'updated', customOrder.id);
-    res.json(customOrder);
+    const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
+    res.json(enriched);
   } catch (error) {
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });

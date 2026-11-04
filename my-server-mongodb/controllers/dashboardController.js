@@ -11,7 +11,7 @@ exports.getDashboardStats = async (req, res) => {
       User.countDocuments(),
       Voucher.countDocuments(),
       Voucher.countDocuments({ isActive: true }),
-      Order.countDocuments({ statusType: 'pending' })
+      Order.countDocuments({ $or: [{ statusId: 'pending' }, { statusType: 'pending' }] })
     ]);
     res.json({ products, orders, users, promotions, activePromotions, pendingOrders });
   } catch (error) {

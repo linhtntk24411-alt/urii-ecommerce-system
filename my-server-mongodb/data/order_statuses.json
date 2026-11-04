@@ -1,0 +1,150 @@
+{
+  "orderStatuses": [
+    {
+      "id": "pending",
+      "label": "Chờ xác nhận",
+      "icon": "package_2"
+    },
+    {
+      "id": "processing",
+      "label": "Chờ lấy hàng",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "shipping",
+      "label": "Chờ giao hàng",
+      "icon": "local_shipping"
+    },
+    {
+      "id": "completed",
+      "label": "Đã giao",
+      "icon": "task_alt"
+    },
+    {
+      "id": "returned",
+      "label": "Trả hàng",
+      "icon": "undo"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đã hủy",
+      "icon": "cancel"
+    }
+  ],
+  "paymentStatuses": [
+    {
+      "id": "unpaid",
+      "label": "Chưa thanh toán"
+    },
+    {
+      "id": "paid",
+      "label": "Đã thanh toán"
+    },
+    {
+      "id": "refunded",
+      "label": "Đã hoàn tiền"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đã hủy"
+    }
+  ],
+  "timelineStatuses": [
+    {
+      "id": "order_placed",
+      "label": "Đã đặt hàng"
+    },
+    {
+      "id": "awaiting_confirmation",
+      "label": "Chờ xác nhận"
+    },
+    {
+      "id": "confirmed",
+      "label": "Đã xác nhận"
+    },
+    {
+      "id": "awaiting_pickup",
+      "label": "Chờ lấy hàng"
+    },
+    {
+      "id": "shipping",
+      "label": "Đang giao hàng"
+    },
+    {
+      "id": "delivered",
+      "label": "Đã giao hàng"
+    },
+    {
+      "id": "return_requested",
+      "label": "Yêu cầu trả hàng"
+    },
+    {
+      "id": "returned",
+      "label": "Đã trả hàng"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đã hủy"
+    }
+  ],
+  "shippingStatuses": [
+    {
+      "id": "received_by_carrier",
+      "label": "Đơn hàng đã tiếp nhận"
+    },
+    {
+      "id": "preparing",
+      "label": "Đang chuẩn bị hàng"
+    },
+    {
+      "id": "dispatched",
+      "label": "Đã xuất kho"
+    },
+    {
+      "id": "in_transit",
+      "label": "Đang vận chuyển"
+    },
+    {
+      "id": "delivered",
+      "label": "Đã giao hàng"
+    },
+    {
+      "id": "delivery_error",
+      "label": "Đã giao hàng (sai)"
+    },
+    {
+      "id": "returned_to_warehouse",
+      "label": "Hoàn trả hàng"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đơn hàng đã hủy"
+    }
+  ],
+  "paymentMethods": [
+    {
+      "id": "cod",
+      "label": "Thanh toán khi nhận hàng (COD)"
+    },
+    {
+      "id": "bank_transfer",
+      "label": "Chuyển khoản ngân hàng"
+    },
+    {
+      "id": "momo",
+      "label": "Ví điện tử Momo"
+    }
+  ],
+  "shippingMethods": [
+    {
+      "id": "ghtk_standard",
+      "carrier": "Giao hàng tiết kiệm",
+      "label": "Giao hàng tiêu chuẩn"
+    },
+    {
+      "id": "viettel_fast",
+      "carrier": "Viettel Post",
+      "label": "Giao hàng nhanh"
+    }
+  ]
+}

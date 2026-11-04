@@ -84,6 +84,32 @@ async function insertMissing(Model, documents, key) {
   console.log(`Đã kiểm tra ${documents.length} bản ghi ${Model.modelName}; dữ liệu đang có được giữ nguyên.`);
 }
 
+async function syncOrderReasonReferences(orders, Model = Order) {
+  const reasonOrders = orders.filter((order) => (
+    order.cancellationReasonId || order.returnReasonId
+  ));
+  if (reasonOrders.length === 0) return [];
+
+  return Model.bulkWrite(reasonOrders.map((order) => {
+    const fields = {};
+    for (const field of [
+      'cancellationReasonId',
+      'cancellationNote',
+      'returnReasonId',
+      'returnNote',
+      'returnEvidence'
+    ]) {
+      if (Object.hasOwn(order, field)) fields[field] = order[field];
+    }
+    return {
+      updateOne: {
+        filter: { id: order.id },
+        update: { $set: fields }
+      }
+    };
+  }), { ordered: true });
+}
+
 function prepareGallery(maps) {
   return maps.map((map) => ({
     ...map,
@@ -147,7 +173,9 @@ async function seed() {
 
   await insertMissing(Product, readJSON('products.json').products, 'id');
   await insertMissing(Category, readJSON('categories.json'), '_id');
-  await insertMissing(Order, readJSON('orders.json').orders, 'id');
+  const orderFixtures = readJSON('orders.json').orders;
+  await insertMissing(Order, orderFixtures, 'id');
+  await syncOrderReasonReferences(orderFixtures);
   await insertMissing(Blog, readJSON('blogs.json').blogs, 'slug');
   await insertMissing(Comment, readJSON('comments.json').comments, 'id');
   const gallery = prepareGallery(readJSON('gallery.json'));
@@ -222,6 +250,7 @@ module.exports = {
   insertMissing,
   prepareGallery,
   prepareNewUsers,
+  syncOrderReasonReferences,
   saveGeneratedCredentials,
   seed
 };

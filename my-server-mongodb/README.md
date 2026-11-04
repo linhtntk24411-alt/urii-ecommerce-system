@@ -63,6 +63,10 @@ Cart prices and stock are read from the product and its selected variant; client
 
 Review creation accepts `orderId`, `productId`, `rating` (integer from 1 to 5), optional `content`, and optional `media` entries (`type: "image" | "video"` and a backend `/images/...` path or HTTP(S) URL). A rating by itself is a valid review. The reviewed variant is taken from the purchased order item, not trusted from the request.
 
+`data/orders.json` stores customer, product, voucher, and state references by ID instead of repeating their labels and details. Item `unitPrice`, order `totalAmount`, voucher `discountAmount`, and the shipping address remain snapshots so later catalog or profile changes do not rewrite order history. `data/order_statuses.json` contains the labels and icons for order statuses, plus the labels for payment, order-timeline, and shipping-timeline status IDs. The dedicated `data/review_orders.json` fixture uses the same `statusId` convention.
+
+`data/order_reasons.json` contains the cancellation/return reason catalog. Cancelled and returned records in `data/orders.json` reference catalog entries with `cancellationReasonId` or `returnReasonId`; return evidence is stored in `returnEvidence`. The development seed updates only these reason fields on existing matching orders, preserving their other data.
+
 ```json
 {
   "orderId": "UR-REVIEW-001",
@@ -73,9 +77,9 @@ Review creation accepts `orderId`, `productId`, `rating` (integer from 1 to 5), 
 }
 ```
 
-Use the plural resource paths shown in the endpoint table as the canonical API paths. Singular resource paths and documented gallery aliases are also supported for compatibility; the old customer-order and sample-map route aliases are not supported.
+Use the plural resource paths shown in the endpoint table as the canonical API paths. Singular resource paths and gallery aliases `/api/maps` and `/api/map` are also supported for compatibility. The old customer-order and sample-map route aliases are not supported.
 
-Gallery data uses one name across the application: `data/gallery.json`, `models/Gallery.js`, the `/api/gallery` endpoint, and the MongoDB Atlas collection `gallery`. Run `npm run migrate:gallery` once to merge any existing `samplemaps` records into `gallery`, verify them, and remove the old collection. The old `/api/maps` and sample-map route aliases have been removed.
+Gallery data uses one name across the application: `data/gallery.json`, `models/Gallery.js`, the `/api/gallery` endpoint, and the MongoDB Atlas collection `gallery`. Run `npm run migrate:gallery` once to merge any existing `samplemaps` records into `gallery`, verify them, and remove the old collection. The old sample-map routes are removed; `/api/maps` and `/api/map` remain compatibility aliases for the gallery.
 
 The `data/saved_maps.json` fixture is grouped by customer: each entry has a `userId` and 2–5 `mapIds` from the gallery. Seed/upload resolve map details from the gallery and create records keyed by `(userId, mapId)`. A customer can save a given map once, while different customers can save the same map.
 

@@ -3,9 +3,11 @@ const { isValidImageUrl } = require('../utils/imageUrl');
 
 const customOrderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  fullName: { type: String, required: true, trim: true },
-  phone: { type: String, required: true, trim: true },
-  email: { type: String, required: true, trim: true, lowercase: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  mapId: { type: String, trim: true },
+  fullName: { type: String, trim: true },
+  phone: { type: String, trim: true },
+  email: { type: String, trim: true, lowercase: true },
   requestName: { type: String, required: true, trim: true },
   size: { type: String, required: true, trim: true },
   beadType: { type: String, required: true, trim: true },
@@ -13,9 +15,8 @@ const customOrderSchema = new mongoose.Schema({
   imageNote: { type: String, default: '' },
   imageUrl: {
     type: String,
-    required: true,
     validate: {
-      validator: isValidImageUrl,
+      validator: (value) => !value || isValidImageUrl(value),
       message: 'imageUrl phải là đường dẫn /images/... hoặc URL http/https hợp lệ.'
     }
   },
@@ -25,5 +26,16 @@ const customOrderSchema = new mongoose.Schema({
     default: 'pending'
   }
 }, { timestamps: true });
+
+customOrderSchema.pre('validate', function () {
+  const hasCustomerRef = Boolean(this.userId);
+  const hasCustomerInfo = Boolean(this.fullName && this.phone && this.email);
+  if (!hasCustomerRef && !hasCustomerInfo) {
+    this.invalidate('userId', 'Phải có userId hoặc đầy đủ fullName, phone, email.');
+  }
+  if (!this.mapId && !this.imageUrl) {
+    this.invalidate('imageUrl', 'Phải có mapId hoặc imageUrl.');
+  }
+});
 
 module.exports = mongoose.model('CustomOrder', customOrderSchema, 'custom_orders');

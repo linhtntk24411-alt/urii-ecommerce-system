@@ -2,9 +2,7 @@
   "sessions": [
     {
       "sessionId": "cs_001",
-      "userName": "Nguyễn Minh Anh",
-      "userEmail": "minhanh.uri@gmail.com",
-      "avatar": "images/avatar_user.jpeg",
+      "userId": "6ade4310c044b23d6c6a8681",
       "status": "waiting",
       "unreadCount": 1,
       "lastMessageTime": 1716196200000,
@@ -28,9 +26,7 @@
     },
     {
       "sessionId": "cs_002",
-      "userName": "Trần Thị Bảo Ngọc",
-      "userEmail": "baongoc.uri@gmail.com",
-      "avatar": "images/avatar_user1.jpeg",
+      "userId": "6ade4310c044b23d6c6a8682",
       "status": "active",
       "unreadCount": 0,
       "lastMessageTime": 1716194400000,
@@ -65,9 +61,7 @@
     },
     {
       "sessionId": "cs_003",
-      "userName": "Lê Hoàng Nam",
-      "userEmail": "hoangnam.uri@gmail.com",
-      "avatar": "images/avatar_user3.jpeg",
+      "userId": "6ade4310c044b23d6c6a8683",
       "status": "ai",
       "unreadCount": 0,
       "lastMessageTime": 1716192000000,
@@ -96,9 +90,7 @@
     },
     {
       "sessionId": "cs_004",
-      "userName": "Phạm Thu Hà",
-      "userEmail": "thuha.uri@gmail.com",
-      "avatar": "images/avatar_user2.jpeg",
+      "userId": "6ade4310c044b23d6c6a8684",
       "status": "waiting",
       "unreadCount": 2,
       "lastMessageTime": 1716188400000,
@@ -122,9 +114,7 @@
     },
     {
       "sessionId": "cs_005",
-      "userName": "Đỗ Quang Huy",
-      "userEmail": "quanghuy.uri@gmail.com",
-      "avatar": "images/avatar-non.jpg",
+      "userId": "6ade4310c044b23d6c6a8685",
       "status": "ai",
       "unreadCount": 0,
       "lastMessageTime": 1716181200000,
@@ -152,49 +142,109 @@
       "id": "faq_greeting",
       "intent": "greeting",
       "title": "Lời chào & Menu trợ giúp",
-      "keywords": ["xin chào", "hello", "hi", "chào shop", "bắt đầu", "menu"],
+      "keywords": [
+        "xin chào",
+        "hello",
+        "hi",
+        "chào shop",
+        "bắt đầu",
+        "menu"
+      ],
       "response": "Xin chào bạn! Mình là Trợ lý AI của Urii. Mình có thể giúp gì cho bạn hôm nay?\n1. Tra cứu tình trạng đơn hàng\n2. Hướng dẫn chọn loại hạt & cách ủi Perler Beads\n3. Thông tin khuyến mãi & Voucher\n4. Phí vận chuyển & Thời gian giao hàng\n5. Kết nối nhân viên tư vấn trực tiếp",
-      "quickReplies": ["Tra cứu đơn hàng", "Hướng dẫn làm hạt ủi", "Mã giảm giá", "Gặp tư vấn viên"]
+      "quickReplies": [
+        "Tra cứu đơn hàng",
+        "Hướng dẫn làm hạt ủi",
+        "Mã giảm giá",
+        "Gặp tư vấn viên"
+      ]
     },
     {
       "id": "faq_order_tracking",
       "intent": "order_tracking",
       "title": "Tra cứu đơn hàng",
-      "keywords": ["tra cứu đơn", "kiểm tra đơn", "tình trạng đơn", "đơn hàng ở đâu", "mã đơn"],
+      "keywords": [
+        "tra cứu đơn",
+        "kiểm tra đơn",
+        "tình trạng đơn",
+        "đơn hàng ở đâu",
+        "mã đơn"
+      ],
       "response": "Để tra cứu đơn hàng, bạn vui lòng nhập mã đơn (ví dụ: #UR-82901) hoặc số điện thoại đặt hàng để Urii kiểm tra tiến độ giao hàng ngay cho bạn nhé!",
-      "quickReplies": ["#UR-82901", "Gặp tư vấn viên"]
+      "quickReplies": [
+        "#UR-82901",
+        "Gặp tư vấn viên"
+      ]
     },
     {
       "id": "faq_perler_guide",
       "intent": "perler_guide",
       "title": "Hướng dẫn hạt ủi Perler Beads",
-      "keywords": ["hạt ủi", "cách ủi", "perler beads", "hạt 5mm", "hạt 2.6mm", "nhiệt độ"],
+      "keywords": [
+        "hạt ủi",
+        "cách ủi",
+        "perler beads",
+        "hạt 5mm",
+        "hạt 2.6mm",
+        "nhiệt độ"
+      ],
       "response": "Urii cung cấp 2 dòng hạt chính:\n- Hạt 5mm (Midi): Dành cho người mới bắt đầu và trẻ em từ 6 tuổi, dễ cầm gắp.\n- Hạt 2.6mm (Mini): Dành cho tác phẩm chi tiết cao, móc khóa tinh xảo.\nCách ủi: Chỉnh bàn ủi ở mức nhiệt vừa (không hơi nước), phủ giấy ủi lên và di tròn nhẹ nhàng 10-15s.",
-      "quickReplies": ["Bộ KIT 72 màu", "Bảng màu hạt", "Giấy ủi chuyên dụng"]
+      "quickReplies": [
+        "Bộ KIT 72 màu",
+        "Bảng màu hạt",
+        "Giấy ủi chuyên dụng"
+      ]
     },
     {
       "id": "faq_vouchers",
       "intent": "vouchers",
       "title": "Ưu đãi & Khuyến mãi",
-      "keywords": ["voucher", "mã giảm giá", "khuyến mãi", "freeship", "giảm giá"],
+      "keywords": [
+        "voucher",
+        "mã giảm giá",
+        "khuyến mãi",
+        "freeship",
+        "giảm giá"
+      ],
       "response": "Các mã ưu đãi đang áp dụng tại Urii:\n- WELCOME10: Giảm 10% đơn từ 100k cho khách hàng mới.\n- FREESHIP: Miễn phí vận chuyển toàn quốc cho đơn từ 200k.\n- URII50K: Giảm 50.000đ cho đơn từ 500k.",
-      "quickReplies": ["Sao chép WELCOME10", "Sao chép FREESHIP"]
+      "quickReplies": [
+        "Sao chép WELCOME10",
+        "Sao chép FREESHIP"
+      ]
     },
     {
       "id": "faq_shipping",
       "intent": "shipping",
       "title": "Vận chuyển & Giao hàng",
-      "keywords": ["giao hàng", "vận chuyển", "phí ship", "hỏa tốc", "bao lâu nhận được"],
+      "keywords": [
+        "giao hàng",
+        "vận chuyển",
+        "phí ship",
+        "hỏa tốc",
+        "bao lâu nhận được"
+      ],
       "response": "Chính sách giao hàng của Urii:\n- Nội thành TP.HCM: Hỏa tốc 1 - 2 tiếng (Grab/Ahamove) hoặc 1 ngày.\n- Toàn quốc: 2 - 4 ngày làm việc qua GHN/GHTK.\n- Miễn phí vận chuyển cho đơn hàng từ 200.000đ.",
-      "quickReplies": ["Phí ship hỏa tốc", "Tra cứu đơn hàng"]
+      "quickReplies": [
+        "Phí ship hỏa tốc",
+        "Tra cứu đơn hàng"
+      ]
     },
     {
       "id": "faq_human_handoff",
       "intent": "human_handoff",
       "title": "Gặp nhân viên tư vấn",
-      "keywords": ["nhân viên", "tư vấn viên", "gặp người thật", "admin", "chăm sóc khách hàng", "khiếu nại"],
+      "keywords": [
+        "nhân viên",
+        "tư vấn viên",
+        "gặp người thật",
+        "admin",
+        "chăm sóc khách hàng",
+        "khiếu nại"
+      ],
       "response": "Dạ mình đã chuyển yêu cầu của bạn đến nhân viên tư vấn của Urii. Bạn vui lòng đợi trong giây lát, chuyên viên sẽ tiếp quản cuộc trò chuyện ngay ạ!",
-      "quickReplies": ["Hủy yêu cầu", "Gửi câu hỏi khác"]
+      "quickReplies": [
+        "Hủy yêu cầu",
+        "Gửi câu hỏi khác"
+      ]
     }
   ]
 }

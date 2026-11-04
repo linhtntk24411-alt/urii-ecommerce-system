@@ -98,7 +98,10 @@ exports.getEligibleOrders = async (req, res) => {
   try {
     const userId = await getCustomerId(req, res);
     if (!userId) return;
-    const orders = await Order.find({ userId, statusType: 'completed' }).sort({ createdAt: -1 }).lean();
+    const orders = await Order.find({
+      userId,
+      $or: [{ statusId: 'completed' }, { statusType: 'completed' }]
+    }).sort({ createdAt: -1 }).lean();
     const reviews = await Review.find({ userId }).select('orderId productId').lean();
     const reviewed = new Set(reviews.map((review) => `${review.orderId}:${review.productId}`));
     const productIds = [...new Set(orders.flatMap((order) => (
@@ -147,7 +150,7 @@ exports.createReview = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng của khách hàng.' });
       return;
     }
-    if (order.statusType !== 'completed') {
+    if ((order.statusId || order.statusType) !== 'completed') {
       res.status(409).json({ message: 'Chỉ có thể đánh giá sản phẩm từ đơn hàng đã giao thành công.' });
       return;
     }

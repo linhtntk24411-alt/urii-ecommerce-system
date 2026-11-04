@@ -19,7 +19,13 @@ const Cart = require('../models/Cart');
 const Review = require('../models/Review');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
-const { insertMissing, prepareGallery, prepareNewUsers, seed } = require('../seed');
+const {
+  insertMissing,
+  prepareGallery,
+  prepareNewUsers,
+  seed,
+  syncOrderReasonReferences
+} = require('../seed');
 const { buildProducts } = require('../convert_excel');
 const XLSX = require('xlsx');
 const { isVoucherAvailable } = require('../controllers/voucherController');
@@ -71,6 +77,103 @@ test('active voucher fixtures are available within their configured date range',
   const now = new Date(2026, 10, 4);
 
   assert.equal(vouchers.filter((voucher) => isVoucherAvailable(voucher, now)).length, 4);
+});
+
+test('orders reference existing customers, catalog entities, and status IDs', async () => {
+  const users = readJSON('users.json').users;
+  const products = readJSON('products.json').products;
+  const vouchers = readJSON('vouchers.json').vouchers;
+  const orders = readJSON('orders.json').orders;
+  const statuses = readJSON('order_statuses.json');
+  const userIds = new Set(users.map((user) => String(user._id)));
+  const productIds = new Set(products.map((product) => product.id));
+  const voucherIds = new Set(vouchers.map((voucher) => voucher.id));
+  const statusIds = (group) => new Set(statuses[group].map((status) => status.id));
+  const orderStatusIds = statusIds('orderStatuses');
+  const paymentMethodIds = statusIds('paymentMethods');
+  const paymentStatusIds = statusIds('paymentStatuses');
+  const shippingMethodIds = statusIds('shippingMethods');
+  const timelineStatusIds = statusIds('timelineStatuses');
+  const shippingStatusIds = statusIds('shippingStatuses');
+
+  assert.equal(orders.length, 36);
+  for (const order of orders) {
+    assert.ok(userIds.has(String(order.userId)), `${order.id} must reference a customer`);
+    assert.ok(orderStatusIds.has(order.statusId), `${order.id} must reference an order status`);
+    assert.equal(typeof order.totalAmount, 'number');
+    assert.ok(Number.isSafeInteger(order.totalAmount));
+    assert.ok(order.items.length > 0);
+    for (const item of order.items) {
+      assert.ok(productIds.has(item.productId));
+      assert.equal(typeof item.unitPrice, 'number');
+      assert.equal(typeof item.quantity, 'number');
+      assert.equal(Object.hasOwn(item, 'name'), false);
+      assert.equal(Object.hasOwn(item, 'image'), false);
+    }
+    if (order.voucher) {
+      assert.ok(voucherIds.has(order.voucher.voucherId));
+      assert.ok(Number.isSafeInteger(order.voucher.discountAmount));
+    }
+    assert.ok(paymentMethodIds.has(order.payment?.methodId));
+    assert.equal(Object.hasOwn(order.payment, 'method'), false);
+    if (order.payment?.statusId) assert.ok(paymentStatusIds.has(order.payment.statusId));
+    assert.ok(shippingMethodIds.has(order.shipping?.methodId));
+    assert.equal(Object.hasOwn(order.shipping, 'carrier'), false);
+    assert.equal(Object.hasOwn(order.shipping, 'method'), false);
+    assert.ok(order.timeline.every((event) => timelineStatusIds.has(event.statusId)));
+    assert.ok(order.shippingTimeline.every((event) => shippingStatusIds.has(event.statusId)));
+    for (const duplicateField of ['userName', 'status', 'statusType', 'total', 'icon', 'detailId', 'address']) {
+      assert.equal(Object.hasOwn(order, duplicateField), false, `${order.id} should not duplicate ${duplicateField}`);
+    }
+  }
+});
+
+test('order reason fixture is linked to cancelled and returned orders with required evidence', async () => {
+  const reasonData = readJSON('order_reasons.json');
+  const orders = readJSON('orders.json').orders;
+  const cancelReasons = new Map(reasonData.cancelReasons.map((reason) => [reason.id, reason]));
+  const returnReasons = new Map(reasonData.returnReasons.map((reason) => [reason.id, reason]));
+  const cancelIds = reasonData.cancelReasons.map((reason) => reason.id);
+  const returnIds = reasonData.returnReasons.map((reason) => reason.id);
+  assert.equal(new Set(cancelIds).size, cancelIds.length);
+  assert.equal(new Set(returnIds).size, returnIds.length);
+
+  const cancelledOrders = orders.filter((order) => order.statusId === 'cancelled');
+  const returnedOrders = orders.filter((order) => order.statusId === 'returned');
+  assert.equal(cancelledOrders.length, 6);
+  assert.equal(returnedOrders.length, 6);
+  for (const order of cancelledOrders) {
+    const reason = cancelReasons.get(order.cancellationReasonId);
+    assert.ok(reason, `${order.id} must reference a cancellation reason`);
+    if (reason.requiresNote) assert.ok(order.cancellationNote?.trim());
+    await new Order(order).validate();
+  }
+  for (const order of returnedOrders) {
+    const reason = returnReasons.get(order.returnReasonId);
+    assert.ok(reason, `${order.id} must reference a return reason`);
+    const evidence = order.returnEvidence || [];
+    assert.ok(evidence.filter((item) => item.type === 'image').length >= (reason.requiresMedia?.images || 0));
+    assert.ok(evidence.filter((item) => item.type === 'video').length >= (reason.requiresMedia?.videos || 0));
+    for (const item of evidence) {
+      assert.ok(['image', 'video'].includes(item.type));
+      assert.ok(isValidImageUrl(item.url));
+      if (item.url.startsWith('/images/')) {
+        assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', item.url.slice(1))));
+      }
+    }
+    await new Order(order).validate();
+  }
+  assert.equal(orders.filter((order) => order.statusId !== 'cancelled' && order.cancellationReasonId).length, 0);
+  assert.equal(orders.filter((order) => order.statusId !== 'returned' && order.returnReasonId).length, 0);
+
+  const syncableOrders = orders.filter((order) => order.cancellationReasonId || order.returnReasonId);
+  const result = await syncOrderReasonReferences(syncableOrders, {
+    bulkWrite: async (operations, options) => {
+      assert.equal(options.ordered, true);
+      return operations;
+    }
+  });
+  assert.equal(result.length, 12);
 });
 
 test('saved map fixtures link existing customers and allow maps saved by different customers', () => {
@@ -136,7 +239,7 @@ test('cart and review fixtures use real products and delivered customer orders',
   const reviewTopics = new Set();
   let imageReviewCount = 0;
   for (const order of orders) {
-    assert.equal(order.statusType, 'completed');
+    assert.equal(order.statusId, 'completed');
     assert.ok(order.userId);
     await new Order(order).validate();
   }
@@ -181,7 +284,7 @@ test('cart and review fixtures use real products and delivered customer orders',
   });
 
   const rawReviewData = readJSON('review_orders.json');
-  const allowedOrderKeys = new Set(['id', 'userId', 'statusType', 'deliveredAt', 'items']);
+  const allowedOrderKeys = new Set(['id', 'userId', 'statusId', 'deliveredAt', 'items']);
   const allowedOrderItemKeys = new Set(['productId', 'variantIndex']);
   const allowedReviewKeys = new Set(['orderId', 'productId', 'rating', 'content', 'media']);
   assert.ok(rawReviewData.orders.every((order) => (
@@ -263,28 +366,58 @@ test('custom order model accepts the requested fields and validates image URL', 
   );
 });
 
-test('custom order fixtures use existing customers and images available on this backend', () => {
+test('custom order, comment, blog, and chat session fixtures reference IDs instead of duplicating customer or gallery details', () => {
   const customOrders = readJSON('custom_orders.json');
-  const existingCustomers = new Set(
+  const customerIds = new Set(
     readJSON('users.json').users
       .filter((user) => user.role === 'user')
-      .map((user) => `${user.name}|${user.phone}|${user.email}`)
+      .map((user) => String(user._id))
   );
+  const galleryById = new Map(readJSON('gallery.json').map((map) => [map.map_id, map]));
 
   assert.ok(customOrders.length > 1);
-  assert.ok(new Set(customOrders.map((order) => order.email)).size > 1);
+  assert.ok(new Set(customOrders.map((order) => String(order.userId))).size > 1);
   for (const order of customOrders) {
+    assert.ok(customerIds.has(String(order.userId)), `${order.id} must reference an existing customer ID`);
+    const galleryMap = galleryById.get(order.mapId);
+    assert.ok(galleryMap, `${order.id} must reference an existing gallery map ID`);
+    assert.equal(order.imageNote, 'Ảnh mẫu tham khảo từ thư viện Urii.');
+    for (const duplicateField of ['fullName', 'phone', 'email', 'imageUrl']) {
+      assert.equal(Object.hasOwn(order, duplicateField), false, `${order.id} should not duplicate ${duplicateField}`);
+    }
     assert.ok(
-      existingCustomers.has(`${order.fullName}|${order.phone}|${order.email}`),
-      `${order.email} must match an existing customer`
+      fs.existsSync(path.join(__dirname, '..', 'public', galleryMap.main_image)),
+      `${galleryMap.main_image} must point to an image served by this backend`
     );
-    assert.ok(order.imageUrl.startsWith('/images/'));
-    assert.ok(isValidImageUrl(order.imageUrl));
-    const imagePath = order.imageUrl.replace(/^\/+/, '');
-    assert.ok(
-      fs.existsSync(path.join(__dirname, '..', 'public', imagePath)),
-      `${order.imageUrl} must point to an image served by this backend`
-    );
+  }
+
+  const blogData = readJSON('blogs.json');
+  const blogIds = new Set(blogData.blogs.map((blog) => blog.id));
+  const blogCategoryIds = new Set((blogData.categories || []).map((cat) => cat.id));
+  for (const blog of blogData.blogs) {
+    assert.ok(customerIds.has(String(blog.userId)), `Blog ${blog.id} must reference userId`);
+    assert.ok(blogCategoryIds.has(blog.categoryId), `Blog ${blog.id} must reference categoryId`);
+    for (const duplicateField of ['author', 'avatar', 'category', 'categorySlug']) {
+      assert.equal(Object.hasOwn(blog, duplicateField), false, `Blog ${blog.id} should not duplicate ${duplicateField}`);
+    }
+  }
+
+  const comments = readJSON('comments.json').comments;
+  for (const comment of comments) {
+    assert.ok(blogIds.has(comment.blogId), `Comment ${comment.id} must reference blogId`);
+    assert.ok(customerIds.has(String(comment.userId)), `Comment ${comment.id} must reference userId`);
+    for (const duplicateField of ['author', 'avatar']) {
+      assert.equal(Object.hasOwn(comment, duplicateField), false, `Comment ${comment.id} should not duplicate ${duplicateField}`);
+    }
+  }
+
+  const chatSessions = readJSON('chat_sessions.json');
+  const chatbotSessions = readJSON('chatbot.json').sessions;
+  for (const session of [...chatSessions, ...chatbotSessions]) {
+    assert.ok(customerIds.has(String(session.userId)), `Session ${session.sessionId} must reference userId`);
+    for (const duplicateField of ['userName', 'userEmail', 'avatar']) {
+      assert.equal(Object.hasOwn(session, duplicateField), false, `Session ${session.sessionId} should not duplicate ${duplicateField}`);
+    }
   }
 });
 

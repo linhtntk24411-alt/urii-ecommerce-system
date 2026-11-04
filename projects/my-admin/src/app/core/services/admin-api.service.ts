@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, Inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { BehaviorSubject, Observable, firstValueFrom, tap, timeout } from 'rxjs';
+import { BehaviorSubject, Observable, firstValueFrom, from, map, mergeMap, switchMap, tap, timeout, toArray } from 'rxjs';
 
 export interface AdminUser {
   _id: string;
@@ -126,6 +126,18 @@ export interface AdminComment {
   avatar?: string;
   content: string;
   time?: string;
+  createdAt?: string;
+}
+
+export interface AdminReview {
+  id: string;
+  productId: string;
+  userId: string;
+  productName: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number;
+  content: string;
   createdAt?: string;
 }
 
@@ -818,6 +830,49 @@ export class AdminApiService {
       .pipe(timeout(8000));
   }
 
+  getAdminReviews(): Observable<AdminReview[]> {
+    return this.http
+      .get<AdminProduct[]>(`${this.baseUrl}/products?page=1&limit=100`)
+      .pipe(
+        timeout(8000),
+        switchMap((products) => from(products).pipe(
+          mergeMap((product) => this.http
+            .get<{
+              productName: string;
+              reviews: Array<Omit<AdminReview, 'productName' | 'userAvatar'>>;
+            }>(`${this.baseUrl}/reviews/product/${encodeURIComponent(product.id)}?page=1&limit=100`)
+            .pipe(
+              timeout(8000),
+              map((response) => response.reviews.map((review) => ({
+                ...review,
+                productName: response.productName || product.name
+              })))
+            ),
+          8),
+          toArray(),
+          map((reviewsByProduct) => reviewsByProduct.flat().sort(
+            (left, right) => Date.parse(right.createdAt || '') - Date.parse(left.createdAt || '')
+          )),
+          switchMap((reviews) => this.http
+            .get<AdminUser[]>(`${this.baseUrl}/users?page=1&limit=100`, {
+              headers: this.getAuthHeaders()
+            })
+            .pipe(
+              timeout(8000),
+              map((users) => {
+                const avatarsByUserId = new Map(
+                  users.map((user) => [user._id, user.avatar || ''])
+                );
+                return reviews.map((review) => ({
+                  ...review,
+                  userAvatar: avatarsByUserId.get(review.userId) || ''
+                }));
+              })
+            ))
+        ))
+      );
+  }
+
   getInitialDashboard(): DashboardStats {
     const users = this.getInitialUsers();
     const promos = this.getInitialPromotions();
@@ -890,6 +945,13 @@ export class AdminApiService {
     return this.http.get<any>(
       `${this.baseUrl}/orders`,
       { headers }
+    );
+  }
+
+  public getCustomOrders(): Observable<any> {
+    return this.http.get<any>(
+      `${this.baseUrl}/custom-orders?page=1&limit=100`,
+      { headers: this.getAuthHeaders() }
     );
   }
 

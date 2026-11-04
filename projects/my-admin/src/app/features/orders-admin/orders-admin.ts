@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, OnInit, HostListener } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminApiService, AdminUser } from '../../core/services/admin-api.service';
+import { combineLatest, Subscription } from 'rxjs';
 
 declare var bootstrap: any;
 
@@ -38,6 +39,7 @@ export class OrdersAdmin implements OnInit {
   originalOrders: any[] = [];
   orders: any[] = [];
   orderLoadError = '';
+  private orderDataSubscription?: Subscription;
   
   // --- Pagination ---
   currentPage = 1;
@@ -65,6 +67,7 @@ export class OrdersAdmin implements OnInit {
   statusMap: { [key: string]: any } = {
     "pending": { text: "Chờ xác nhận", class: "badge-status-pending" },
     "approved": { text: "Đã xác nhận", class: "badge-status-approved" },
+    "quoted": { text: "Đã báo giá", class: "badge-status-approved" },
     "completed": { text: "Hoàn thành", class: "badge-status-completed" },
     "cancelled": { text: "Đã hủy", class: "badge-status-cancelled" },
     "pending_approval": { text: "Chờ duyệt", class: "badge-status-pending_approval" },
@@ -105,19 +108,38 @@ export class OrdersAdmin implements OnInit {
   // --- Logic Load Data ---
  loadOrders() {
     this.orderLoadError = '';
-    this.adminApi.getOrders().subscribe({
-      next: (res: any) => {
-        const orderList = Array.isArray(res)
-          ? res
-          : Array.isArray(res?.orders)
-            ? res.orders
+    this.orderDataSubscription?.unsubscribe();
+    this.orderDataSubscription = combineLatest({
+      response: this.adminApi.getOrders(),
+      customResponse: this.adminApi.getCustomOrders(),
+      products: this.adminApi.products$
+    }).subscribe({
+      next: ({ response, customResponse, products }) => {
+        const orderList = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.orders)
+            ? response.orders
             : null;
         if (!orderList) {
-          console.error('API đơn hàng trả về dữ liệu không hợp lệ:', res);
+          console.error('API đơn hàng trả về dữ liệu không hợp lệ:', response);
           return;
         }
 
-        this.originalOrders = orderList.map((item: any) => {
+        const customOrderList = Array.isArray(customResponse)
+          ? customResponse
+          : Array.isArray(customResponse?.customOrders)
+            ? customResponse.customOrders
+            : null;
+        if (!customOrderList) {
+          this.orderLoadError = 'Máy chủ trả về danh sách đơn hàng custom không hợp lệ.';
+          console.error('API đơn hàng custom trả về dữ liệu không hợp lệ:', customResponse);
+          return;
+        }
+
+        const regularOrders = orderList.map((item: any) => {
+          const orderItems = Array.isArray(item.items)
+            ? item.items.map((orderItem: any) => this.normalizeOrderItem(orderItem, products))
+            : [];
           const name = item.userName || item.address?.name || 'Khách hàng';
           const customerImage = item.customerImage
             || item.userAvatar
@@ -138,6 +160,8 @@ export class OrdersAdmin implements OnInit {
             'cancelled': 'cancelled',
             'canceled': 'cancelled',
             'đã hủy': 'cancelled',
+            'quoted': 'approved',
+            'đã báo giá': 'approved',
             'pending_approval': 'pending_approval',
             'chờ duyệt': 'pending_approval',
             'waiting_quote': 'waiting_quote',
@@ -159,13 +183,18 @@ export class OrdersAdmin implements OnInit {
             total: typeof item.total === 'string'
               ? Number(item.total.replace(/[^0-9]/g, '')) || 0
               : Number(item.total) || 0,
-            product: item.product || item.items?.map((p: any) =>
-              `${p.name} (x${p.quantity})`
+            items: orderItems,
+            product: item.product || orderItems.map((orderItem: any) =>
+              `${orderItem.name}${orderItem.variantName ? ` - ${orderItem.variantName}` : ''} (x${orderItem.quantity ?? 1})`
             ).join(', ') || '',
             status: statusAliases[rawStatus] || 'pending'
           };
         });
 
+        this.originalOrders = [
+          ...regularOrders,
+          ...customOrderList.map((item: any) => this.normalizeCustomOrder(item))
+        ];
         this.orders = [...this.originalOrders];
         this.changeDetectorRef.markForCheck();
       },
@@ -179,6 +208,60 @@ export class OrdersAdmin implements OnInit {
         this.changeDetectorRef.markForCheck();
       }
     });
+  }
+
+  private normalizeOrderItem(orderItem: any, products: any[]): any {
+    const product = products.find(
+      (candidate: any) => String(candidate.id) === String(orderItem.productId)
+    );
+    const variant = Number.isInteger(orderItem.variantIndex)
+      ? product?.variants?.[orderItem.variantIndex]
+      : undefined;
+
+    return {
+      ...orderItem,
+      name: orderItem.name || orderItem.productName || product?.name || `Sản phẩm #${orderItem.productId || ''}`,
+      price: orderItem.price ?? orderItem.unitPrice ?? variant?.price ?? 0,
+      image: orderItem.image || variant?.image || product?.image || '',
+      variantName: orderItem.variantName || variant?.name || ''
+    };
+  }
+
+  private normalizeCustomOrder(item: any): any {
+    const rawStatus = String(item.status || '').trim().toLowerCase();
+    const statusAliases: { [key: string]: string } = {
+      pending: 'waiting_quote',
+      quoted: 'quoted',
+      processing: 'processing',
+      completed: 'completed',
+      cancelled: 'cancelled'
+    };
+    const createdAt = item.createdAt ? new Date(item.createdAt) : null;
+    const date = createdAt && !Number.isNaN(createdAt.getTime())
+      ? createdAt.toLocaleDateString('vi-VN')
+      : '';
+
+    return {
+      ...item,
+      id: String(item.id || item._id || ''),
+      isCustomOrder: true,
+      customerName: item.fullName || 'Khách hàng',
+      customerImage: this.customerAvatars.get(
+        this.normalizeCustomerName(item.fullName || '')
+      ) || 'images/avatar-non.jpg',
+      phone: item.phone || '',
+      email: item.email || '',
+      date,
+      product: item.requestName || 'Yêu cầu thiết kế custom',
+      customDetails: Object.fromEntries(Object.entries({
+        'Tên mẫu yêu cầu': item.requestName || '',
+        'Kích thước': item.size || '',
+        'Loại hạt': item.beadType || '',
+        'Mã mẫu tham khảo': item.mapId || ''
+      }).filter(([, value]) => Boolean(value))),
+      customerNote: item.description || '',
+      status: statusAliases[rawStatus] || 'waiting_quote'
+    };
   }
 
   private customerAvatars = new Map<string, string>();

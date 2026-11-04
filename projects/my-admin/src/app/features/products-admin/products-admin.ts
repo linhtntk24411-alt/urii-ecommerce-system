@@ -40,7 +40,7 @@ export class ProductsAdmin implements OnInit {
   editData: any = { id: null, name: '', category: 'HN', status: 'normal', price: 0, stock: 0, image: '' };
 
   categoriesMap: { [key: string]: string } = { 
-    "HN": "Hạt nhựa", "DC": "Dụng cụ", "BST": "Bộ sưu tập", "KIT": "Bộ Kit", "TP": "Trọn bộ"
+    "HN": "Hạt nhựa", "DC": "Dụng cụ", "BST": "Bộ sưu tập", "KIT": "Bộ Kit", "TP": "Thành phần"
   };
 
   statusMap: { [key: string]: { text: string, class: string } } = { 
@@ -50,6 +50,9 @@ export class ProductsAdmin implements OnInit {
     "new": { text: "Mới", class: "badge-status-new" },
     "hot": { text: "Bán chạy", class: "badge-status-hot" }
   };
+  // Các biến quản lý file ảnh tải lên
+  selectedFile: File | null = null;
+  imagePreview: string | null = null;
 
   constructor(private adminApi: AdminApiService) {}
 
@@ -169,10 +172,14 @@ ngOnInit() {
 
   openAddModal() {
     this.editData = { id: null, name: '', category: 'hat-nhua', status: 'normal', price: 0, stock: 10, image: 'assets/images/banner-home.webp' };
+    this.selectedFile = null;
+    this.imagePreview = null;
   }
 
   openEditModal(p: Product) {
     this.editData = { ...p };
+    this.selectedFile = null;
+    this.imagePreview = null;
     const modalEl = document.getElementById('editProductModal');
     if (modalEl) {
       const modal = new bootstrap.Modal(modalEl);
@@ -194,6 +201,11 @@ ngOnInit() {
   onSaveEdit(event: Event) {
     event.preventDefault();
     const targetId = this.editData.id || this.editData._id;
+    // --- THÊM ĐOẠN NÀY ĐỂ NHẬN ẢNH MỚI CHỌN ---
+    if (this.imagePreview) {
+      this.editData.image = this.imagePreview;
+    }
+    // ------------------------------------------
 
     if (targetId) {
       this.adminApi.updateProduct(targetId, this.editData).subscribe({
@@ -301,6 +313,20 @@ ngOnInit() {
       }
     }
   }
+  // Hàm chạy khi người dùng chọn file ảnh từ máy tính
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.imagePreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
 
   getDisplayStatus(p: Product): string {
     const prod = p as any;

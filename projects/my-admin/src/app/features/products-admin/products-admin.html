@@ -81,7 +81,7 @@
                         <option value="DC">Dụng cụ</option>
                         <option value="HN">Hạt nhựa</option>
                         <option value="KIT">Bộ Kit</option>
-                        <option value="TP">Trọn bộ</option>
+                        <option value="TP">Thành phần</option>
                     </select>
                 </div>
                <div class="col-md-3">
@@ -241,7 +241,7 @@
                                 <option value="DC">Dụng cụ</option>
                                 <option value="BST">Bộ sưu tập</option>
                                 <option value="KIT">Bộ Kit</option>
-                                <option value="TP">Trọn bộ</option>
+                                <option value="TP">Thành phần</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -264,6 +264,18 @@
                             <label for="edit-stock" class="form-label fw-bold">Số lượng kho</label>
                             <input type="number" class="form-control" id="edit-stock" [(ngModel)]="editData.stock" name="stock" required>
                         </div>
+                    </div>
+                    <!-- BỔ SUNG: Phần upload hình ảnh sản phẩm -->
+                    <div class="mb-3">
+                        <label for="edit-image-file" class="form-label fw-bold">Hình ảnh sản phẩm</label>
+                        <input type="file" class="form-control" id="edit-image-file" accept="image/*" (change)="onFileSelected($event)">
+                        
+                        <!-- Hiển thị ảnh xem trước (Preview) -->
+                        @if (imagePreview || editData.image) {
+                            <div class="mt-2 text-center">
+                                <img [src]="imagePreview || formatImagePath(editData.image)" alt="Preview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;">
+                            </div>
+                        }
                     </div>
                 </div>
                 <div class="modal-footer">

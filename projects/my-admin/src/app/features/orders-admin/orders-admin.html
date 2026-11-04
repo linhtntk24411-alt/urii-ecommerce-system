@@ -381,7 +381,14 @@
                     </div>
                     <div class="col-12">
                         <h6 class="fw-bold border-bottom pb-2">Ghi chú của khách</h6>
-                        <div class="bg-light p-3 rounded">{{ selectedOrder.customerNote || 'Không có ghi chú' }}</div>
+                        <div class="bg-light p-3 rounded">
+                            <div>{{ selectedOrder.customerNote || 'Không có ghi chú' }}</div>
+                            <div *ngIf="selectedOrder.imageNote" class="mt-2"><strong>Ghi chú ảnh:</strong> {{ selectedOrder.imageNote }}</div>
+                        </div>
+                    </div>
+                    <div class="col-12" *ngIf="selectedOrder.imageUrl">
+                        <h6 class="fw-bold border-bottom pb-2">Ảnh mẫu tham khảo</h6>
+                        <img [src]="getCustomerAvatarUrl(selectedOrder.imageUrl)" [alt]="selectedOrder.product" class="img-fluid rounded" style="max-height: 320px; object-fit: contain;">
                     </div>
                     <div class="col-12" *ngIf="selectedOrder.quotedPrice > 0">
                         <h6 class="fw-bold border-bottom pb-2 text-success">Báo giá đã gửi</h6>

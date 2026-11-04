@@ -1,8 +1,8 @@
-import { Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TimeoutError } from 'rxjs';
-import { AdminApiService, AdminComment } from '../../core/services/admin-api.service';
+import { TimeoutError, catchError, forkJoin, of } from 'rxjs';
+import { AdminApiService, AdminComment, AdminReview } from '../../core/services/admin-api.service';
 
 interface CommentItem {
   id: string;
@@ -12,6 +12,7 @@ interface CommentItem {
   authorName: string;
   authorAvatar: string;
   date: string;
+  rating?: number;
   status: 'approved' | 'pending' | 'flagged' | 'hidden' | string;
 }
 
@@ -25,6 +26,7 @@ interface CommentItem {
 export class CommentsAdmin implements OnInit {
   constructor(
     private adminApi: AdminApiService,
+    private changeDetectorRef: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
@@ -46,6 +48,7 @@ export class CommentsAdmin implements OnInit {
   // Bản đồ trạng thái hiển thị
   statusMap: { [key: string]: { text: string; class: string } } = {
     'approved': { text: 'Đã duyệt / Đã trả lời', class: 'badge-status-approved' },
+    'submitted': { text: 'Đã gửi', class: 'badge-status-approved' },
     'pending': { text: 'Chờ duyệt / Chưa trả lời', class: 'badge-status-pending' },
     'flagged': { text: 'Vi phạm', class: 'badge-status-flagged' },
     'hidden': { text: 'Đã ẩn', class: 'badge-status-pending' }
@@ -60,25 +63,52 @@ export class CommentsAdmin implements OnInit {
   loadComments(): void {
     this.isLoading = true;
     this.commentsLoadError = '';
+    const errors: string[] = [];
 
-    this.adminApi.getComments().subscribe({
-      next: (comments) => {
-        if (!Array.isArray(comments)) {
-          this.commentsLoadError = 'Máy chủ trả về danh sách bình luận không hợp lệ.';
-          console.error('API bình luận trả về dữ liệu không hợp lệ:', comments);
-        } else {
-          this.allComments = comments.map((comment) => this.toCommentItem(comment));
-        }
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Lỗi tải bình luận từ MongoDB:', error);
-        this.commentsLoadError = error instanceof TimeoutError
-          ? 'Máy chủ không phản hồi sau 8 giây. Hãy kiểm tra backend tại localhost:3002 rồi thử tải lại.'
-          : 'Không thể tải danh sách bình luận. Hãy kiểm tra kết nối backend rồi thử tải lại.';
-        this.isLoading = false;
+    forkJoin({
+      comments: this.adminApi.getComments().pipe(
+        catchError((error: unknown) => {
+          console.error('Lỗi tải bình luận blog từ MongoDB:', error);
+          errors.push(this.getLoadErrorMessage(error, 'bình luận blog'));
+          return of(null);
+        })
+      ),
+      reviews: this.adminApi.getAdminReviews().pipe(
+        catchError((error: unknown) => {
+          console.error('Lỗi tải đánh giá sản phẩm từ MongoDB:', error);
+          errors.push(this.getLoadErrorMessage(error, 'đánh giá sản phẩm'));
+          return of(null);
+        })
+      )
+    }).subscribe(({ comments, reviews }) => {
+      const loadedComments: CommentItem[] = [];
+      if (Array.isArray(comments)) {
+        loadedComments.push(...comments.map((comment) => this.toCommentItem(comment)));
+      } else if (comments !== null) {
+        errors.push('Máy chủ trả về danh sách bình luận không hợp lệ.');
+        console.error('API bình luận trả về dữ liệu không hợp lệ:', comments);
       }
+
+      if (Array.isArray(reviews)) {
+        loadedComments.push(...reviews.map((review) => this.toReviewItem(review)));
+      } else if (reviews !== null) {
+        errors.push('Máy chủ trả về danh sách đánh giá không hợp lệ.');
+        console.error('API đánh giá trả về dữ liệu không hợp lệ:', reviews);
+      }
+
+      this.allComments = loadedComments;
+      this.commentsLoadError = errors.join(' ');
+      this.currentReviewPage = 1;
+      this.currentBlogPage = 1;
+      this.isLoading = false;
+      this.changeDetectorRef.markForCheck();
     });
+  }
+
+  private getLoadErrorMessage(error: unknown, resource: string): string {
+    return error instanceof TimeoutError
+      ? `Máy chủ không phản hồi sau 8 giây khi tải ${resource}. Hãy kiểm tra backend tại localhost:3002 rồi thử tải lại.`
+      : `Không thể tải ${resource}. Hãy kiểm tra kết nối backend rồi thử tải lại.`;
   }
 
   private toCommentItem(comment: AdminComment): CommentItem {
@@ -92,7 +122,22 @@ export class CommentsAdmin implements OnInit {
       authorName,
       authorAvatar: comment.avatar || 'images/avatar-non.jpg',
       date: comment.time || comment.createdAt || '',
+      rating: undefined,
       status: 'approved'
+    };
+  }
+
+  private toReviewItem(review: AdminReview): CommentItem {
+    return {
+      id: `review:${review.id}`,
+      content: review.content || '',
+      targetName: review.productName || `Sản phẩm #${review.productId}`,
+      targetType: 'product',
+      authorName: review.userName || 'Khách hàng',
+      authorAvatar: review.userAvatar || 'images/avatar-non.jpg',
+      date: review.createdAt || '',
+      rating: review.rating,
+      status: 'submitted'
     };
   }
 

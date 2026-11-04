@@ -59,11 +59,11 @@
                     <div class="col-md-3">
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" [(ngModel)]="searchKeyword" class="form-control border-start-0 ps-0" placeholder="Tìm nội dung, tác giả...">
+                            <input type="text" [(ngModel)]="searchKeyword" (ngModelChange)="onFilterClick()" class="form-control border-start-0 ps-0" placeholder="Tìm nội dung, tác giả...">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <select [(ngModel)]="filterType" class="form-select bg-light border-0">
+                        <select [(ngModel)]="filterType" (ngModelChange)="onFilterClick()" class="form-select bg-light border-0">
                             <option value="">Tất cả loại</option>
                             <option value="product">Đánh giá sản phẩm</option>
                             <option value="order">Phản hồi đơn hàng</option>
@@ -71,9 +71,10 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select [(ngModel)]="filterStatus" class="form-select bg-light border-0">
+                        <select [(ngModel)]="filterStatus" (ngModelChange)="onFilterClick()" class="form-select bg-light border-0">
                             <option value="">Tất cả trạng thái</option>
                             <option value="approved">Đã duyệt / Đã trả lời</option>
+                            <option value="submitted">Đã gửi</option>
                             <option value="pending">Chờ duyệt / Chưa trả lời</option>
                             <option value="flagged">Vi phạm</option>
                         </select>
@@ -109,6 +110,10 @@
                             <tr *ngFor="let c of getPaginatedReviews()">
                                 <td class="ps-4">
                                     <div class="comment-content" [title]="c.content">{{ c.content }}</div>
+                                    <div *ngIf="c.rating" class="text-warning small" [attr.aria-label]="'Đánh giá ' + c.rating + ' trên 5 sao'">
+                                        <i *ngFor="let star of [1, 2, 3, 4, 5]" class="bi" [ngClass]="star <= (c.rating || 0) ? 'bi-star-fill' : 'bi-star'"></i>
+                                        <span class="text-muted ms-1">{{ c.rating }}/5</span>
+                                    </div>
                                     <div class="text-muted small mt-1">Trên: <strong>{{ c.targetName }}</strong></div>
                                 </td>
                                 <td>
@@ -122,7 +127,7 @@
                                     </div>
                                 </td>
                                 <td>{{ c.targetType === 'product' ? 'Sản phẩm' : 'Đơn hàng' }}</td>
-                                <td>{{ c.date }}</td>
+                                <td>{{ c.rating ? (c.date | date:'dd/MM/yyyy HH:mm') : c.date }}</td>
                                 <td>
                                     <span class="badge-status" [ngClass]="statusMap[c.status]?.class || 'badge-status-pending'">
                                         {{ statusMap[c.status]?.text || c.status }}
@@ -285,7 +290,7 @@
                          style="width:48px; height:48px;">
                     <div>
                         <h6 class="fw-bold mb-1 text-dark" style="font-size: 16px;">{{ selectedComment.authorName }}</h6>
-                        <span class="text-muted small"><i class="bi bi-clock me-1"></i> Ngày gửi: {{ selectedComment.date }}</span>
+                        <span class="text-muted small"><i class="bi bi-clock me-1"></i> Ngày gửi: {{ selectedComment.rating ? (selectedComment.date | date:'dd/MM/yyyy HH:mm') : selectedComment.date }}</span>
                     </div>
                 </div>
 
@@ -293,6 +298,14 @@
                 <div class="mb-3">
                     <span class="text-muted small d-block mb-1">Thuộc về đối tượng:</span>
                     <strong class="text-primary fs-6"><i class="bi bi-tag me-1"></i> {{ selectedComment.targetName }}</strong>
+                </div>
+
+                <div *ngIf="selectedComment.rating" class="mb-3">
+                    <span class="text-muted small d-block mb-1">Đánh giá sản phẩm:</span>
+                    <span class="text-warning">
+                        <i *ngFor="let star of [1, 2, 3, 4, 5]" class="bi" [ngClass]="star <= selectedComment.rating ? 'bi-star-fill' : 'bi-star'"></i>
+                        <span class="text-muted ms-1">{{ selectedComment.rating }}/5</span>
+                    </span>
                 </div>
 
                 <!-- Nội dung bình luận chi tiết -->

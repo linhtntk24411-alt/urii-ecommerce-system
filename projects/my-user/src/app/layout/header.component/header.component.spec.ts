@@ -38,4 +38,22 @@ describe('HeaderComponent', () => {
     expect(fixture.nativeElement.querySelector('.account-icon-wrapper')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.auth-buttons')).toBeNull();
   });
+
+  it('restores the saved login state after the initial browser render', async () => {
+    fixture.destroy();
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userName', 'Test User');
+    localStorage.setItem('userEmail', 'test@example.com');
+    fixture = TestBed.createComponent(HeaderComponent);
+    component = fixture.componentInstance;
+    expect(component.authStatusReady).toBe(false);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.isLoggedIn).toBe(true);
+    expect(fixture.nativeElement.querySelector('.account-icon-wrapper')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.auth-buttons')).toBeNull();
+  });
 });

@@ -93,12 +93,12 @@
 
             <div class="header-divider"></div>
 
-            <div class="auth-buttons" *ngIf="!isLoggedIn">
+            <div class="auth-buttons" *ngIf="authStatusReady && !isLoggedIn">
                 <a routerLink="/register" class="btn-register">Đăng ký</a>
                 <a routerLink="/login" class="btn-login">Đăng nhập</a>
             </div>
 
-            <div class="action-item notification-wrapper" *ngIf="isLoggedIn">
+            <div class="action-item notification-wrapper" *ngIf="authStatusReady && isLoggedIn">
                 <button class="notification-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -108,7 +108,7 @@
                 </button>
             </div>
 
-            <div class="action-item account-icon-wrapper" *ngIf="isLoggedIn">
+            <div class="action-item account-icon-wrapper" *ngIf="authStatusReady && isLoggedIn">
                 <div class="account-circle">
                     <img class="account-avatar" [src]="userAvatar" *ngIf="userAvatar" alt="Avatar" />
                     <svg class="account-svg" *ngIf="!userAvatar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

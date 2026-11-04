@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { afterNextRender, ChangeDetectorRef, Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 
@@ -11,6 +11,7 @@ import { Router, RouterLink } from '@angular/router';
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   isLoggedIn: boolean = false;
+  authStatusReady = false;
   userName: string = '';
   userEmail: string = '';
   userAvatar: string = '';
@@ -28,13 +29,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: Object,
     private readonly changeDetectorRef: ChangeDetectorRef
-  ) {}
+  ) {
+    afterNextRender(() => {
+      if (!isPlatformBrowser(this.platformId)) return;
+
+      this.checkAuthStatus();
+      this.updateCartBadge();
+      this.changeDetectorRef.markForCheck();
+    });
+  }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.checkAuthStatus();
-      this.updateCartBadge();
-
       this.storageListener = (e: StorageEvent) => {
         if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'cart_count') {
           this.checkAuthStatus();
@@ -65,6 +71,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   checkAuthStatus(): void {
     const logged = localStorage.getItem('isLoggedIn') === 'true';
     this.isLoggedIn = logged;
+    this.authStatusReady = true;
     if (logged) {
       this.userName = localStorage.getItem('userName') || 'Khách hàng';
       this.userEmail = localStorage.getItem('userEmail') || '';

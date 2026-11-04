@@ -23,7 +23,7 @@ export class MapService {
   private readonly http = inject(HttpClient);
 
   getMaps(): Observable<SampleMap[]> {
-    return this.http.get<unknown>('/api/samplemaps').pipe(
+    return this.http.get<unknown>('/api/maps').pipe(
       map((response) => this.parseMaps(response)),
     );
   }

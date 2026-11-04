@@ -73,7 +73,7 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
   }
   assert.ok(readJSON('users.json').users
     .filter((user) => user.authProviders.includes('password'))
-    .every((user) => user.password === 'urii@123'));
+    .every((user) => user.password === 'urii123@'));
   const googleUser = readJSON('users.json').users.find(
     (user) => user.email === 'lentnk24411@st.uel.edu.vn'
   );
@@ -378,9 +378,8 @@ test('cart and review fixtures use real products and delivered customer orders',
   assert.equal(productReviewCounts.size, products.length);
   assert.equal(reviews.length, 61);
   assert.equal(new Set(reviews.map((review) => review.content).filter(Boolean)).size, 30);
-  assert.ok([...ratings].some((rating) => rating <= 2));
-  assert.ok(ratings.has(3));
-  assert.ok([...ratings].some((rating) => rating >= 4));
+  assert.deepEqual(ratings, new Set([3, 4, 5]));
+  assert.ok(reviews.every((review) => Number.isInteger(review.rating) && review.rating >= 3 && review.rating <= 5));
   assert.deepEqual(reviewTopics, new Set(['product', 'shipping', 'suggestion']));
   assert.ok(imageReviewCount > 0);
 
@@ -620,13 +619,13 @@ test('new users get unique bcrypt passwords while existing emails are preserved'
 test('pre-hashed fixture passwords are inserted without hashing them again', async () => {
   const user = {
     ...readJSON('users.json').users[0],
-    password: await bcrypt.hash('urii@123', 10)
+    password: await bcrypt.hash('urii123@', 10)
   };
   const result = await prepareNewUsers([user], []);
 
   assert.equal(result.documents[0].password, user.password);
   assert.equal(result.credentials.length, 0);
-  assert.equal(await bcrypt.compare('urii@123', result.documents[0].password), true);
+  assert.equal(await bcrypt.compare('urii123@', result.documents[0].password), true);
 });
 
 test('plain fixture passwords are hashed for new users', async () => {
@@ -634,7 +633,7 @@ test('plain fixture passwords are hashed for new users', async () => {
   const result = await prepareNewUsers([user], []);
 
   assert.notEqual(result.documents[0].password, user.password);
-  assert.equal(await bcrypt.compare('urii@123', result.documents[0].password), true);
+  assert.equal(await bcrypt.compare('urii123@', result.documents[0].password), true);
   assert.equal(result.credentials.length, 0);
 });
 
@@ -655,11 +654,11 @@ test('social-only users can be seeded without a local password', async () => {
 });
 
 test('bcrypt password hashes in data are preserved for upload', async () => {
-  const hash = await bcrypt.hash('urii@123', 10);
+  const hash = await bcrypt.hash('urii123@', 10);
   const oldHash = await bcrypt.hash('old-password', 4);
 
   assert.equal(await prepareUserPassword(hash, oldHash), hash);
-  assert.equal(await bcrypt.compare('urii@123', hash), true);
+  assert.equal(await bcrypt.compare('urii123@', hash), true);
 });
 
 test('plain passwords are hashed and generated markers preserve existing passwords', async () => {

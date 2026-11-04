@@ -29,4 +29,12 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, requireAdmin };
+function requireCustomer(req, res, next) {
+  if (req.auth?.role !== 'user') {
+    res.status(403).json({ message: 'Chỉ khách hàng mới có thể thực hiện thao tác này.' });
+    return;
+  }
+  next();
+}
+
+module.exports = { authenticate, requireAdmin, requireCustomer };

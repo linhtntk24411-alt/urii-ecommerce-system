@@ -1,13 +1,24 @@
 const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   userName: String,
   date: String,
   status: String,
   statusType: String,
+  showReview: { type: Boolean, default: false },
+  deliveredAt: Date,
   total: String,
   icon: String,
-  items: [{ productId: String, name: String, price: Number, quantity: Number, image: String }],
+  items: [{
+    productId: String,
+    name: String,
+    price: Number,
+    quantity: Number,
+    image: String,
+    variantIndex: { type: Number, min: 0, validate: (value) => value === null || Number.isInteger(value) },
+    variantName: String
+  }],
   payment: { method: String, status: String },
   shipping: { carrier: String, method: String, trackingNumber: String, fee: Number, estimatedDelivery: Date },
   address: { name: String, phone: String, address: String },

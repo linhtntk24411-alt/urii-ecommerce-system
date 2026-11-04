@@ -1,6 +1,8 @@
 const { randomUUID } = require('node:crypto');
 const mongoose = require('mongoose');
 const SavedMap = require('../models/SavedMap');
+const User = require('../models/User');
+const Gallery = require('../models/Gallery');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
 
@@ -14,6 +16,16 @@ function savedMapFilter(value) {
     filters.push({ _id: value });
   }
   return { $or: filters };
+}
+
+async function referencesExistingCustomerAndMap(userId, mapId) {
+  if (!mongoose.isValidObjectId(userId)
+    || !await User.exists({ _id: userId, role: 'user' })
+    || typeof mapId !== 'string'
+    || !await Gallery.exists({ map_id: mapId })) {
+    return false;
+  }
+  return true;
 }
 
 exports.getAllSavedMaps = async (req, res) => {
@@ -48,6 +60,10 @@ exports.createSavedMap = async (req, res) => {
   }
 
   try {
+    if (!await referencesExistingCustomerAndMap(req.body.userId, req.body.mapId)) {
+      res.status(400).json({ message: 'Khách hàng hoặc map không tồn tại.' });
+      return;
+    }
     const map = await SavedMap.create({
       ...req.body,
       id: req.body.id || `saved-map-${randomUUID()}`
@@ -60,7 +76,7 @@ exports.createSavedMap = async (req, res) => {
       return;
     }
     if (error.code === 11000) {
-      res.status(409).json({ message: 'Mã map đã lưu đã tồn tại.' });
+      res.status(409).json({ message: 'Mã bản ghi đã tồn tại hoặc khách hàng đã lưu map này.' });
       return;
     }
     console.error('Lỗi tạo map đã lưu:', error);
@@ -82,6 +98,16 @@ exports.updateSavedMap = async (req, res) => {
   delete updates.__v;
 
   try {
+    if (Object.hasOwn(updates, 'userId') || Object.hasOwn(updates, 'mapId')) {
+      const current = await SavedMap.findOne(savedMapFilter(req.params.id)).select('userId mapId').lean();
+      if (current && !await referencesExistingCustomerAndMap(
+        updates.userId ?? current.userId,
+        updates.mapId ?? current.mapId
+      )) {
+        res.status(400).json({ message: 'Khách hàng hoặc map không tồn tại.' });
+        return;
+      }
+    }
     const map = await SavedMap.findOneAndUpdate(savedMapFilter(req.params.id), updates, {
       new: true,
       runValidators: true
@@ -98,7 +124,7 @@ exports.updateSavedMap = async (req, res) => {
       return;
     }
     if (error.code === 11000) {
-      res.status(409).json({ message: 'Mã map đã lưu đã tồn tại.' });
+      res.status(409).json({ message: 'Mã bản ghi đã tồn tại hoặc khách hàng đã lưu map này.' });
       return;
     }
     console.error('Lỗi cập nhật map đã lưu:', error);

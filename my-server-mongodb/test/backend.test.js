@@ -86,6 +86,11 @@ test('canonical API routes and supported aliases resolve', async () => {
     ['/api/blog', 'POST'],
     ['/api/orders', 'POST'],
     ['/api/order', 'POST'],
+    ['/api/cart', 'GET'],
+    ['/api/cart/items', 'POST'],
+    ['/api/reviews/mine', 'GET'],
+    ['/api/reviews/eligible-orders', 'GET'],
+    ['/api/reviews', 'POST'],
     ['/api/comments', 'POST'],
     ['/api/comment', 'POST'],
     ['/api/users', 'POST'],
@@ -132,6 +137,13 @@ test('requires admin authentication for private reads and all CRUD mutations', a
     fetch(`${baseUrl}/api/orders`, { method: 'POST' }),
     fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'PUT' }),
     fetch(`${baseUrl}/api/orders/UR-82901`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/cart`),
+    fetch(`${baseUrl}/api/cart`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/cart/items/item-1`, { method: 'PATCH' }),
+    fetch(`${baseUrl}/api/cart/items/item-1`, { method: 'DELETE' }),
+    fetch(`${baseUrl}/api/reviews/mine`),
+    fetch(`${baseUrl}/api/reviews/eligible-orders`),
+    fetch(`${baseUrl}/api/reviews`, { method: 'POST' }),
     fetch(`${baseUrl}/api/custom-orders`),
     fetch(`${baseUrl}/api/custom-orders/custom-order-1`, { method: 'GET' }),
     fetch(`${baseUrl}/api/custom-orders/custom-order-1`, { method: 'PUT' }),
@@ -195,6 +207,57 @@ test('rejects authenticated non-admin users from admin-only APIs', async () => {
   }
 
   assert.equal(response.status, 403);
+});
+
+test('rejects admin tokens on customer-only APIs and validates malformed customer submissions', async () => {
+  const adminToken = jwt.sign(
+    { id: '507f1f77bcf86cd799439011', role: 'admin' },
+    process.env.JWT_SECRET
+  );
+  const forbiddenResponses = await Promise.all([
+    fetch(`${baseUrl}/api/cart`, { headers: { Authorization: `Bearer ${adminToken}` } }),
+    fetch(`${baseUrl}/api/reviews/mine`, { headers: { Authorization: `Bearer ${adminToken}` } }),
+    fetch(`${baseUrl}/api/reviews/eligible-orders`, { headers: { Authorization: `Bearer ${adminToken}` } })
+  ]);
+  assert.ok(forbiddenResponses.every((response) => response.status === 403));
+
+  const customerToken = jwt.sign(
+    { id: '507f1f77bcf86cd799439011', role: 'user' },
+    process.env.JWT_SECRET
+  );
+  const invalidCart = await fetch(`${baseUrl}/api/cart/items`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${customerToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ productId: 'sku-1', quantity: 0 })
+  });
+  const invalidReview = await fetch(`${baseUrl}/api/reviews`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${customerToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ orderId: 'order-1', productId: 'sku-1', rating: 6, content: 'bad' })
+  });
+  const invalidMediaReview = await fetch(`${baseUrl}/api/reviews`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${customerToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      orderId: 'order-1',
+      productId: 'sku-1',
+      rating: 5,
+      content: '',
+      media: [{ type: 'audio', url: '/images/orders/bo-kit.jpeg' }]
+    })
+  });
+  assert.equal(invalidCart.status, 400);
+  assert.equal(invalidReview.status, 400);
+  assert.equal(invalidMediaReview.status, 400);
 });
 
 test('rejects browser requests from origins outside the allow list', async () => {

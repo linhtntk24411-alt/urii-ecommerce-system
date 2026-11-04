@@ -17,6 +17,10 @@ const SavedMap = require('./models/SavedMap');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
 const CustomOrder = require('./models/CustomOrder');
+const Cart = require('./models/Cart');
+const Review = require('./models/Review');
+const { prepareSavedMaps } = require('./utils/savedMaps');
+const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -86,13 +90,6 @@ const MODULES = [
     }
   },
   {
-    name: 'Saved Maps (Map đã lưu)',
-    aliases: ['saved_maps', 'savedmaps', 'mapdaluu'],
-    model: SavedMap,
-    key: 'id',
-    getData: () => readJSON('saved_maps.json')?.maps
-  },
-  {
     name: 'Vouchers (Mã giảm giá)',
     aliases: ['voucher', 'vouchers', 'magiamgia'],
     model: Voucher,
@@ -148,6 +145,56 @@ const MODULES = [
       }
       return preparedUsers;
     }
+  },
+  {
+    name: 'Saved Maps (Map đã lưu)',
+    aliases: ['saved_maps', 'savedmaps', 'mapdaluu'],
+    model: SavedMap,
+    key: 'id',
+    filter: (map) => ({ userId: map.userId, mapId: map.mapId }),
+    getData: async () => {
+      const data = readJSON('saved_maps.json');
+      if (!Array.isArray(data?.users)) return null;
+      const users = await User.find({
+        _id: { $in: data.users.map((user) => user.userId) },
+        role: 'user'
+      }).select('_id email role').lean();
+      const gallery = await Gallery.find().lean();
+      return prepareSavedMaps(data, users, gallery);
+    }
+  },
+  {
+    name: 'Carts (Giỏ hàng)',
+    aliases: ['cart', 'carts', 'giohang'],
+    model: Cart,
+    key: 'userId',
+    getData: () => prepareCartFixtures(
+      readJSON('carts.json'),
+      readJSON('users.json')?.users || [],
+      readJSON('products.json')?.products || []
+    )
+  },
+  {
+    name: 'Review Orders (Đơn hàng đã giao phục vụ đánh giá)',
+    aliases: ['review-orders', 'review_orders'],
+    model: Order,
+    key: 'id',
+    getData: () => prepareReviewFixtures(
+      readJSON('review_orders.json'),
+      readJSON('users.json')?.users || [],
+      readJSON('products.json')?.products || []
+    ).orders
+  },
+  {
+    name: 'Reviews (Đánh giá sản phẩm)',
+    aliases: ['review', 'reviews', 'danhgia'],
+    model: Review,
+    key: 'id',
+    getData: () => prepareReviewFixtures(
+      readJSON('review_orders.json'),
+      readJSON('users.json')?.users || [],
+      readJSON('products.json')?.products || []
+    ).reviews
   }
 ];
 
@@ -159,7 +206,7 @@ async function syncModule(mod) {
 
   const operations = docs.map((doc) => ({
     updateOne: {
-      filter: { [mod.key]: doc[mod.key] },
+      filter: mod.filter ? mod.filter(doc) : { [mod.key]: doc[mod.key] },
       update: { $set: doc },
       upsert: true
     }
@@ -203,7 +250,7 @@ async function main() {
     targets = MODULES.filter((m) => m.aliases.includes(targetArg));
     if (targets.length === 0) {
       console.log(`⚠️  Không tìm thấy module khớp với "${targetArg}".`);
-      console.log(`👉 Bạn có thể dùng: products, categories, blogs, orders, custom-orders, comments, gallery, vouchers, chatbot, users, hoặc không truyền tham số để sync tất cả.\n`);
+      console.log(`👉 Bạn có thể dùng: products, categories, blogs, orders, custom-orders, comments, gallery, vouchers, chatbot, users, carts, review-orders, reviews, hoặc không truyền tham số để sync tất cả.\n`);
       await mongoose.disconnect();
       return;
     }

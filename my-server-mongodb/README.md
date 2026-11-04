@@ -35,7 +35,7 @@ This command updates only stored passwords that are not already bcrypt hashes; i
 
 ## API access
 
-Product, category, blog, comment, gallery, FAQ, active-voucher reads, and custom-order submissions are public. Mutations for managed data, private user/order data, saved maps, chat administration, and dashboard endpoints require a bearer JWT for an admin account. Chat clients can create/update their session and send messages through the chat session endpoints. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
+Product, category, blog, comment, gallery, FAQ, product-review reads, active-voucher reads, and custom-order submissions are public. Cart operations and review creation/history require a bearer JWT for the owning customer. Mutations for managed data, private user/order data, saved maps, chat administration, and dashboard endpoints require an admin JWT. Chat clients can create/update their session and send messages through the chat session endpoints. List endpoints accept `page` and `limit` query parameters; the maximum page size is 100.
 
 Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin account:
 
@@ -43,6 +43,8 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 | --- | --- |
 | Products | `GET /api/products`, `GET /api/products/:id`, `POST /api/products`, `PUT/PATCH /api/products/:id`, `DELETE /api/products/:id` |
 | Orders | `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`, `PUT/PATCH /api/orders/:id`, `DELETE /api/orders/:id` |
+| Cart (customer JWT) | `GET /api/cart`, `POST /api/cart/items`, `PATCH /api/cart/items/:itemId`, `DELETE /api/cart/items/:itemId`, `DELETE /api/cart` |
+| Reviews | `GET /api/reviews/product/:productId` (public); customer JWT: `GET /api/reviews/mine`, `GET /api/reviews/eligible-orders`, `POST /api/reviews` |
 | Custom orders | `POST /api/custom-orders` (public); admin: `GET /api/custom-orders`, `GET /api/custom-orders/:id`, `PUT/PATCH /api/custom-orders/:id`, `DELETE /api/custom-orders/:id` |
 | Users | `GET /api/users`, `GET /api/users/:id`, `POST /api/users`, `PUT/PATCH /api/users/:id`, `DELETE /api/users/:id` |
 | Promotions | `GET /api/vouchers/manage`, `GET /api/vouchers/:id`, `POST /api/vouchers`, `PUT/PATCH /api/vouchers/:id`, `DELETE /api/vouchers/:id` |
@@ -57,9 +59,25 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 
 `GET /api/vouchers` remains public and only returns active, currently available vouchers. `POST /api/chat/match`, `POST /api/chat/sessions`, and `POST /api/chat/sessions/:id/messages` are public chatbot-client operations. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.
 
+Cart prices and stock are read from the product and its selected variant; client-supplied prices are ignored. Reviews can only be created for products in the customer's successfully delivered orders, and each order/product pair can be reviewed once. Every review stores a 1–5 star rating and the purchased product and variant; text and media are optional. `data/review_orders.json` intentionally has 31 star-only reviews, 20 reviews with text only, and 10 with media (7 image and 3 video reviews). Orders contain customer/product/variant IDs and delivery status, while reviews focus on order/product IDs, rating, comment, and optional media. Product and variant labels, customer details, prices, and other data are joined from their existing fixtures. It includes delivered orders that are both reviewed and not yet reviewed, with every product covered by at least one rating. The development seed inserts this data without replacing existing records. Upload it to Atlas with `npm run upload -- carts`, then `npm run upload -- review-orders`, followed by `npm run upload -- reviews`.
+
+Review creation accepts `orderId`, `productId`, `rating` (integer from 1 to 5), optional `content`, and optional `media` entries (`type: "image" | "video"` and a backend `/images/...` path or HTTP(S) URL). A rating by itself is a valid review. The reviewed variant is taken from the purchased order item, not trusted from the request.
+
+```json
+{
+  "orderId": "UR-REVIEW-001",
+  "productId": "1075483767",
+  "rating": 5,
+  "content": "Màu hồng đẹp, dùng tốt như mô tả.",
+  "media": [{ "type": "image", "url": "/images/orders/bo-kit.jpeg" }]
+}
+```
+
 Use the plural resource paths shown in the endpoint table as the canonical API paths. Singular resource paths and documented gallery aliases are also supported for compatibility; the old customer-order and sample-map route aliases are not supported.
 
 Gallery data uses one name across the application: `data/gallery.json`, `models/Gallery.js`, the `/api/gallery` endpoint, and the MongoDB Atlas collection `gallery`. Run `npm run migrate:gallery` once to merge any existing `samplemaps` records into `gallery`, verify them, and remove the old collection. The old `/api/maps` and sample-map route aliases have been removed.
+
+The `data/saved_maps.json` fixture is grouped by customer: each entry has a `userId` and 2–5 `mapIds` from the gallery. Seed/upload resolve map details from the gallery and create records keyed by `(userId, mapId)`. A customer can save a given map once, while different customers can save the same map.
 
 Custom-order submission accepts `fullName`, `phone`, `email`, `requestName`, `size`, `beadType`, `imageUrl`, and optional `description` and `imageNote`. `imageUrl` can be a portable backend path such as `/images/gallery_assets/mau-ca-heo.webp` or an absolute HTTP(S) URL. When using a relative path, the frontend should resolve it against the configured backend base URL (for example, `new URL(imageUrl, API_BASE_URL)`) so the image loads from the backend on any machine. New requests start with status `pending`.
 

@@ -17,6 +17,10 @@ const SavedMap = require('./models/SavedMap');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
 const CustomOrder = require('./models/CustomOrder');
+const Cart = require('./models/Cart');
+const Review = require('./models/Review');
+const { prepareSavedMaps } = require('./utils/savedMaps');
+const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -156,7 +160,31 @@ async function seed() {
   await insertMissing(Gallery, gallery, 'map_id');
   await insertMissing(Voucher, readJSON('vouchers.json').vouchers, 'code');
   await insertMissing(User, newUsers, 'email');
-  await insertMissing(SavedMap, readJSON('saved_maps.json').maps, 'id');
+  const commerceUsers = userFixtures.filter((user) => user.role === 'user');
+  const products = readJSON('products.json').products;
+  const carts = prepareCartFixtures(readJSON('carts.json'), commerceUsers, products);
+  const { orders: reviewOrders, reviews } = prepareReviewFixtures(
+    readJSON('review_orders.json'),
+    commerceUsers,
+    products
+  );
+  await insertMissing(Cart, carts, 'userId');
+  await insertMissing(Order, reviewOrders, 'id');
+  await insertMissing(Review, reviews, 'id');
+  const savedMapFixtures = readJSON('saved_maps.json');
+  const savedMapUsers = await User.find({
+    _id: { $in: savedMapFixtures.users.map((user) => user.userId) },
+    role: 'user'
+  }).select('_id email role').lean();
+  const savedMapGallery = await Gallery.find().lean();
+  const savedMaps = prepareSavedMaps(savedMapFixtures, savedMapUsers, savedMapGallery);
+  await SavedMap.bulkWrite(savedMaps.map((savedMap) => ({
+    updateOne: {
+      filter: { userId: savedMap.userId, mapId: savedMap.mapId },
+      update: { $set: savedMap },
+      upsert: true
+    }
+  })), { ordered: true });
   await insertMissing(CustomOrder, readJSON('custom_orders.json'), 'id');
 
   const chatSessions = fs.existsSync(path.join(__dirname, 'data', 'chat_sessions.json'))

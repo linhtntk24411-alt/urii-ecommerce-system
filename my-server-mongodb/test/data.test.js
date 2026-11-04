@@ -15,12 +15,20 @@ const Voucher = require('../models/Voucher');
 const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
 const CustomOrder = require('../models/CustomOrder');
+const Cart = require('../models/Cart');
+const Review = require('../models/Review');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
 const { insertMissing, prepareGallery, prepareNewUsers, seed } = require('../seed');
 const { buildProducts } = require('../convert_excel');
 const XLSX = require('xlsx');
 const { isVoucherAvailable } = require('../controllers/voucherController');
+const { prepareSavedMaps } = require('../utils/savedMaps');
+const {
+  buildCartResponse,
+  prepareCartFixtures,
+  prepareReviewFixtures
+} = require('../utils/commerceFixtures');
 
 const dataPath = (name) => path.join(__dirname, '..', 'data', name);
 const readJSON = (name) => JSON.parse(fs.readFileSync(dataPath(name), 'utf8'));
@@ -34,7 +42,6 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [Comment, readJSON('comments.json').comments],
     [Gallery, readJSON('gallery.json')],
     [Voucher, readJSON('vouchers.json').vouchers],
-    [SavedMap, readJSON('saved_maps.json').maps],
     [ChatSession, readJSON('chatbot.json').sessions],
     [ChatSession, readJSON('chat_sessions.json')],
     [ChatbotFaq, readJSON('chatbot.json').faqs],
@@ -64,6 +71,161 @@ test('active voucher fixtures are available within their configured date range',
   const now = new Date(2026, 10, 4);
 
   assert.equal(vouchers.filter((voucher) => isVoucherAvailable(voucher, now)).length, 4);
+});
+
+test('saved map fixtures link existing customers and allow maps saved by different customers', () => {
+  const savedMapData = readJSON('saved_maps.json');
+  const customers = readJSON('users.json').users.filter((user) => user.role === 'user');
+  const customerById = new Map(customers.map((user) => [user._id, user]));
+  const gallery = readJSON('gallery.json');
+  const galleryMapIds = new Set(gallery.map((map) => map.map_id));
+  assert.ok(savedMapData.users.every((user) => customerById.has(user.userId)));
+  assert.ok(savedMapData.users.every((user) => /^[a-f\d]{24}$/i.test(user.userId)));
+  assert.ok(savedMapData.users.every((user) => user.mapIds.every((mapId) => galleryMapIds.has(mapId))));
+
+  const prepared = prepareSavedMaps(savedMapData, customers, gallery);
+  const mapsPerCustomer = new Map();
+  for (const map of prepared) {
+    mapsPerCustomer.set(map.userId, (mapsPerCustomer.get(map.userId) || 0) + 1);
+  }
+  assert.equal(mapsPerCustomer.size, customers.length);
+  assert.ok([...mapsPerCustomer.values()].every((count) => count >= 2 && count <= 5));
+  assert.ok(new Set(prepared.map((map) => map.mapId)).size >= 25);
+  assert.equal(new Set(prepared.map((map) => `${map.userId}:${map.mapId}`)).size, prepared.length);
+  assert.ok(prepared.length > new Set(prepared.map((map) => map.mapId)).size);
+  for (const map of prepared) {
+    const galleryMap = gallery.find((item) => item.map_id === map.mapId);
+    assert.equal(map.title, galleryMap.map_name);
+    assert.equal(map.image, galleryMap.main_image);
+  }
+  assert.throws(
+    () => prepareSavedMaps(
+      { users: [{ ...savedMapData.users[0], mapIds: ['M01', 'M01'] }] },
+      customers,
+      gallery
+    ),
+    /duplicate saved map/
+  );
+  for (const map of prepared) {
+    assert.doesNotReject(new SavedMap(map).validate());
+  }
+});
+
+test('cart and review fixtures use real products and delivered customer orders', async () => {
+  const users = readJSON('users.json').users.filter((user) => user.role === 'user');
+  const products = readJSON('products.json').products;
+  const carts = prepareCartFixtures(readJSON('carts.json'), users, products);
+  const { orders, reviews } = prepareReviewFixtures(readJSON('review_orders.json'), users, products);
+  const productsById = new Map(products.map((product) => [product.id, product]));
+
+  assert.equal(carts.length, users.length);
+  assert.ok(carts.every((cart) => cart.items.length >= 8));
+  assert.equal(new Set(carts.map((cart) => String(cart.userId))).size, users.length);
+  for (const cart of carts) {
+    await new Cart(cart).validate();
+    const response = buildCartResponse(cart, cart.items.map((item) => productsById.get(item.productId)));
+    assert.equal(response.items.length, cart.items.length);
+    assert.equal(response.subtotal, response.items.reduce((sum, item) => sum + item.lineTotal, 0));
+    assert.ok(response.selectedSubtotal <= response.subtotal);
+  }
+
+  const orderIds = new Set(orders.map((order) => order.id));
+  const ordersById = new Map(orders.map((order) => [order.id, order]));
+  const productReviewCounts = new Map();
+  const ratings = new Set();
+  const reviewTopics = new Set();
+  let imageReviewCount = 0;
+  for (const order of orders) {
+    assert.equal(order.statusType, 'completed');
+    assert.ok(order.userId);
+    await new Order(order).validate();
+  }
+  for (const review of reviews) {
+    assert.ok(orderIds.has(review.orderId));
+    assert.ok(productsById.has(review.productId));
+    assert.ok(review.createdAt > ordersById.get(review.orderId).deliveredAt);
+    const purchasedItem = ordersById.get(review.orderId).items.find((item) => item.productId === review.productId);
+    assert.ok(purchasedItem);
+    assert.equal(review.variantIndex, purchasedItem.variantIndex);
+    assert.equal(review.variantName, purchasedItem.variantName);
+    productReviewCounts.set(review.productId, (productReviewCounts.get(review.productId) || 0) + 1);
+    ratings.add(review.rating);
+    if (review.content.includes('giao') || review.content.includes('đơn')) reviewTopics.add('shipping');
+    if (review.content.includes('mong') || review.content.includes('Shop nên')) reviewTopics.add('suggestion');
+    if (review.content.includes('chất lượng') || review.content.includes('sản phẩm')) reviewTopics.add('product');
+    if (review.media.some((media) => media.type === 'image')) imageReviewCount += 1;
+    await new Review(review).validate();
+  }
+  assert.equal(productReviewCounts.size, products.length);
+  assert.equal(reviews.length, 61);
+  assert.equal(new Set(reviews.map((review) => review.content).filter(Boolean)).size, 30);
+  assert.ok([...ratings].some((rating) => rating <= 2));
+  assert.ok(ratings.has(3));
+  assert.ok([...ratings].some((rating) => rating >= 4));
+  assert.deepEqual(reviewTopics, new Set(['product', 'shipping', 'suggestion']));
+  assert.ok(imageReviewCount > 0);
+
+  const reviewBuckets = {
+    starsOnly: reviews.filter((review) => !review.content && review.media.length === 0).length,
+    text: reviews.filter((review) => review.content && review.media.length === 0).length,
+    media: reviews.filter((review) => review.media.length > 0).length,
+    image: reviews.filter((review) => review.media.some((media) => media.type === 'image')).length,
+    video: reviews.filter((review) => review.media.some((media) => media.type === 'video')).length
+  };
+  assert.deepEqual(reviewBuckets, {
+    starsOnly: 31,
+    text: 20,
+    media: 10,
+    image: 7,
+    video: 3
+  });
+
+  const rawReviewData = readJSON('review_orders.json');
+  const allowedOrderKeys = new Set(['id', 'userId', 'statusType', 'deliveredAt', 'items']);
+  const allowedOrderItemKeys = new Set(['productId', 'variantIndex']);
+  const allowedReviewKeys = new Set(['orderId', 'productId', 'rating', 'content', 'media']);
+  assert.ok(rawReviewData.orders.every((order) => (
+    Object.keys(order).every((key) => allowedOrderKeys.has(key))
+  )));
+  assert.ok(rawReviewData.orders.every((order) => order.items.every((item) => (
+    Object.keys(item).every((key) => allowedOrderItemKeys.has(key))
+  ))));
+  assert.ok(rawReviewData.reviews.every((review) => (
+    Object.keys(review).every((key) => allowedReviewKeys.has(key))
+  )));
+  assert.ok(rawReviewData.reviews.every((review) => (
+    typeof review.content === 'string'
+      && Number.isInteger(review.rating)
+      && !Object.hasOwn(review, 'userId')
+      && !Object.hasOwn(review, 'variantName')
+  )));
+
+  await new Review({
+    id: 'media-only-review',
+    orderId: 'UR-REVIEW-001',
+    userId: users[0]._id,
+    productId: products[0].id,
+    rating: 5,
+    variantIndex: 0,
+    variantName: products[0].variants[0].name,
+    media: [{ type: 'video', url: 'https://example.com/review.mp4' }]
+  }).validate();
+  await new Review({
+    id: 'empty-review',
+    orderId: 'UR-REVIEW-001',
+    userId: users[0]._id,
+    productId: products[0].id,
+    rating: 5,
+    variantIndex: 0,
+    variantName: products[0].variants[0].name
+  }).validate();
+
+  const unreviewedOrders = orders.filter((order) => order.showReview);
+  const reviewedOrders = orders.filter((order) => !order.showReview);
+  assert.equal(unreviewedOrders.length, 3);
+  assert.equal(reviewedOrders.length, 16);
+  assert.ok(unreviewedOrders.every((order) => !reviews.some((review) => review.orderId === order.id)));
+  assert.ok(reviewedOrders.every((order) => reviews.some((review) => review.orderId === order.id)));
 });
 
 test('custom order model uses the custom_orders collection', () => {

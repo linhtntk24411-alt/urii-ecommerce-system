@@ -59,6 +59,13 @@ test('gallery fixture and mongoose model use the gallery collection name', () =>
   assert.equal(Gallery.collection.collectionName, 'gallery');
 });
 
+test('active voucher fixtures are available within their configured date range', () => {
+  const vouchers = readJSON('vouchers.json').vouchers;
+  const now = new Date(2026, 10, 4);
+
+  assert.equal(vouchers.filter((voucher) => isVoucherAvailable(voucher, now)).length, 4);
+});
+
 test('custom order model uses the custom_orders collection', () => {
   assert.equal(CustomOrder.modelName, 'CustomOrder');
   assert.equal(CustomOrder.collection.collectionName, 'custom_orders');

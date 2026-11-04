@@ -65,34 +65,38 @@ test('health endpoint responds without a database connection', async () => {
   assert.equal((await response.json()).status, 'OK');
 });
 
-test('configured API aliases resolve without 404', async () => {
-  const aliasRequests = [
+test('canonical API routes and supported aliases resolve', async () => {
+  const protectedRequests = [
     ['/api/gallery', 'POST'],
     ['/api/maps', 'POST'],
     ['/api/map', 'POST'],
-    ['/api/sample-maps', 'POST'],
-    ['/api/samplemaps', 'POST'],
+    ['/api/vouchers', 'POST'],
     ['/api/promotions', 'POST'],
     ['/api/promotion', 'POST'],
     ['/api/voucher', 'POST'],
+    ['/api/saved-maps', 'GET'],
     ['/api/savedmaps', 'GET'],
     ['/api/saved_maps', 'GET'],
     ['/api/saved-map', 'GET'],
+    ['/api/products', 'POST'],
     ['/api/product', 'POST'],
+    ['/api/categories', 'POST'],
     ['/api/category', 'POST'],
+    ['/api/blogs', 'POST'],
     ['/api/blog', 'POST'],
+    ['/api/orders', 'POST'],
     ['/api/order', 'POST'],
+    ['/api/comments', 'POST'],
     ['/api/comment', 'POST'],
+    ['/api/users', 'POST'],
     ['/api/user', 'POST'],
     ['/api/custom-orders', 'GET'],
     ['/api/custom-order', 'GET'],
-    ['/api/customer-orders', 'GET'],
-    ['/api/customer-order', 'GET']
   ];
-  const responses = await Promise.all(aliasRequests.map(([path, method]) => (
+  const protectedResponses = await Promise.all(protectedRequests.map(([path, method]) => (
     fetch(`${baseUrl}${path}`, { method })
   )));
-  assert.ok(responses.every((response) => response.status === 401));
+  assert.ok(protectedResponses.every((response) => response.status === 401));
 
   const chatbotAlias = await fetch(`${baseUrl}/api/chatbot/match`, {
     method: 'POST',
@@ -100,6 +104,10 @@ test('configured API aliases resolve without 404', async () => {
     body: JSON.stringify({})
   });
   assert.equal(chatbotAlias.status, 400);
+
+  const removedAliases = ['/api/customer-orders', '/api/customer-order', '/api/sample-maps', '/api/samplemaps'];
+  const removedAliasResponses = await Promise.all(removedAliases.map((path) => fetch(`${baseUrl}${path}`)));
+  assert.ok(removedAliasResponses.every((response) => response.status === 404));
 
 });
 

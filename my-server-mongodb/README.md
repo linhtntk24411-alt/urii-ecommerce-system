@@ -57,6 +57,8 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 
 `GET /api/vouchers` remains public and only returns active, currently available vouchers. `POST /api/chat/match`, `POST /api/chat/sessions`, and `POST /api/chat/sessions/:id/messages` are public chatbot-client operations. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.
 
+Use the plural resource paths shown in the endpoint table as the canonical API paths. Singular resource paths and documented gallery aliases are also supported for compatibility; the old customer-order and sample-map route aliases are not supported.
+
 Gallery data uses one name across the application: `data/gallery.json`, `models/Gallery.js`, the `/api/gallery` endpoint, and the MongoDB Atlas collection `gallery`. Run `npm run migrate:gallery` once to merge any existing `samplemaps` records into `gallery`, verify them, and remove the old collection. The old `/api/maps` and sample-map route aliases have been removed.
 
 Custom-order submission accepts `fullName`, `phone`, `email`, `requestName`, `size`, `beadType`, `imageUrl`, and optional `description` and `imageNote`. `imageUrl` can be a portable backend path such as `/images/gallery_assets/mau-ca-heo.webp` or an absolute HTTP(S) URL. When using a relative path, the frontend should resolve it against the configured backend base URL (for example, `new URL(imageUrl, API_BASE_URL)`) so the image loads from the backend on any machine. New requests start with status `pending`.

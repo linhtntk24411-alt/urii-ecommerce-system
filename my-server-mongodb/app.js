@@ -16,6 +16,8 @@ const voucherRoutes = require('./routes/voucherRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const savedMapRoutes = require('./routes/savedMapRoutes');
+const likedProductRoutes = require('./routes/likedProductRoutes');
+const likedBlogRoutes = require('./routes/likedBlogRoutes');
 const customOrderRoutes = require('./routes/customOrderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
@@ -92,6 +94,16 @@ app.use('/api/saved-maps', savedMapRoutes);
 app.use('/api/saved-map', savedMapRoutes);
 app.use('/api/savedmaps', savedMapRoutes);
 app.use('/api/saved_maps', savedMapRoutes);
+
+app.use('/api/liked-products', likedProductRoutes);
+app.use('/api/liked-product', likedProductRoutes);
+app.use('/api/likedproducts', likedProductRoutes);
+app.use('/api/liked_products', likedProductRoutes);
+
+app.use('/api/liked-blogs', likedBlogRoutes);
+app.use('/api/liked-blog', likedBlogRoutes);
+app.use('/api/likedblogs', likedBlogRoutes);
+app.use('/api/liked_blogs', likedBlogRoutes);
 
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/voucher', voucherRoutes);

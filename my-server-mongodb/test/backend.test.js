@@ -1,10 +1,12 @@
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const { after, before, test } = require('node:test');
+const { after, before, mock, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 const { io: connectSocket } = require('socket.io-client');
 const app = require('../app');
 const { emitCrudChange, initializeRealtime } = require('../realtime');
+const oauthProviders = require('../services/oauthProviders');
+const User = require('../models/User');
 
 let server;
 let io;
@@ -65,6 +67,108 @@ test('health endpoint responds without a database connection', async () => {
   assert.equal((await response.json()).status, 'OK');
 });
 
+async function beginOAuth(provider) {
+  const buildUrl = mock.method(
+    oauthProviders,
+    'buildAuthorizationUrl',
+    (name, state) => `https://provider.example/${name}?state=${state}`
+  );
+  const response = await fetch(`${baseUrl}/api/auth/oauth/${provider}`, { redirect: 'manual' });
+  buildUrl.mock.restore();
+  const state = new URL(response.headers.get('location')).searchParams.get('state');
+  const cookie = response.headers.get('set-cookie').split(';')[0];
+  return { response, state, cookie };
+}
+
+test('OAuth start issues a state cookie and callback rejects missing or mismatched state', async () => {
+  const { response, state, cookie } = await beginOAuth('google');
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get('set-cookie'), /HttpOnly; SameSite=Lax/);
+
+  const missingCookie = await fetch(
+    `${baseUrl}/api/auth/oauth/google/callback?code=auth-code&state=${state}`
+  );
+  assert.equal(missingCookie.status, 400);
+
+  const mismatchedState = await fetch(
+    `${baseUrl}/api/auth/oauth/google/callback?code=auth-code&state=${'a'.repeat(64)}`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(mismatchedState.status, 400);
+});
+
+test('OAuth callback creates users for Google and Facebook identities', async () => {
+  for (const provider of ['google', 'facebook']) {
+    const identity = {
+      providerUserId: `${provider}-provider-id`,
+      email: `${provider}.user@example.test`,
+      emailVerified: provider === 'google',
+      name: `${provider} Test User`,
+      picture: 'https://example.test/avatar.jpg'
+    };
+    const { state, cookie } = await beginOAuth(provider);
+    const exchange = mock.method(
+      oauthProviders,
+      'exchangeAuthorizationCode',
+      async () => identity
+    );
+    const findOne = mock.method(User, 'findOne', () => ({
+      select: async () => null
+    }));
+    const create = mock.method(User, 'create', async (document) => ({
+      ...document,
+      _id: { toString: () => `${provider}-user-id` }
+    }));
+
+    try {
+      const response = await fetch(
+        `${baseUrl}/api/auth/oauth/${provider}/callback?code=auth-code&state=${state}`,
+        { headers: { Cookie: cookie } }
+      );
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.user.email, identity.email);
+      assert.deepEqual(create.mock.calls[0].arguments[0].oauthAccounts, [{
+        provider,
+        providerUserId: identity.providerUserId
+      }]);
+      assert.equal(create.mock.calls[0].arguments[0].password, null);
+    } finally {
+      create.mock.restore();
+      findOne.mock.restore();
+      exchange.mock.restore();
+    }
+  }
+});
+
+test('Google OAuth rejects profiles without a verified email', async () => {
+  const { state, cookie } = await beginOAuth('google');
+  const exchange = mock.method(oauthProviders, 'exchangeAuthorizationCode', async () => ({
+    providerUserId: 'unverified-google-id',
+    email: 'unverified@example.test',
+    emailVerified: false
+  }));
+  const findOne = mock.method(User, 'findOne', () => ({
+    select: async () => null
+  }));
+  const create = mock.method(User, 'create', async () => {
+    throw new Error('User should not be created.');
+  });
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/auth/oauth/google/callback?code=auth-code&state=${state}`,
+      { headers: { Cookie: cookie } }
+    );
+    assert.equal(response.status, 401);
+    assert.equal(create.mock.callCount(), 0);
+  } finally {
+    create.mock.restore();
+    findOne.mock.restore();
+    exchange.mock.restore();
+  }
+});
+
 test('canonical API routes and supported aliases resolve', async () => {
   const protectedRequests = [
     ['/api/gallery', 'POST'],
@@ -78,6 +182,18 @@ test('canonical API routes and supported aliases resolve', async () => {
     ['/api/savedmaps', 'GET'],
     ['/api/saved_maps', 'GET'],
     ['/api/saved-map', 'GET'],
+    ['/api/liked-products', 'GET'],
+    ['/api/likedproducts', 'GET'],
+    ['/api/liked_products', 'GET'],
+    ['/api/liked-product', 'GET'],
+    ['/api/liked-products/mine', 'GET'],
+    ['/api/liked-products/mine', 'POST'],
+    ['/api/liked-blogs', 'GET'],
+    ['/api/likedblogs', 'GET'],
+    ['/api/liked_blogs', 'GET'],
+    ['/api/liked-blog', 'GET'],
+    ['/api/liked-blogs/mine', 'GET'],
+    ['/api/liked-blogs/mine', 'POST'],
     ['/api/products', 'POST'],
     ['/api/product', 'POST'],
     ['/api/categories', 'POST'],

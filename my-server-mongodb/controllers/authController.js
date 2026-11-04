@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('node:crypto');
 const User = require('../models/User');
+const oauthProviders = require('../services/oauthProviders');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
@@ -29,7 +31,12 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    await User.create({ name: name.trim(), email: normalizedEmail, password: hashedPassword });
+    await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password: hashedPassword,
+      authProviders: ['password']
+    });
     res.status(201).json({ message: 'Đăng ký thành công!' });
   } catch (error) {
     if (error.code === 11000) {
@@ -59,7 +66,7 @@ exports.login = async (req, res) => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
-    const isMatch = user && await bcrypt.compare(password, user.password);
+    const isMatch = user?.password && await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(401).json({ message: 'Sai email hoặc mật khẩu.' });
       return;
@@ -78,5 +85,151 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
     res.status(500).json({ message: 'Không thể đăng nhập lúc này.' });
+  }
+};
+
+function oauthStateCookie(provider, state, maxAge) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `urii_oauth_state_${provider}=${state}; HttpOnly; SameSite=Lax; Path=/api/auth/oauth/${provider}; Max-Age=${maxAge}${secure}`;
+}
+
+function readCookie(req, name) {
+  const cookies = req.headers.cookie || '';
+  for (const cookie of cookies.split(';')) {
+    const separator = cookie.indexOf('=');
+    if (separator > 0 && cookie.slice(0, separator).trim() === name) {
+      return cookie.slice(separator + 1).trim();
+    }
+  }
+  return '';
+}
+
+function oauthErrorStatus(error) {
+  return error.code === 'OAUTH_CONFIGURATION_ERROR' ? 503 : 502;
+}
+
+exports.oauthStart = (req, res) => {
+  const { provider } = req.params;
+  if (!['google', 'facebook'].includes(provider)) {
+    res.status(404).json({ message: 'Nhà cung cấp OAuth không được hỗ trợ.' });
+    return;
+  }
+
+  try {
+    const state = crypto.randomBytes(32).toString('hex');
+    const authorizationUrl = oauthProviders.buildAuthorizationUrl(provider, state);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Set-Cookie', oauthStateCookie(provider, state, 600));
+    res.redirect(authorizationUrl);
+  } catch (error) {
+    console.error(`Không thể khởi tạo OAuth ${provider}:`, error.message);
+    res.status(oauthErrorStatus(error)).json({
+      message: `Chưa cấu hình OAuth ${provider} đầy đủ.`
+    });
+  }
+};
+
+exports.oauthCallback = async (req, res) => {
+  const { provider } = req.params;
+  if (!['google', 'facebook'].includes(provider)) {
+    res.status(404).json({ message: 'Nhà cung cấp OAuth không được hỗ trợ.' });
+    return;
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Set-Cookie', oauthStateCookie(provider, '', 0));
+  if (typeof req.query.error === 'string') {
+    res.status(401).json({ message: 'Bạn đã hủy hoặc từ chối đăng nhập OAuth.' });
+    return;
+  }
+  const { code, state } = req.query;
+  const cookieState = readCookie(req, `urii_oauth_state_${provider}`);
+  if (typeof code !== 'string' || !code || typeof state !== 'string'
+    || !/^[a-f\d]{64}$/i.test(state)
+    || !/^[a-f\d]{64}$/i.test(cookieState)
+    || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
+    res.status(400).json({ message: 'Trạng thái OAuth không hợp lệ hoặc đã hết hạn.' });
+    return;
+  }
+  if (!process.env.JWT_SECRET) {
+    res.status(500).json({ message: 'Máy chủ chưa cấu hình JWT_SECRET.' });
+    return;
+  }
+
+  try {
+    const identity = await oauthProviders.exchangeAuthorizationCode(provider, code);
+    const email = typeof identity.email === 'string' ? identity.email.trim().toLowerCase() : '';
+
+    if (!identity.providerUserId || !EMAIL_PATTERN.test(email)
+      || (provider === 'google' && identity.emailVerified !== true)) {
+      res.status(401).json({ message: 'Nhà cung cấp không trả về danh tính/email hợp lệ.' });
+      return;
+    }
+
+    const existing = await User.findOne({ email }).select('+password');
+    if (existing) {
+      if (existing.role === 'admin') {
+        res.status(403).json({ message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.' });
+        return;
+      }
+      const linkedAccount = existing.oauthAccounts?.find((account) => account.provider === provider);
+      if (linkedAccount && linkedAccount.providerUserId !== identity.providerUserId) {
+        res.status(409).json({ message: 'Email này đã liên kết với một tài khoản OAuth khác.' });
+        return;
+      }
+      if (!linkedAccount && (existing.password
+        || existing.authProviders?.some((authProvider) => authProvider !== provider))) {
+        res.status(409).json({
+          message: 'Email này đã có tài khoản. Hãy đăng nhập bằng phương thức đã đăng ký.'
+        });
+        return;
+      }
+    }
+
+    const profileName = typeof identity.name === 'string' && identity.name.trim()
+      ? identity.name.trim()
+      : email;
+    let user = existing;
+    if (!user) {
+      user = await User.create({
+        email,
+        name: profileName,
+        avatar: identity.picture || undefined,
+        role: 'user',
+        password: null,
+        authProviders: [provider],
+        oauthAccounts: [{ provider, providerUserId: identity.providerUserId }]
+      });
+    } else {
+      if (!user.authProviders.includes(provider)) user.authProviders.push(provider);
+      if (!user.oauthAccounts?.some((account) => account.provider === provider)) {
+        user.oauthAccounts.push({ provider, providerUserId: identity.providerUserId });
+      }
+      if ([email, email.split('@')[0]].includes(user.name) && profileName !== user.name) {
+        user.name = profileName;
+      }
+      if (!user.avatar && identity.picture) user.avatar = identity.picture;
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { id: user._id.toString(), role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({
+      message: 'Đăng nhập thành công!',
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(409).json({ message: 'Email đã được đăng ký. Hãy đăng nhập bằng phương thức đã liên kết.' });
+      return;
+    }
+    console.error(`Lỗi đăng nhập OAuth ${provider}:`, error.message);
+    res.status(oauthErrorStatus(error)).json({
+      message: `Không thể hoàn tất đăng nhập OAuth ${provider} lúc này.`
+    });
   }
 };

@@ -15,7 +15,7 @@ Socket.IO runs on the same port under the `/admin` namespace. Connect with a JWT
 
 ## Seed data
 
-`npm run seed` is for development only; it refuses to run when `NODE_ENV=production`. It inserts fixture records that do not already exist and does not delete or overwrite database records. New fixture users get independent, randomly generated passwords that are bcrypt-hashed in MongoDB. Their one-time credentials are stored in the Git-ignored `my-server-mongodb/.seed-user-credentials.json`; keep that file private and remove it securely when no longer needed. Existing users with matching emails are preserved and their credentials are not changed.
+`npm run seed` is for development only; it refuses to run when `NODE_ENV=production`. It inserts fixture records that do not already exist and does not delete or overwrite database records. Plain fixture passwords are bcrypt-hashed in MongoDB, pre-hashed passwords are not hashed again, and social-only fixture users have no local password. Users marked `$GENERATE` get independent random passwords; their one-time credentials are stored in the Git-ignored `my-server-mongodb/.seed-user-credentials.json`. Keep that file private and remove it securely when no longer needed. Existing users with matching emails are preserved and their credentials are not changed.
 
 Create an additional administrator by setting `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (at least 12 characters), and optionally `SEED_ADMIN_NAME`, then running:
 
@@ -24,6 +24,17 @@ npm run seed:admin
 ```
 
 The admin seed hashes the configured password and only updates an existing account if it already has the admin role. Do not use demo credentials or commit `.env`.
+
+### OAuth sign-in
+
+Google and Facebook OAuth use the authorization-code flow. Register these callback URLs in each provider's developer console (use the same externally reachable HTTPS backend origin in production):
+
+- `GOOGLE_OAUTH_CALLBACK_URL`
+- `FACEBOOK_OAUTH_CALLBACK_URL`
+
+Set each provider's client ID, client secret, and callback URL in the backend `.env`. Facebook Graph API defaults to `v26.0`; override `FACEBOOK_GRAPH_VERSION` if your app is configured for another supported version. Never put OAuth client secrets in browser code or commit them. Google sign-in requires a verified email; Facebook must return an email. OAuth state is protected with a short-lived HttpOnly, SameSite=Lax cookie. Users are stored with `authProviders` and provider subject IDs in `oauthAccounts`; OAuth-only users do not have a local password.
+
+Start sign-in by navigating the browser to `GET /api/auth/oauth/google` or `GET /api/auth/oauth/facebook`. The registered callback returns the backend JWT and user profile as JSON. Existing password accounts are not automatically linked to a social identity with the same email; they must use their registered sign-in method.
 
 If an existing database was populated by the old seed script, migrate its plaintext demo passwords before continuing:
 

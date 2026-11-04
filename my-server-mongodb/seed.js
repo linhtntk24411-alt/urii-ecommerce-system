@@ -14,12 +14,16 @@ const Blog = require('./models/Blog');
 const Comment = require('./models/Comment');
 const User = require('./models/User');
 const SavedMap = require('./models/SavedMap');
+const LikedProduct = require('./models/LikedProduct');
+const LikedBlog = require('./models/LikedBlog');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
 const CustomOrder = require('./models/CustomOrder');
 const Cart = require('./models/Cart');
 const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
+const { prepareLikedProducts } = require('./utils/likedProducts');
+const { prepareLikedBlogs } = require('./utils/likedBlogs');
 const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
 const { isBcryptHash } = require('./utils/userPassword');
 
@@ -45,6 +49,13 @@ async function prepareNewUsers(users, existingEmails, generatePassword = () => (
       continue;
     }
     if (isBcryptHash(user.password)) {
+      documents.push({ ...user, email });
+      existing.add(email);
+      continue;
+    }
+    if (user.password == null
+      && Array.isArray(user.authProviders)
+      && user.authProviders.some((provider) => provider === 'google' || provider === 'facebook')) {
       documents.push({ ...user, email });
       existing.add(email);
       continue;
@@ -182,7 +193,14 @@ async function seed() {
   const orderFixtures = readJSON('orders.json').orders;
   await insertMissing(Order, orderFixtures, 'id');
   await syncOrderReasonReferences(orderFixtures);
-  await insertMissing(Blog, readJSON('blogs.json').blogs, 'slug');
+  const blogFixtures = readJSON('blogs.json').blogs;
+  await insertMissing(Blog, blogFixtures, 'slug');
+  await Blog.bulkWrite(blogFixtures.map((blog) => ({
+    updateOne: {
+      filter: { slug: blog.slug },
+      update: { $set: { likes: blog.likes, comments: blog.comments, views: blog.views } }
+    }
+  })), { ordered: true });
   await insertMissing(Comment, readJSON('comments.json').comments, 'id');
   const gallery = prepareGallery(readJSON('gallery.json'));
   await Gallery.bulkWrite(gallery.map(({ map_id, slug }) => ({
@@ -216,6 +234,24 @@ async function seed() {
     updateOne: {
       filter: { userId: savedMap.userId, mapId: savedMap.mapId },
       update: { $set: savedMap },
+      upsert: true
+    }
+  })), { ordered: true });
+  const likedProductFixtures = readJSON('liked_products.json');
+  const likedProducts = prepareLikedProducts(likedProductFixtures, commerceUsers, products);
+  await LikedProduct.bulkWrite(likedProducts.map((likedProduct) => ({
+    updateOne: {
+      filter: { userId: likedProduct.userId, productId: likedProduct.productId },
+      update: { $set: likedProduct },
+      upsert: true
+    }
+  })), { ordered: true });
+  const likedBlogFixtures = readJSON('liked_blogs.json');
+  const likedBlogs = prepareLikedBlogs(likedBlogFixtures, commerceUsers, blogFixtures);
+  await LikedBlog.bulkWrite(likedBlogs.map((likedBlog) => ({
+    updateOne: {
+      filter: { userId: likedBlog.userId, blogId: likedBlog.blogId },
+      update: { $set: likedBlog },
       upsert: true
     }
   })), { ordered: true });

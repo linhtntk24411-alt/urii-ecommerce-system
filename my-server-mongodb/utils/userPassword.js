@@ -8,7 +8,12 @@ function isBcryptHash(password) {
   return typeof password === 'string' && BCRYPT_HASH_PATTERN.test(password);
 }
 
-async function prepareUserPassword(password, existingPassword) {
+async function prepareUserPassword(password, existingPassword, authProviders = []) {
+  if (password == null
+    && authProviders.some((provider) => provider === 'google' || provider === 'facebook')) {
+    return existingPassword || null;
+  }
+
   if (password === GENERATED_PASSWORD_MARKER) {
     return existingPassword || bcrypt.hash(DEFAULT_GENERATED_PASSWORD, 10);
   }

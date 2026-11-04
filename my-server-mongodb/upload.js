@@ -13,12 +13,16 @@ const Blog = require('./models/Blog');
 const Comment = require('./models/Comment');
 const User = require('./models/User');
 const SavedMap = require('./models/SavedMap');
+const LikedProduct = require('./models/LikedProduct');
+const LikedBlog = require('./models/LikedBlog');
 const ChatSession = require('./models/ChatSession');
 const ChatbotFaq = require('./models/ChatbotFaq');
 const CustomOrder = require('./models/CustomOrder');
 const Cart = require('./models/Cart');
 const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
+const { prepareLikedProducts } = require('./utils/likedProducts');
+const { prepareLikedBlogs } = require('./utils/likedBlogs');
 const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
 const { prepareUserPassword } = require('./utils/userPassword');
 
@@ -132,8 +136,26 @@ const MODULES = [
       for (const user of users) {
         const email = user.email.trim().toLowerCase();
         const existing = await User.findOne({ email }).select('+password').lean();
-        const password = await prepareUserPassword(user.password, existing?.password);
-        preparedUsers.push({ ...user, email, password });
+        const authProviders = Array.from(new Set([
+          ...(user.authProviders || []),
+          ...(existing?.authProviders || []),
+          ...(existing?.password ? ['password'] : [])
+        ]));
+        const oauthAccounts = [
+          ...(user.oauthAccounts || []),
+          ...(existing?.oauthAccounts || [])
+        ].filter((account, index, accounts) => (
+          accounts.findIndex((candidate) => (
+            candidate.provider === account.provider
+            && candidate.providerUserId === account.providerUserId
+          )) === index
+        ));
+        const password = await prepareUserPassword(
+          user.password,
+          existing?.password,
+          authProviders
+        );
+        preparedUsers.push({ ...user, email, password, authProviders, oauthAccounts });
       }
       return preparedUsers;
     }
@@ -154,6 +176,30 @@ const MODULES = [
       const gallery = await Gallery.find().lean();
       return prepareSavedMaps(data, users, gallery);
     }
+  },
+  {
+    name: 'Liked Products (Sản phẩm đã thích)',
+    aliases: ['liked_products', 'likedproducts', 'liked-products', 'sanphamdathich'],
+    model: LikedProduct,
+    key: 'id',
+    filter: (item) => ({ userId: item.userId, productId: item.productId }),
+    getData: () => prepareLikedProducts(
+      readJSON('liked_products.json'),
+      readJSON('users.json')?.users || [],
+      readJSON('products.json')?.products || []
+    )
+  },
+  {
+    name: 'Liked Blogs (Bài viết đã thích)',
+    aliases: ['liked_blogs', 'likedblogs', 'liked-blogs', 'baivietdathich'],
+    model: LikedBlog,
+    key: 'id',
+    filter: (item) => ({ userId: item.userId, blogId: item.blogId }),
+    getData: () => prepareLikedBlogs(
+      readJSON('liked_blogs.json'),
+      readJSON('users.json')?.users || [],
+      readJSON('blogs.json')?.blogs || []
+    )
   },
   {
     name: 'Carts (Giỏ hàng)',

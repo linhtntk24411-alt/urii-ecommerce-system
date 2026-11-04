@@ -8,6 +8,8 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const Order = require('../models/Order');
 const SavedMap = require('../models/SavedMap');
+const LikedProduct = require('../models/LikedProduct');
+const LikedBlog = require('../models/LikedBlog');
 const Blog = require('../models/Blog');
 const Comment = require('../models/Comment');
 const Gallery = require('../models/Gallery');
@@ -17,6 +19,7 @@ const ChatbotFaq = require('../models/ChatbotFaq');
 const CustomOrder = require('../models/CustomOrder');
 const Cart = require('../models/Cart');
 const Review = require('../models/Review');
+const User = require('../models/User');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
 const { prepareUserPassword } = require('../utils/userPassword');
@@ -31,6 +34,8 @@ const { buildProducts } = require('../convert_excel');
 const XLSX = require('xlsx');
 const { isVoucherAvailable } = require('../controllers/voucherController');
 const { prepareSavedMaps } = require('../utils/savedMaps');
+const { prepareLikedProducts } = require('../utils/likedProducts');
+const { prepareLikedBlogs } = require('../utils/likedBlogs');
 const {
   buildCartResponse,
   prepareCartFixtures,
@@ -53,7 +58,8 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [ChatSession, readJSON('chat_sessions.json')],
     [ChatbotFaq, readJSON('chatbot.json').faqs],
     [ChatbotFaq, readJSON('chatbot_faqs.json')],
-    [CustomOrder, readJSON('custom_orders.json')]
+    [CustomOrder, readJSON('custom_orders.json')],
+    [User, readJSON('users.json').users]
   ];
 
   for (const [Model, documents] of fixtures) {
@@ -65,7 +71,14 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
       );
     }
   }
-  assert.ok(readJSON('users.json').users.every((user) => user.password === 'urii@123'));
+  assert.ok(readJSON('users.json').users
+    .filter((user) => user.authProviders.includes('password'))
+    .every((user) => user.password === 'urii@123'));
+  const googleUser = readJSON('users.json').users.find(
+    (user) => user.email === 'lentnk24411@st.uel.edu.vn'
+  );
+  assert.deepEqual(googleUser.authProviders, ['google']);
+  assert.equal(googleUser.password, null);
 });
 
 test('gallery fixture and mongoose model use the gallery collection name', () => {
@@ -179,7 +192,10 @@ test('order reason fixture is linked to cancelled and returned orders with requi
 
 test('saved map fixtures link existing customers and allow maps saved by different customers', () => {
   const savedMapData = readJSON('saved_maps.json');
-  const customers = readJSON('users.json').users.filter((user) => user.role === 'user');
+  const fixtureUserIds = new Set(savedMapData.users.map((user) => user.userId));
+  const customers = readJSON('users.json').users.filter(
+    (user) => user.role === 'user' && fixtureUserIds.has(user._id)
+  );
   const customerById = new Map(customers.map((user) => [user._id, user]));
   const gallery = readJSON('gallery.json');
   const galleryMapIds = new Set(gallery.map((map) => map.map_id));
@@ -215,8 +231,107 @@ test('saved map fixtures link existing customers and allow maps saved by differe
   }
 });
 
+test('liked product fixtures link existing customers and products by ID', () => {
+  const likedProductData = readJSON('liked_products.json');
+  const fixtureUserIds = new Set(likedProductData.users.map((user) => user.userId));
+  const customers = readJSON('users.json').users.filter(
+    (user) => user.role === 'user' && fixtureUserIds.has(user._id)
+  );
+  const customerById = new Map(customers.map((user) => [user._id, user]));
+  const products = readJSON('products.json').products;
+  const productIds = new Set(products.map((product) => product.id));
+
+  assert.equal(LikedProduct.modelName, 'LikedProduct');
+  assert.equal(LikedProduct.collection.collectionName, 'liked_products');
+  assert.ok(likedProductData.users.every((user) => customerById.has(user.userId)));
+  assert.ok(likedProductData.users.every((user) => /^[a-f\d]{24}$/i.test(user.userId)));
+  assert.ok(likedProductData.users.every((user) => user.productIds.every((id) => productIds.has(id))));
+
+  const prepared = prepareLikedProducts(likedProductData, customers, products);
+  const productsPerCustomer = new Map();
+  for (const item of prepared) {
+    productsPerCustomer.set(item.userId, (productsPerCustomer.get(item.userId) || 0) + 1);
+    for (const duplicateField of ['name', 'image', 'price', 'currentPrice', 'originalPrice', 'slug']) {
+      assert.equal(Object.hasOwn(item, duplicateField), false);
+    }
+  }
+  assert.equal(productsPerCustomer.size, customers.length);
+  assert.ok([...productsPerCustomer.values()].every((count) => count >= 2 && count <= 10));
+  assert.ok(new Set(prepared.map((item) => item.productId)).size >= 25);
+  assert.equal(new Set(prepared.map((item) => `${item.userId}:${item.productId}`)).size, prepared.length);
+  assert.ok(prepared.length > new Set(prepared.map((item) => item.productId)).size);
+  assert.throws(
+    () => prepareLikedProducts(
+      { users: [{ ...likedProductData.users[0], productIds: ['1075483767', '1075483767'] }] },
+      customers,
+      products
+    ),
+    /duplicate liked product/
+  );
+  for (const item of prepared) {
+    assert.doesNotReject(new LikedProduct(item).validate());
+  }
+});
+
+test('liked blog fixtures link existing customers and blogs and match blog like/comment counts', () => {
+  const likedBlogData = readJSON('liked_blogs.json');
+  const fixtureUserIds = new Set(likedBlogData.users.map((user) => user.userId));
+  const customers = readJSON('users.json').users.filter(
+    (user) => user.role === 'user' && fixtureUserIds.has(user._id)
+  );
+  const customerById = new Map(customers.map((user) => [user._id, user]));
+  const blogs = readJSON('blogs.json').blogs;
+  const comments = readJSON('comments.json').comments;
+  const blogIds = new Set(blogs.map((blog) => blog.id));
+
+  assert.equal(LikedBlog.modelName, 'LikedBlog');
+  assert.equal(LikedBlog.collection.collectionName, 'liked_blogs');
+  assert.ok(likedBlogData.users.every((user) => customerById.has(user.userId)));
+  assert.ok(likedBlogData.users.every((user) => /^[a-f\d]{24}$/i.test(user.userId)));
+  assert.ok(likedBlogData.users.every((user) => user.blogIds.every((id) => blogIds.has(id))));
+
+  const prepared = prepareLikedBlogs(likedBlogData, customers, blogs);
+  const blogsPerCustomer = new Map();
+  const likesPerBlog = new Map();
+  for (const item of prepared) {
+    blogsPerCustomer.set(item.userId, (blogsPerCustomer.get(item.userId) || 0) + 1);
+    likesPerBlog.set(item.blogId, (likesPerBlog.get(item.blogId) || 0) + 1);
+    for (const duplicateField of ['title', 'slug', 'image', 'author', 'excerpt']) {
+      assert.equal(Object.hasOwn(item, duplicateField), false);
+    }
+  }
+  assert.equal(blogsPerCustomer.size, customers.length);
+  assert.ok([...blogsPerCustomer.values()].every((count) => count >= 2 && count <= 12));
+  assert.equal(likesPerBlog.size, blogs.length);
+  assert.equal(new Set(prepared.map((item) => `${item.userId}:${item.blogId}`)).size, prepared.length);
+
+  for (const blog of blogs) {
+    const expectedLikes = likesPerBlog.get(blog.id) || 0;
+    const expectedComments = comments.filter((c) => c.blogId === blog.id).length;
+    assert.equal(blog.likes, expectedLikes, `Blog ${blog.id} likes must equal liked_blogs count`);
+    assert.ok(blog.likes <= customers.length, `Blog ${blog.id} likes cannot exceed customer count`);
+    assert.equal(blog.comments, expectedComments, `Blog ${blog.id} comments must equal comments.json count`);
+    assert.ok(blog.views >= blog.likes + blog.comments && blog.views <= 60, `Blog ${blog.id} views must be realistic`);
+  }
+
+  assert.throws(
+    () => prepareLikedBlogs(
+      { users: [{ ...likedBlogData.users[0], blogIds: [1, 1] }] },
+      customers,
+      blogs
+    ),
+    /duplicate liked blog/
+  );
+  for (const item of prepared) {
+    assert.doesNotReject(new LikedBlog(item).validate());
+  }
+});
+
 test('cart and review fixtures use real products and delivered customer orders', async () => {
-  const users = readJSON('users.json').users.filter((user) => user.role === 'user');
+  const cartUserIds = new Set(readJSON('carts.json').carts.map((cart) => cart.userId));
+  const users = readJSON('users.json').users.filter(
+    (user) => user.role === 'user' && cartUserIds.has(user._id)
+  );
   const products = readJSON('products.json').products;
   const carts = prepareCartFixtures(readJSON('carts.json'), users, products);
   const { orders, reviews } = prepareReviewFixtures(readJSON('review_orders.json'), users, products);
@@ -521,6 +636,22 @@ test('plain fixture passwords are hashed for new users', async () => {
   assert.notEqual(result.documents[0].password, user.password);
   assert.equal(await bcrypt.compare('urii@123', result.documents[0].password), true);
   assert.equal(result.credentials.length, 0);
+});
+
+test('social-only users can be seeded without a local password', async () => {
+  const user = readJSON('users.json').users.find(
+    (entry) => entry.email === 'lentnk24411@st.uel.edu.vn'
+  );
+  const result = await prepareNewUsers([user], []);
+
+  assert.equal(result.documents[0].password, null);
+  assert.deepEqual(result.documents[0].authProviders, ['google']);
+  assert.equal(result.credentials.length, 0);
+  assert.equal(await prepareUserPassword(null, null, ['google']), null);
+  assert.equal(
+    await prepareUserPassword(null, 'existing-password-hash', ['google']),
+    'existing-password-hash'
+  );
 });
 
 test('bcrypt password hashes in data are preserved for upload', async () => {

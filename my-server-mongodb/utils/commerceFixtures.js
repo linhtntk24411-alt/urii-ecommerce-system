@@ -55,7 +55,7 @@ function prepareCartFixtures(cartData, users, products) {
     throw new TypeError('Cart fixtures, users, and products must be arrays.');
   }
 
-  const usersById = new Map(users.filter((user) => user.role === 'user')
+  const usersById = new Map(users.filter((user) => user.role === 'user' && user._id)
     .map((user) => [String(user._id), user]));
   const productsById = new Map(products.map((product) => [product.id, product]));
   const seenUsers = new Set();
@@ -144,7 +144,7 @@ function prepareReviewFixtures(reviewData, users, products) {
     throw new TypeError('Review order fixtures, users, and products must be arrays.');
   }
 
-  const usersById = new Map(users.filter((user) => user.role === 'user')
+  const usersById = new Map(users.filter((user) => user.role === 'user' && user._id)
     .map((user) => [String(user._id), user]));
   const productsById = new Map(products.map((product) => [product.id, product]));
   const orderIds = new Set();

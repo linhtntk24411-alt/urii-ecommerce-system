@@ -10,6 +10,20 @@ const userSchema = new mongoose.Schema({
   birth: String,
   address: String,
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  password: { type: String, required: true, select: false }
+  authProviders: {
+    type: [{ type: String, enum: ['password', 'google', 'facebook'] }],
+    default: []
+  },
+  oauthAccounts: [{
+    provider: { type: String, enum: ['google', 'facebook'], required: true },
+    providerUserId: { type: String, required: true }
+  }],
+  password: {
+    type: String,
+    required() {
+      return !this.authProviders.some((provider) => provider === 'google' || provider === 'facebook');
+    },
+    select: false
+  }
 }, { timestamps: true });
 module.exports = mongoose.model('User', userSchema);

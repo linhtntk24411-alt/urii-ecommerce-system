@@ -10,6 +10,7 @@
       "phone": "0901 234 567",
       "email": "minhanh.uri@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "12/08/1998",
       "address": "123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
       "role": "user"
@@ -24,6 +25,7 @@
       "phone": "0912 345 678",
       "email": "baongoc.uri@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "25/03/1999",
       "address": "45 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh",
       "role": "user"
@@ -38,6 +40,7 @@
       "phone": "0987 654 321",
       "email": "hoangnam.uri@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "07/11/1997",
       "address": "78 Nguyễn Trãi, Phường 3, Quận 5, TP. Hồ Chí Minh",
       "role": "user"
@@ -52,6 +55,7 @@
       "phone": "0938 111 222",
       "email": "thuha.uri@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "18/06/2000",
       "address": "12 Phan Xích Long, Phường 2, Quận Phú Nhuận, TP. Hồ Chí Minh",
       "role": "user"
@@ -66,6 +70,7 @@
       "phone": "0967 888 999",
       "email": "quanghuy.uri@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "30/09/1996",
       "address": "256 Cách Mạng Tháng 8, Phường 10, Quận 3, TP. Hồ Chí Minh",
       "role": "user"
@@ -80,6 +85,7 @@
       "phone": "0909 333 444",
       "email": "khanhlinh.uri@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "14/02/2001",
       "address": "88 Hoàng Diệu, Phường 6, Quận 4, TP. Hồ Chí Minh",
       "role": "user"
@@ -93,9 +99,19 @@
       "phone": "0909 888 777",
       "email": "admin@gmail.com",
       "password": "urii@123",
+      "authProviders": ["password"],
       "birth": "15/05/1990",
       "address": "Số 1, Đường Nguyễn Du, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh",
       "role": "admin"
+    },
+    {
+      "name": "lentnk24411",
+      "orders": 0,
+      "maps": 0,
+      "email": "lentnk24411@st.uel.edu.vn",
+      "password": null,
+      "authProviders": ["google"],
+      "role": "user"
     }
   ]
 }

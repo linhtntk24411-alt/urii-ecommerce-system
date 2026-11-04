@@ -21,6 +21,7 @@ const Cart = require('./models/Cart');
 const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
+const { isBcryptHash } = require('./utils/userPassword');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -43,15 +44,18 @@ async function prepareNewUsers(users, existingEmails, generatePassword = () => (
     if (existing.has(email)) {
       continue;
     }
-    if (user.password !== '$GENERATE') {
-      throw new TypeError(`User fixture for ${email} must use the $GENERATE password marker.`);
+    if (isBcryptHash(user.password)) {
+      documents.push({ ...user, email });
+      existing.add(email);
+      continue;
     }
-
-    const password = generatePassword();
+    const isGeneratedPassword = user.password === '$GENERATE';
+    const password = isGeneratedPassword ? generatePassword() : user.password;
     if (typeof password !== 'string'
-      || password.length < 12
-      || Buffer.byteLength(password, 'utf8') > 72) {
-      throw new TypeError('Generated user passwords must be 12-72 bytes.');
+      || password.length === 0
+      || Buffer.byteLength(password, 'utf8') > 72
+      || (isGeneratedPassword && password.length < 12)) {
+      throw new TypeError('User passwords must be 1-72 bytes; generated passwords must be at least 12 characters.');
     }
 
     documents.push({
@@ -59,7 +63,9 @@ async function prepareNewUsers(users, existingEmails, generatePassword = () => (
       email,
       password: await bcrypt.hash(password, 12)
     });
-    credentials.push({ email, name: user.name, password });
+    if (isGeneratedPassword) {
+      credentials.push({ email, name: user.name, password });
+    }
     existing.add(email);
   }
 

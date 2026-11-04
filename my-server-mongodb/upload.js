@@ -1,7 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 
 // Import tất cả Models
@@ -21,6 +20,7 @@ const Cart = require('./models/Cart');
 const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareCartFixtures, prepareReviewFixtures } = require('./utils/commerceFixtures');
+const { prepareUserPassword } = require('./utils/userPassword');
 
 function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
@@ -128,20 +128,12 @@ const MODULES = [
       const users = readJSON('users.json')?.users;
       if (!Array.isArray(users)) return null;
 
-      // Xử lý mật khẩu nếu là user mới
       const preparedUsers = [];
       for (const user of users) {
         const email = user.email.trim().toLowerCase();
-        const existing = await User.findOne({ email }).lean();
-        if (existing) {
-          // Giữ nguyên mật khẩu đã mã hóa của user hiện tại
-          preparedUsers.push({ ...user, email, password: existing.password });
-        } else {
-          // Tạo mật khẩu mặc định an toàn cho user mới nếu là $GENERATE
-          const rawPass = (user.password && user.password !== '$GENERATE') ? user.password : 'UriiUser@2026Secure';
-          const hashedPassword = await bcrypt.hash(rawPass, 10);
-          preparedUsers.push({ ...user, email, password: hashedPassword });
-        }
+        const existing = await User.findOne({ email }).select('+password').lean();
+        const password = await prepareUserPassword(user.password, existing?.password);
+        preparedUsers.push({ ...user, email, password });
       }
       return preparedUsers;
     }

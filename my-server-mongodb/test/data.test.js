@@ -19,6 +19,7 @@ const Cart = require('../models/Cart');
 const Review = require('../models/Review');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
+const { prepareUserPassword } = require('../utils/userPassword');
 const {
   insertMissing,
   prepareGallery,
@@ -64,7 +65,7 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
       );
     }
   }
-  assert.ok(readJSON('users.json').users.every((user) => user.password === '$GENERATE'));
+  assert.ok(readJSON('users.json').users.every((user) => user.password === 'urii@123'));
 });
 
 test('gallery fixture and mongoose model use the gallery collection name', () => {
@@ -475,7 +476,10 @@ test('map seed creates slugs compatible with legacy unique slug indexes', () => 
 });
 
 test('new users get unique bcrypt passwords while existing emails are preserved', async () => {
-  const users = readJSON('users.json').users;
+  const users = readJSON('users.json').users.map((user) => ({
+    ...user,
+    password: '$GENERATE'
+  }));
   const generated = [];
   const result = await prepareNewUsers(
     users,
@@ -496,6 +500,50 @@ test('new users get unique bcrypt passwords while existing emails are preserved'
     await bcrypt.compare(result.credentials[0].password, result.documents[0].password),
     true
   );
+});
+
+test('pre-hashed fixture passwords are inserted without hashing them again', async () => {
+  const user = {
+    ...readJSON('users.json').users[0],
+    password: await bcrypt.hash('urii@123', 10)
+  };
+  const result = await prepareNewUsers([user], []);
+
+  assert.equal(result.documents[0].password, user.password);
+  assert.equal(result.credentials.length, 0);
+  assert.equal(await bcrypt.compare('urii@123', result.documents[0].password), true);
+});
+
+test('plain fixture passwords are hashed for new users', async () => {
+  const user = readJSON('users.json').users[0];
+  const result = await prepareNewUsers([user], []);
+
+  assert.notEqual(result.documents[0].password, user.password);
+  assert.equal(await bcrypt.compare('urii@123', result.documents[0].password), true);
+  assert.equal(result.credentials.length, 0);
+});
+
+test('bcrypt password hashes in data are preserved for upload', async () => {
+  const hash = await bcrypt.hash('urii@123', 10);
+  const oldHash = await bcrypt.hash('old-password', 4);
+
+  assert.equal(await prepareUserPassword(hash, oldHash), hash);
+  assert.equal(await bcrypt.compare('urii@123', hash), true);
+});
+
+test('plain passwords are hashed and generated markers preserve existing passwords', async () => {
+  const oldHash = await bcrypt.hash('old-password', 4);
+  const newHash = await prepareUserPassword('new-password', oldHash);
+
+  assert.notEqual(newHash, 'new-password');
+  assert.equal(await bcrypt.compare('new-password', newHash), true);
+  assert.equal(await prepareUserPassword('$GENERATE', oldHash), oldHash);
+});
+
+test('new generated-marker users receive the existing default password hash', async () => {
+  const hash = await prepareUserPassword('$GENERATE');
+
+  assert.equal(await bcrypt.compare('UriiUser@2026Secure', hash), true);
 });
 
 test('seed refuses to load fixtures in production', async () => {

@@ -111,7 +111,7 @@
       "email": "lentnk24411@st.uel.edu.vn",
       "password": null,
       "authProviders": ["google"],
-      "role": "user"
+      "role": "admin"
     }
   ]
 }

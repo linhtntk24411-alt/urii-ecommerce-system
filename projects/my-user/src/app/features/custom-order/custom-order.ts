@@ -1,19 +1,6 @@
 import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-
-interface CustomOrderData {
-  fullName: string;
-  phone: string;
-  email: string;
-  requestName: string;
-  size: string;
-  beadType: string;
-  description: string;
-  imageNote: string;
-  image: File | null;
-}
 
 @Component({
   selector: 'app-custom-order',
@@ -23,9 +10,7 @@ interface CustomOrderData {
   styleUrls: ['./custom-order.css']
 })
 export class CustomOrderComponent {
-  private readonly http = inject(HttpClient);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
-  private readonly endpoint = 'http://localhost:3002/api/custom-orders';
 
   customOrderForm: FormGroup;
   currentStep: number = 1; 
@@ -115,48 +100,9 @@ export class CustomOrderComponent {
       return;
     }
 
-    this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
-    const orderData: CustomOrderData = {
-      ...this.customOrderForm.value,
-      image: this.selectedImage,
-    };
-
-    this.http.post<unknown>(this.endpoint, this.toFormData(orderData)).subscribe({
-      next: () => {
-        this.isSubmitting = false;
-        this.successMessage = 'Gửi yêu cầu báo giá thành công!';
-        this.customOrderForm.reset({ beadType: 'Hạt Perler 5mm (Midi Beads)' });
-        this.imagePreview = null;
-        this.selectedImage = null;
-        this.currentStep = 1;
-        this.changeDetectorRef.markForCheck();
-      },
-      error: (error: unknown) => {
-        console.error('Lỗi gửi yêu cầu thiết kế:', error);
-        this.isSubmitting = false;
-        this.errorMessage = 'Không thể gửi yêu cầu lúc này. Vui lòng thử lại sau.';
-        this.changeDetectorRef.markForCheck();
-      },
-    });
-  }
-
-  private toFormData(order: CustomOrderData): FormData {
-    const formData = new FormData();
-    formData.append('fullName', order.fullName);
-    formData.append('phone', order.phone);
-    formData.append('email', order.email);
-    formData.append('requestName', order.requestName);
-    formData.append('size', order.size);
-    formData.append('beadType', order.beadType);
-    formData.append('description', order.description);
-    formData.append('imageNote', order.imageNote);
-
-    if (order.image) {
-      formData.append('image', order.image, order.image.name);
-    }
-
-    return formData;
+    this.errorMessage = 'Chức năng gửi yêu cầu hiện đang tắt để frontend chỉ đọc dữ liệu từ backend nhóm.';
+    this.changeDetectorRef.markForCheck();
   }
 }

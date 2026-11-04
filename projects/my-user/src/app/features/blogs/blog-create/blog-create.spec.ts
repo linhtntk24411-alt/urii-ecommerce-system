@@ -32,7 +32,7 @@ describe('BlogCreateComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should submit the blog post to the API', () => {
+  it('keeps publishing local and does not write to the shared API', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
     fixture.detectChanges();
     component.blogForm.patchValue({
@@ -43,14 +43,11 @@ describe('BlogCreateComponent', () => {
 
     component.publish();
 
-    const request = httpTestingController.expectOne('/api/blogs');
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body.title).toBe('Hướng dẫn làm mẫu');
-    expect(request.request.body.categorySlug).toBe('huong-dan-diy');
-    expect(request.request.body.image).toBe('');
-    request.flush({ slug: 'huong-dan-lam-mau' });
-
-    expect(alertSpy).toHaveBeenCalledWith('Bài viết đã được xuất bản thành công!');
+    expect(localStorage.getItem('blogDraft')).toContain('Hướng dẫn làm mẫu');
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Bản nháp đã lưu trên thiết bị. Chức năng đăng bài lên backend nhóm đang tắt để chỉ đọc dữ liệu.',
+    );
+    httpTestingController.expectNone('/api/blogs');
     alertSpy.mockRestore();
   });
 
@@ -64,7 +61,7 @@ describe('BlogCreateComponent', () => {
     alertSpy.mockRestore();
   });
 
-  it('should show a helpful dialog when the API rejects the cover image', () => {
+  it('never sends a valid post to the shared API', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
     component.blogForm.patchValue({
       title: 'Hướng dẫn làm mẫu',
@@ -73,14 +70,9 @@ describe('BlogCreateComponent', () => {
 
     component.publish();
 
-    const request = httpTestingController.expectOne('/api/blogs');
-    request.flush(
-      { message: 'Image must be a supported base64 image' },
-      { status: 400, statusText: 'Bad Request' },
-    );
-
+    httpTestingController.expectNone('/api/blogs');
     expect(alertSpy).toHaveBeenCalledWith(
-      'Ảnh bìa không hợp lệ. Hãy chọn ảnh PNG, JPG, WEBP hoặc GIF bằng nút Thêm ảnh.',
+      'Bản nháp đã lưu trên thiết bị. Chức năng đăng bài lên backend nhóm đang tắt để chỉ đọc dữ liệu.',
     );
     alertSpy.mockRestore();
   });

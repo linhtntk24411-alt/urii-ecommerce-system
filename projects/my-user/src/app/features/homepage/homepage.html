@@ -205,14 +205,24 @@
       <div class="section-header section-header--center">
         <div>
           <h2>Góc sáng tạo cộng đồng</h2>
-          <p>Chia sẻ tác phẩm của bạn với hashtag #UriiUiCaTheGioi để có cơ hội xuất hiện trên thư viện của chúng tôi.</p>
+          <p>Những bài viết mới nhất từ cộng đồng Urii.</p>
         </div>
       </div>
+      <p *ngIf="isCommunityLoading" class="gallery-status" role="status">Đang tải bài viết cộng đồng...</p>
+      <p *ngIf="communityErrorMessage" class="gallery-status" role="alert">{{ communityErrorMessage }}</p>
       <div class="gallery-grid">
-        @for (img of galleryData; track img) {
-          <article class="gallery-item img-hover-effect">
-            <img [src]="img" alt="Góc sáng tạo" />
-          </article>
+        @for (post of communityPosts; track trackCommunityPost($index, post)) {
+          <a class="gallery-item img-hover-effect" [routerLink]="['/blog-detail', post.slug]">
+            <img [src]="post.image" [alt]="post.title" />
+            <span class="gallery-item__caption">
+              <strong>{{ post.title }}</strong>
+              <small>{{ post.author }}</small>
+            </span>
+          </a>
+        } @empty {
+          <p *ngIf="!isCommunityLoading && !communityErrorMessage" class="gallery-status">
+            Chưa có bài viết cộng đồng mới.
+          </p>
         }
       </div>
     </div>

@@ -1,7 +1,17 @@
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { afterNextRender, ChangeDetectorRef, Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
+import { Subscription, TimeoutError, timeout } from 'rxjs';
+
+interface CurrentUserProfile {
+  id?: string;
+  _id?: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
 
 @Component({
   selector: 'app-header',
@@ -26,8 +36,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private storageListener: any;
   private authChangeListener: (() => void) | null = null;
   private cartChangeListener: (() => void) | null = null;
+  private profileRequest?: Subscription;
 
   constructor(
+    private readonly http: HttpClient,
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: Object,
     private readonly changeDetectorRef: ChangeDetectorRef,
@@ -38,6 +50,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
       this.checkAuthStatus();
       this.updateCartBadge();
+      this.loadCurrentUser();
       this.changeDetectorRef.markForCheck();
     });
   }
@@ -45,14 +58,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.storageListener = (e: StorageEvent) => {
-        if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'cart_count') {
+        if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'authToken' || e.key === 'cart_count') {
           this.checkAuthStatus();
           this.updateCartBadge();
+          this.loadCurrentUser();
           this.changeDetectorRef.markForCheck();
         }
       };
       this.authChangeListener = () => {
         this.checkAuthStatus();
+        this.loadCurrentUser();
         this.changeDetectorRef.markForCheck();
       };
       this.cartChangeListener = () => {
@@ -66,6 +81,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.profileRequest?.unsubscribe();
     if (isPlatformBrowser(this.platformId)) {
       if (this.storageListener) {
         window.removeEventListener('storage', this.storageListener);
@@ -77,6 +93,48 @@ export class HeaderComponent implements OnInit, OnDestroy {
         window.removeEventListener('cart:updated', this.cartChangeListener);
       }
     }
+  }
+
+  private loadCurrentUser(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    this.profileRequest?.unsubscribe();
+    const token = localStorage.getItem('authToken');
+    if (localStorage.getItem('isLoggedIn') !== 'true' || !token) return;
+
+    this.profileRequest = this.http.get<CurrentUserProfile>('/api/auth/me', {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    }).pipe(
+      timeout({ first: 8000 }),
+    ).subscribe({
+      next: (profile) => {
+        if (!profile || typeof profile.email !== 'string' || typeof profile.name !== 'string') {
+          console.error('API hồ sơ cá nhân trả về dữ liệu không hợp lệ.');
+          return;
+        }
+
+        this.userName = profile.name;
+        this.userEmail = profile.email;
+        this.userAvatar = this.normalizeAvatar(profile.avatar ?? '');
+        localStorage.setItem('userName', this.userName);
+        localStorage.setItem('userEmail', this.userEmail);
+        localStorage.setItem('userAvatar', this.userAvatar);
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        if (error instanceof TimeoutError) {
+          console.error('Tải hồ sơ cá nhân quá thời gian chờ.');
+        } else {
+          console.error('Không thể tải hồ sơ cá nhân từ API:', error);
+        }
+      },
+    });
+  }
+
+  private normalizeAvatar(avatar: string): string {
+    if (avatar.startsWith('/images/')) return `/api${avatar}`;
+    if (avatar.startsWith('images/')) return `/api/${avatar}`;
+    return avatar;
   }
 
   checkAuthStatus(): void {
@@ -129,6 +187,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userAvatar');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('authToken');
+    this.profileRequest?.unsubscribe();
     this.isLoggedIn = false;
     this.userName = '';
     this.userEmail = '';

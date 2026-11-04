@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { EMPTY, expand, map, Observable, toArray } from 'rxjs';
 
 export interface BlogPost {
   id: string | number;
@@ -13,6 +13,7 @@ export interface BlogPost {
   avatar: string;
   date: string;
   image: string;
+  imageAvailable?: boolean;
   category: string;
   categorySlug: string;
   likes: number;
@@ -32,38 +33,19 @@ export interface BlogComment {
   time: string;
 }
 
-export interface CreateBlogPost {
-  title: string;
-  slug: string;
-  summary: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  avatar: string;
-  date: string;
-  image: string;
-  category: string;
-  categorySlug: string;
-  likes: number;
-  comments: number;
-  views: number;
-  isFeatured: boolean;
-  tags: string[];
-  seoTitle: string;
-  seoDesc: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class BlogService {
   private readonly http = inject(HttpClient);
 
-  createBlog(blog: CreateBlogPost): Observable<unknown> {
-    return this.http.post<unknown>('/api/blogs', blog);
-  }
-
   getBlogComments(blogId: string | number): Observable<BlogComment[]> {
-    return this.http.get<unknown>(`/api/blogs/${encodeURIComponent(String(blogId))}/comments`).pipe(
-      map((response) => this.parseComments(response)),
+    return this.loadCommentsPage(1).pipe(
+      expand((comments, pageIndex) =>
+        comments.length === 100 ? this.loadCommentsPage(pageIndex + 2) : EMPTY,
+      ),
+      toArray(),
+      map((pages) => pages.flat().filter(
+        (comment) => String(comment.blogId) === String(blogId),
+      )),
     );
   }
 
@@ -105,6 +87,7 @@ export class BlogService {
         : this.toText(categoryValue);
       const summary = this.toText(record['summary'] ?? record['excerpt']);
       const date = this.toText(record['date'] ?? record['createdAt'] ?? record['updatedAt']);
+      const rawImage = record['image'] ?? record['coverImage'];
 
       return [{
         id,
@@ -116,7 +99,8 @@ export class BlogService {
         author: this.toText(record['author']) || 'Urii',
         avatar: this.normalizeImagePath(record['avatar']) || 'assets/gallery_assets/mau-ca-heo.webp',
         date,
-        image: this.normalizeImagePath(record['image'] ?? record['coverImage']) || 'assets/gallery_assets/mau-ca-heo.webp',
+        image: this.normalizeImagePath(rawImage) || 'assets/gallery_assets/mau-ca-heo.webp',
+        imageAvailable: typeof rawImage === 'string' && Boolean(rawImage.trim()),
         category: category || 'Khác',
         categorySlug: this.toText(record['categorySlug'] ?? record['category_slug']) || this.slugify(category || 'Khác'),
         likes: this.toNumber(record['likes']),
@@ -169,15 +153,21 @@ export class BlogService {
     });
   }
 
+  private loadCommentsPage(page: number): Observable<BlogComment[]> {
+    return this.http.get<unknown>('/api/comments', {
+      params: { page, limit: 100 },
+    }).pipe(map((response) => this.parseComments(response)));
+  }
+
   private normalizeImagePath(value: unknown): string {
     const path = this.toText(value);
-    if (path.startsWith('images/')) return `/assets/${path.slice('images/'.length)}`;
-    if (path.startsWith('/images/')) return `/assets/${path.slice('/images/'.length)}`;
+    if (path.startsWith('images/')) return `/api/images/${path.slice('images/'.length)}`;
+    if (path.startsWith('/images/')) return `/api/images/${path.slice('/images/'.length)}`;
     return path;
   }
 
   private normalizeContent(value: unknown): string {
-    return this.toText(value).replace(/(["'])\/?images\//g, '$1/assets/');
+    return this.toText(value).replace(/(["'])\/?images\//g, '$1/api/images/');
   }
 
   private toStringArray(value: unknown): string[] {

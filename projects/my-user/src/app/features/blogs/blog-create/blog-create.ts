@@ -1,10 +1,8 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { BlogService, CreateBlogPost } from '../../../core/services/blog.service';
 
 interface BlogDraft {
   title: string;
@@ -44,8 +42,6 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
-    private router: Router,
-    private blogService: BlogService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
     this.blogForm = this.fb.group({
@@ -163,90 +159,19 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
     this.isSaving = false;
-    const post = this.createPost(title, content);
-    this.isPublishing = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    this.blogService.createBlog(post).subscribe({
-      next: () => {
-        this.isPublishing = false;
-        this.removeDraft();
-        this.successMessage = this.errorMessage || 'Bài viết đã được xuất bản thành công!';
-        this.showDialog(this.successMessage);
-        void this.router.navigate(['/blog-list']);
-      },
-      error: (error: unknown) => {
-        console.error('Lỗi đăng bài blog:', error);
-        this.isPublishing = false;
-        this.errorMessage = this.getPublishErrorMessage(error);
-        this.showDialog(this.errorMessage);
-      },
-    });
-  }
-
-  private getPublishErrorMessage(error: unknown): string {
-    if (!(error instanceof HttpErrorResponse)) {
-      return 'Không thể đăng bài viết lúc này. Vui lòng thử lại.';
-    }
-
-    if (error.status === 0) {
-      return 'Không kết nối được máy chủ. Vui lòng kiểm tra backend rồi thử lại.';
-    }
-    if (error.status === 413) {
-      return 'Ảnh hoặc nội dung quá lớn. Vui lòng giảm dung lượng ảnh rồi thử lại.';
-    }
-    if (error.status === 503) {
-      return 'Máy chủ chưa kết nối được cơ sở dữ liệu. Vui lòng thử lại sau.';
-    }
-
-    const serverMessage = typeof error.error?.message === 'string' ? error.error.message : '';
-    if (serverMessage === 'Image must be a supported base64 image') {
-      return 'Ảnh bìa không hợp lệ. Hãy chọn ảnh PNG, JPG, WEBP hoặc GIF bằng nút Thêm ảnh.';
-    }
-    if (serverMessage === 'Title, content, and category are required') {
-      return 'Vui lòng nhập tiêu đề, nội dung và chọn chuyên mục trước khi đăng.';
-    }
-
-    return `Không thể đăng bài viết lúc này (mã lỗi ${error.status}). Vui lòng thử lại.`;
+    const saved = this.persistDraft();
+    const message = saved
+      ? 'Bản nháp đã lưu trên thiết bị. Chức năng đăng bài lên backend nhóm đang tắt để chỉ đọc dữ liệu.'
+      : this.errorMessage;
+    this.errorMessage = saved ? '' : message;
+    this.successMessage = saved ? message : '';
+    this.showDialog(message);
   }
 
   private showDialog(message: string): void {
     if (isPlatformBrowser(this.platformId)) {
       alert(message);
     }
-  }
-
-  private createPost(title: string, content: string): CreateBlogPost {
-    const categorySlug = String(this.blogForm.get('category')?.value ?? 'huong-dan-diy');
-    const category = this.categoryName(categorySlug);
-    const excerpt = this.contentText(content).trim().slice(0, 240);
-    const now = new Date().toISOString();
-    const tags = String(this.blogForm.get('tags')?.value ?? '')
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-
-    return {
-      title,
-      slug: this.slugify(title),
-      summary: excerpt,
-      excerpt,
-      content: this.includeAttachedImages(content),
-      author: 'Urii',
-      avatar: 'assets/gallery_assets/mau-ca-heo.webp',
-      date: now,
-      image: this.imagePreviewUrls[0] ?? '',
-      category,
-      categorySlug,
-      likes: 0,
-      comments: 0,
-      views: 0,
-      isFeatured: false,
-      tags,
-      seoTitle: String(this.blogForm.get('seoTitle')?.value ?? '').trim(),
-      seoDesc: String(this.blogForm.get('seoDesc')?.value ?? '').trim(),
-    };
   }
 
   private persistDraft(): boolean {
@@ -315,16 +240,6 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private removeDraft(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    try {
-      localStorage.removeItem(this.draftStorageKey);
-    } catch (error: unknown) {
-      console.error('Lỗi xóa bản nháp blog sau khi đăng:', error);
-      this.errorMessage = 'Bài đã đăng nhưng không thể xóa bản nháp khỏi thiết bị.';
-    }
-  }
-
   private getDraft(): BlogDraft {
     return {
       title: String(this.blogForm.get('title')?.value ?? ''),
@@ -355,13 +270,6 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
     return container.textContent ?? '';
   }
 
-  private includeAttachedImages(content: string): string {
-    const attachedImages = this.imagePreviewUrls.slice(1)
-      .map((image) => `<p><img src="${image}" alt="Ảnh bài viết"></p>`)
-      .join('');
-    return `${content}${attachedImages}`;
-  }
-
   private updateWordCount(): void {
     const text = this.editor?.nativeElement.innerText ?? '';
     this.wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -370,27 +278,6 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
   private dataUrlSize(image: string): number {
     const base64 = image.split(',')[1] ?? '';
     return Math.ceil(base64.length * 3 / 4);
-  }
-
-  private categoryName(categorySlug: string): string {
-    const names: Record<string, string> = {
-      'huong-dan-diy': 'Hướng dẫn DIY',
-      'y-tuong-thiet-ke': 'Ý tưởng thiết kế',
-      'goc-nghe-thuat': 'Góc nghệ thuật',
-      'meo-vat': 'Mẹo vặt',
-    };
-    return names[categorySlug] ?? 'Khác';
-  }
-
-  private slugify(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[đĐ]/g, 'd')
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
   }
 
   private isDraft(value: unknown): value is BlogDraft {

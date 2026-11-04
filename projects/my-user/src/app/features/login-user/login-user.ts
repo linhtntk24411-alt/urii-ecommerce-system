@@ -1,17 +1,18 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { TimeoutError, timeout } from 'rxjs';
+import { finalize, TimeoutError, timeout } from 'rxjs';
 
 interface LoginResponse {
+  token: string;
   user: {
     id: string;
     name: string;
     email: string;
     role: string;
-    avatar: string;
+    avatar?: string;
   };
 }
 
@@ -23,6 +24,7 @@ interface LoginResponse {
 })
 export class LoginUser {
   private readonly http = inject(HttpClient);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -97,21 +99,31 @@ export class LoginUser {
       email: this.loginForm.controls.email.value,
       password,
     }).pipe(
-      timeout({ first: 15000 }),
+      timeout({ first: 8000 }),
+      finalize(() => {
+        this.isSubmitting = false;
+        this.changeDetectorRef.markForCheck();
+      }),
     ).subscribe({
       next: (response) => {
-        this.isSubmitting = false;
-        if (!response?.user || typeof response.user.email !== 'string') {
+        if (
+          !response?.user
+          || typeof response.token !== 'string'
+          || !response.token
+          || typeof response.user.email !== 'string'
+        ) {
           this.errorMessage = 'Máy chủ trả về dữ liệu đăng nhập không hợp lệ.';
+          this.changeDetectorRef.markForCheck();
           return;
         }
 
         const user = response.user;
+        localStorage.setItem('authToken', response.token);
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userName', user.name);
         localStorage.setItem('userEmail', user.email);
         localStorage.setItem('userRole', user.role);
-        localStorage.setItem('userAvatar', user.avatar);
+        localStorage.setItem('userAvatar', user.avatar ?? '');
         window.dispatchEvent(new Event('auth:changed'));
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
         if (returnUrl?.startsWith('/') && !returnUrl.startsWith('//')) {
@@ -121,9 +133,8 @@ export class LoginUser {
         }
       },
       error: (error: unknown) => {
-        this.isSubmitting = false;
         if (error instanceof TimeoutError) {
-          this.errorMessage = 'Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối rồi thử lại.';
+          this.errorMessage = 'Máy chủ phản hồi quá lâu (8 giây). Vui lòng kiểm tra backend và kết nối MongoDB rồi thử lại.';
         } else if (error instanceof HttpErrorResponse && error.status === 401) {
           this.errorMessage = 'Email hoặc mật khẩu không chính xác.';
         } else if (error instanceof HttpErrorResponse && error.status === 0) {
@@ -133,6 +144,7 @@ export class LoginUser {
           console.error('Lỗi đăng nhập:', error);
           this.errorMessage = 'Không thể đăng nhập lúc này. Vui lòng thử lại sau.';
         }
+        this.changeDetectorRef.markForCheck();
       },
     });
   }

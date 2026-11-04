@@ -56,14 +56,15 @@ describe('LoginUser', () => {
   it('logs in, stores the public profile and notifies the header', () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
-    component.loginForm.setValue({ email: ' person@example.com ', password: 'secret' });
+    component.loginForm.setValue({ email: ' person@example.com ', password: 'uri123' });
 
     component.login();
 
     const request = httpTestingController.expectOne('/api/auth/login');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ email: 'person@example.com', password: 'secret' });
+    expect(request.request.body).toEqual({ email: 'person@example.com', password: 'uri123' });
     request.flush({
+      token: 'test-jwt-token',
       user: {
         id: 'user-id',
         name: 'Test User',
@@ -74,6 +75,7 @@ describe('LoginUser', () => {
     });
 
     expect(localStorage.getItem('isLoggedIn')).toBe('true');
+    expect(localStorage.getItem('authToken')).toBe('test-jwt-token');
     expect(localStorage.getItem('userName')).toBe('Test User');
     expect(localStorage.getItem('userEmail')).toBe('person@example.com');
     expect(localStorage.getItem('userRole')).toBe('user');
@@ -93,6 +95,7 @@ describe('LoginUser', () => {
 
     component.login();
     httpTestingController.expectOne('/api/auth/login').flush({
+      token: 'test-jwt-token',
       user: {
         id: 'user-id',
         name: 'Test User',
@@ -105,6 +108,24 @@ describe('LoginUser', () => {
     expect(navigateByUrlSpy).toHaveBeenCalledWith('/blog-detail/test-blog');
   });
 
+  it('does not mark the user as logged in when the API omits its token', () => {
+    component.loginForm.setValue({ email: 'person@example.com', password: 'uri123' });
+
+    component.login();
+    httpTestingController.expectOne('/api/auth/login').flush({
+      user: {
+        id: 'user-id',
+        name: 'Test User',
+        email: 'person@example.com',
+        role: 'user',
+      },
+    });
+
+    expect(component.errorMessage).toBe('Máy chủ trả về dữ liệu đăng nhập không hợp lệ.');
+    expect(localStorage.getItem('isLoggedIn')).toBeNull();
+    expect(localStorage.getItem('authToken')).toBeNull();
+  });
+
   it('shows an error when the credentials are rejected', () => {
     component.loginForm.setValue({ email: 'person@example.com', password: 'wrong' });
     component.login();
@@ -115,6 +136,20 @@ describe('LoginUser', () => {
 
     expect(component.errorMessage).toBe('Email hoặc mật khẩu không chính xác.');
     expect(localStorage.getItem('isLoggedIn')).toBeNull();
+    expect(localStorage.getItem('authToken')).toBeNull();
+    expect(component.isSubmitting).toBe(false);
+  });
+
+  it('stops submitting and reports an error when the auth API fails', () => {
+    component.loginForm.setValue({ email: 'person@example.com', password: 'uri123' });
+
+    component.login();
+    httpTestingController.expectOne('/api/auth/login').flush(
+      { message: 'database unavailable' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+
+    expect(component.errorMessage).toBe('Không thể đăng nhập lúc này. Vui lòng thử lại sau.');
     expect(component.isSubmitting).toBe(false);
   });
 

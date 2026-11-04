@@ -4,6 +4,7 @@ import { inject, PLATFORM_ID } from '@angular/core';
 import { RouterModule } from '@angular/router'; 
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs';
+import { BlogPost, BlogService } from '../../core/services/blog.service';
 
 interface HomeProduct {
   id: string | number;
@@ -28,6 +29,7 @@ interface HomeProduct {
 })
 export class HomepageComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly blogService = inject(BlogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -50,18 +52,17 @@ export class HomepageComponent implements OnInit {
     { number: '03', image: 'assets/index/step3.png', title: 'Hoàn thành tác phẩm', desc: 'Tháo sản phẩm hoàn thiện ra khỏi bảng đinh' }
   ];
 
-  galleryData = [
-    'assets/index/stcd1.png', 'assets/index/stcd2.png', 'assets/index/stcd3.png',
-    'assets/index/stcd4.png', 'assets/index/stcd5.png', 'assets/index/stcd6.png'
-  ];
-
   bestSellers: HomeProduct[] = [];
+  communityPosts: BlogPost[] = [];
+  isCommunityLoading = false;
+  communityErrorMessage = '';
   isLoading = false;
   errorMessage = '';
 
   ngOnInit(): void {
     if (this.isBrowser) {
       this.loadBestSellers();
+      this.loadCommunityPosts();
     }
   }
 
@@ -93,6 +94,33 @@ export class HomepageComponent implements OnInit {
     return product.id;
   }
 
+  trackCommunityPost(_index: number, post: BlogPost): string | number {
+    return post.id;
+  }
+
+  private loadCommunityPosts(): void {
+    this.isCommunityLoading = true;
+    this.communityErrorMessage = '';
+
+    this.blogService.getBlogs().subscribe({
+      next: (posts) => {
+        this.communityPosts = posts
+          .filter((post) => post.imageAvailable && Number.isFinite(Date.parse(post.date)))
+          .sort((first, second) => Date.parse(second.date) - Date.parse(first.date))
+          .slice(0, 6);
+        this.isCommunityLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi tải bài viết cộng đồng:', error);
+        this.communityPosts = [];
+        this.communityErrorMessage = 'Không thể tải bài viết cộng đồng lúc này.';
+        this.isCommunityLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
   private parseProducts(data: unknown): HomeProduct[] {
     const records = Array.isArray(data)
       ? data
@@ -118,6 +146,11 @@ export class HomepageComponent implements OnInit {
         : Array.isArray(rawImage) && typeof rawImage[0] === 'string'
           ? rawImage[0]
           : 'assets/product/7.png';
+      const normalizedImage = image.startsWith('images/')
+        ? `/api/images/${image.slice('images/'.length)}`
+        : image.startsWith('/images/')
+          ? `/api/images/${image.slice('/images/'.length)}`
+          : image;
       const originalPrice = this.toNumber(record['originalPrice'] ?? record['price']);
       const currentPrice = this.toNumber(record['currentPrice'] ?? record['salePrice'] ?? originalPrice);
       const stock = this.toNumber(record['stock'] ?? record['quantity']);
@@ -131,7 +164,7 @@ export class HomepageComponent implements OnInit {
           ? record['slug'].trim()
           : this.slugify(name),
         name,
-        image,
+        image: normalizedImage,
         isSale: record['isSale'] === true || discountPercent > 0,
         badge: discountPercent > 0 ? `-${discountPercent}%` : 'Ưu đãi',
         originalPrice,

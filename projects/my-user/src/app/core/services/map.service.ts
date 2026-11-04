@@ -93,9 +93,8 @@ export class MapService {
         : '';
 
     if (!image) return 'assets/gallery_assets/mau-ca-heo.webp';
-    if (image.startsWith('images/gallery_assets/')) {
-      return `/assets/${image.slice('images/'.length)}`;
-    }
+    if (image.startsWith('images/')) return `/api/images/${image.slice('images/'.length)}`;
+    if (image.startsWith('/images/')) return `/api/images/${image.slice('/images/'.length)}`;
 
     return image;
   }

@@ -115,10 +115,6 @@
         </div>
       }
 
-      @if (cartMessage) {
-        <div class="alert alert-info py-2" role="status">{{ cartMessage }}</div>
-      }
-
       @if (statusMessage) {
         <div class="alert alert-light py-2 d-flex align-items-center justify-content-between" role="status">
           <span>{{ statusMessage }}</span>
@@ -193,7 +189,11 @@
                   <div class="product-rating" [attr.aria-label]="'Đánh giá ' + product.rating + ' trên 5'">
                     <span class="stars">
                       @for (icon of starIcons(product.rating); track $index) {
-                        <i [class]="icon"></i>
+                        <span class="star" [class.filled]="icon === 'bi bi-star-fill'"
+                          [class.half]="icon === 'bi bi-star-half'"
+                          [class.empty]="icon === 'bi bi-star'">
+                          {{ icon === 'bi bi-star-fill' || icon === 'bi bi-star-half' ? '★' : '☆' }}
+                        </span>
                       }
                     </span>
                     <span class="rating-text">{{ product.rating }}</span>

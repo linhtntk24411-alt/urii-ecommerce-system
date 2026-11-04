@@ -71,10 +71,12 @@
           </div>
 
           <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="stars-display">
-              <i *ngFor="let icon of starIcons(product.rating)" [class]="icon"></i>
+            <div class="stars-display product-rating-stars">
+              <i *ngFor="let icon of starIcons(averageReviewRating)" [class]="icon"></i>
             </div>
-            <span class="text-secondary small fw-semibold">{{ product.rating }} ({{ product.reviews }} đánh giá)</span>
+            <a class="text-secondary small fw-semibold review-summary-link" href="#customer-reviews">
+              {{ averageReviewRating | number: '1.1-1' }} ({{ reviewCount }} đánh giá)
+            </a>
             <span class="text-secondary small">|</span>
             <span class="text-secondary small">Đã bán {{ product.reviews * 3 }}</span>
           </div>
@@ -168,5 +170,107 @@
         </div>
       </div>
     </div>
+
+    <section id="customer-reviews" class="customer-reviews mt-4 bg-white rounded-4 shadow-sm p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h2 class="h4 fw-bold mb-0">Đánh giá sản phẩm</h2>
+        <span class="text-secondary small">{{ reviewCount }} đánh giá</span>
+      </div>
+
+      <div *ngIf="reviewErrorMessage" class="alert alert-warning" role="status">
+        {{ reviewErrorMessage }}
+      </div>
+
+      <div class="review-overview row g-4 align-items-center mb-4">
+        <div class="col-md-4 text-center">
+          <div class="review-average">{{ averageReviewRating | number: '1.1-1' }}<span>/5</span></div>
+          <div class="stars-display" aria-label="Điểm đánh giá">
+            <i *ngFor="let icon of starIcons(averageReviewRating)" [class]="icon"></i>
+          </div>
+          <div class="text-secondary small mt-1">Dựa trên {{ reviewCount }} đánh giá</div>
+        </div>
+        <div class="col-md-8">
+          <div *ngFor="let star of ratingOptions" class="review-rating-row">
+            <span>{{ star }} sao</span>
+            <div class="rating-bar">
+              <div class="rating-bar-fill" [style.width.%]="ratingPercentage(star)"></div>
+            </div>
+            <span class="text-secondary">{{ ratingCount(star) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-filters d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="filter-review-btn" [class.active]="reviewMediaFilter === 'all'"
+          (click)="setReviewMediaFilter('all')">Tất cả</button>
+        <button type="button" class="filter-review-btn" [class.active]="reviewMediaFilter === 'photos'"
+          (click)="setReviewMediaFilter('photos')">
+          <i class="bi bi-image me-1"></i>Có hình ảnh
+        </button>
+        <button type="button" class="filter-review-btn" [class.active]="reviewMediaFilter === 'videos'"
+          (click)="setReviewMediaFilter('videos')">
+          <i class="bi bi-camera-video me-1"></i>Có video
+        </button>
+        <button *ngFor="let star of ratingOptions" type="button" class="filter-review-btn"
+          [class.active]="reviewRatingFilter === star" (click)="setReviewRatingFilter(star)">
+          {{ star }} sao
+        </button>
+        <button *ngIf="reviewRatingFilter !== null" type="button" class="filter-review-btn"
+          (click)="setReviewRatingFilter(null)">Bỏ lọc sao</button>
+      </div>
+
+      <div *ngIf="filteredCustomerReviews.length; else emptyReviews">
+        <article *ngFor="let review of filteredCustomerReviews" class="review-card">
+          <div class="d-flex align-items-start gap-3">
+            <img *ngIf="review.avatar; else reviewInitial" class="review-avatar-image"
+              [src]="review.avatar" [alt]="'Ảnh đại diện ' + review.customerName" loading="lazy" />
+            <ng-template #reviewInitial>
+              <div class="review-avatar-fallback" aria-hidden="true">
+                {{ review.customerName.charAt(0) || 'K' }}
+              </div>
+            </ng-template>
+            <div class="flex-grow-1 min-w-0">
+              <div class="d-flex flex-wrap justify-content-between gap-1">
+                <strong>{{ review.customerName }}</strong>
+                <time *ngIf="review.createdAt" class="text-secondary small" [attr.datetime]="review.createdAt">
+                  {{ review.createdAt | date: 'dd/MM/yyyy' }}
+                </time>
+              </div>
+              <div class="review-card-stars" [attr.aria-label]="review.rating + ' trên 5 sao'">
+                <i *ngFor="let icon of starIcons(review.rating)" [class]="icon"></i>
+              </div>
+              <div class="review-product-context">
+                <div><span>Sản phẩm:</span> {{ product.name }}</div>
+                <div><span>Phân loại:</span> {{ review.variantName || 'Không ghi nhận' }}</div>
+              </div>
+              <p *ngIf="review.comment" class="review-comment mb-0">{{ review.comment }}</p>
+              <div *ngIf="review.images.length || review.videos.length" class="review-media-grid">
+                <a *ngFor="let image of review.images" [href]="image" target="_blank" rel="noopener noreferrer"
+                  class="review-media-image" [attr.aria-label]="'Xem ảnh đánh giá của ' + review.customerName">
+                  <img [src]="image" [alt]="'Ảnh khách hàng đánh giá ' + product.name" loading="lazy" />
+                </a>
+                <video *ngFor="let video of review.videos" class="review-media-video" [src]="video"
+                  controls preload="metadata" playsinline
+                  [attr.aria-label]="'Video đánh giá của ' + review.customerName"></video>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #emptyReviews>
+        <div class="review-empty-state text-center py-5">
+          <i class="bi bi-chat-square-text"></i>
+          <p class="fw-semibold mb-1">
+            {{ customerReviews.length ? 'Không có đánh giá phù hợp bộ lọc.' : 'Chưa có đánh giá chi tiết cho sản phẩm này.' }}
+          </p>
+          <span *ngIf="!customerReviews.length" class="text-secondary small">
+            Đánh giá kèm hình ảnh và video sẽ hiển thị tại đây.
+          </span>
+          <button *ngIf="customerReviews.length && (reviewRatingFilter !== null || reviewMediaFilter !== 'all')"
+            type="button" class="filter-review-btn mt-2" (click)="resetReviewFilters()">Xóa bộ lọc</button>
+        </div>
+      </ng-template>
+    </section>
   </div>
 </div>

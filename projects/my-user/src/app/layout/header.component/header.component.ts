@@ -1,6 +1,7 @@
 import { afterNextRender, ChangeDetectorRef, Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { CartService } from '../../core/services/cart.service';
 
 @Component({
   selector: 'app-header',
@@ -24,11 +25,13 @@ export class HeaderComponent implements OnInit, OnDestroy {
   
   private storageListener: any;
   private authChangeListener: (() => void) | null = null;
+  private cartChangeListener: (() => void) | null = null;
 
   constructor(
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly cart: CartService
   ) {
     afterNextRender(() => {
       if (!isPlatformBrowser(this.platformId)) return;
@@ -52,8 +55,13 @@ export class HeaderComponent implements OnInit, OnDestroy {
         this.checkAuthStatus();
         this.changeDetectorRef.markForCheck();
       };
+      this.cartChangeListener = () => {
+        this.updateCartBadge();
+        this.changeDetectorRef.markForCheck();
+      };
       window.addEventListener('storage', this.storageListener);
       window.addEventListener('auth:changed', this.authChangeListener);
+      window.addEventListener('cart:updated', this.cartChangeListener);
     }
   }
 
@@ -64,6 +72,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
       }
       if (this.authChangeListener) {
         window.removeEventListener('auth:changed', this.authChangeListener);
+      }
+      if (this.cartChangeListener) {
+        window.removeEventListener('cart:updated', this.cartChangeListener);
       }
     }
   }
@@ -84,8 +95,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   updateCartBadge(): void {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    this.cartCount = cart.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
+    try {
+      this.cartCount = this.cart.getItemCount();
+    } catch (error) {
+      console.error('Không thể tải số lượng giỏ hàng:', error);
+      this.cartCount = 0;
+    }
   }
 
   toggleMobileMenu(): void {

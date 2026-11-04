@@ -1,7 +1,15 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Router } from '@angular/router';
 import { vi } from 'vitest';
+import { CartService } from '../../core/services/cart.service';
+import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Product } from './product';
+
+@Component({ standalone: true, template: '' })
+class CheckoutRouteStub {}
 
 describe('Product', () => {
   let component: Product;
@@ -11,9 +19,12 @@ describe('Product', () => {
     window.localStorage.removeItem('products');
     await TestBed.configureTestingModule({
       imports: [Product],
-      providers: [provideRouter([])],
+      providers: [provideRouter([{ path: 'checkout', component: CheckoutRouteStub }])],
     }).compileComponents();
 
+    TestBed.inject(CartService).saveItems([]);
+    TestBed.inject(CheckoutSelectionService).clear();
+    vi.spyOn(window, 'fetch').mockResolvedValue(new Response('[]', { status: 200 }));
     fixture = TestBed.createComponent(Product);
     component = fixture.componentInstance;
     await fixture.whenStable();
@@ -62,6 +73,56 @@ describe('Product', () => {
     expect(component.productCountText).toBe('Hiển thị 1-1 trong số 1 sản phẩm');
   });
 
+  it('shows a success popup after adding a product to the cart', () => {
+    component.addToCart({
+      id: 'toast-product',
+      name: 'Sản phẩm popup',
+      category: 'KIT',
+      description: '',
+      image: '',
+      originalPrice: 50000,
+      isSale: false,
+      isHot: false,
+      rating: 0,
+      reviews: 0,
+      stock: 1,
+      variants: [{ name: 'Mặc định' }],
+    });
+
+    expect(TestBed.inject(CartService).getItems()).toEqual([
+      { productId: 'toast-product', variant: 'Mặc định', quantity: 1 },
+    ]);
+    expect(TestBed.inject(ToastService).messages()[0]).toMatchObject({
+      message: 'Đã thêm "Sản phẩm popup" vào giỏ hàng.',
+      kind: 'success',
+    });
+  });
+
+  it('buys a product directly without adding it to the cart', async () => {
+    component.buyNow({
+      id: 'buy-now-product',
+      name: 'Mua ngay',
+      category: 'KIT',
+      description: '',
+      image: '',
+      originalPrice: 50000,
+      isSale: false,
+      isHot: false,
+      rating: 0,
+      reviews: 0,
+      stock: 1,
+      variants: [{ name: 'Mặc định' }],
+    });
+    await fixture.whenStable();
+
+    expect(TestBed.inject(CartService).getItems()).toEqual([]);
+    expect(TestBed.inject(Router).url).toBe('/checkout');
+    expect(TestBed.inject(CheckoutSelectionService).get()).toEqual([
+      { productId: 'buy-now-product', variant: 'Mặc định', quantity: 1 },
+    ]);
+    expect(TestBed.inject(CheckoutSelectionService).shouldRemoveFromCartAfterCheckout()).toBe(false);
+  });
+
   it('should load product documents from the MongoDB API', async () => {
     const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(
       new Response(JSON.stringify([{
@@ -90,6 +151,30 @@ describe('Product', () => {
     component.category = 'kit';
     component.setRatingFilter('all');
     expect(component.filteredProducts.map((product) => product.id)).toEqual(['mongo-product-1']);
+    fetchSpy.mockRestore();
+  });
+
+  it('should render filled rating stars from MongoDB review records', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{
+        id: 'reviewed-product',
+        name: 'Sản phẩm có đánh giá',
+        category: 'KIT',
+        originalPrice: 50000,
+        rating: 4.5,
+        reviewCount: 2,
+      }]), { status: 200 }),
+    );
+
+    await component.loadProducts();
+    fixture.detectChanges();
+
+    expect(component.pageProducts[0].rating).toBe(4.5);
+    expect(component.pageProducts[0].reviews).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('.product-rating .star.filled').length).toBe(4);
+    expect(fixture.nativeElement.querySelectorAll('.product-rating .star.half').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.product-rating .star.empty').length).toBe(0);
+
     fetchSpy.mockRestore();
   });
 

@@ -1,18 +1,30 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Router } from '@angular/router';
 import { vi } from 'vitest';
+import { CartService } from '../../core/services/cart.service';
+import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
+import { ToastService } from '../../core/services/toast.service';
 import { ProductDetail } from './product-detail';
+
+@Component({ standalone: true, template: '' })
+class CheckoutRouteStub {}
 
 describe('ProductDetail', () => {
   let component: ProductDetail;
   let fixture: ComponentFixture<ProductDetail>;
 
   beforeEach(async () => {
+    window.localStorage.removeItem('products');
     await TestBed.configureTestingModule({
       imports: [ProductDetail],
-      providers: [provideRouter([])],
+      providers: [provideRouter([{ path: 'checkout', component: CheckoutRouteStub }])],
     }).compileComponents();
 
+    TestBed.inject(CartService).saveItems([]);
+    TestBed.inject(CheckoutSelectionService).clear();
+    vi.spyOn(window, 'fetch').mockResolvedValue(new Response('[]', { status: 200 }));
     fixture = TestBed.createComponent(ProductDetail);
     component = fixture.componentInstance;
     await fixture.whenStable();
@@ -20,6 +32,58 @@ describe('ProductDetail', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('shows a success popup after adding a product variant to the cart', () => {
+    component.product = {
+      id: 'detail-toast-product',
+      slug: 'detail-toast-product',
+      name: 'Sản phẩm chi tiết',
+      image: '',
+      description: '',
+      rating: 0,
+      reviews: 0,
+      stock: 4,
+      originalPrice: 50000,
+      customerReviews: [],
+      variants: [{ name: 'Màu đỏ' }],
+    };
+    component.selectedVariant = component.product.variants?.[0] ?? null;
+    component.addToCart();
+
+    expect(TestBed.inject(CartService).getItems()).toEqual([
+      { productId: 'detail-toast-product', variant: 'Màu đỏ', quantity: 1 },
+    ]);
+    expect(TestBed.inject(ToastService).messages()[0]).toMatchObject({
+      message: 'Đã thêm "Sản phẩm chi tiết" vào giỏ hàng.',
+      kind: 'success',
+    });
+  });
+
+  it('buys the selected variant directly without adding it to the cart', async () => {
+    component.product = {
+      id: 'direct-detail-product',
+      slug: 'direct-detail-product',
+      name: 'Mua ngay chi tiết',
+      image: '',
+      description: '',
+      rating: 0,
+      reviews: 0,
+      stock: 4,
+      originalPrice: 50000,
+      customerReviews: [],
+      variants: [{ name: 'Màu xanh' }],
+    };
+    component.selectedVariant = component.product.variants?.[0] ?? null;
+    component.buyNow();
+    await fixture.whenStable();
+
+    expect(TestBed.inject(CartService).getItems()).toEqual([]);
+    expect(TestBed.inject(Router).url).toBe('/checkout');
+    expect(TestBed.inject(CheckoutSelectionService).get()).toEqual([
+      { productId: 'direct-detail-product', variant: 'Màu xanh', quantity: 1 },
+    ]);
+    expect(TestBed.inject(CheckoutSelectionService).shouldRemoveFromCartAfterCheckout()).toBe(false);
   });
 
   it('should display the cached product when the API is unavailable', async () => {
@@ -96,6 +160,58 @@ describe('ProductDetail', () => {
     expect(component.selectedVariantIndex).toBe(1);
     expect(component.displayPrice).toBe(128700);
     expect(component.availableStock).toBe(23);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should display customer reviews with their product variant, photos and videos', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch').mockImplementation(async (input) => {
+      if (String(input).startsWith('/api/reviews/product/')) {
+        return new Response(JSON.stringify({
+          productName: 'Sản phẩm được đánh giá',
+          reviews: [{
+            id: 'review-1',
+            customerName: 'Nguyễn An',
+            rating: 5,
+            comment: 'Đúng mô tả, đóng gói cẩn thận.',
+            variantName: 'Màu đỏ',
+            images: ['/images/review-photo.jpg'],
+            videos: ['/images/review-video.mp4'],
+          }],
+        }), { status: 200 });
+      }
+
+      return new Response(JSON.stringify([{
+        id: 'reviewed-product',
+        slug: 'reviewed-product',
+        name: 'Sản phẩm được đánh giá',
+        rating: 5,
+        reviewCount: 1,
+      }]), { status: 200 });
+    });
+
+    await component.loadProduct('reviewed-product');
+    fixture.detectChanges();
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/reviews/product/reviewed-product');
+    expect(component.averageReviewRating).toBe(5);
+    expect(component.reviewCount).toBe(1);
+    expect(component.filteredCustomerReviews[0].variantName).toBe('Màu đỏ');
+    expect(fixture.nativeElement.textContent).toContain('Sản phẩm được đánh giá');
+    expect(fixture.nativeElement.textContent).toContain('Màu đỏ');
+    expect(fixture.nativeElement.querySelectorAll('.product-rating-stars .bi-star-fill').length)
+      .toBe(5);
+    expect(fixture.nativeElement.querySelector('.review-media-image img')?.getAttribute('src'))
+      .toBe('/images/review-photo.jpg');
+    expect(fixture.nativeElement.querySelector('.review-media-video')?.getAttribute('src'))
+      .toBe('/images/review-video.mp4');
+
+    component.setReviewMediaFilter('photos');
+    expect(component.filteredCustomerReviews).toHaveLength(1);
+    component.setReviewRatingFilter(4);
+    expect(component.filteredCustomerReviews).toHaveLength(0);
+    component.resetReviewFilters();
+    expect(component.filteredCustomerReviews).toHaveLength(1);
 
     fetchSpy.mockRestore();
   });

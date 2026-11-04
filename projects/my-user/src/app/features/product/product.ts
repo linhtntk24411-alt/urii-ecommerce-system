@@ -3,6 +3,9 @@ import { ChangeDetectorRef, Component, DestroyRef, OnInit, PLATFORM_ID, inject }
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FavoriteProductsService } from '../../core/services/favorite-products.service';
+import { CartService } from '../../core/services/cart.service';
+import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
+import { ToastService } from '../../core/services/toast.service';
 
 interface ProductVariant {
   name: string;
@@ -25,12 +28,6 @@ interface ProductItem {
   variants: ProductVariant[];
 }
 
-interface CartItem {
-  productId: string | number;
-  variant: string | null;
-  quantity: number;
-}
-
 interface PaginationItem {
   label: number | string;
   page: number | null;
@@ -51,6 +48,9 @@ export class Product implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly favorites = inject(FavoriteProductsService);
+  private readonly cart = inject(CartService);
+  private readonly checkoutSelection = inject(CheckoutSelectionService);
+  private readonly toast = inject(ToastService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly itemsPerPage = 9;
 
@@ -61,7 +61,6 @@ export class Product implements OnInit {
   errorMessage = '';
   statusMessage = '';
   refreshFailed = false;
-  cartMessage = '';
   category = '';
   searchTerm = '';
   favoritesOnly = false;
@@ -295,43 +294,25 @@ export class Product implements OnInit {
   }
 
   addToCart(product: ProductItem): void {
-    const cartItems = this.readCartItems();
     const variant = product.variants[0]?.name ?? null;
-    const existingItem = cartItems.find(
-      (item) => item.productId === product.id && item.variant === variant,
-    );
-
-    if (existingItem) {
-      existingItem.quantity += 1;
-    } else {
-      cartItems.push({ productId: product.id, variant, quantity: 1 });
-    }
-
-    if (this.saveCartItems(cartItems)) {
-      this.cartMessage = `Đã thêm "${product.name}" vào giỏ hàng!`;
+    try {
+      this.cart.addItem({ productId: String(product.id), variant, quantity: 1 });
+      this.toast.show(`Đã thêm "${product.name}" vào giỏ hàng.`);
+    } catch (error) {
+      console.error('Không thể thêm sản phẩm vào giỏ hàng:', error);
+      this.toast.show('Không thể cập nhật giỏ hàng. Vui lòng thử lại.', 'error');
     }
   }
 
   buyNow(product: ProductItem): void {
     const variant = product.variants[0]?.name ?? null;
-    const cartItems = this.readCartItems();
-    const existingItem = cartItems.find(
-      (item) => item.productId === product.id && item.variant === variant,
-    );
-
-    if (!existingItem && !this.saveCartItems([...cartItems, { productId: product.id, variant, quantity: 1 }])) {
-      return;
-    }
-
     try {
-      window.localStorage.setItem(
-        'checkoutItems',
-        JSON.stringify([{ productId: product.id, variant, quantity: 1 }]),
-      );
-      window.location.href = '/checkout.html';
+      const item = { productId: String(product.id), variant, quantity: 1 };
+      this.checkoutSelection.set([item], false);
+      void this.router.navigate(['/checkout']);
     } catch (error) {
-      console.error('Không thể lưu sản phẩm thanh toán:', error);
-      this.cartMessage = 'Không thể chuyển đến thanh toán. Vui lòng thử lại.';
+      console.error('Không thể chuẩn bị sản phẩm thanh toán:', error);
+      this.toast.show('Không thể chuyển đến thanh toán. Vui lòng thử lại.', 'error');
     }
   }
 
@@ -450,6 +431,24 @@ export class Product implements OnInit {
       const currentPrice = this.optionalNumber(item['currentPrice'] ?? item['salePrice']);
       const category = item['category'];
       const categoryName = this.isRecord(category) ? category['name'] : category;
+      const reviewRecords = Array.isArray(item['reviews'])
+        ? item['reviews']
+        : Array.isArray(item['customerReviews'])
+          ? item['customerReviews']
+          : [];
+      const reviewRatings = reviewRecords.flatMap((review): number[] => {
+        if (!this.isRecord(review)) return [];
+        const rating = this.optionalNumber(review['rating'] ?? review['rate'] ?? review['stars']);
+        return rating !== undefined && rating >= 1 && rating <= 5 ? [rating] : [];
+      });
+      const rating = reviewRatings.length
+        ? reviewRatings.reduce((sum, value) => sum + value, 0) / reviewRatings.length
+        : this.toNumber(item['rating']);
+      const reviewCount = Array.isArray(item['reviews'])
+        ? item['reviews'].length
+        : Array.isArray(item['customerReviews'])
+          ? item['customerReviews'].length
+          : this.toNumber(item['reviewCount'] ?? item['reviewsCount'] ?? item['reviews']);
 
       return [{
         id,
@@ -462,8 +461,8 @@ export class Product implements OnInit {
         currentPrice,
         isSale: item['isSale'] === true || (currentPrice !== undefined && currentPrice < originalPrice),
         isHot: item['isHot'] === true,
-        rating: this.toNumber(item['rating']),
-        reviews: this.toNumber(item['reviews'] ?? item['reviewCount']),
+        rating,
+        reviews: reviewCount,
         stock: this.toNumber(item['stock'] ?? item['quantity']),
         variants,
       }];
@@ -488,47 +487,6 @@ export class Product implements OnInit {
     } catch (error) {
       console.error('Không thể đọc bộ nhớ đệm sản phẩm:', error);
       return [];
-    }
-  }
-
-  private readCartItems(): CartItem[] {
-    try {
-      const saved = window.localStorage.getItem('cartItems');
-      const parsed: unknown = saved ? JSON.parse(saved) : [];
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-
-      return parsed.flatMap((item): CartItem[] => {
-        if (
-          !this.isRecord(item)
-          || (typeof item['productId'] !== 'string' && typeof item['productId'] !== 'number')
-          || typeof item['quantity'] !== 'number'
-        ) {
-          return [];
-        }
-        return [{
-          productId: item['productId'],
-          variant: typeof item['variant'] === 'string' ? item['variant'] : null,
-          quantity: item['quantity'],
-        }];
-      });
-    } catch (error) {
-      console.error('Không thể đọc giỏ hàng:', error);
-      return [];
-    }
-  }
-
-  private saveCartItems(items: CartItem[]): boolean {
-    try {
-      window.localStorage.setItem('cartItems', JSON.stringify(items));
-      window.dispatchEvent(new CustomEvent('cart:updated', { detail: items }));
-      window.dispatchEvent(new Event('storage'));
-      return true;
-    } catch (error) {
-      console.error('Không thể lưu giỏ hàng:', error);
-      this.cartMessage = 'Không thể cập nhật giỏ hàng. Vui lòng thử lại.';
-      return false;
     }
   }
 

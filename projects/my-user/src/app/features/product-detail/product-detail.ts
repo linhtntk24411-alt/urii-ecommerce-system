@@ -3,6 +3,9 @@ import { ChangeDetectorRef, Component, DestroyRef, OnInit, PLATFORM_ID, inject }
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FavoriteProductsService } from '../../core/services/favorite-products.service';
+import { CartService } from '../../core/services/cart.service';
+import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
+import { ToastService } from '../../core/services/toast.service';
 
 interface ProductVariant {
   name: string;
@@ -10,6 +13,20 @@ interface ProductVariant {
   stock?: number;
   image?: string;
 }
+
+interface CustomerReview {
+  id: string;
+  customerName: string;
+  avatar?: string;
+  rating: number;
+  comment: string;
+  variantName: string;
+  createdAt?: string;
+  images: string[];
+  videos: string[];
+}
+
+type ReviewMediaFilter = 'all' | 'photos' | 'videos';
 
 interface ProductItem {
   id: string | number;
@@ -25,6 +42,7 @@ interface ProductItem {
   isSale?: boolean;
   variants?: ProductVariant[];
   images?: string[];
+  customerReviews: CustomerReview[];
 }
 
 @Component({
@@ -46,13 +64,20 @@ export class ProductDetail implements OnInit {
   imageIndex = 0;
   isLoading = true;
   errorMessage = '';
+  reviewErrorMessage = '';
   statusMessage = '';
   isFavorite = false;
+  readonly ratingOptions = [5, 4, 3, 2, 1];
+  reviewMediaFilter: ReviewMediaFilter = 'all';
+  reviewRatingFilter: number | null = null;
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly favorites: FavoriteProductsService,
+    private readonly cart: CartService,
+    private readonly checkoutSelection: CheckoutSelectionService,
+    private readonly toast: ToastService,
   ) {}
 
   ngOnInit(): void {
@@ -112,6 +137,31 @@ export class ProductDetail implements OnInit {
     return this.selectedVariant?.stock ?? this.product?.stock ?? 0;
   }
 
+  get customerReviews(): CustomerReview[] {
+    return this.product?.customerReviews ?? [];
+  }
+
+  get reviewCount(): number {
+    return this.customerReviews.length || this.product?.reviews || 0;
+  }
+
+  get averageReviewRating(): number {
+    if (this.customerReviews.length) {
+      const total = this.customerReviews.reduce((sum, review) => sum + review.rating, 0);
+      return total / this.customerReviews.length;
+    }
+    return this.product?.rating ?? 0;
+  }
+
+  get filteredCustomerReviews(): CustomerReview[] {
+    return this.customerReviews.filter((review) => {
+      const matchesMedia = this.reviewMediaFilter === 'all'
+        || (this.reviewMediaFilter === 'photos' && review.images.length > 0)
+        || (this.reviewMediaFilter === 'videos' && review.videos.length > 0);
+      return matchesMedia && (this.reviewRatingFilter === null || review.rating === this.reviewRatingFilter);
+    });
+  }
+
   formatPrice(value: number): string {
     return `${value.toLocaleString('vi-VN')}₫`;
   }
@@ -125,6 +175,29 @@ export class ProductDetail implements OnInit {
       if (index === full && half) return 'bi bi-star-half';
       return 'bi bi-star';
     });
+  }
+
+  ratingCount(star: number): number {
+    return this.customerReviews.filter((review) => review.rating === star).length;
+  }
+
+  ratingPercentage(star: number): number {
+    return this.customerReviews.length
+      ? (this.ratingCount(star) / this.customerReviews.length) * 100
+      : 0;
+  }
+
+  setReviewMediaFilter(filter: ReviewMediaFilter): void {
+    this.reviewMediaFilter = filter;
+  }
+
+  setReviewRatingFilter(rating: number | null): void {
+    this.reviewRatingFilter = rating;
+  }
+
+  resetReviewFilters(): void {
+    this.reviewMediaFilter = 'all';
+    this.reviewRatingFilter = null;
   }
 
   increaseQuantity(): void {
@@ -161,43 +234,41 @@ export class ProductDetail implements OnInit {
   addToCart(): void {
     if (!this.product) return;
 
-    const saved = this.readCartItems();
-    const existing = saved.find(
-      (item) => item.productId === this.product!.id && item.variant === (this.selectedVariant?.name ?? null),
-    );
-
-    if (existing) {
-      existing.quantity += this.quantity;
-    } else {
-      saved.push({
-        productId: this.product.id,
+    try {
+      this.cart.addItem({
+        productId: String(this.product.id),
         variant: this.selectedVariant?.name ?? null,
         quantity: this.quantity,
       });
+      this.toast.show(`Đã thêm "${this.product.name}" vào giỏ hàng.`);
+    } catch (error) {
+      console.error('Không thể thêm sản phẩm vào giỏ hàng:', error);
+      this.toast.show('Không thể cập nhật giỏ hàng. Vui lòng thử lại.', 'error');
     }
-
-    localStorage.setItem('cartItems', JSON.stringify(saved));
-    window.dispatchEvent(new CustomEvent('cart:updated', { detail: saved }));
-    window.dispatchEvent(new Event('storage'));
-    alert(`Đã thêm "${this.product.name}" vào giỏ hàng!`);
   }
 
   buyNow(): void {
     if (!this.product) return;
 
     const item = {
-      productId: this.product.id,
+      productId: String(this.product.id),
       variant: this.selectedVariant?.name ?? null,
       quantity: this.quantity,
     };
 
-    localStorage.setItem('checkoutItems', JSON.stringify([item]));
-    this.router.navigate(['/checkout']);
+    try {
+      this.checkoutSelection.set([item], false);
+      void this.router.navigate(['/checkout']);
+    } catch (error) {
+      console.error('Không thể chuẩn bị sản phẩm thanh toán:', error);
+      this.toast.show('Không thể chuyển đến thanh toán. Vui lòng thử lại.', 'error');
+    }
   }
 
   async loadProduct(slug: string): Promise<void> {
     this.isLoading = true;
     this.errorMessage = '';
+    this.reviewErrorMessage = '';
     this.statusMessage = '';
     const cachedProduct = this.readCachedProducts().find((item) => item.slug === slug);
 
@@ -223,6 +294,7 @@ export class ProductDetail implements OnInit {
 
       this.setProduct(found);
       this.isFavorite = this.favorites.has(found.id);
+      await this.loadCustomerReviews(found);
       try {
         window.localStorage.setItem('products', JSON.stringify(products));
       } catch (error) {
@@ -252,6 +324,34 @@ export class ProductDetail implements OnInit {
     this.isFavorite = this.favorites.has(product.id);
     this.quantity = 1;
     this.imageIndex = 0;
+  }
+
+  private async loadCustomerReviews(product: ProductItem): Promise<void> {
+    try {
+      const response = await window.fetch(
+        `/api/reviews/product/${encodeURIComponent(String(product.id))}`,
+      );
+      if (!response.ok) {
+        throw new Error(`Không thể tải đánh giá sản phẩm (HTTP ${response.status})`);
+      }
+
+      const data: unknown = await response.json();
+      const reviews = this.isRecord(data) && Array.isArray(data['reviews'])
+        ? data['reviews']
+        : Array.isArray(data)
+          ? data
+          : [];
+      product.customerReviews = this.parseCustomerReviews(reviews, String(product.id));
+      if (product.customerReviews.length) {
+        product.reviews = product.customerReviews.length;
+        product.rating = this.averageReviewRating;
+      }
+    } catch (error) {
+      console.error('Lỗi tải đánh giá sản phẩm:', error);
+      this.reviewErrorMessage = error instanceof Error
+        ? error.message
+        : 'Không thể tải đánh giá sản phẩm.';
+    }
   }
 
   private readCachedProducts(): ProductItem[] {
@@ -303,6 +403,12 @@ export class ProductDetail implements OnInit {
           }];
         })
         : [];
+      const rawReviews = Array.isArray(record['customerReviews'])
+        ? record['customerReviews']
+        : Array.isArray(record['reviews'])
+          ? record['reviews']
+          : [];
+      const customerReviews = this.parseCustomerReviews(rawReviews, id);
       const originalPrice = this.toNumber(record['originalPrice'] ?? record['price']);
       const currentPrice = this.optionalNumber(record['currentPrice'] ?? record['salePrice']);
 
@@ -314,14 +420,74 @@ export class ProductDetail implements OnInit {
         images,
         description: typeof record['description'] === 'string' ? record['description'] : '',
         rating: this.toNumber(record['rating']),
-        reviews: this.toNumber(record['reviews'] ?? record['reviewCount']),
+        reviews: this.toNumber(
+          record['reviewCount']
+          ?? (Array.isArray(record['reviews']) ? customerReviews.length : record['reviews'])
+          ?? record['reviewsCount'],
+        ),
         stock: this.toNumber(record['stock'] ?? record['quantity']),
         originalPrice,
         currentPrice,
         isSale: record['isSale'] === true || (currentPrice !== undefined && currentPrice < originalPrice),
         variants,
+        customerReviews,
       }];
     });
+  }
+
+  private parseCustomerReviews(data: unknown, productId: string): CustomerReview[] {
+    if (!Array.isArray(data)) return [];
+
+    return data.flatMap((review, index): CustomerReview[] => {
+      if (!this.isRecord(review)) return [];
+      const rating = this.toNumber(review['rating'] ?? review['rate'] ?? review['stars']);
+      if (rating < 1 || rating > 5) return [];
+      const variant = review['variant'] ?? review['variantName'] ?? review['selectedVariant'];
+      const media = Array.isArray(review['media']) ? review['media'] : [];
+      const mediaUrls = (type: 'image' | 'video'): string[] => media.flatMap((item) => {
+        if (!this.isRecord(item)) return [];
+        const itemType = this.stringValue(item['type']).toLowerCase();
+        const url = this.optionalString(item['url'] ?? item['src']);
+        return url && (itemType === type || itemType === `${type}s`) ? [url] : [];
+      });
+      const variantName = this.isRecord(variant)
+        ? this.stringValue(variant['name'] ?? variant['label'])
+        : this.stringValue(variant);
+
+      return [{
+        id: typeof review['id'] === 'string'
+          ? review['id']
+          : typeof review['_id'] === 'string'
+            ? review['_id']
+            : `${productId}-review-${index}`,
+        customerName: this.stringValue(
+          review['customerName'] ?? review['userName'] ?? review['author'] ?? review['name'],
+        ) || 'Khách hàng',
+        avatar: this.optionalString(review['avatar'] ?? review['avatarUrl']),
+        rating,
+        comment: this.stringValue(review['comment'] ?? review['content'] ?? review['text']),
+        variantName,
+        createdAt: this.optionalString(review['createdAt'] ?? review['date']),
+        images: [...this.stringArray(review['images'] ?? review['photos'] ?? review['imageUrls']), ...mediaUrls('image')],
+        videos: [...this.stringArray(review['videos'] ?? review['videoUrls']), ...mediaUrls('video')],
+      }];
+    });
+  }
+
+  private stringArray(value: unknown): string[] {
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+        .map((item) => item.trim())
+      : [];
+  }
+
+  private stringValue(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private optionalString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {
@@ -349,14 +515,4 @@ export class ProductDetail implements OnInit {
     return this.optionalNumber(value) ?? 0;
   }
 
-  private readCartItems(): Array<{ productId: string | number; variant: string | null; quantity: number }> {
-    try {
-      const raw = localStorage.getItem('cartItems');
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      console.error('Không thể đọc giỏ hàng:', error);
-      return [];
-    }
-  }
 }

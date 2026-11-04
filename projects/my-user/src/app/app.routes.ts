@@ -12,26 +12,30 @@ import { About } from './features/about/about';
 import { PageNotFoundComponent } from './features/page-not-found/page-not-found';
 import { Product } from './features/product/product';
 import { ProductDetail } from './features/product-detail/product-detail';
+import { Cart } from './features/cart/cart';
+import { CheckOut } from './features/check-out/check-out';
 
 export const routes: Routes = [
   { path: '', component: HomepageComponent },
   { path: 'products', component: Product },
   { path: 'favorites', component: Product, data: { favoritesOnly: true } },
   { path: 'product-detail/:slug', component: ProductDetail },
+  { path: 'cart', component: Cart },
+  { path: 'checkout', component: CheckOut },
   { path: 'custom-order', component: CustomOrderComponent },
   { path: 'blog-list', component: BlogListComponent },
-  { path: 'blog-detail/:slug', component: BlogDetailComponent },
   { path: 'blog-detail', component: BlogDetailComponent },
+  { path: 'blog-detail/:slug', component: BlogDetailComponent },
   { path: 'blog-create', component: BlogCreateComponent },
+  { path: 'sample-maps', component: SampleMapsComponent },
+  { path: 'sample-maps-detail', component: SampleMapsDetailComponent },
+  { path: 'sample-maps-detail/:slug', component: SampleMapsDetailComponent },
+  { path: 'login', component: LoginUser },
+  { path: 'support', component: SupportComponent },
   { path: 'support/support-center', component: SupportComponent },
   { path: 'support/faq', component: SupportComponent },
   { path: 'support/privacy-policy', component: SupportComponent },
   { path: 'support/terms-of-service', component: SupportComponent },
-  { path: 'sample-maps', component: SampleMapsComponent },
-  { path: 'sample-maps-detail/:slug', component: SampleMapsDetailComponent },
-  { path: 'login', component: LoginUser },
-  { path: 'sample-maps-detail', component: SampleMapsDetailComponent },
-  { path: 'support', component: SupportComponent },
   { path: 'about', component: About },
   { path: '**', component: PageNotFoundComponent },
 ];

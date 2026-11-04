@@ -161,6 +161,33 @@
   color: #fcc419;
 }
 
+.product-rating .stars {
+  display: inline-flex;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.product-rating .star {
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.product-rating .star.filled {
+  color: #fcc419;
+}
+
+.product-rating .star.half {
+  color: transparent;
+  background: linear-gradient(90deg, #fcc419 50%, #ced4da 50%);
+  background-clip: text;
+}
+
+.product-rating .star.empty {
+  color: #ced4da;
+}
+
 .product-rating .rating-text,
 .stock-number {
   color: #495057;

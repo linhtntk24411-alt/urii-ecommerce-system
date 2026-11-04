@@ -1,12 +1,35 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const oauthProviders = require('../services/oauthProviders');
+const { emitCrudChange } = require('../realtime');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_BYTES = 72;
+
+function formatAuthUser(user) {
+  if (!user) return null;
+  return {
+    _id: user._id,
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    avatar: user.avatar || '/images/avatar-non.jpg',
+    phone: user.phone || '',
+    birth: user.birth || '',
+    address: user.address || '',
+    joinDate: user.joinDate || '',
+    orders: user.orders ?? 0,
+    maps: user.maps ?? 0,
+    authProviders: user.authProviders || []
+  };
+}
+
+exports.formatAuthUser = formatAuthUser;
 
 exports.register = async (req, res) => {
   const { name, email, password } = req.body || {};
@@ -80,11 +103,89 @@ exports.login = async (req, res) => {
     res.json({
       message: 'Đăng nhập thành công!',
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      user: formatAuthUser(user)
     });
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
     res.status(500).json({ message: 'Không thể đăng nhập lúc này.' });
+  }
+};
+
+exports.getMe = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const user = await User.findById(userId).select('-password').lean();
+    if (!user) {
+      res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+      return;
+    }
+    res.json(formatAuthUser(user));
+  } catch (error) {
+    console.error('Lỗi tải hồ sơ cá nhân:', error);
+    res.status(500).json({ message: 'Không thể tải hồ sơ cá nhân.' });
+  }
+};
+
+exports.updateMe = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
+    return;
+  }
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    res.status(400).json({ message: 'Dữ liệu cập nhật không hợp lệ.' });
+    return;
+  }
+
+  const allowedFields = ['name', 'phone', 'birth', 'address', 'avatar', 'password'];
+  const updates = {};
+  for (const field of allowedFields) {
+    if (Object.hasOwn(req.body, field)) {
+      updates[field] = req.body[field];
+    }
+  }
+
+  if (updates.name !== undefined) {
+    if (typeof updates.name !== 'string' || !updates.name.trim()) {
+      res.status(400).json({ message: 'Tên người dùng không hợp lệ.' });
+      return;
+    }
+    updates.name = updates.name.trim();
+  }
+
+  if (updates.password !== undefined) {
+    if (typeof updates.password !== 'string'
+      || updates.password.length < PASSWORD_MIN_LENGTH
+      || Buffer.byteLength(updates.password, 'utf8') > PASSWORD_MAX_BYTES) {
+      res.status(400).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự và không vượt quá 72 byte.' });
+      return;
+    }
+    updates.password = await bcrypt.hash(updates.password, 12);
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+      runValidators: true
+    }).select('-password').lean();
+    if (!user) {
+      res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+      return;
+    }
+    emitCrudChange('users', 'updated', user._id);
+    res.json(formatAuthUser(user));
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ message: 'Dữ liệu người dùng không hợp lệ.' });
+      return;
+    }
+    console.error('Lỗi cập nhật hồ sơ cá nhân:', error);
+    res.status(500).json({ message: 'Không thể cập nhật hồ sơ cá nhân.' });
   }
 };
 
@@ -220,7 +321,7 @@ exports.oauthCallback = async (req, res) => {
     res.json({
       message: 'Đăng nhập thành công!',
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      user: formatAuthUser(user)
     });
   } catch (error) {
     if (error.code === 11000) {

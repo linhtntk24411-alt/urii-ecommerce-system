@@ -844,3 +844,61 @@ test('review routes and getProductReviews serve product reviews without 404 when
     User.find = origUserFind;
   }
 });
+
+test('auth/me, login profile formatting, and self user read work securely with avatar and without password', async () => {
+  const authController = require('../controllers/authController');
+  const authRoutes = require('../routes/authRoutes');
+  const userRoutes = require('../routes/userRoutes');
+
+  const authRoutePaths = authRoutes.stack
+    .filter((layer) => layer.route)
+    .map((layer) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
+  assert.ok(authRoutePaths.includes('GET /me'));
+  assert.ok(authRoutePaths.includes('PATCH /me'));
+
+  const userRoutePaths = userRoutes.stack
+    .filter((layer) => layer.route)
+    .map((layer) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
+  assert.ok(userRoutePaths.includes('GET /me'));
+
+  const sampleUser = readJSON('users.json').users[0];
+  const formatted = authController.formatAuthUser(sampleUser);
+  assert.equal(formatted.avatar, sampleUser.avatar);
+  assert.equal(formatted.name, sampleUser.name);
+  assert.equal(formatted.email, sampleUser.email);
+  assert.equal(Object.hasOwn(formatted, 'password'), false);
+
+  const origFindById = User.findById;
+  try {
+    User.findById = () => ({
+      select(sel) {
+        assert.equal(sel, '-password');
+        return {
+          lean: async () => sampleUser
+        };
+      }
+    });
+
+    let statusCode = 200;
+    let body = null;
+    await authController.getMe(
+      { auth: { id: sampleUser._id, role: 'user' } },
+      {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(payload) {
+          body = payload;
+        }
+      }
+    );
+
+    assert.equal(statusCode, 200);
+    assert.equal(body.email, sampleUser.email);
+    assert.equal(body.avatar, sampleUser.avatar);
+    assert.equal(Object.hasOwn(body, 'password'), false);
+  } finally {
+    User.findById = origFindById;
+  }
+});

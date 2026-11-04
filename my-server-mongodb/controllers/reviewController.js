@@ -9,6 +9,15 @@ const { getPagination } = require('../utils/pagination');
 const { syncProductRating } = require('../utils/commerceFixtures');
 const { emitCrudChange } = require('../realtime');
 
+function buildProductLookupFilter(value) {
+  const normalized = String(value || '').trim();
+  const filters = [{ id: normalized }, { slug: normalized }];
+  if (mongoose.isValidObjectId(normalized)) {
+    filters.push({ _id: normalized });
+  }
+  return { $or: filters };
+}
+
 async function getCustomerId(req, res) {
   const id = req.auth?.id;
   if (!mongoose.isValidObjectId(id)) {
@@ -36,41 +45,98 @@ function sendReviewError(res, error) {
   res.status(500).json({ message: 'Không thể xử lý đánh giá.' });
 }
 
+exports.getAllReviews = async (req, res) => {
+  if (req.query.productId) {
+    req.params.productId = String(req.query.productId);
+    return exports.getProductReviews(req, res);
+  }
+
+  try {
+    const { skip, limit } = getPagination(req.query);
+    const reviews = await Review.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const userIds = [
+      ...new Set(
+        reviews
+          .map((review) => String(review.userId || ''))
+          .filter((id) => mongoose.isValidObjectId(id))
+      )
+    ];
+    const users = userIds.length > 0
+      ? await User.find({ _id: { $in: userIds } }).select('name avatar').lean()
+      : [];
+    const usersById = new Map(users.map((user) => [String(user._id), user]));
+
+    res.json(reviews.map((review) => {
+      const user = usersById.get(String(review.userId));
+      return {
+        ...review,
+        userName: user?.name || 'Khách hàng',
+        userAvatar: user?.avatar || '/images/avatar-non.jpg'
+      };
+    }));
+  } catch (error) {
+    console.error('Lỗi tải danh sách đánh giá:', error);
+    res.status(500).json({ message: 'Không thể tải danh sách đánh giá.' });
+  }
+};
+
 exports.getProductReviews = async (req, res) => {
   try {
-    const product = await Product.findOne({ id: req.params.productId }).select('id name').lean();
-    if (!product) {
-      res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
+    const rawProductId = String(req.params.productId || req.params.id || req.query.productId || '').trim();
+    if (!rawProductId) {
+      res.status(400).json({ message: 'Thiếu mã sản phẩm.' });
       return;
     }
+
+    const product = await Product.findOne(buildProductLookupFilter(rawProductId))
+      .select('id name slug rating reviewCount')
+      .lean();
+    const resolvedProductId = product?.id || rawProductId;
+
     const { skip, limit } = getPagination(req.query);
     const [reviews, total, aggregate] = await Promise.all([
-      Review.find({ productId: product.id }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-      Review.countDocuments({ productId: product.id }),
+      Review.find({ productId: resolvedProductId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Review.countDocuments({ productId: resolvedProductId }),
       Review.aggregate([
-        { $match: { productId: product.id } },
+        { $match: { productId: resolvedProductId } },
         { $group: { _id: '$rating', count: { $sum: 1 } } }
       ])
     ]);
-    const userIds = [...new Set(reviews.map((review) => String(review.userId)))];
-    const users = await User.find({ _id: { $in: userIds } }).select('name').lean();
-    const userNames = new Map(users.map((user) => [String(user._id), user.name]));
+
+    const userIds = [
+      ...new Set(
+        reviews
+          .map((review) => String(review.userId || ''))
+          .filter((id) => mongoose.isValidObjectId(id))
+      )
+    ];
+    const users = userIds.length > 0
+      ? await User.find({ _id: { $in: userIds } }).select('name avatar').lean()
+      : [];
+    const usersById = new Map(users.map((user) => [String(user._id), user]));
     const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     let ratingTotal = 0;
     aggregate.forEach(({ _id, count }) => {
-      distribution[_id] = count;
+      if (distribution[_id] !== undefined) {
+        distribution[_id] = count;
+      }
       ratingTotal += _id * count;
     });
+
     res.json({
-      productId: product.id,
-      productName: product.name,
+      productId: resolvedProductId,
+      productName: product?.name || null,
       total,
-      averageRating: total ? Number((ratingTotal / total).toFixed(2)) : 0,
+      averageRating: total ? Number((ratingTotal / total).toFixed(2)) : (product?.rating || 0),
       distribution,
-      reviews: reviews.map((review) => ({
-        ...review,
-        userName: userNames.get(String(review.userId)) || 'Khách hàng'
-      }))
+      reviews: reviews.map((review) => {
+        const user = usersById.get(String(review.userId));
+        return {
+          ...review,
+          userName: user?.name || 'Khách hàng',
+          userAvatar: user?.avatar || '/images/avatar-non.jpg'
+        };
+      })
     });
   } catch (error) {
     console.error('Lỗi tải đánh giá sản phẩm:', error);

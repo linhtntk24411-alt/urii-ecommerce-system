@@ -765,3 +765,82 @@ test('Excel conversion keeps the existing product fixture format', () => {
   assert.equal(products[0].id, fixture[0].id);
   assert.equal(products[0].variants.length, fixture[0].variants.length);
 });
+
+test('review routes and getProductReviews serve product reviews without 404 when collection exists', async () => {
+  const reviewRoutes = require('../routes/reviewRoutes');
+  const productRoutes = require('../routes/productRoutes');
+  const reviewController = require('../controllers/reviewController');
+
+  const reviewRoutePaths = reviewRoutes.stack
+    .filter((layer) => layer.route)
+    .map((layer) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
+  assert.ok(reviewRoutePaths.includes('GET /'));
+  assert.ok(reviewRoutePaths.includes('GET /product/:productId'));
+  assert.ok(reviewRoutePaths.includes('GET /products/:productId'));
+  assert.ok(reviewRoutePaths.includes('GET /:productId'));
+
+  const productRoutePaths = productRoutes.stack
+    .filter((layer) => layer.route)
+    .map((layer) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
+  assert.ok(productRoutePaths.includes('GET /:productId/reviews'));
+
+  const origProductFindOne = Product.findOne;
+  const origReviewFind = Review.find;
+  const origReviewCount = Review.countDocuments;
+  const origReviewAggregate = Review.aggregate;
+  const origUserFind = User.find;
+
+  try {
+    Product.findOne = () => ({ select: () => ({ lean: async () => null }) });
+    Review.find = () => ({
+      sort: () => ({
+        skip: () => ({
+          limit: () => ({
+            lean: async () => [{
+              id: 'rev-1',
+              productId: '1075504621',
+              userId: '6ade4310c044b23d6c6a8681',
+              rating: 3,
+              content: 'Tạm ổn',
+              media: []
+            }]
+          })
+        })
+      })
+    });
+    Review.countDocuments = async () => 1;
+    Review.aggregate = async () => [{ _id: 3, count: 1 }];
+    User.find = () => ({
+      select: () => ({
+        lean: async () => [{ _id: '6ade4310c044b23d6c6a8681', name: 'Nguyễn Minh Anh', avatar: '/images/avatar_user.jpeg' }]
+      })
+    });
+
+    let statusCode = 200;
+    let body = null;
+    await reviewController.getProductReviews(
+      { params: { productId: '1075504621' }, query: {} },
+      {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(payload) {
+          body = payload;
+        }
+      }
+    );
+
+    assert.equal(statusCode, 200);
+    assert.equal(body.productId, '1075504621');
+    assert.equal(body.total, 1);
+    assert.equal(body.averageRating, 3);
+    assert.equal(body.reviews[0].userName, 'Nguyễn Minh Anh');
+  } finally {
+    Product.findOne = origProductFindOne;
+    Review.find = origReviewFind;
+    Review.countDocuments = origReviewCount;
+    Review.aggregate = origReviewAggregate;
+    User.find = origUserFind;
+  }
+});

@@ -73,6 +73,7 @@ app.use('/api/order', orderRoutes);
 
 app.use('/api/cart', cartRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/review', reviewRoutes);
 
 app.use('/api/custom-orders', customOrderRoutes);
 app.use('/api/custom-order', customOrderRoutes);

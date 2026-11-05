@@ -1040,3 +1040,94 @@ test('POST /api/blogs and POST /api/comments allow authenticated non-admin users
     User.find = origUserFind;
   }
 });
+
+test('POST /api/custom-orders attaches userId from token, allows orders without image/map, and supports image upload', async () => {
+  const customOrderController = require('../controllers/customOrderController');
+  const { handleImageUpload } = require('../routes/uploadRoutes');
+
+  const sampleUser = readJSON('users.json').users.find((u) => u.role === 'user');
+  const origCustomOrderCreate = CustomOrder.create;
+  const origUserFind = User.find;
+  const origGalleryFind = Gallery.find;
+  const createdFiles = [];
+
+  try {
+    CustomOrder.create = async (doc) => ({
+      ...doc,
+      _id: '507f1f77bcf86cd799439097',
+      toObject() {
+        return { ...doc, _id: '507f1f77bcf86cd799439097' };
+      }
+    });
+    User.find = () => ({
+      select: () => ({
+        lean: async () => [sampleUser]
+      })
+    });
+    Gallery.find = () => ({
+      select: () => ({
+        lean: async () => []
+      })
+    });
+
+    let statusNoImage = 200;
+    let bodyNoImage = null;
+    await customOrderController.createCustomOrder(
+      {
+        auth: { id: sampleUser._id, role: 'user' },
+        body: {
+          requestName: 'Móc khóa gấu trúc',
+          size: '10 x 10',
+          beadType: 'Hạt Perler 5mm (Midi Beads)',
+          description: 'Làm theo mô tả chữ'
+        }
+      },
+      {
+        status(code) {
+          statusNoImage = code;
+          return this;
+        },
+        json(payload) {
+          bodyNoImage = payload;
+        }
+      }
+    );
+
+    assert.equal(statusNoImage, 201);
+    assert.equal(String(bodyNoImage.userId), sampleUser._id);
+    assert.equal(bodyNoImage.fullName, sampleUser.name);
+    assert.equal(bodyNoImage.imageUrl, '');
+
+    const tinyPngDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+    let uploadStatus = 200;
+    let uploadBody = null;
+    await handleImageUpload(
+      {
+        headers: { 'content-type': 'application/json' },
+        body: { image: tinyPngDataUrl }
+      },
+      {
+        status(code) {
+          uploadStatus = code;
+          return this;
+        },
+        json(payload) {
+          uploadBody = payload;
+        }
+      }
+    );
+
+    assert.equal(uploadStatus, 201);
+    assert.match(uploadBody.imageUrl, /^\/images\/uploads\/.+\.png$/);
+    createdFiles.push(path.join(__dirname, '..', 'public', uploadBody.imageUrl));
+  } finally {
+    CustomOrder.create = origCustomOrderCreate;
+    User.find = origUserFind;
+    Gallery.find = origGalleryFind;
+    for (const filePath of createdFiles) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  }
+});

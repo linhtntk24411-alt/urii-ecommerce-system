@@ -15,6 +15,7 @@ const customOrderSchema = new mongoose.Schema({
   imageNote: { type: String, default: '' },
   imageUrl: {
     type: String,
+    default: '',
     validate: {
       validator: (value) => !value || isValidImageUrl(value),
       message: 'imageUrl phải là đường dẫn /images/... hoặc URL http/https hợp lệ.'
@@ -32,9 +33,6 @@ customOrderSchema.pre('validate', function () {
   const hasCustomerInfo = Boolean(this.fullName && this.phone && this.email);
   if (!hasCustomerRef && !hasCustomerInfo) {
     this.invalidate('userId', 'Phải có userId hoặc đầy đủ fullName, phone, email.');
-  }
-  if (!this.mapId && !this.imageUrl) {
-    this.invalidate('imageUrl', 'Phải có mapId hoặc imageUrl.');
   }
 });
 

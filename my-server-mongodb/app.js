@@ -21,6 +21,7 @@ const likedBlogRoutes = require('./routes/likedBlogRoutes');
 const customOrderRoutes = require('./routes/customOrderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
@@ -41,7 +42,7 @@ app.use(cors({
   }
 }));
 app.set('allowedOrigins', allowedOrigins);
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use((req, res, next) => {
   const startedAt = Date.now();
@@ -77,6 +78,9 @@ app.use('/api/review', reviewRoutes);
 
 app.use('/api/custom-orders', customOrderRoutes);
 app.use('/api/custom-order', customOrderRoutes);
+
+app.use('/api/upload', uploadRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 app.use('/api/blogs', blogRoutes);
 app.use('/api/blog', blogRoutes);

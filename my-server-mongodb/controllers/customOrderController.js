@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Gallery = require('../models/Gallery');
 const { getPagination } = require('../utils/pagination');
 const { isValidImageUrl } = require('../utils/imageUrl');
+const { isDataImageUrl, saveDataUrlImage } = require('../utils/imageUpload');
 const { emitCrudChange } = require('../realtime');
 
 const customerFields = [
@@ -23,6 +24,26 @@ const customerFields = [
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeImageInput(rawValue) {
+  if (rawValue === undefined || rawValue === null) {
+    return undefined;
+  }
+  if (typeof rawValue !== 'string') {
+    return rawValue;
+  }
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (isDataImageUrl(trimmed)) {
+    return saveDataUrlImage(trimmed);
+  }
+  if (trimmed.startsWith('images/')) {
+    return `/${trimmed}`;
+  }
+  return trimmed;
 }
 
 function validateCustomOrder(body, partial = false) {
@@ -50,28 +71,21 @@ function validateCustomOrder(body, partial = false) {
     }
   }
 
-  if (!partial) {
-    const hasMapId = typeof body.mapId === 'string' && Boolean(body.mapId.trim());
-    const hasImageUrl = typeof body.imageUrl === 'string' && Boolean(body.imageUrl.trim());
-    if (!hasMapId && !hasImageUrl) {
-      return 'Trường imageUrl là bắt buộc.';
-    }
-  }
-
-  for (const field of ['fullName', 'phone', 'email', 'mapId', 'imageUrl']) {
+  for (const field of ['fullName', 'phone', 'email']) {
     if (partial && Object.hasOwn(body, field) && (typeof body[field] !== 'string' || !body[field].trim())) {
       return `Trường ${field} là bắt buộc.`;
     }
   }
 
-  if (body.email !== undefined
+  if (typeof body.email === 'string' && body.email.trim()
     && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())) {
     return 'Email không hợp lệ.';
   }
-  if (body.phone !== undefined && !/^\+?[0-9\s()-]{8,20}$/.test(body.phone.trim())) {
+  if (typeof body.phone === 'string' && body.phone.trim()
+    && !/^\+?[0-9\s()-]{8,20}$/.test(body.phone.trim())) {
     return 'Số điện thoại không hợp lệ.';
   }
-  if (body.imageUrl !== undefined && !isValidImageUrl(body.imageUrl)) {
+  if (body.imageUrl !== undefined && body.imageUrl !== '' && !isValidImageUrl(body.imageUrl)) {
     return 'imageUrl phải là đường dẫn /images/... hoặc URL http/https hợp lệ.';
   }
   if (body.status !== undefined
@@ -125,7 +139,36 @@ async function enrichCustomOrders(customOrders) {
 }
 
 exports.createCustomOrder = async (req, res) => {
-  const validationError = validateCustomOrder(req.body);
+  if (!isRecord(req.body)) {
+    res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
+    return;
+  }
+
+  const tokenUserId = typeof req.auth?.id === 'string' && mongoose.isValidObjectId(req.auth.id)
+    ? req.auth.id
+    : undefined;
+  const bodyUserId = typeof req.body.userId === 'string' && mongoose.isValidObjectId(req.body.userId)
+    ? req.body.userId
+    : undefined;
+  const resolvedUserId = req.auth?.role === 'admin'
+    ? (bodyUserId || tokenUserId)
+    : (tokenUserId || bodyUserId);
+
+  let normalizedImageUrl;
+  try {
+    normalizedImageUrl = normalizeImageInput(req.body.imageUrl ?? req.body.image);
+  } catch (error) {
+    res.status(400).json({ message: error.message || 'Ảnh tải lên không hợp lệ.' });
+    return;
+  }
+
+  const candidateBody = {
+    ...req.body,
+    ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+    ...(normalizedImageUrl !== undefined ? { imageUrl: normalizedImageUrl } : {})
+  };
+
+  const validationError = validateCustomOrder(candidateBody);
   if (validationError) {
     res.status(400).json({ message: validationError });
     return;
@@ -133,20 +176,38 @@ exports.createCustomOrder = async (req, res) => {
 
   try {
     const payload = {
-      ...req.body,
+      ...candidateBody,
       id: `custom-order-${randomUUID()}`,
-      requestName: req.body.requestName.trim(),
-      size: req.body.size.trim(),
-      beadType: req.body.beadType.trim(),
-      description: typeof req.body.description === 'string' ? req.body.description.trim() : '',
-      imageNote: typeof req.body.imageNote === 'string' ? req.body.imageNote.trim() : '',
+      requestName: candidateBody.requestName.trim(),
+      size: candidateBody.size.trim(),
+      beadType: candidateBody.beadType.trim(),
+      description: typeof candidateBody.description === 'string' ? candidateBody.description.trim() : '',
+      imageNote: typeof candidateBody.imageNote === 'string' ? candidateBody.imageNote.trim() : '',
       status: 'pending'
     };
-    if (typeof req.body.fullName === 'string') payload.fullName = req.body.fullName.trim();
-    if (typeof req.body.phone === 'string') payload.phone = req.body.phone.trim();
-    if (typeof req.body.email === 'string') payload.email = req.body.email.trim().toLowerCase();
-    if (typeof req.body.mapId === 'string') payload.mapId = req.body.mapId.trim();
-    if (typeof req.body.imageUrl === 'string') payload.imageUrl = req.body.imageUrl.trim();
+    if (typeof candidateBody.fullName === 'string' && candidateBody.fullName.trim()) {
+      payload.fullName = candidateBody.fullName.trim();
+    } else {
+      delete payload.fullName;
+    }
+    if (typeof candidateBody.phone === 'string' && candidateBody.phone.trim()) {
+      payload.phone = candidateBody.phone.trim();
+    } else {
+      delete payload.phone;
+    }
+    if (typeof candidateBody.email === 'string' && candidateBody.email.trim()) {
+      payload.email = candidateBody.email.trim().toLowerCase();
+    } else {
+      delete payload.email;
+    }
+    if (typeof candidateBody.mapId === 'string' && candidateBody.mapId.trim()) {
+      payload.mapId = candidateBody.mapId.trim();
+    } else {
+      delete payload.mapId;
+    }
+    if (typeof candidateBody.imageUrl === 'string') {
+      payload.imageUrl = candidateBody.imageUrl.trim();
+    }
 
     const customOrder = await CustomOrder.create(payload);
     emitCrudChange('customOrders', 'created', customOrder.id);
@@ -207,6 +268,14 @@ exports.updateCustomOrder = async (req, res) => {
       .filter((field) => Object.hasOwn(req.body, field))
       .map((field) => [field, req.body[field]])
   );
+  if (updates.imageUrl !== undefined) {
+    try {
+      updates.imageUrl = normalizeImageInput(updates.imageUrl);
+    } catch (error) {
+      res.status(400).json({ message: error.message || 'Ảnh tải lên không hợp lệ.' });
+      return;
+    }
+  }
   const validationError = validateCustomOrder(updates, true);
   if (validationError) {
     res.status(400).json({ message: validationError });

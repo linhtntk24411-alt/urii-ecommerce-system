@@ -3,6 +3,7 @@ const User = require('../models/User');
 const blogData = require('../data/blogs.json');
 const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
+const { isDataImageUrl, saveDataUrlImage } = require('../utils/imageUpload');
 const { emitCrudChange } = require('../realtime');
 
 const blogCategoriesById = new Map(
@@ -87,6 +88,16 @@ exports.createBlog = async (req, res) => {
     return;
   }
 
+  let image = req.body.image;
+  if (isDataImageUrl(image)) {
+    try {
+      image = saveDataUrlImage(image);
+    } catch (error) {
+      res.status(400).json({ message: error.message || 'Ảnh bài viết không hợp lệ.' });
+      return;
+    }
+  }
+
   try {
     let id = req.body.id;
     if (id === undefined) {
@@ -111,6 +122,7 @@ exports.createBlog = async (req, res) => {
       id,
       title: req.body.title.trim(),
       slug,
+      ...(image !== undefined ? { image } : {}),
       ...(resolvedUserId ? { userId: resolvedUserId } : {}),
       date: typeof req.body.date === 'string' && req.body.date.trim() ? req.body.date.trim() : defaultDate,
       likes: req.body.likes ?? 0,

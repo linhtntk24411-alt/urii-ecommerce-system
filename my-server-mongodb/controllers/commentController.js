@@ -101,7 +101,7 @@ exports.createComment = async (req, res) => {
       res.status(400).json({ message: 'Bài viết được bình luận không tồn tại.' });
       return;
     }
-    let id = req.body.id;
+    let id = req.auth?.role === 'admin' ? req.body.id : undefined;
     if (id === undefined) {
       const latestComment = await Comment.findOne().sort({ id: -1 }).select('id').lean();
       id = (latestComment?.id || 0) + 1;

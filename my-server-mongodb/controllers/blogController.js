@@ -99,7 +99,7 @@ exports.createBlog = async (req, res) => {
   }
 
   try {
-    let id = req.body.id;
+    let id = req.auth?.role === 'admin' ? req.body.id : undefined;
     if (id === undefined) {
       const latestBlog = await Blog.findOne().sort({ id: -1 }).select('id').lean();
       id = (latestBlog?.id || 0) + 1;

@@ -113,7 +113,7 @@ test('orders reference existing customers, catalog entities, and status IDs', as
   const timelineStatusIds = statusIds('timelineStatuses');
   const shippingStatusIds = statusIds('shippingStatuses');
 
-  assert.equal(orders.length, 36);
+  assert.equal(orders.length, 57);
   for (const order of orders) {
     assert.ok(userIds.has(String(order.userId)), `${order.id} must reference a customer`);
     assert.ok(orderStatusIds.has(order.statusId), `${order.id} must reference an order status`);
@@ -155,10 +155,10 @@ test('order reason fixture is linked to cancelled and returned orders with requi
   assert.equal(new Set(cancelIds).size, cancelIds.length);
   assert.equal(new Set(returnIds).size, returnIds.length);
 
-  const cancelledOrders = orders.filter((order) => order.statusId === 'cancelled');
-  const returnedOrders = orders.filter((order) => order.statusId === 'returned');
-  assert.equal(cancelledOrders.length, 6);
-  assert.equal(returnedOrders.length, 6);
+  const cancelledOrders = orders.filter((order) => ['cancelled', 'cancel_requested'].includes(order.statusId));
+  const returnedOrders = orders.filter((order) => ['returned', 'return_requested'].includes(order.statusId));
+  assert.equal(cancelledOrders.length, 14);
+  assert.equal(returnedOrders.length, 19);
   for (const order of cancelledOrders) {
     const reason = cancelReasons.get(order.cancellationReasonId);
     assert.ok(reason, `${order.id} must reference a cancellation reason`);
@@ -180,8 +180,8 @@ test('order reason fixture is linked to cancelled and returned orders with requi
     }
     await new Order(order).validate();
   }
-  assert.equal(orders.filter((order) => order.statusId !== 'cancelled' && order.cancellationReasonId).length, 0);
-  assert.equal(orders.filter((order) => order.statusId !== 'returned' && order.returnReasonId).length, 0);
+  assert.equal(orders.filter((order) => !['cancelled', 'cancel_requested'].includes(order.statusId) && order.cancellationReasonId).length, 0);
+  assert.equal(orders.filter((order) => !['returned', 'return_requested'].includes(order.statusId) && order.returnReasonId).length, 0);
 
   const syncableOrders = orders.filter((order) => order.cancellationReasonId || order.returnReasonId);
   const result = await syncOrderReasonReferences(syncableOrders, {
@@ -190,7 +190,7 @@ test('order reason fixture is linked to cancelled and returned orders with requi
       return operations;
     }
   });
-  assert.equal(result.length, 12);
+  assert.equal(result.length, 33);
 });
 
 test('saved map fixtures link existing customers and allow maps saved by different customers', () => {
@@ -1129,5 +1129,351 @@ test('POST /api/custom-orders attaches userId from token, allows orders without 
         fs.unlinkSync(filePath);
       }
     }
+  }
+});
+
+
+test('OAuth callback links registered user for Google, rejects unregistered or admin accounts, and requires explicit linking for Facebook via postMessage HTML', async () => {
+  const jwt = require('jsonwebtoken');
+  const authController = require('../controllers/authController');
+  const oauthProviders = require('../services/oauthProviders');
+
+  const prevJwtSecret = process.env.JWT_SECRET;
+  const prevFrontendOrigin = process.env.OAUTH_FRONTEND_ORIGIN;
+  process.env.JWT_SECRET = 'test-secret-only';
+  process.env.OAUTH_FRONTEND_ORIGIN = 'http://localhost:4200';
+
+  const origExchange = oauthProviders.exchangeAuthorizationCode;
+  const origFindOne = User.findOne;
+  const origFindById = User.findById;
+  const origCreate = User.create;
+
+  const state = 'a'.repeat(64);
+
+  function extractCallbackPayload(html) {
+    const match = /<script id="oauth-payload" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+    assert.ok(match, 'HTML callback must include oauth-payload script');
+    assert.match(html, /var targetOrigin = "http:\/\/localhost:4200";/);
+    assert.match(html, /window\.opener\.postMessage\(payload, targetOrigin\);/);
+    return JSON.parse(match[1]);
+  }
+
+  async function runCallback(provider, identity, extraCookie = '') {
+    oauthProviders.exchangeAuthorizationCode = async () => identity;
+    let statusCode = 200;
+    let sentHtml = '';
+    const cookieHeader = [
+      `urii_oauth_state_${provider}=${state}`,
+      extraCookie
+    ].filter(Boolean).join('; ');
+
+    await authController.oauthCallback(
+      {
+        params: { provider },
+        query: { code: 'auth-code', state },
+        headers: { cookie: cookieHeader }
+      },
+      {
+        setHeader() {},
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        send(html) {
+          sentHtml = html;
+        }
+      }
+    );
+
+    return { statusCode, payload: extractCallbackPayload(sentHtml) };
+  }
+
+  try {
+    let createCalls = 0;
+    User.create = async () => {
+      createCalls += 1;
+      throw new Error('User.create should not be called in oauthCallback');
+    };
+
+    const registeredUser = {
+      _id: '6ade4310c044b23d6c6a8681',
+      name: 'Nguyễn Minh Anh',
+      email: 'minhanh.uri@gmail.com',
+      role: 'user',
+      avatar: 'images/avatar_user.jpeg',
+      authProviders: ['password'],
+      oauthAccounts: [],
+      saved: false,
+      async save() {
+        this.saved = true;
+      }
+    };
+    User.findOne = (filter) => ({
+      select: async () => {
+        if (filter.email === 'minhanh.uri@gmail.com') return registeredUser;
+        return null;
+      }
+    });
+
+    const googleSuccess = await runCallback('google', {
+      providerUserId: 'google-sub-123',
+      email: 'minhanh.uri@gmail.com',
+      emailVerified: true,
+      name: 'Nguyễn Minh Anh',
+      picture: 'https://example.test/avatar.jpg'
+    });
+    assert.equal(googleSuccess.statusCode, 200);
+    assert.equal(googleSuccess.payload.ok, true);
+    assert.equal(googleSuccess.payload.provider, 'google');
+    assert.equal(googleSuccess.payload.user.email, 'minhanh.uri@gmail.com');
+    assert.ok(registeredUser.saved);
+    assert.ok(registeredUser.authProviders.includes('google'));
+    assert.deepEqual(registeredUser.oauthAccounts, [
+      { provider: 'google', providerUserId: 'google-sub-123' }
+    ]);
+
+    User.findOne = () => ({ select: async () => null });
+    const googleUnregistered = await runCallback('google', {
+      providerUserId: 'google-sub-new',
+      email: 'unknown@gmail.com',
+      emailVerified: true,
+      name: 'Unknown User'
+    });
+    assert.equal(googleUnregistered.statusCode, 403);
+    assert.equal(googleUnregistered.payload.ok, false);
+    assert.match(googleUnregistered.payload.message, /chưa đăng ký/i);
+
+    User.findOne = (filter) => ({
+      select: async () => (filter.email === 'admin@gmail.com'
+        ? { _id: '507f1f77bcf86cd799439011', email: 'admin@gmail.com', role: 'admin', authProviders: ['password'], oauthAccounts: [] }
+        : null)
+    });
+    const adminAttempt = await runCallback('google', {
+      providerUserId: 'google-admin-id',
+      email: 'admin@gmail.com',
+      emailVerified: true,
+      name: 'Admin'
+    });
+    assert.equal(adminAttempt.statusCode, 403);
+    assert.match(adminAttempt.payload.message, /quản trị/i);
+
+    User.findOne = () => ({ select: async () => null });
+    const fbUnlinked = await runCallback('facebook', {
+      providerUserId: 'fb-id-999',
+      email: 'minhanh.uri@gmail.com',
+      emailVerified: false,
+      name: 'Minh Anh FB'
+    });
+    assert.equal(fbUnlinked.statusCode, 403);
+    assert.match(fbUnlinked.payload.message, /chưa được liên kết/i);
+
+    User.findById = (id) => ({
+      select: async () => (id === registeredUser._id ? registeredUser : null)
+    });
+    const userJwt = jwt.sign({ id: registeredUser._id, role: 'user' }, process.env.JWT_SECRET);
+    const fbLinked = await runCallback(
+      'facebook',
+      {
+        providerUserId: 'fb-id-999',
+        email: 'minhanh.uri@gmail.com',
+        emailVerified: false,
+        name: 'Minh Anh FB'
+      },
+      `urii_oauth_link_facebook=${userJwt}`
+    );
+    assert.equal(fbLinked.statusCode, 200);
+    assert.ok(registeredUser.authProviders.includes('facebook'));
+    assert.ok(
+      registeredUser.oauthAccounts.some(
+        (acc) => acc.provider === 'facebook' && acc.providerUserId === 'fb-id-999'
+      )
+    );
+
+    User.findOne = (filter) => ({
+      select: async () => (filter.oauthAccounts ? registeredUser : null)
+    });
+    const fbLoginAfterLink = await runCallback('facebook', {
+      providerUserId: 'fb-id-999',
+      email: '',
+      emailVerified: false,
+      name: 'Minh Anh FB'
+    });
+    assert.equal(fbLoginAfterLink.statusCode, 200);
+    assert.equal(fbLoginAfterLink.payload.user.email, 'minhanh.uri@gmail.com');
+    assert.equal(createCalls, 0);
+  } finally {
+    oauthProviders.exchangeAuthorizationCode = origExchange;
+    User.findOne = origFindOne;
+    User.findById = origFindById;
+    User.create = origCreate;
+    if (prevJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = prevJwtSecret;
+    if (prevFrontendOrigin === undefined) delete process.env.OAUTH_FRONTEND_ORIGIN;
+    else process.env.OAUTH_FRONTEND_ORIGIN = prevFrontendOrigin;
+  }
+});
+
+
+test('order waiting states, SLA deadlines, metadata endpoint, and cancel/return request workflows operate properly', async () => {
+  const orderController = require('../controllers/orderController');
+  const orderStatuses = readJSON('order_statuses.json');
+  const orderReasons = readJSON('order_reasons.json');
+  const orders = readJSON('orders.json').orders;
+
+  const waitingStatusIds = new Set(
+    orderStatuses.orderStatuses.filter((s) => s.isWaiting).map((s) => s.id)
+  );
+  assert.deepEqual(
+    [...waitingStatusIds].sort(),
+    ['cancel_requested', 'pending', 'processing', 'return_requested', 'shipping']
+  );
+
+  const waitingOrders = orders.filter((o) => waitingStatusIds.has(o.statusId));
+  assert.equal(waitingOrders.length, 39);
+  for (const typeObj of orderStatuses.orderTypes) {
+    assert.ok(orders.some((o) => o.orderType === typeObj.id), `Missing orderType ${typeObj.id}`);
+  }
+  for (const statusObj of orderStatuses.orderStatuses) {
+    assert.ok(orders.some((o) => o.statusId === statusObj.id && o.orderType === 'normal'), `Missing normal order for ${statusObj.id}`);
+    assert.ok(orders.some((o) => o.statusId === statusObj.id && o.orderType === 'custom'), `Missing custom order for ${statusObj.id}`);
+  }
+  for (const reqStatus of orderStatuses.requestStatuses) {
+    assert.ok(orders.some((o) => o.cancellationStatusId === reqStatus.id || o.returnStatusId === reqStatus.id), `Missing requestStatus ${reqStatus.id}`);
+  }
+  for (const payStatus of orderStatuses.paymentStatuses) {
+    assert.ok(orders.some((o) => o.payment?.statusId === payStatus.id), `Missing paymentStatus ${payStatus.id}`);
+  }
+  for (const tlStatus of orderStatuses.timelineStatuses) {
+    assert.ok(orders.some((o) => o.timeline.some((t) => t.statusId === tlStatus.id)), `Missing timelineStatus ${tlStatus.id}`);
+  }
+  for (const shStatus of orderStatuses.shippingStatuses) {
+    assert.ok(orders.some((o) => o.shippingTimeline.some((t) => t.statusId === shStatus.id)), `Missing shippingStatus ${shStatus.id}`);
+  }
+  for (const reason of orderReasons.cancelReasons) {
+    assert.ok(orders.some((o) => o.cancellationReasonId === reason.id && reason.appliesTo.includes(o.orderType)), `Missing cancelReason ${reason.id}`);
+  }
+  for (const reason of orderReasons.returnReasons) {
+    assert.ok(orders.some((o) => o.returnReasonId === reason.id && reason.appliesTo.includes(o.orderType)), `Missing returnReason ${reason.id}`);
+  }
+  for (const [policyKey, policyVal] of Object.entries(orderReasons.waitingPolicies)) {
+    if (policyVal && typeof policyVal === 'object') {
+      assert.ok(orders.some((o) => o.waitingInfo?.type === policyKey), `Missing waitingPolicy ${policyKey}`);
+    }
+  }
+  for (const order of waitingOrders) {
+    assert.ok(order.waitingInfo, `${order.id} must include waitingInfo`);
+    assert.ok(orderReasons.waitingPolicies[order.waitingInfo.type], `${order.id} waitingInfo.type must exist in waitingPolicies`);
+    assert.ok(order.waitingInfo.startedAt);
+    assert.ok(order.waitingInfo.deadlineAt);
+    assert.ok(order.waitingInfo.expectedHours > 0);
+  }
+
+  let metadataPayload = null;
+  orderController.getOrderMetadata({}, {
+    json(payload) {
+      metadataPayload = payload;
+    }
+  });
+  assert.ok(Array.isArray(metadataPayload.orderStatuses));
+  assert.ok(Array.isArray(metadataPayload.requestStatuses));
+  assert.ok(Array.isArray(metadataPayload.cancelReasons));
+  assert.ok(Array.isArray(metadataPayload.returnReasons));
+  assert.ok(metadataPayload.waitingPolicies?.awaiting_cancel_approval);
+
+  const origUserFind = User.find;
+  const origOrderFindOne = Order.findOne;
+  try {
+    const sampleUser = readJSON('users.json').users.find((u) => u.role === 'user');
+    User.find = () => ({
+      select: () => ({
+        lean: async () => [sampleUser]
+      })
+    });
+
+    const cancelRequestedFixture = orders.find((o) => o.statusId === 'cancel_requested');
+    const [enrichedCancelReq] = await orderController.enrichOrders([cancelRequestedFixture]);
+    assert.equal(enrichedCancelReq.status, 'Chờ xác nhận hủy');
+    assert.equal(enrichedCancelReq.isWaiting, true);
+    assert.equal(enrichedCancelReq.cancellationStatus, 'Chờ Shop xác nhận');
+    assert.ok(enrichedCancelReq.waitingInfo.label);
+
+    const mutableOrder = new Order({
+      ...orders.find((o) => o.statusId === 'processing'),
+      userId: sampleUser._id
+    });
+    mutableOrder.save = async function save() {
+      return this;
+    };
+    Order.findOne = async () => mutableOrder;
+
+    let cancelStatus = 200;
+    let cancelBody = null;
+    await orderController.requestCancelOrder(
+      {
+        params: { id: mutableOrder.id },
+        auth: { id: sampleUser._id, role: 'user' },
+        body: {
+          reasonId: 'CANCEL_WRONG_INFO',
+          note: 'Đổi sang bộ kit lớn hơn'
+        }
+      },
+      {
+        status(code) {
+          cancelStatus = code;
+          return this;
+        },
+        json(payload) {
+          cancelBody = payload;
+        }
+      }
+    );
+
+    assert.equal(cancelStatus, 200);
+    assert.equal(cancelBody.statusId, 'cancel_requested');
+    assert.equal(cancelBody.cancellationStatusId, 'pending_approval');
+    assert.equal(cancelBody.waitingInfo.type, 'awaiting_cancel_approval');
+
+    const completedOrder = new Order({
+      ...orders.find((o) => o.statusId === 'completed'),
+      userId: sampleUser._id
+    });
+    completedOrder.save = async function save() {
+      return this;
+    };
+    Order.findOne = async () => completedOrder;
+
+    let returnStatus = 200;
+    let returnBody = null;
+    await orderController.requestReturnOrder(
+      {
+        params: { id: completedOrder.id },
+        auth: { id: sampleUser._id, role: 'user' },
+        body: {
+          reasonId: 'MISSING_QUANTITY',
+          note: 'Thiếu 1 tấm pegboard',
+          evidence: [
+            { type: 'image', url: '/images/orders/neon.jpeg' },
+            { type: 'video', url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4' }
+          ]
+        }
+      },
+      {
+        status(code) {
+          returnStatus = code;
+          return this;
+        },
+        json(payload) {
+          returnBody = payload;
+        }
+      }
+    );
+
+    assert.equal(returnStatus, 200);
+    assert.equal(returnBody.statusId, 'return_requested');
+    assert.equal(returnBody.returnStatusId, 'pending_approval');
+    assert.equal(returnBody.waitingInfo.type, 'awaiting_return_approval');
+  } finally {
+    User.find = origUserFind;
+    Order.findOne = origOrderFindOne;
   }
 });

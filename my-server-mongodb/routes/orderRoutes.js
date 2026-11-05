@@ -6,6 +6,11 @@ const { authenticate, requireAdmin, requireCustomer } = require('../middleware/a
 router.get('/mine', authenticate, requireCustomer, c.getMyOrders);
 router.get('/mine/:slug', authenticate, requireCustomer, c.getMyOrderBySlug);
 
+router.get('/metadata', c.getOrderMetadata);
+router.get('/mine', authenticate, c.getMyOrders);
+router.post('/:id/cancel-request', authenticate, c.requestCancelOrder);
+router.post('/:id/return-request', authenticate, c.requestReturnOrder);
+
 router.use(authenticate, requireAdmin);
 router.get('/', c.getAllOrders);
 router.get('/:id', c.getOrderById);

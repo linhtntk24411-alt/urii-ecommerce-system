@@ -111,7 +111,7 @@ test('OAuth start issues a state cookie and callback rejects missing or mismatch
   assert.equal(mismatchedState.status, 400);
 });
 
-test('OAuth callback creates users for Google and Facebook identities', async () => {
+test('OAuth callback signs in registered users without creating new accounts', async () => {
   for (const provider of ['google', 'facebook']) {
     const identity = {
       providerUserId: `${provider}-provider-id`,
@@ -120,6 +120,18 @@ test('OAuth callback creates users for Google and Facebook identities', async ()
       name: `${provider} Test User`,
       picture: 'https://example.test/avatar.jpg'
     };
+    const existingUser = {
+      _id: '6ade4310c044b23d6c6a8681',
+      email: identity.email,
+      name: identity.name,
+      role: 'user',
+      avatar: identity.picture,
+      authProviders: provider === 'facebook' ? ['password', 'facebook'] : ['password'],
+      oauthAccounts: provider === 'facebook'
+        ? [{ provider: 'facebook', providerUserId: identity.providerUserId }]
+        : [],
+      async save() {}
+    };
     const { state, cookie } = await beginOAuth(provider);
     const exchange = mock.method(
       oauthProviders,
@@ -127,12 +139,11 @@ test('OAuth callback creates users for Google and Facebook identities', async ()
       async () => identity
     );
     const findOne = mock.method(User, 'findOne', () => ({
-      select: async () => null
+      select: async () => existingUser
     }));
-    const create = mock.method(User, 'create', async (document) => ({
-      ...document,
-      _id: { toString: () => `${provider}-user-id` }
-    }));
+    const create = mock.method(User, 'create', async () => {
+      throw new Error('User should not be created.');
+    });
 
     try {
       const response = await fetch(
@@ -140,13 +151,12 @@ test('OAuth callback creates users for Google and Facebook identities', async ()
         { headers: { Cookie: cookie } }
       );
       assert.equal(response.status, 200);
-      const result = await response.json();
+      const html = await response.text();
+      const match = /<script id="oauth-payload" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+      assert.ok(match);
+      const result = JSON.parse(match[1]);
       assert.equal(result.user.email, identity.email);
-      assert.deepEqual(create.mock.calls[0].arguments[0].oauthAccounts, [{
-        provider,
-        providerUserId: identity.providerUserId
-      }]);
-      assert.equal(create.mock.calls[0].arguments[0].password, null);
+      assert.equal(create.mock.callCount(), 0);
     } finally {
       create.mock.restore();
       findOne.mock.restore();

@@ -103,7 +103,7 @@ async function insertMissing(Model, documents, key) {
 
 async function syncOrderReasonReferences(orders, Model = Order) {
   const reasonOrders = orders.filter((order) => (
-    order.cancellationReasonId || order.returnReasonId
+    order.cancellationReasonId || order.returnReasonId || order.waitingInfo
   ));
   if (reasonOrders.length === 0) return [];
 
@@ -114,7 +114,7 @@ async function syncOrderReasonReferences(orders, Model = Order) {
       'cancellationNote',
       'returnReasonId',
       'returnNote',
-      'returnEvidence'
+      'returnEvidence', 'orderType', 'customOrderId', 'statusId', 'waitingInfo', 'cancellationStatusId', 'cancellationRequestedAt', 'cancellationDeadlineAt', 'cancellationResolvedAt', 'returnStatusId', 'returnRequestedAt', 'returnDeadlineAt', 'returnResolvedAt'
     ]) {
       if (Object.hasOwn(order, field)) fields[field] = order[field];
     }

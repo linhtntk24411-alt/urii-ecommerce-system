@@ -13,7 +13,12 @@ interface CommentItem {
   authorAvatar: string;
   date: string;
   rating?: number;
-  status: 'approved' | 'pending' | 'flagged' | 'hidden' | string;
+  // Trạng thái nội dung
+  status: 'normal' | 'flagged';
+
+  // Trạng thái trả lời
+  reply?: string;
+  replyStatus: 'unanswered' | 'replied';
 }
 
 @Component({
@@ -39,6 +44,10 @@ export class CommentsAdmin implements OnInit {
   filterType: string = '';
   filterStatus: string = '';
   selectedComment: any = null;
+  // Dữ liệu trả lời bình luận / đánh giá
+  selectedReplyTarget: CommentItem | null = null;
+  replyContent: string = '';
+  isReplyModalOpen = false;
 
   // Phân trang
   currentReviewPage: number = 1;
@@ -47,11 +56,14 @@ export class CommentsAdmin implements OnInit {
 
   // Bản đồ trạng thái hiển thị
   statusMap: { [key: string]: { text: string; class: string } } = {
-    'approved': { text: 'Đã duyệt / Đã trả lời', class: 'badge-status-approved' },
-    'submitted': { text: 'Đã gửi', class: 'badge-status-approved' },
-    'pending': { text: 'Chờ duyệt / Chưa trả lời', class: 'badge-status-pending' },
-    'flagged': { text: 'Vi phạm', class: 'badge-status-flagged' },
-    'hidden': { text: 'Đã ẩn', class: 'badge-status-pending' }
+    'normal': {
+      text: 'Bình thường',
+      class: 'badge-status-approved'
+    },
+    'flagged': {
+      text: 'Vi phạm tiêu chuẩn cộng đồng',
+      class: 'badge-status-flagged'
+    }
   };
 
   ngOnInit(): void {
@@ -123,7 +135,8 @@ export class CommentsAdmin implements OnInit {
       authorAvatar: comment.avatar || 'images/avatar-non.jpg',
       date: comment.time || comment.createdAt || '',
       rating: undefined,
-      status: 'approved'
+      status: 'normal',
+      replyStatus: 'unanswered'
     };
   }
 
@@ -137,7 +150,8 @@ export class CommentsAdmin implements OnInit {
       authorAvatar: review.userAvatar || 'images/avatar-non.jpg',
       date: review.createdAt || '',
       rating: review.rating,
-      status: 'submitted'
+      status: 'normal',
+      replyStatus: 'unanswered'
     };
   }
 
@@ -157,10 +171,21 @@ export class CommentsAdmin implements OnInit {
   }
 
   // Thống kê số lượng
-  get totalCount(): number { return this.allComments.length; }
-  get approvedCount(): number { return this.allComments.filter(c => c.status === 'approved').length; }
-  get pendingCount(): number { return this.allComments.filter(c => c.status === 'pending').length; }
-  get flaggedCount(): number { return this.allComments.filter(c => c.status === 'flagged').length; }
+  get totalCount(): number {
+    return this.allComments.length;
+  }
+
+  get approvedCount(): number {
+    return this.allComments.filter(c => c.status === 'normal').length;
+  }
+
+  get pendingCount(): number {
+    return this.allComments.filter(c => c.replyStatus === 'unanswered').length;
+  }
+
+  get flaggedCount(): number {
+    return this.allComments.filter(c => c.status === 'flagged').length;
+  }
 
   // Lọc dữ liệu cho Bảng 1 (Sản phẩm & Đơn hàng)
   getFilteredReviews(): CommentItem[] {
@@ -174,17 +199,52 @@ export class CommentsAdmin implements OnInit {
     return this.applyCommonFilters(blogs);
   }
 
+  private normalizeText(value: any): string {
+    return String(value || '')
+      .normalize('NFC')
+      .toLocaleLowerCase('vi-VN')
+      .trim();
+  }
+
   private applyCommonFilters(list: CommentItem[]): CommentItem[] {
-    const keyword = this.searchKeyword.toLowerCase().trim();
+    const keyword = this.normalizeText(this.searchKeyword);
+
     if (keyword) {
-      list = list.filter(c => c.content.toLowerCase().includes(keyword) || c.authorName.toLowerCase().includes(keyword));
+      list = list.filter(c => {
+        const searchableFields = [
+          c.id,
+          c.content,
+          c.authorName,
+          c.targetName,
+          c.targetType
+        ];
+
+        return searchableFields.some(field =>
+          this.normalizeText(field).includes(keyword)
+        );
+      });
     }
+
     if (this.filterType) {
       list = list.filter(c => c.targetType === this.filterType);
     }
+
     if (this.filterStatus) {
-      list = list.filter(c => c.status === this.filterStatus);
+      list = list.filter(c => {
+        if (this.filterStatus === 'normal' ||
+            this.filterStatus === 'flagged') {
+          return c.status === this.filterStatus;
+        }
+
+        if (this.filterStatus === 'replied' ||
+            this.filterStatus === 'unanswered') {
+          return c.replyStatus === this.filterStatus;
+        }
+
+        return true;
+      });
     }
+
     return list;
   }
 
@@ -225,25 +285,71 @@ export class CommentsAdmin implements OnInit {
       modal.show();
     }
   }
+  // Mở modal trả lời
+  openReplyModal(comment: CommentItem): void {
+    this.selectedReplyTarget = comment;
+    this.replyContent = comment.reply || '';
+    this.isReplyModalOpen = true;
+  }
 
-  changeStatus(id: string, newStatus: string) {
+  // Đóng modal trả lời
+  closeReplyModal(): void {
+    this.isReplyModalOpen = false;
+    this.selectedReplyTarget = null;
+    this.replyContent = '';
+  }
+
+  // Lưu câu trả lời
+  saveReply(): void {
+    if (!this.selectedReplyTarget) return;
+
+    const content = this.replyContent.trim();
+
+    if (!content) {
+      alert('Vui lòng nhập nội dung trả lời.');
+      return;
+    }
+
+    this.selectedReplyTarget.reply = content;
+    this.selectedReplyTarget.replyStatus = 'replied';
+
+    alert('Đã lưu câu trả lời trên giao diện.');
+    this.closeReplyModal();
+  }
+  // Từ khóa cảnh báo nội dung cần kiểm tra
+  private readonly sensitiveKeywords: string[] = [
+    'địt', 'đụ', 'đéo', 'lồn', 'cặc',
+    'đĩ', 'chó chết', 'con chó', 'ngu',
+    'mẹ mày', 'đồ khốn'
+  ];
+
+  // Kiểm tra nội dung có chứa từ khóa cảnh báo không
+  private containsSensitiveKeyword(content: string): boolean {
+    const normalizedContent = content.toLowerCase();
+
+    return this.sensitiveKeywords.some(keyword =>
+      normalizedContent.includes(keyword)
+    );
+  }
+
+  changeStatus(id: string, newStatus: 'normal' | 'flagged'): void {
     const comment = this.allComments.find(c => c.id === id);
+
     if (comment) {
       comment.status = newStatus;
     }
   }
-
   deleteComment(id: string) {
     if (confirm('Bạn có chắc chắn muốn xóa bình luận này?')) {
       this.allComments = this.allComments.filter(c => c.id !== id);
     }
   }
-
   changeReviewPage(page: number) {
     if (page >= 1 && page <= this.getReviewTotalPages()) {
       this.currentReviewPage = page;
     }
   }
+  
 
   changeBlogPage(page: number) {
     if (page >= 1 && page <= this.getBlogTotalPages()) {

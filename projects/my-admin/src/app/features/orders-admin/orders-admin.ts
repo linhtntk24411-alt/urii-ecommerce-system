@@ -103,7 +103,7 @@ export class OrdersAdmin implements OnInit {
   get statTotal() { return this.orders.length; }
   get statPending() { return this.orders.filter(o => o.status === 'pending').length; }
   get statApproved() { return this.orders.filter(o => o.status === 'approved').length; }
-  get statCancel() { return this.orders.filter(o => o.status === 'cancelled').length; }
+  get statCancel() { return this.orders.filter(o => o.status === 'pending_approval').length; }
 
   // --- Logic Load Data ---
  loadOrders() {
@@ -394,12 +394,40 @@ export class OrdersAdmin implements OnInit {
   }
  }
 
-  handleCancelRequest(id: string, isApproved: boolean) {
+  handleCancelRequest(id: string, isApproved: boolean): void {
     const order = this.originalOrders.find(o => o.id === id);
-    if (order) {
-      order.status = isApproved ? 'cancelled' : 'pending';
-      this.saveOrders();
+
+    if (!order) {
+      alert('Không tìm thấy đơn hàng!');
+      return;
     }
+
+    const newStatus = isApproved ? 'cancelled' : 'pending';
+
+    const confirmMessage = isApproved
+      ? `Bạn có chắc chắn muốn duyệt hủy đơn hàng #${id}?`
+      : `Bạn có chắc chắn muốn từ chối yêu cầu hủy đơn #${id}?`;
+
+    if (!confirm(confirmMessage)) return;
+
+    this.adminApi.updateOrder(id, {
+      statusType: newStatus
+    }).subscribe({
+      next: () => {
+        order.status = newStatus;
+        this.saveOrders();
+
+        alert(
+          isApproved
+            ? 'Đã duyệt yêu cầu hủy đơn hàng!'
+            : 'Đã từ chối yêu cầu hủy đơn hàng!'
+        );
+      },
+      error: (err) => {
+        console.error('Lỗi xử lý yêu cầu hủy đơn:', err);
+        alert('Không thể cập nhật yêu cầu hủy đơn. Vui lòng thử lại!');
+      }
+    });
   }
 
   // --- Modals Logic ---

@@ -25,6 +25,8 @@ export class LoginAdmin implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private adminApi = inject(AdminApiService);
+  // Thêm khai báo này ở đầu class LoginAdmin
+  private tokenClient: any;
 
   isLoading = false;
   loginError = '';
@@ -86,12 +88,16 @@ private waitForGoogleScript(): void {
   let attempts = 0;
 
   const checkGoogle = () => {
-    if (typeof google !== 'undefined' && google.accounts) {
-      google.accounts.id.initialize({
+    // Đổi sang kiểm tra oauth2 để khởi tạo Token Client (bật popup chọn tài khoản)
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+      this.tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: this.googleClientId,
+        scope: 'email profile openid',
         callback: (response: any) => {
-          this.handleGoogleLogin(response.credential);
-        }
+          if (response && response.access_token) {
+            this.handleGoogleLogin(response.access_token);
+          }
+        },
       });
     } else if (attempts < 30) {
       attempts++;
@@ -105,24 +111,25 @@ private waitForGoogleScript(): void {
 loginWithGoogle(): void {
   this.loginError = '';
 
-  if (typeof google === 'undefined' || !google.accounts) {
+  if (!this.tokenClient) {
     this.loginError = 'Google chưa tải xong. Vui lòng thử lại.';
     return;
   }
 
-  google.accounts.id.prompt();
+  // Ép buộc hiện hộp thoại chọn tài khoản Google chuẩn dạng popup
+  this.tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
-private handleGoogleLogin(credential: string): void {
-  if (!credential) {
-    this.loginError = 'Không nhận được thông tin từ Google.';
+private handleGoogleLogin(accessToken: string): void {
+  if (!accessToken) {
+    this.loginError = 'Không nhận được thông tin xác thực từ Google.';
     return;
   }
 
   this.isLoading = true;
 
   this.http.post<LoginResponse>(`${this.apiUrl}/google`, {
-    credential
+    token: accessToken // Sửa từ credential thành token
   }).subscribe({
     next: (response) => {
       this.isLoading = false;
@@ -134,14 +141,12 @@ private handleGoogleLogin(credential: string): void {
 
       localStorage.setItem('adminToken', response.token);
       localStorage.setItem('adminUser', JSON.stringify(response.user));
-
       this.adminApi.setToken(response.token);
       this.router.navigate(['/dashboard']);
     },
     error: (error) => {
       this.isLoading = false;
-      this.loginError =
-        error.error?.message || 'Đăng nhập Google thất bại.';
+      this.loginError = error.error?.message || 'Đăng nhập Google thất bại.';
     }
   });
 }

@@ -30,7 +30,7 @@
                 <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
                     <div class="card-body d-flex align-items-center gap-3 p-3">
                         <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success fs-4"><i class="bi bi-check-circle"></i></div>
-                        <div><h6 class="text-muted small mb-1 fw-normal">Đã duyệt / Đã trả lời</h6><h3 class="fw-bold mb-0 text-success">{{ approvedCount }}</h3></div>
+                        <div><h6 class="text-muted small mb-1 fw-normal">Bình thường</h6><h3 class="fw-bold mb-0 text-success">{{ approvedCount }}</h3></div>
                     </div>
                 </div>
             </div>
@@ -38,7 +38,7 @@
                 <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
                     <div class="card-body d-flex align-items-center gap-3 p-3">
                         <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning fs-4"><i class="bi bi-clock"></i></div>
-                        <div><h6 class="text-muted small mb-1 fw-normal">Chờ duyệt / Chưa trả lời</h6><h3 class="fw-bold mb-0 text-warning">{{ pendingCount }}</h3></div>
+                        <div><h6 class="text-muted small mb-1 fw-normal">Chưa trả lời</h6><h3 class="fw-bold mb-0 text-warning">{{ pendingCount }}</h3></div>
                     </div>
                 </div>
             </div>
@@ -73,10 +73,10 @@
                     <div class="col-md-3">
                         <select [(ngModel)]="filterStatus" (ngModelChange)="onFilterClick()" class="form-select bg-light border-0">
                             <option value="">Tất cả trạng thái</option>
-                            <option value="approved">Đã duyệt / Đã trả lời</option>
-                            <option value="submitted">Đã gửi</option>
-                            <option value="pending">Chờ duyệt / Chưa trả lời</option>
+                            <option value="normal">Bình thường</option>
                             <option value="flagged">Vi phạm</option>
+                            <option value="unanswered">Chưa trả lời</option>
+                            <option value="replied">Đã trả lời</option>
                         </select>
                     </div>
                     <div class="col-md-auto">
@@ -129,26 +129,77 @@
                                 <td>{{ c.targetType === 'product' ? 'Sản phẩm' : 'Đơn hàng' }}</td>
                                 <td>{{ c.rating ? (c.date | date:'dd/MM/yyyy HH:mm') : c.date }}</td>
                                 <td>
-                                    <span class="badge-status" [ngClass]="statusMap[c.status]?.class || 'badge-status-pending'">
-                                        {{ statusMap[c.status]?.text || c.status }}
-                                    </span>
+                                    <div class="d-flex flex-column gap-1">
+                                        <!-- Trạng thái nội dung -->
+                                        <span class="badge-status"
+                                            [ngClass]="statusMap[c.status]?.class">
+                                            {{ statusMap[c.status]?.text }}
+                                        </span>
+
+                                        <!-- Trạng thái trả lời -->
+                                        <span class="badge-status"
+                                            [ngClass]="c.replyStatus === 'replied'
+                                            ? 'badge-status-approved'
+                                            : 'badge-status-pending'">
+                                            {{ c.replyStatus === 'replied' ? 'Đã trả lời' : 'Chưa trả lời' }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="pe-4">
                                     <div class="action-btn-group">
-                                        <button class="btn-action-icon text-secondary" (click)="viewCommentDetail(c)" title="Xem chi tiết bình luận">
+                                        <!-- Xem chi tiết -->
+                                        <button
+                                            type="button"
+                                            class="btn-action-icon text-secondary"
+                                            (click)="viewCommentDetail(c)"
+                                            title="Xem chi tiết">
                                             <i class="bi bi-eye"></i>
                                         </button>
+
+                                        <!-- Trả lời đánh giá -->
+                                        <button
+                                            type="button"
+                                            class="btn-action-icon"
+                                            (click)="openReplyModal(c)"
+                                            title="Trả lời đánh giá">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+
+                                        <!-- Quản lý trạng thái vi phạm -->
                                         <div class="dropdown d-inline-block">
-                                            <button class="btn-action-icon" data-bs-toggle="dropdown">
-                                                <i class="bi bi-pencil"></i>
+                                            <button
+                                                type="button"
+                                                class="btn-action-icon"
+                                                data-bs-toggle="dropdown"
+                                                title="Quản lý trạng thái">
+                                                <i class="bi bi-three-dots-vertical"></i>
                                             </button>
+
                                             <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'approved'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'approved')">Đã trả lời</a></li>
-                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'pending'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'pending')">Chưa trả lời</a></li>
-                                                <li><a class="dropdown-item text-danger" href="javascript:void(0)" (click)="changeStatus(c.id, 'flagged')">Vi phạm</a></li>
+                                                <li>
+                                                    <a class="dropdown-item"
+                                                    href="javascript:void(0)"
+                                                    (click)="changeStatus(c.id, 'normal')">
+                                                        Bình thường
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger"
+                                                    href="javascript:void(0)"
+                                                    (click)="changeStatus(c.id, 'flagged')">
+                                                        Vi phạm tiêu chuẩn cộng đồng
+                                                    </a>
+                                                </li>
                                             </ul>
                                         </div>
-                                        <button class="btn-action-icon text-danger" (click)="deleteComment(c.id)"><i class="bi bi-trash"></i></button>
+
+                                        <!-- Xóa đánh giá -->
+                                        <button
+                                            type="button"
+                                            class="btn-action-icon text-danger"
+                                            (click)="deleteComment(c.id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -218,26 +269,77 @@
                                 <td>{{ c.targetName }}</td>
                                 <td>{{ c.date }}</td>
                                 <td>
-                                    <span class="badge-status" [ngClass]="statusMap[c.status]?.class || 'badge-status-pending'">
-                                        {{ statusMap[c.status]?.text || c.status }}
-                                    </span>
+                                    <div class="d-flex flex-column gap-1">
+                                        <!-- Trạng thái nội dung -->
+                                        <span class="badge-status"
+                                            [ngClass]="statusMap[c.status]?.class">
+                                            {{ statusMap[c.status]?.text }}
+                                        </span>
+
+                                        <!-- Trạng thái trả lời -->
+                                        <span class="badge-status"
+                                            [ngClass]="c.replyStatus === 'replied'
+                                            ? 'badge-status-approved'
+                                            : 'badge-status-pending'">
+                                            {{ c.replyStatus === 'replied' ? 'Đã trả lời' : 'Chưa trả lời' }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="pe-4">
                                     <div class="action-btn-group">
-                                        <button class="btn-action-icon text-secondary" (click)="viewCommentDetail(c)" title="Xem chi tiết bình luận">
+                                        <!-- Xem chi tiết -->
+                                        <button
+                                            type="button"
+                                            class="btn-action-icon text-secondary"
+                                            (click)="viewCommentDetail(c)"
+                                            title="Xem chi tiết">
                                             <i class="bi bi-eye"></i>
                                         </button>
+
+                                        <!-- Trả lời bình luận -->
+                                        <button
+                                            type="button"
+                                            class="btn-action-icon"
+                                            (click)="openReplyModal(c)"
+                                            title="Trả lời bình luận">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+
+                                        <!-- Quản lý trạng thái vi phạm -->
                                         <div class="dropdown d-inline-block">
-                                            <button class="btn-action-icon" data-bs-toggle="dropdown">
-                                                <i class="bi bi-pencil"></i>
+                                            <button
+                                                type="button"
+                                                class="btn-action-icon"
+                                                data-bs-toggle="dropdown"
+                                                title="Quản lý trạng thái">
+                                                <i class="bi bi-three-dots-vertical"></i>
                                             </button>
+
                                             <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'approved'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'approved')">Đã duyệt</a></li>
-                                                <li><a class="dropdown-item" [ngClass]="{'active': c.status === 'pending'}" href="javascript:void(0)" (click)="changeStatus(c.id, 'pending')">Chờ duyệt</a></li>
-                                                <li><a class="dropdown-item text-danger" href="javascript:void(0)" (click)="changeStatus(c.id, 'flagged')">Vi phạm</a></li>
+                                                <li>
+                                                    <a class="dropdown-item"
+                                                    href="javascript:void(0)"
+                                                    (click)="changeStatus(c.id, 'normal')">
+                                                        Bình thường
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger"
+                                                    href="javascript:void(0)"
+                                                    (click)="changeStatus(c.id, 'flagged')">
+                                                        Vi phạm tiêu chuẩn cộng đồng
+                                                    </a>
+                                                </li>
                                             </ul>
                                         </div>
-                                        <button class="btn-action-icon text-danger" (click)="deleteComment(c.id)"><i class="bi bi-trash"></i></button>
+
+                                        <!-- Xóa bình luận -->
+                                        <button
+                                            type="button"
+                                            class="btn-action-icon text-danger"
+                                            (click)="deleteComment(c.id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -329,4 +431,97 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Modal Trả lời bình luận / đánh giá -->
+<div
+    class="modal fade"
+    [class.show]="isReplyModalOpen"
+    [style.display]="isReplyModalOpen ? 'block' : 'none'"
+    [attr.aria-hidden]="!isReplyModalOpen"
+    tabindex="-1"
+    *ngIf="isReplyModalOpen && selectedReplyTarget">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+            <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="bi bi-reply-all text-primary me-2"></i>
+                    {{ selectedReplyTarget.targetType === 'blog'
+                        ? 'Trả lời bình luận'
+                        : 'Trả lời đánh giá' }}
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    aria-label="Đóng"
+                    (click)="closeReplyModal()">
+                </button>
+            </div>
+
+            <div class="modal-body p-4">
+
+                <!-- Thông tin người gửi -->
+                <div class="mb-3">
+                    <div class="text-muted small mb-1">Người gửi</div>
+                    <strong>{{ selectedReplyTarget.authorName }}</strong>
+                </div>
+
+                <!-- Nội dung gốc -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Nội dung {{ selectedReplyTarget.targetType === 'blog'
+                            ? 'bình luận'
+                            : 'đánh giá' }}:
+                    </label>
+
+                    <div class="p-3 bg-light rounded-3"
+                         style="white-space: pre-wrap; word-break: break-word;">
+                        {{ selectedReplyTarget.content }}
+                    </div>
+                </div>
+
+                <!-- Nội dung trả lời -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Nội dung trả lời:
+                    </label>
+
+                    <textarea
+                        class="form-control"
+                        rows="5"
+                        [(ngModel)]="replyContent"
+                        placeholder="Nhập nội dung trả lời...">
+                    </textarea>
+                </div>
+
+            </div>
+
+            <div class="modal-footer border-top-0 bg-light py-3 px-4">
+                <button
+                    type="button"
+                    class="btn btn-secondary px-4 fw-bold rounded-3"
+                    (click)="closeReplyModal()">
+                    Hủy
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-primary px-4 fw-bold rounded-3"
+                    (click)="saveReply()">
+                    <i class="bi bi-send me-1"></i>
+                    Lưu câu trả lời
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Lớp nền phía sau modal -->
+<div
+    class="modal-backdrop fade show"
+    *ngIf="isReplyModalOpen">
 </div>

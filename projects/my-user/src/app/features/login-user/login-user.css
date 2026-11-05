@@ -219,6 +219,23 @@
   margin: 0 0 12px;
 }
 
+.register-prompt-link {
+  display: block;
+  margin: -4px 0 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a50000;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.register-prompt-link:hover {
+  text-decoration: underline;
+}
+
 .auth-success {
   color: #276738;
   font-size: 13px;

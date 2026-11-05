@@ -67,6 +67,7 @@ export class LoginUser implements OnDestroy {
   isConfirmPasswordVisible = false;
   isSocialAuthInProgress = false;
   errorMessage = '';
+  showRegisterPrompt = false;
   registerErrorMessage = '';
   registerSuccessMessage = '';
   passwordResetMessage = '';
@@ -96,6 +97,7 @@ export class LoginUser implements OnDestroy {
   setAuthMode(mode: 'login' | 'register'): void {
     this.isRegisterMode = mode === 'register';
     this.errorMessage = '';
+    this.showRegisterPrompt = false;
     this.registerErrorMessage = '';
     this.registerSuccessMessage = '';
   }
@@ -229,11 +231,25 @@ export class LoginUser implements OnDestroy {
     this.loginForm.controls.email.setValue(email?.trim() ?? '');
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
+      const emailControl = this.loginForm.controls.email;
+      const passwordControl = this.loginForm.controls.password;
+      if (emailControl.hasError('required') && passwordControl.hasError('required')) {
+        this.errorMessage = 'Vui lòng nhập email và mật khẩu.';
+      } else if (emailControl.hasError('required')) {
+        this.errorMessage = 'Vui lòng nhập email.';
+      } else if (emailControl.hasError('email')) {
+        this.errorMessage = 'Vui lòng nhập địa chỉ email hợp lệ.';
+      } else {
+        this.errorMessage = 'Vui lòng nhập mật khẩu.';
+      }
+      this.showRegisterPrompt = false;
+      this.changeDetectorRef.markForCheck();
       return;
     }
 
     this.isSubmitting = true;
     this.errorMessage = '';
+    this.showRegisterPrompt = false;
 
     this.http.post<LoginResponse>('/api/auth/login', {
       email: this.loginForm.controls.email.value,
@@ -262,8 +278,11 @@ export class LoginUser implements OnDestroy {
       error: (error: unknown) => {
         if (error instanceof TimeoutError) {
           this.errorMessage = 'Máy chủ phản hồi quá lâu (8 giây). Vui lòng kiểm tra backend và kết nối MongoDB rồi thử lại.';
+        } else if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.errorMessage = 'Không tìm thấy tài khoản với email này. Bạn chưa có tài khoản?';
+          this.showRegisterPrompt = true;
         } else if (error instanceof HttpErrorResponse && error.status === 401) {
-          this.errorMessage = 'Email hoặc mật khẩu không chính xác.';
+          this.errorMessage = 'Mật khẩu không chính xác. Vui lòng thử lại.';
         } else if (error instanceof HttpErrorResponse && error.status === 0) {
           console.error('Không thể kết nối API đăng nhập:', error);
           this.errorMessage = 'Không kết nối được máy chủ. Vui lòng thử lại sau.';

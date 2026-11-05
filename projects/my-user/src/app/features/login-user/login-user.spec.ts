@@ -154,6 +154,39 @@ describe('LoginUser', () => {
     expect(component.isSubmitting).toBe(false);
   });
 
+  it('shows a reminder and does not call the API when required credentials are missing', () => {
+    fixture.detectChanges();
+
+    const form = fixture.nativeElement.querySelector('.login-panel') as HTMLFormElement;
+    form.dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+
+    expect(component.errorMessage).toBe('Vui lòng nhập email và mật khẩu.');
+    expect(fixture.nativeElement.querySelector('.login-panel [role="alert"]')?.textContent)
+      .toContain('Vui lòng nhập email và mật khẩu.');
+    httpTestingController.expectNone('/api/auth/login');
+  });
+
+  it('offers registration when the API reports an unknown email', () => {
+    component.loginForm.setValue({ email: 'new@example.com', password: 'valid-password' });
+    component.login();
+    httpTestingController.expectOne('/api/auth/login').flush(
+      { message: 'Không tìm thấy tài khoản với email này.' },
+      { status: 404, statusText: 'Not Found' },
+    );
+    fixture.detectChanges();
+
+    expect(component.showRegisterPrompt).toBe(true);
+    expect(component.errorMessage).toContain('Bạn chưa có tài khoản?');
+    const registerPrompt = fixture.nativeElement.querySelector('.register-prompt-link') as HTMLButtonElement;
+    expect(registerPrompt).not.toBeNull();
+    registerPrompt.click();
+    fixture.detectChanges();
+
+    expect(component.isRegisterMode).toBe(true);
+    expect(component.showRegisterPrompt).toBe(false);
+  });
+
   it('registers an account through the API and switches to login with the new email', () => {
     component.registerForm.setValue({
       name: '  Test User  ',
@@ -277,7 +310,8 @@ describe('LoginUser', () => {
       { status: 401, statusText: 'Unauthorized' },
     );
 
-    expect(component.errorMessage).toBe('Email hoặc mật khẩu không chính xác.');
+    expect(component.errorMessage).toBe('Mật khẩu không chính xác. Vui lòng thử lại.');
+    expect(component.showRegisterPrompt).toBe(false);
     expect(localStorage.getItem('isLoggedIn')).toBeNull();
     expect(localStorage.getItem('authToken')).toBeNull();
     expect(component.isSubmitting).toBe(false);
@@ -293,6 +327,7 @@ describe('LoginUser', () => {
     );
 
     expect(component.errorMessage).toBe('Không thể đăng nhập lúc này. Vui lòng thử lại sau.');
+    expect(component.showRegisterPrompt).toBe(false);
     expect(component.isSubmitting).toBe(false);
   });
 

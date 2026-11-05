@@ -41,6 +41,9 @@
         </div>
       </div>
       <p *ngIf="errorMessage" class="auth-error" role="alert">{{ errorMessage }}</p>
+      <button *ngIf="showRegisterPrompt" class="register-prompt-link" type="button" (click)="setAuthMode('register')">
+        Đăng ký tài khoản
+      </button>
       <p *ngIf="registerSuccessMessage" class="auth-success" role="status">{{ registerSuccessMessage }}</p>
       <button class="primary-button" type="submit" [disabled]="isSubmitting">
         {{ isSubmitting ? 'Đang đăng nhập...' : 'Tiếp tục' }}

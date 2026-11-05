@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { vi } from 'vitest';
 import { MapService, SampleMap } from '../../core/services/map.service';
 import { SampleMapsComponent } from './sample-maps';
@@ -9,16 +9,30 @@ describe('SampleMapsComponent', () => {
   let component: SampleMapsComponent;
   let fixture: ComponentFixture<SampleMapsComponent>;
   let maps: SampleMap[];
+  let mapService: {
+    getMaps: () => Observable<SampleMap[]>;
+    getMySavedMaps: ReturnType<typeof vi.fn>;
+    saveMyMap: ReturnType<typeof vi.fn>;
+    removeMySavedMap: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     localStorage.clear();
+    localStorage.setItem('authToken', 'test-token');
+    localStorage.setItem('isLoggedIn', 'true');
     maps = Array.from({ length: 13 }, (_, index) => createMap(index + 1));
+    mapService = {
+      getMaps: () => of(maps),
+      getMySavedMaps: vi.fn(() => of([])),
+      saveMyMap: vi.fn(() => of({})),
+      removeMySavedMap: vi.fn(() => of({})),
+    };
 
     await TestBed.configureTestingModule({
       imports: [SampleMapsComponent],
       providers: [
         provideRouter([]),
-        { provide: MapService, useValue: { getMaps: () => of(maps) } },
+        { provide: MapService, useValue: mapService },
       ],
     }).compileComponents();
 
@@ -52,7 +66,7 @@ describe('SampleMapsComponent', () => {
     expect(fixture.nativeElement.querySelector('.page-number-active')?.textContent?.trim()).toBe('2');
   });
 
-  it('keeps the save button visible and toggles the saved map state', () => {
+  it('keeps the save button visible and saves or removes the map through the API', () => {
     const button = fixture.nativeElement.querySelector('.btn-map-action--save') as HTMLButtonElement;
 
     button.click();
@@ -61,14 +75,14 @@ describe('SampleMapsComponent', () => {
     expect(fixture.nativeElement.querySelector('.btn-map-action--save')).toBe(button);
     expect(button.textContent).toContain('Đã lưu');
     expect(button.getAttribute('aria-pressed')).toBe('true');
-    expect(JSON.parse(localStorage.getItem('savedMaps') ?? '[]')).toHaveLength(1);
+    expect(mapService.saveMyMap).toHaveBeenCalledWith('test-token', '1');
 
     button.click();
     fixture.detectChanges();
 
     expect(button.textContent).toContain('Lưu mẫu');
     expect(button.getAttribute('aria-pressed')).toBe('false');
-    expect(JSON.parse(localStorage.getItem('savedMaps') ?? '[]')).toHaveLength(0);
+    expect(mapService.removeMySavedMap).toHaveBeenCalledWith('test-token', '1');
   });
 });
 

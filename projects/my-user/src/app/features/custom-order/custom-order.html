@@ -38,6 +38,7 @@
     <p *ngIf="successMessage" class="alert alert-success" role="status">{{ successMessage }}</p>
     <p *ngIf="errorMessage" class="alert alert-danger" role="alert">{{ errorMessage }}</p>
     <button *ngIf="hasSubmitted" type="button" class="btn-outline w-100" (click)="startNewOrder()">Tạo yêu cầu mới</button>
+    <button *ngIf="hasSubmitted" type="button" class="btn-primary w-100 mt-2" (click)="viewMyRequests()">Xem yêu cầu của tôi</button>
 
     <form *ngIf="!hasSubmitted" [formGroup]="customOrderForm" (ngSubmit)="onSubmit()">
       

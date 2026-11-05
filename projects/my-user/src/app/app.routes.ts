@@ -9,6 +9,11 @@ import { SampleMapsDetailComponent } from './features/sample-maps-detail/sample-
 import { BlogCreateComponent } from './features/blogs/blog-create/blog-create';
 import { MyBlogsComponent } from './features/account/my-blogs/my-blogs';
 import { Information } from './features/account/information/information';
+import { MyOrders } from './features/account/my-orders/my-orders';
+import { CustomOrders } from './features/account/custom-orders/custom-orders';
+import { SavedMaps } from './features/account/saved-maps/saved-maps';
+import { MyReviews } from './features/account/my-reviews/my-reviews';
+import { SidebarAccount } from './layout/sidebar-account/sidebar-account';
 import { SupportComponent } from './features/support/support';
 import { About } from './features/about/about';
 import { PageNotFoundComponent } from './features/page-not-found/page-not-found';
@@ -20,14 +25,10 @@ import { CheckOut } from './features/check-out/check-out';
 export const routes: Routes = [
   { path: '', component: HomepageComponent },
   { path: 'products', component: Product },
-  { path: 'favorites', component: Product, data: { favoritesOnly: true } },
   { path: 'product-detail/:slug', component: ProductDetail },
   { path: 'cart', component: Cart },
   { path: 'checkout', component: CheckOut },
-  { path: 'custom-order', component: CustomOrderComponent },
   { path: 'blog-list', component: BlogListComponent },
-  { path: 'my-blogs', component: MyBlogsComponent },
-  { path: 'profile', component: Information },
   { path: 'blog-detail', component: BlogDetailComponent },
   { path: 'blog-detail/:slug', component: BlogDetailComponent },
   { path: 'blog-create', component: BlogCreateComponent },
@@ -42,5 +43,21 @@ export const routes: Routes = [
   { path: 'support/privacy-policy', component: SupportComponent },
   { path: 'support/terms-of-service', component: SupportComponent },
   { path: 'about', component: About },
+  {
+    path: '',
+    component: SidebarAccount,
+    children: [
+      { path: 'profile', component: Information },
+      { path: 'my-blogs', component: MyBlogsComponent },
+      { path: 'orders', component: MyOrders },
+      { path: 'orders/:slug', component: MyOrders },
+      { path: 'favorites', component: Product, data: { favoritesOnly: true } },
+      { path: 'custom-order-list', component: CustomOrders },
+      { path: 'custom-order-list/:slug', component: CustomOrders },
+      { path: 'custom-order', component: CustomOrderComponent },
+      { path: 'saved-maps', component: SavedMaps },
+      { path: 'myreview', component: MyReviews },
+    ],
+  },
   { path: '**', component: PageNotFoundComponent },
 ];

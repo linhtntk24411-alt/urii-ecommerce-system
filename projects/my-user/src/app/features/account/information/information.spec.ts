@@ -47,8 +47,11 @@ describe('Information', () => {
       interests: 'Đồ handmade',
       gender: 'female',
     });
-    expect(fixture.nativeElement.textContent).toContain('Hồ sơ của tôi');
+    expect(fixture.nativeElement.textContent).toContain('Thông tin cá nhân');
     expect(fixture.nativeElement.textContent).toContain('member@example.com');
+    expect(fixture.nativeElement.querySelector('.profile-summary__name h1')?.textContent.trim())
+      .toBe('Urii Member');
+    expect(fixture.nativeElement.querySelector('.profile-summary__stats')).toBeNull();
     expect((fixture.nativeElement.querySelector('#profile-birth') as HTMLInputElement).value)
       .toBe('12/08/1998');
   });

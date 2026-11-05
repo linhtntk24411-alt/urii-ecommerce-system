@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
@@ -40,6 +40,34 @@ export class MapService {
     );
   }
 
+  getMySavedMaps(token: string): Observable<unknown> {
+    return this.http.get<unknown>('/api/saved-maps/mine', {
+      headers: this.authorizationHeaders(token),
+    });
+  }
+
+  saveMyMap(token: string, mapId: string): Observable<unknown> {
+    return this.http.post<unknown>('/api/saved-maps/mine', { mapId }, {
+      headers: this.authorizationHeaders(token),
+    });
+  }
+
+  updateMySavedMap(token: string, mapId: string, title: string): Observable<unknown> {
+    return this.http.patch<unknown>(`/api/saved-maps/mine/${encodeURIComponent(mapId)}`, { title }, {
+      headers: this.authorizationHeaders(token),
+    });
+  }
+
+  removeMySavedMap(token: string, mapId: string): Observable<unknown> {
+    return this.http.delete<unknown>(`/api/saved-maps/mine/${encodeURIComponent(mapId)}`, {
+      headers: this.authorizationHeaders(token),
+    });
+  }
+
+  private authorizationHeaders(token: string): HttpHeaders {
+    return new HttpHeaders({ Authorization: `Bearer ${token}` });
+  }
+
   private parseMaps(response: unknown): SampleMap[] {
     const records = Array.isArray(response)
       ? response
@@ -52,7 +80,7 @@ export class MapService {
     return records.flatMap((record): SampleMap[] => {
       if (!this.isRecord(record)) return [];
 
-      const rawId = record['id'] ?? record['_id'] ?? record['map_id'];
+      const rawId = record['map_id'] ?? record['id'] ?? record['_id'];
       const id = typeof rawId === 'string' || typeof rawId === 'number'
         ? String(rawId)
         : this.isRecord(rawId) && typeof rawId['$oid'] === 'string'

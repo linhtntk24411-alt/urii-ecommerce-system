@@ -1,7 +1,8 @@
 .my-blogs-page {
-  width: min(100% - 32px, 1040px);
-  min-height: 60vh;
-  margin: 40px auto 72px;
+  width: 100%;
+  min-height: 55vh;
+  margin: 0;
+  padding: 0 0 24px;
   color: #1b1c1c;
 }
 

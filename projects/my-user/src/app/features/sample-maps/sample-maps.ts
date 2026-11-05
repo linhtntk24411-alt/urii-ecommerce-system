@@ -1,13 +1,9 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { PLATFORM_ID } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MapService, SampleMap } from '../../core/services/map.service';
-
-interface SavedMap {
-  id: string | number;
-  [key: string]: unknown;
-}
 
 @Component({
   selector: 'app-sample-maps',
@@ -18,6 +14,7 @@ interface SavedMap {
 })
 export class SampleMapsComponent implements OnInit {
   private readonly mapService = inject(MapService);
+  private readonly router = inject(Router);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -40,6 +37,7 @@ export class SampleMapsComponent implements OnInit {
   errorMessage = '';
   savedMapIds = new Set<string>();
   saveMessage = '';
+  private readonly pendingSaveIds = new Set<string>();
 
   ngOnInit() {
     if (this.isBrowser) {
@@ -151,31 +149,38 @@ export class SampleMapsComponent implements OnInit {
 
   saveMap(map: SampleMap) {
     if (!this.isBrowser) return;
-
-    const savedMaps = this.readSavedMaps();
-    if (!savedMaps) return;
-    const alreadySaved = savedMaps.some((savedMap) => String(savedMap.id) === map.id);
-    const nextSavedMaps = alreadySaved
-      ? savedMaps.filter((savedMap) => String(savedMap.id) !== map.id)
-      : [...savedMaps, {
-        id: map.id,
-        title: map.title,
-        author: 'Urii Thiết kế',
-        image: map.image,
-        rating: 5.0,
-        liked: true,
-      }];
-
-    try {
-      localStorage.setItem('savedMaps', JSON.stringify(nextSavedMaps));
-      this.savedMapIds = new Set(nextSavedMaps.map((savedMap) => String(savedMap.id)));
-      this.saveMessage = alreadySaved
-        ? `Đã bỏ lưu "${map.title}".`
-        : `Đã lưu "${map.title}" vào bộ sưu tập.`;
-    } catch (error: unknown) {
-      console.error('Không thể cập nhật bộ sưu tập map:', error);
-      this.saveMessage = 'Không thể cập nhật bộ sưu tập. Vui lòng kiểm tra bộ nhớ trình duyệt.';
+    const token = this.getToken();
+    if (!token) {
+      this.saveMessage = 'Vui lòng đăng nhập để lưu map.';
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: '/sample-maps' } });
+      return;
     }
+    if (this.pendingSaveIds.has(map.id)) return;
+
+    const alreadySaved = this.isMapSaved(map.id);
+    this.pendingSaveIds.add(map.id);
+    const request = alreadySaved
+      ? this.mapService.removeMySavedMap(token, map.id)
+      : this.mapService.saveMyMap(token, map.id);
+    request.subscribe({
+      next: () => {
+        if (alreadySaved) this.savedMapIds.delete(map.id);
+        else this.savedMapIds.add(map.id);
+        this.saveMessage = alreadySaved
+          ? `Đã bỏ lưu "${map.title}".`
+          : `Đã lưu "${map.title}" vào bộ sưu tập.`;
+        this.pendingSaveIds.delete(map.id);
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể cập nhật bộ sưu tập map:', error);
+        this.saveMessage = error instanceof HttpErrorResponse && error.status === 401
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : 'Không thể cập nhật bộ sưu tập map. Vui lòng thử lại.';
+        this.pendingSaveIds.delete(map.id);
+        this.changeDetectorRef.markForCheck();
+      },
+    });
   }
 
   isMapSaved(mapId: string): boolean {
@@ -183,30 +188,33 @@ export class SampleMapsComponent implements OnInit {
   }
 
   private loadSavedMaps(): void {
-    const savedMaps = this.readSavedMaps();
-    if (!savedMaps) return;
-    this.savedMapIds = new Set(savedMaps.map((map) => String(map.id)));
+    const token = this.getToken();
+    if (!token) return;
+    this.mapService.getMySavedMaps(token).subscribe({
+      next: (response: unknown) => {
+        if (!Array.isArray(response)) {
+          this.saveMessage = 'Dữ liệu map đã lưu nhận được không hợp lệ.';
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+        this.savedMapIds = new Set(response.flatMap((record): string[] => {
+          if (typeof record !== 'object' || record === null || !('mapId' in record)) return [];
+          const mapId = record['mapId'];
+          return typeof mapId === 'string' ? [mapId] : [];
+        }));
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể tải map đã lưu:', error);
+        this.saveMessage = 'Không thể tải trạng thái map đã lưu.';
+        this.changeDetectorRef.markForCheck();
+      },
+    });
   }
 
-  private readSavedMaps(): SavedMap[] | null {
-    try {
-      const stored = localStorage.getItem('savedMaps');
-      if (!stored) return [];
-
-      const parsed: unknown = JSON.parse(stored);
-      if (!Array.isArray(parsed)) throw new Error('Stored maps collection has an invalid format');
-      const savedMaps = parsed.filter((map): map is SavedMap =>
-        typeof map === 'object'
-        && map !== null
-        && 'id' in map
-        && (typeof map['id'] === 'string' || typeof map['id'] === 'number'));
-      if (savedMaps.length !== parsed.length) throw new Error('Stored maps collection has an invalid format');
-      return savedMaps;
-    } catch (error: unknown) {
-      console.error('Không thể đọc bộ sưu tập map đã lưu:', error);
-      this.saveMessage = 'Không thể đọc bộ sưu tập map trên thiết bị này.';
-      return null;
-    }
+  private getToken(): string {
+    const token = localStorage.getItem('authToken');
+    return localStorage.getItem('isLoggedIn') === 'true' ? token || '' : '';
   }
 
   resetFilters() {

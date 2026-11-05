@@ -1,151 +1,132 @@
-<main class="profile-page">
-  <header class="profile-page__heading">
-    <div>
-      <p class="profile-page__eyebrow">Tài khoản Urii</p>
-      <h1>Hồ sơ của tôi</h1>
-      <p class="profile-page__intro">Quản lý thông tin cá nhân và cách Urii liên hệ với bạn.</p>
-    </div>
-    @if (profile && !isEditing && !isLoading) {
-      <button class="profile-button profile-button--primary" type="button" (click)="startEditing()">
-        <span class="material-symbols-outlined" aria-hidden="true">edit</span>
-        Chỉnh sửa hồ sơ
-      </button>
-    }
-  </header>
-
+<main class="account-page">
   @if (isLoading) {
     <section class="profile-notice" role="status">Đang tải hồ sơ...</section>
   } @else if (requiresLogin) {
     <section class="profile-notice profile-notice--center">
       <span class="material-symbols-outlined profile-notice__icon" aria-hidden="true">account_circle</span>
-      <h2>Đăng nhập để xem hồ sơ</h2>
+      <h1>Đăng nhập để xem hồ sơ</h1>
       <p>Thông tin cá nhân được tải an toàn từ tài khoản Urii của bạn.</p>
       <button class="profile-button profile-button--primary" type="button" (click)="signIn()">Đăng nhập</button>
     </section>
   } @else if (errorMessage && !profile) {
     <section class="profile-notice profile-notice--center" role="alert">
       <span class="material-symbols-outlined profile-notice__icon" aria-hidden="true">error</span>
-      <h2>Chưa tải được hồ sơ</h2>
+      <h1>Chưa tải được hồ sơ</h1>
       <p>{{ errorMessage }}</p>
       <button class="profile-button profile-button--primary" type="button" (click)="loadProfile()">Thử lại</button>
     </section>
   } @else if (profile) {
-    <form class="profile-layout" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
-      <section class="profile-card profile-card--identity">
-        <div class="profile-avatar">
-          @if (profile.avatar) {
-            <img [src]="profile.avatar" alt="Ảnh đại diện" />
-          } @else {
-            <span>{{ profile.name.charAt(0).toUpperCase() }}</span>
-          }
-        </div>
-        <h2>{{ profile.name }}</h2>
-        <p>{{ profile.email }}</p>
-        <span class="profile-role">{{ profile.role === 'admin' ? 'Quản trị viên' : 'Thành viên Urii' }}</span>
-
-        <div class="profile-stats">
-          <div>
-            <strong>{{ profile.orders }}</strong>
-            <span>Đơn hàng</span>
-          </div>
-          <div>
-            <strong>{{ profile.maps }}</strong>
-            <span>Map đã lưu</span>
-          </div>
-        </div>
-        @if (profile.joinDate) {
-          <p class="profile-joined">Thành viên từ {{ profile.joinDate }}</p>
-        }
-      </section>
-
-      <section class="profile-card profile-card--details">
-        <div class="profile-section-heading">
-          <div>
-            <h2>Thông tin cá nhân</h2>
-            <p>Cập nhật thông tin để hoàn thiện hồ sơ của bạn.</p>
-          </div>
-          <span class="material-symbols-outlined" aria-hidden="true">badge</span>
-        </div>
-
-        @if (successMessage) {
-          <p class="profile-feedback profile-feedback--success" role="status">{{ successMessage }}</p>
-        }
-        @if (errorMessage) {
-          <p class="profile-feedback profile-feedback--error" role="alert">{{ errorMessage }}</p>
-        }
-
-        <div class="profile-fields">
-          <div class="profile-field">
-            <label for="profile-name">Họ và tên <span>*</span></label>
-            <input id="profile-name" type="text" formControlName="name" [readOnly]="!isEditing" autocomplete="name" />
-            @if (isEditing && profileForm.controls.name.touched && profileForm.controls.name.invalid) {
-              <small class="profile-field__error">Vui lòng nhập họ và tên.</small>
-            }
-          </div>
-
-          <div class="profile-field">
-            <label for="profile-email">Email <span>*</span></label>
-            <input id="profile-email" type="email" [value]="profile.email" readonly required autocomplete="email" />
-            <small>Email hiện chưa thể thay đổi trong trang hồ sơ.</small>
-          </div>
-
-          <div class="profile-field">
-            <label for="profile-phone">Số điện thoại <span>*</span></label>
-            <input id="profile-phone" type="tel" formControlName="phone" [readOnly]="!isEditing" required autocomplete="tel" placeholder="Nhập số điện thoại" />
-            @if (isEditing && profileForm.controls.phone.touched && profileForm.controls.phone.invalid) {
-              <small class="profile-field__error">Số điện thoại là bắt buộc và phải hợp lệ.</small>
-            }
-          </div>
-
-          <div class="profile-field">
-            <label for="profile-birth">Ngày sinh <span>*</span></label>
-            <input id="profile-birth" type="text" formControlName="birth" [readOnly]="!isEditing" required autocomplete="bday" placeholder="DD/MM/YYYY" />
-            @if (isEditing && profileForm.controls.birth.touched && profileForm.controls.birth.invalid) {
-              <small class="profile-field__error">Ngày sinh là bắt buộc. Nhập ngày hợp lệ theo định dạng DD/MM/YYYY, không phải ngày trong tương lai.</small>
-            }
-          </div>
-
-          <div class="profile-field">
-            <label for="profile-gender">Giới tính <small>(không bắt buộc)</small></label>
-            <select id="profile-gender" formControlName="gender" [disabled]="!isEditing">
-              <option value="">Chọn nếu bạn muốn chia sẻ</option>
-              <option value="male">Nam</option>
-              <option value="female">Nữ</option>
-              <option value="other">Khác</option>
-              <option value="prefer_not_to_say">Không muốn chia sẻ</option>
-            </select>
-          </div>
-
-          <div class="profile-field profile-field--full">
-            <label for="profile-address">Địa chỉ</label>
-            <textarea id="profile-address" rows="3" formControlName="address" [readOnly]="!isEditing" autocomplete="street-address" placeholder="Nhập địa chỉ của bạn"></textarea>
-          </div>
-
-          <div class="profile-field profile-field--full">
-            <label for="profile-interests">Sở thích <small>(không bắt buộc)</small></label>
-            <textarea id="profile-interests" rows="3" formControlName="interests" [readOnly]="!isEditing" maxlength="500" placeholder="Ví dụ: làm đồ handmade, hạt ủi, móc len..."></textarea>
-            <small>Tự nguyện chia sẻ để Urii gợi ý nội dung và sản phẩm phù hợp hơn.</small>
-          </div>
-        </div>
-
-        @if (isEditing) {
-          <div class="profile-edit-hint">
-            <span class="material-symbols-outlined" aria-hidden="true">info</span>
-            <span>Số điện thoại và ngày sinh là bắt buộc. Địa chỉ, sở thích và giới tính có thể để trống hoặc xóa.</span>
-          </div>
-          <div class="profile-form-actions">
-            <button class="profile-button profile-button--text" type="button" (click)="clearOptionalInformation()">
-              Xóa thông tin tùy chọn
-            </button>
-            <div class="profile-form-actions__right">
-              <button class="profile-button profile-button--secondary" type="button" [disabled]="isSaving" (click)="cancelEditing()">Hủy</button>
-              <button class="profile-button profile-button--primary" type="submit" [disabled]="isSaving">
-                {{ isSaving ? 'Đang lưu...' : 'Lưu thay đổi' }}
-              </button>
+    <div class="account-content" aria-labelledby="profile-title">
+        <header class="profile-summary">
+          <div class="profile-summary__identity">
+            <div class="profile-avatar">
+              @if (profile.avatar) {
+                <img [src]="profile.avatar" alt="" />
+              } @else {
+                <span>{{ profile.name.charAt(0).toUpperCase() }}</span>
+              }
+            </div>
+            <div class="profile-summary__name">
+              <p class="profile-summary__eyebrow">Tài khoản Urii</p>
+              <h1 id="profile-title">{{ profile.name }}</h1>
+              <p>{{ profile.email }}</p>
             </div>
           </div>
-        }
-      </section>
-    </form>
+        </header>
+
+        <form class="profile-card profile-card--details" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+          <div class="profile-section-heading">
+            <div>
+              <h2>Thông tin cá nhân</h2>
+              <p>Thông tin được lưu trong hồ sơ tài khoản Urii của bạn.</p>
+            </div>
+            @if (!isEditing) {
+              <button class="profile-edit-link" type="button" (click)="startEditing()">
+                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                Chỉnh sửa
+              </button>
+            }
+          </div>
+
+          @if (successMessage) {
+            <p class="profile-feedback profile-feedback--success" role="status">{{ successMessage }}</p>
+          }
+          @if (errorMessage) {
+            <p class="profile-feedback profile-feedback--error" role="alert">{{ errorMessage }}</p>
+          }
+
+          <div class="profile-fields">
+            <div class="profile-field">
+              <label for="profile-name">Họ và tên <span>*</span></label>
+              <input id="profile-name" type="text" formControlName="name" [readOnly]="!isEditing" autocomplete="name" />
+              @if (isEditing && profileForm.controls.name.touched && profileForm.controls.name.invalid) {
+                <small class="profile-field__error">Vui lòng nhập họ và tên.</small>
+              }
+            </div>
+
+            <div class="profile-field">
+              <label for="profile-phone">Số điện thoại <span>*</span></label>
+              <input id="profile-phone" type="tel" formControlName="phone" [readOnly]="!isEditing" required autocomplete="tel" placeholder="Nhập số điện thoại" />
+              @if (isEditing && profileForm.controls.phone.touched && profileForm.controls.phone.invalid) {
+                <small class="profile-field__error">Số điện thoại là bắt buộc và phải hợp lệ.</small>
+              }
+            </div>
+
+            <div class="profile-field">
+              <label for="profile-email">Email <span>*</span></label>
+              <input id="profile-email" type="email" [value]="profile.email" readonly required autocomplete="email" />
+              <small>Email hiện chưa thể thay đổi trong trang hồ sơ.</small>
+            </div>
+
+            <div class="profile-field">
+              <label for="profile-birth">Ngày sinh <span>*</span></label>
+              <input id="profile-birth" type="text" formControlName="birth" [readOnly]="!isEditing" required autocomplete="bday" placeholder="DD/MM/YYYY" />
+              @if (isEditing && profileForm.controls.birth.touched && profileForm.controls.birth.invalid) {
+                <small class="profile-field__error">Ngày sinh là bắt buộc. Nhập ngày hợp lệ theo định dạng DD/MM/YYYY, không phải ngày trong tương lai.</small>
+              }
+            </div>
+
+            <div class="profile-field">
+              <label for="profile-gender">Giới tính <small>(không bắt buộc)</small></label>
+              <select id="profile-gender" formControlName="gender">
+                <option value="">Chọn nếu bạn muốn chia sẻ</option>
+                <option value="male">Nam</option>
+                <option value="female">Nữ</option>
+                <option value="other">Khác</option>
+                <option value="prefer_not_to_say">Không muốn chia sẻ</option>
+              </select>
+            </div>
+
+            <div class="profile-field profile-field--full">
+              <label for="profile-address">Địa chỉ</label>
+              <textarea id="profile-address" rows="2" formControlName="address" [readOnly]="!isEditing" autocomplete="street-address" placeholder="Nhập địa chỉ của bạn"></textarea>
+            </div>
+
+            <div class="profile-field profile-field--full">
+              <label for="profile-interests">Sở thích <small>(không bắt buộc)</small></label>
+              <textarea id="profile-interests" rows="2" formControlName="interests" [readOnly]="!isEditing" maxlength="500" placeholder="Ví dụ: làm đồ handmade, hạt ủi, móc len..."></textarea>
+              <small>Tự nguyện chia sẻ để Urii gợi ý nội dung và sản phẩm phù hợp hơn.</small>
+            </div>
+          </div>
+
+          @if (isEditing) {
+            <div class="profile-edit-hint">
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+              <span>Số điện thoại và ngày sinh là bắt buộc. Địa chỉ, sở thích và giới tính có thể để trống hoặc xóa.</span>
+            </div>
+            <div class="profile-form-actions">
+              <button class="profile-button profile-button--text" type="button" (click)="clearOptionalInformation()">
+                Xóa thông tin tùy chọn
+              </button>
+              <div class="profile-form-actions__right">
+                <button class="profile-button profile-button--secondary" type="button" [disabled]="isSaving" (click)="cancelEditing()">Hủy</button>
+                <button class="profile-button profile-button--primary" type="submit" [disabled]="isSaving">
+                  {{ isSaving ? 'Đang lưu...' : 'Lưu thay đổi' }}
+                </button>
+              </div>
+            </div>
+          }
+        </form>
+    </div>
   }
 </main>

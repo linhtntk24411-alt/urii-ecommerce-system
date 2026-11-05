@@ -1,8 +1,9 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { combineLatest, map } from 'rxjs';
 import { MapService, SampleMap } from '../../core/services/map.service';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-sample-maps-detail',
@@ -13,6 +14,7 @@ import { MapService, SampleMap } from '../../core/services/map.service';
 })
 export class SampleMapsDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly mapService = inject(MapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -64,24 +66,25 @@ export class SampleMapsDetailComponent implements OnInit {
   saveMap(): void {
     const map = this.mapDetail;
     if (!map) return;
-
-    const savedMaps = JSON.parse(localStorage.getItem('savedMaps') || '[]');
-    const isExist = savedMaps.some((item: { id: string }) => item.id === map.id);
-
-    if (!isExist) {
-      savedMaps.push({
-        id: map.id,
-        title: map.title,
-        author: 'Urii Thiết kế',
-        image: map.image,
-        rating: 5.0,
-        liked: true,
+    const token = localStorage.getItem('isLoggedIn') === 'true'
+      ? localStorage.getItem('authToken') || ''
+      : '';
+    if (!token) {
+      void this.router.navigate(['/login'], {
+        queryParams: { returnUrl: `/sample-maps-detail/${encodeURIComponent(map.slug)}` },
       });
-      localStorage.setItem('savedMaps', JSON.stringify(savedMaps));
-      alert(`Đã lưu "${map.title}" vào danh sách của bạn!`);
-    } else {
-      alert(`Mẫu "${map.title}" đã tồn tại trong danh sách lưu.`);
+      return;
     }
+
+    this.mapService.saveMyMap(token, map.id).subscribe({
+      next: () => window.alert(`Đã lưu "${map.title}" vào kho map.`),
+      error: (error: unknown) => {
+        console.error('Không thể lưu map:', error);
+        window.alert(error instanceof HttpErrorResponse && error.status === 409
+          ? `Map "${map.title}" đã có trong kho của bạn.`
+          : 'Không thể lưu map. Vui lòng thử lại.');
+      },
+    });
   }
 
   scrollToGuide(): void {

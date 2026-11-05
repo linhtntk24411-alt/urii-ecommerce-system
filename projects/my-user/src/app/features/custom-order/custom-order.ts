@@ -88,6 +88,10 @@ export class CustomOrderComponent {
     }
   }
 
+  viewMyRequests(): void {
+    void this.router.navigate(['/custom-order-list']);
+  }
+
   onFileSelected(event: Event): void {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];

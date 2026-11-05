@@ -1,0 +1,223 @@
+<main class="design-requests">
+  @if (requiresLogin) {
+    <section class="requests-message">
+      <span class="material-symbols-outlined" aria-hidden="true">account_circle</span>
+      <h1>Đăng nhập để xem yêu cầu thiết kế</h1>
+      <p>Danh sách được tải riêng theo tài khoản của bạn.</p>
+      <button class="requests-button requests-button--primary" type="button" (click)="signIn()">Đăng nhập</button>
+    </section>
+  } @else if (requestSlug) {
+    <header class="requests-heading requests-heading--detail">
+      <button class="requests-back" type="button" (click)="backToRequests()">
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        Yêu cầu thiết kế
+      </button>
+      <div class="requests-heading__title">
+        <span class="requests-heading__icon material-symbols-outlined" aria-hidden="true">draw</span>
+        <div>
+          <p class="requests-eyebrow">THIẾT KẾ RIÊNG CHO BẠN</p>
+          <h1>Chi tiết yêu cầu</h1>
+        </div>
+      </div>
+    </header>
+
+    @if (isLoading) {
+      <section class="requests-message" role="status">Đang tải yêu cầu thiết kế...</section>
+    } @else if (errorMessage) {
+      <section class="requests-message" role="alert">
+        <p>{{ errorMessage }}</p>
+        <button class="requests-button requests-button--secondary" type="button" (click)="loadRequest()">Thử lại</button>
+      </section>
+    } @else if (activeRequest) {
+      <article class="request-detail">
+        <header class="request-detail__heading">
+          <div class="request-title">
+            @if (activeRequest.imageUrl) {
+              <img [src]="activeRequest.imageUrl" [alt]="activeRequest.requestName" />
+            }
+            <div>
+              @if (activeRequest.id) {
+                <p class="request-id">#{{ activeRequest.id }}</p>
+              }
+              @if (activeRequest.requestName) {
+                <h2>{{ activeRequest.requestName }}</h2>
+              }
+            </div>
+          </div>
+          @if (activeRequest.status) {
+            <span class="request-status" [ngClass]="statusClass(activeRequest.status)">{{ statusLabel(activeRequest.status) }}</span>
+          }
+        </header>
+        <div class="request-detail__body">
+          @if (activeRequest.imageUrl) {
+            <figure class="request-detail__preview">
+              <img [src]="activeRequest.imageUrl" [alt]="activeRequest.requestName || 'Ảnh mẫu thiết kế'">
+              <figcaption>Hình ảnh tham khảo</figcaption>
+            </figure>
+          }
+          <div class="request-detail__content">
+            <p class="request-detail__section-title">Thông tin yêu cầu</p>
+            <dl class="request-details">
+              @if (activeRequest.createdAt) {
+                <div>
+                  <dt><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Ngày gửi</dt>
+                  <dd>{{ activeRequest.createdAt | date:'dd/MM/yyyy' }}</dd>
+                </div>
+              }
+              @if (activeRequest.size) {
+                <div>
+                  <dt><span class="material-symbols-outlined" aria-hidden="true">aspect_ratio</span>Kích thước</dt>
+                  <dd>{{ activeRequest.size }}</dd>
+                </div>
+              }
+              @if (activeRequest.beadType) {
+                <div>
+                  <dt><span class="material-symbols-outlined" aria-hidden="true">palette</span>Loại hạt</dt>
+                  <dd>{{ activeRequest.beadType }}</dd>
+                </div>
+              }
+              @if (activeRequest.description) {
+                <div class="request-details__full">
+                  <dt><span class="material-symbols-outlined" aria-hidden="true">subject</span>Mô tả</dt>
+                  <dd>{{ activeRequest.description }}</dd>
+                </div>
+              }
+              @if (activeRequest.imageNote) {
+                <div class="request-details__full">
+                  <dt><span class="material-symbols-outlined" aria-hidden="true">image</span>Ghi chú hình ảnh</dt>
+                  <dd>{{ activeRequest.imageNote }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        </div>
+      </article>
+    }
+  } @else {
+    <header class="requests-heading">
+      <div class="requests-heading__title">
+        <span class="requests-heading__icon material-symbols-outlined" aria-hidden="true">draw</span>
+        <div>
+          <p class="requests-eyebrow">Ý TƯỞNG CỦA BẠN, PHONG CÁCH CỦA BẠN</p>
+        <h1>Theo dõi yêu cầu thiết kế</h1>
+        <p>Quản lý và cập nhật tiến độ các yêu cầu thiết kế của bạn.</p>
+        </div>
+      </div>
+      <div class="requests-toolbar">
+        <label class="requests-filter">
+          <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+          <select [value]="selectedStatus" (change)="onStatusChange($event)" aria-label="Lọc trạng thái">
+            @for (status of statuses; track status.id) {
+              <option [value]="status.id">{{ status.label }}</option>
+            }
+          </select>
+        </label>
+        <button class="requests-button requests-button--primary" type="button" (click)="createRequest()">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>
+          Tạo yêu cầu mới
+        </button>
+      </div>
+    </header>
+
+    <section class="request-stats" aria-label="Thống kê yêu cầu thiết kế">
+      <article class="request-stat">
+        <span class="request-stat__icon material-symbols-outlined" aria-hidden="true">inventory_2</span>
+        <div class="request-stat__content">
+          <span>Tổng số yêu cầu</span>
+          @if (!isLoading || totalCount > 0) {
+            <strong>{{ totalCount }}</strong>
+          } @else {
+            <strong class="request-stat__loading">—</strong>
+          }
+        </div>
+      </article>
+      <article class="request-stat request-stat--active">
+        <span class="request-stat__icon material-symbols-outlined" aria-hidden="true">autorenew</span>
+        <div class="request-stat__content">
+          <span>Đang xử lý</span>
+          @if (!isLoading || activeCount > 0) {
+            <strong>{{ activeCount }}</strong>
+          } @else {
+            <strong class="request-stat__loading">—</strong>
+          }
+        </div>
+      </article>
+    </section>
+
+    @if (isLoading) {
+      <section class="requests-message" role="status">Đang tải yêu cầu thiết kế...</section>
+    } @else if (errorMessage) {
+      <section class="requests-message" role="alert">
+        <p>{{ errorMessage }}</p>
+        <button class="requests-button requests-button--secondary" type="button" (click)="loadRequests(currentPage)">Thử lại</button>
+      </section>
+    } @else if (!requests.length) {
+      <section class="requests-message requests-message--empty">
+        <span class="requests-message__icon material-symbols-outlined" aria-hidden="true">design_services</span>
+        <h2>Chưa có yêu cầu thiết kế</h2>
+        <p>Gửi ý tưởng của bạn để Urii giúp bạn biến nó thành một thiết kế độc đáo.</p>
+        <button class="requests-button requests-button--primary" type="button" (click)="createRequest()">Tạo yêu cầu mới</button>
+      </section>
+    } @else {
+      <div class="requests-list" aria-label="Danh sách yêu cầu thiết kế">
+        @for (request of requests; track request.id) {
+          <article class="request-card">
+            <div class="request-card__image-wrap">
+              @if (request.imageUrl) {
+                <img class="request-card__image" [src]="request.imageUrl" [alt]="request.requestName || 'Ảnh mẫu thiết kế'">
+              } @else {
+                <span class="request-card__image request-card__image--placeholder material-symbols-outlined" aria-hidden="true">
+                  image
+                </span>
+              }
+              <span class="request-card__sparkle material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+            </div>
+            <div class="request-card__body">
+              <div class="request-card__topline">
+                <span class="request-card__id">MÃ YÊU CẦU · {{ request.id }}</span>
+                @if (request.status) {
+                  <span class="request-status" [ngClass]="statusClass(request.status)">
+                    <span class="request-status__dot" aria-hidden="true"></span>
+                    {{ statusLabel(request.status) }}
+                  </span>
+                }
+              </div>
+              <h2>{{ request.requestName || 'Yêu cầu thiết kế' }}</h2>
+              <div class="request-card__meta">
+                @if (request.size) {
+                  <span><span class="material-symbols-outlined" aria-hidden="true">aspect_ratio</span>{{ request.size }}</span>
+                }
+                @if (request.createdAt) {
+                  <span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>{{ request.createdAt | date:'dd/MM/yyyy' }}</span>
+                }
+              </div>
+              @if (request.description) {
+                <p class="request-card__description">{{ request.description }}</p>
+              }
+              <a class="request-card__link" [routerLink]="['/custom-order-list', request.id]">
+                Xem chi tiết yêu cầu
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+              </a>
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (totalPages > 1) {
+        <nav class="requests-pagination" aria-label="Phân trang yêu cầu thiết kế">
+          <button type="button" aria-label="Trang trước" [disabled]="currentPage <= 1" (click)="goToPage(currentPage - 1)">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+          </button>
+          @for (page of pageNumbers; track page) {
+            <button type="button" [class.requests-pagination__active]="currentPage === page" [attr.aria-current]="currentPage === page ? 'page' : null" (click)="goToPage(page)">
+              {{ page }}
+            </button>
+          }
+          <button type="button" aria-label="Trang sau" [disabled]="currentPage >= totalPages" (click)="goToPage(currentPage + 1)">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </nav>
+      }
+    }
+  }
+</main>

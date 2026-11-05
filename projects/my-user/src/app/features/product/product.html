@@ -1,5 +1,5 @@
 <main class="container my-4">
-  <nav aria-label="breadcrumb" class="mb-3">
+  <nav *ngIf="!favoritesOnly" aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small mb-0 bg-white p-2 px-3 rounded-3 shadow-sm">
       <li class="breadcrumb-item"><a routerLink="/" class="text-decoration-none text-secondary">Trang chủ</a></li>
       <li class="breadcrumb-item active text-primary-custom fw-bold" aria-current="page">

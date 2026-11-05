@@ -22,6 +22,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server,
   },
   {
+    path: 'orders/:slug',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'custom-order-list/:slug',
+    renderMode: RenderMode.Server,
+  },
+  {
     path: 'support/support-center',
     renderMode: RenderMode.Server,
   },

@@ -68,7 +68,7 @@ export class Information implements OnInit {
     phone: ['', [Validators.required, Validators.pattern(/^\+?[\d\s().-]{7,20}$/)]],
     address: [''],
     interests: [''],
-    gender: [''],
+    gender: [{ value: '', disabled: true }],
   });
 
   profile: UserProfile | null = null;
@@ -132,6 +132,7 @@ export class Information implements OnInit {
       interests: this.profile.interests,
       gender: this.profile.gender,
     });
+    this.profileForm.controls.gender.enable();
     this.errorMessage = '';
     this.successMessage = '';
     this.isEditing = true;
@@ -150,6 +151,7 @@ export class Information implements OnInit {
         interests: this.profile.interests,
         gender: this.profile.gender,
       });
+      this.profileForm.controls.gender.disable();
     }
   }
 
@@ -237,6 +239,7 @@ export class Information implements OnInit {
       interests: profile.interests,
       gender: profile.gender,
     });
+    this.profileForm.controls.gender.disable();
   }
 
   private displayBirthDate(value: string): string {

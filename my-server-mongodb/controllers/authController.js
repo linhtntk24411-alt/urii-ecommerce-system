@@ -9,24 +9,6 @@ const { emitCrudChange } = require('../realtime');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_BYTES = 72;
-const PROFILE_GENDERS = new Set(['', 'male', 'female', 'other', 'prefer_not_to_say']);
-
-function isValidBirthDate(value) {
-  const vietnameseDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
-  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  const day = vietnameseDate ? Number(vietnameseDate[1]) : isoDate ? Number(isoDate[3]) : 0;
-  const month = vietnameseDate ? Number(vietnameseDate[2]) : isoDate ? Number(isoDate[2]) : 0;
-  const year = vietnameseDate ? Number(vietnameseDate[3]) : isoDate ? Number(isoDate[1]) : 0;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-
-  return Boolean(day && month && year)
-    && date.getUTCFullYear() === year
-    && date.getUTCMonth() === month - 1
-    && date.getUTCDate() === day
-    && date <= today;
-}
 
 function formatAuthUser(user) {
   if (!user) return null;
@@ -40,8 +22,6 @@ function formatAuthUser(user) {
     phone: user.phone || '',
     birth: user.birth || '',
     address: user.address || '',
-    interests: user.interests || '',
-    gender: user.gender || '',
     joinDate: user.joinDate || '',
     orders: user.orders ?? 0,
     maps: user.maps ?? 0,
@@ -90,6 +70,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: 'Không thể đăng ký tài khoản lúc này.' });
   }
 };
+
 exports.login = async (req, res) => {
   const { email, password } = req.body || {};
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -108,12 +89,7 @@ exports.login = async (req, res) => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
-    if (!user) {
-      res.status(404).json({ message: 'Không tìm thấy tài khoản với email này.' });
-      return;
-    }
-
-    const isMatch = user.password && await bcrypt.compare(password, user.password);
+    const isMatch = user?.password && await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(401).json({ message: 'Sai email hoặc mật khẩu.' });
       return;
@@ -166,7 +142,7 @@ exports.updateMe = async (req, res) => {
     return;
   }
 
-  const allowedFields = ['name', 'phone', 'birth', 'address', 'interests', 'gender', 'avatar', 'password'];
+  const allowedFields = ['name', 'phone', 'birth', 'address', 'avatar', 'password'];
   const updates = {};
   for (const field of allowedFields) {
     if (Object.hasOwn(req.body, field)) {
@@ -180,37 +156,6 @@ exports.updateMe = async (req, res) => {
       return;
     }
     updates.name = updates.name.trim();
-  }
-
-  if (updates.phone !== undefined) {
-    if (typeof updates.phone !== 'string'
-      || !/^\+?[\d\s().-]{7,20}$/.test(updates.phone.trim())) {
-      res.status(400).json({ message: 'Số điện thoại là bắt buộc và phải hợp lệ.' });
-      return;
-    }
-    updates.phone = updates.phone.trim();
-  }
-
-  if (updates.birth !== undefined) {
-    if (typeof updates.birth !== 'string' || !isValidBirthDate(updates.birth.trim())) {
-      res.status(400).json({ message: 'Ngày sinh là bắt buộc, phải hợp lệ và không được ở tương lai.' });
-      return;
-    }
-    updates.birth = updates.birth.trim();
-  }
-
-  if (updates.interests !== undefined) {
-    if (typeof updates.interests !== 'string' || updates.interests.length > 500) {
-      res.status(400).json({ message: 'Sở thích không được vượt quá 500 ký tự.' });
-      return;
-    }
-    updates.interests = updates.interests.trim();
-  }
-
-  if (updates.gender !== undefined
-    && (typeof updates.gender !== 'string' || !PROFILE_GENDERS.has(updates.gender))) {
-    res.status(400).json({ message: 'Giới tính không hợp lệ.' });
-    return;
   }
 
   if (updates.password !== undefined) {
@@ -249,8 +194,13 @@ function oauthStateCookie(provider, state, maxAge) {
   return `urii_oauth_state_${provider}=${state}; HttpOnly; SameSite=Lax; Path=/api/auth/oauth/${provider}; Max-Age=${maxAge}${secure}`;
 }
 
+function oauthLinkCookie(provider, linkToken, maxAge) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `urii_oauth_link_${provider}=${linkToken}; HttpOnly; SameSite=Lax; Path=/api/auth/oauth/${provider}; Max-Age=${maxAge}${secure}`;
+}
+
 function readCookie(req, name) {
-  const cookies = req.headers.cookie || '';
+  const cookies = req.headers?.cookie || '';
   for (const cookie of cookies.split(';')) {
     const separator = cookie.indexOf('=');
     if (separator > 0 && cookie.slice(0, separator).trim() === name) {
@@ -264,6 +214,93 @@ function oauthErrorStatus(error) {
   return error.code === 'OAUTH_CONFIGURATION_ERROR' ? 503 : 502;
 }
 
+function getFrontendOrigin() {
+  const configured = (process.env.OAUTH_FRONTEND_ORIGIN || '').trim();
+  if (configured) return configured;
+  const firstCors = (process.env.CORS_ORIGINS || 'http://localhost:4200')
+    .split(',')
+    .map((origin) => origin.trim())
+    .find(Boolean);
+  return firstCors || 'http://localhost:4200';
+}
+
+function extractLinkTokenFromRequest(req) {
+  const queryToken = typeof req.query?.token === 'string' ? req.query.token.trim() : '';
+  if (queryToken) return queryToken;
+  const authorization = req.get?.('authorization') || req.headers?.authorization || '';
+  const [scheme, bearerToken] = authorization.split(' ');
+  return scheme === 'Bearer' && bearerToken ? bearerToken.trim() : '';
+}
+
+function verifyLinkUser(token) {
+  if (!token || !process.env.JWT_SECRET) return null;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded?.role === 'user' && mongoose.isValidObjectId(decoded.id)) {
+      return decoded.id;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function serializeForInlineScript(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function sendOAuthCallbackResult(req, res, statusCode, provider, payload) {
+  const targetOrigin = getFrontendOrigin();
+  const message = {
+    type: 'urii-oauth',
+    provider,
+    ok: statusCode >= 200 && statusCode < 300,
+    status: statusCode,
+    ...payload
+  };
+  const serializedMessage = serializeForInlineScript(message);
+  const serializedOrigin = serializeForInlineScript(targetOrigin);
+  const safeText = String(payload?.message || (message.ok ? 'Đăng nhập thành công!' : 'Đăng nhập không thành công.'))
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Đăng nhập Urii</title>
+</head>
+<body>
+  <p id="oauth-message">${safeText}</p>
+  <script id="oauth-payload" type="application/json">${serializedMessage}</script>
+  <script>
+    (function () {
+      var payload = ${serializedMessage};
+      var targetOrigin = ${serializedOrigin};
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(payload, targetOrigin);
+        }
+      } catch (e) {}
+      try {
+        window.close();
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>`;
+
+  res.status(statusCode);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+}
+
 exports.oauthStart = (req, res) => {
   const { provider } = req.params;
   if (!['google', 'facebook'].includes(provider)) {
@@ -271,11 +308,23 @@ exports.oauthStart = (req, res) => {
     return;
   }
 
+  const rawLinkToken = extractLinkTokenFromRequest(req);
+  if (rawLinkToken && !verifyLinkUser(rawLinkToken)) {
+    res.status(401).json({ message: 'Phiên đăng nhập để liên kết tài khoản không hợp lệ hoặc đã hết hạn.' });
+    return;
+  }
+
   try {
     const state = crypto.randomBytes(32).toString('hex');
     const authorizationUrl = oauthProviders.buildAuthorizationUrl(provider, state);
+    const cookies = [oauthStateCookie(provider, state, 600)];
+    if (rawLinkToken) {
+      cookies.push(oauthLinkCookie(provider, rawLinkToken, 600));
+    } else {
+      cookies.push(oauthLinkCookie(provider, '', 0));
+    }
     res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Set-Cookie', oauthStateCookie(provider, state, 600));
+    res.setHeader('Set-Cookie', cookies);
     res.redirect(authorizationUrl);
   } catch (error) {
     console.error(`Không thể khởi tạo OAuth ${provider}:`, error.message);
@@ -293,9 +342,16 @@ exports.oauthCallback = async (req, res) => {
   }
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Set-Cookie', oauthStateCookie(provider, '', 0));
+  const linkCookieToken = readCookie(req, `urii_oauth_link_${provider}`);
+  res.setHeader('Set-Cookie', [
+    oauthStateCookie(provider, '', 0),
+    oauthLinkCookie(provider, '', 0)
+  ]);
+
   if (typeof req.query.error === 'string') {
-    res.status(401).json({ message: 'Bạn đã hủy hoặc từ chối đăng nhập OAuth.' });
+    sendOAuthCallbackResult(req, res, 401, provider, {
+      message: 'Bạn đã hủy hoặc từ chối đăng nhập OAuth.'
+    });
     return;
   }
   const { code, state } = req.query;
@@ -304,68 +360,141 @@ exports.oauthCallback = async (req, res) => {
     || !/^[a-f\d]{64}$/i.test(state)
     || !/^[a-f\d]{64}$/i.test(cookieState)
     || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
-    res.status(400).json({ message: 'Trạng thái OAuth không hợp lệ hoặc đã hết hạn.' });
+    sendOAuthCallbackResult(req, res, 400, provider, {
+      message: 'Trạng thái OAuth không hợp lệ hoặc đã hết hạn.'
+    });
     return;
   }
   if (!process.env.JWT_SECRET) {
-    res.status(500).json({ message: 'Máy chủ chưa cấu hình JWT_SECRET.' });
+    sendOAuthCallbackResult(req, res, 500, provider, {
+      message: 'Máy chủ chưa cấu hình JWT_SECRET.'
+    });
     return;
   }
 
   try {
     const identity = await oauthProviders.exchangeAuthorizationCode(provider, code);
+    const providerUserId = typeof identity.providerUserId === 'string'
+      ? identity.providerUserId.trim()
+      : '';
     const email = typeof identity.email === 'string' ? identity.email.trim().toLowerCase() : '';
 
-    if (!identity.providerUserId || !EMAIL_PATTERN.test(email)
-      || (provider === 'google' && identity.emailVerified !== true)) {
-      res.status(401).json({ message: 'Nhà cung cấp không trả về danh tính/email hợp lệ.' });
+    if (!providerUserId) {
+      sendOAuthCallbackResult(req, res, 401, provider, {
+        message: 'Nhà cung cấp không trả về danh tính hợp lệ.'
+      });
       return;
     }
 
-    const existing = await User.findOne({ email }).select('+password');
-    if (existing) {
-      if (existing.role === 'admin') {
-        res.status(403).json({ message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.' });
-        return;
-      }
-      const linkedAccount = existing.oauthAccounts?.find((account) => account.provider === provider);
-      if (linkedAccount && linkedAccount.providerUserId !== identity.providerUserId) {
-        res.status(409).json({ message: 'Email này đã liên kết với một tài khoản OAuth khác.' });
-        return;
-      }
-      if (!linkedAccount && (existing.password
-        || existing.authProviders?.some((authProvider) => authProvider !== provider))) {
-        res.status(409).json({
-          message: 'Email này đã có tài khoản. Hãy đăng nhập bằng phương thức đã đăng ký.'
+    const linkedByProviderId = await User.findOne({
+      oauthAccounts: { $elemMatch: { provider, providerUserId } }
+    }).select('+password');
+
+    let user = null;
+
+    if (provider === 'google') {
+      if (!EMAIL_PATTERN.test(email) || identity.emailVerified !== true) {
+        sendOAuthCallbackResult(req, res, 401, provider, {
+          message: 'Nhà cung cấp không trả về danh tính/email hợp lệ.'
         });
         return;
       }
-    }
 
-    const profileName = typeof identity.name === 'string' && identity.name.trim()
-      ? identity.name.trim()
-      : email;
-    let user = existing;
-    if (!user) {
-      user = await User.create({
-        email,
-        name: profileName,
-        avatar: identity.picture || undefined,
-        role: 'user',
-        password: null,
-        authProviders: [provider],
-        oauthAccounts: [{ provider, providerUserId: identity.providerUserId }]
-      });
-    } else {
-      if (!user.authProviders.includes(provider)) user.authProviders.push(provider);
-      if (!user.oauthAccounts?.some((account) => account.provider === provider)) {
-        user.oauthAccounts.push({ provider, providerUserId: identity.providerUserId });
+      const existingByEmail = await User.findOne({ email }).select('+password');
+      if (linkedByProviderId && existingByEmail && String(linkedByProviderId._id) !== String(existingByEmail._id)) {
+        sendOAuthCallbackResult(req, res, 409, provider, {
+          message: 'Tài khoản Google này đã được liên kết với một người dùng khác.'
+        });
+        return;
       }
-      if ([email, email.split('@')[0]].includes(user.name) && profileName !== user.name) {
-        user.name = profileName;
+
+      user = existingByEmail || linkedByProviderId;
+      if (!user) {
+        sendOAuthCallbackResult(req, res, 403, provider, {
+          message: 'Email này chưa đăng ký tài khoản Urii. Vui lòng đăng ký tài khoản trước.'
+        });
+        return;
       }
-      if (!user.avatar && identity.picture) user.avatar = identity.picture;
-      await user.save();
+      if (user.role !== 'user') {
+        sendOAuthCallbackResult(req, res, 403, provider, {
+          message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
+        });
+        return;
+      }
+
+      const linkedGoogle = user.oauthAccounts?.find((account) => account.provider === 'google');
+      if (linkedGoogle && linkedGoogle.providerUserId !== providerUserId) {
+        sendOAuthCallbackResult(req, res, 409, provider, {
+          message: 'Email này đã liên kết với một tài khoản Google khác.'
+        });
+        return;
+      }
+
+      let changed = false;
+      if (!user.authProviders.includes('google')) {
+        user.authProviders.push('google');
+        changed = true;
+      }
+      if (!linkedGoogle) {
+        user.oauthAccounts.push({ provider: 'google', providerUserId });
+        changed = true;
+      }
+      if (!user.avatar && identity.picture) {
+        user.avatar = identity.picture;
+        changed = true;
+      }
+      if (changed) {
+        await user.save();
+      }
+    } else if (provider === 'facebook') {
+      const linkUserId = verifyLinkUser(linkCookieToken);
+      if (linkUserId) {
+        const currentUser = await User.findById(linkUserId).select('+password');
+        if (!currentUser || currentUser.role !== 'user') {
+          sendOAuthCallbackResult(req, res, 403, provider, {
+            message: 'Chỉ tài khoản khách hàng đã đăng nhập mới có thể liên kết Facebook.'
+          });
+          return;
+        }
+        if (linkedByProviderId && String(linkedByProviderId._id) !== String(currentUser._id)) {
+          sendOAuthCallbackResult(req, res, 409, provider, {
+            message: 'Tài khoản Facebook này đã được liên kết với một tài khoản Urii khác.'
+          });
+          return;
+        }
+        const existingFbLink = currentUser.oauthAccounts?.find((account) => account.provider === 'facebook');
+        if (existingFbLink && existingFbLink.providerUserId !== providerUserId) {
+          sendOAuthCallbackResult(req, res, 409, provider, {
+            message: 'Tài khoản Urii này đã liên kết với một tài khoản Facebook khác.'
+          });
+          return;
+        }
+        if (!currentUser.authProviders.includes('facebook')) {
+          currentUser.authProviders.push('facebook');
+        }
+        if (!existingFbLink) {
+          currentUser.oauthAccounts.push({ provider: 'facebook', providerUserId });
+        }
+        if (!currentUser.avatar && identity.picture) {
+          currentUser.avatar = identity.picture;
+        }
+        await currentUser.save();
+        user = currentUser;
+      } else {
+        if (!linkedByProviderId) {
+          sendOAuthCallbackResult(req, res, 403, provider, {
+            message: 'Tài khoản Facebook này chưa được liên kết với tài khoản Urii. Vui lòng đăng nhập và liên kết Facebook trước.'
+          });
+          return;
+        }
+        if (linkedByProviderId.role !== 'user') {
+          sendOAuthCallbackResult(req, res, 403, provider, {
+            message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
+          });
+          return;
+        }
+        user = linkedByProviderId;
+      }
     }
 
     const token = jwt.sign(
@@ -373,18 +502,20 @@ exports.oauthCallback = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.json({
+    sendOAuthCallbackResult(req, res, 200, provider, {
       message: 'Đăng nhập thành công!',
       token,
       user: formatAuthUser(user)
     });
   } catch (error) {
     if (error.code === 11000) {
-      res.status(409).json({ message: 'Email đã được đăng ký. Hãy đăng nhập bằng phương thức đã liên kết.' });
+      sendOAuthCallbackResult(req, res, 409, provider, {
+        message: 'Tài khoản này đã được liên kết với một người dùng khác.'
+      });
       return;
     }
     console.error(`Lỗi đăng nhập OAuth ${provider}:`, error.message);
-    res.status(oauthErrorStatus(error)).json({
+    sendOAuthCallbackResult(req, res, oauthErrorStatus(error), provider, {
       message: `Không thể hoàn tất đăng nhập OAuth ${provider} lúc này.`
     });
   }

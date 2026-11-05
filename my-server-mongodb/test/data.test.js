@@ -1131,3 +1131,184 @@ test('POST /api/custom-orders attaches userId from token, allows orders without 
     }
   }
 });
+
+
+test('OAuth callback links registered user for Google, rejects unregistered or admin accounts, and requires explicit linking for Facebook via postMessage HTML', async () => {
+  const jwt = require('jsonwebtoken');
+  const authController = require('../controllers/authController');
+  const oauthProviders = require('../services/oauthProviders');
+
+  const prevJwtSecret = process.env.JWT_SECRET;
+  const prevFrontendOrigin = process.env.OAUTH_FRONTEND_ORIGIN;
+  process.env.JWT_SECRET = 'test-secret-only';
+  process.env.OAUTH_FRONTEND_ORIGIN = 'http://localhost:4200';
+
+  const origExchange = oauthProviders.exchangeAuthorizationCode;
+  const origFindOne = User.findOne;
+  const origFindById = User.findById;
+  const origCreate = User.create;
+
+  const state = 'a'.repeat(64);
+
+  function extractCallbackPayload(html) {
+    const match = /<script id="oauth-payload" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+    assert.ok(match, 'HTML callback must include oauth-payload script');
+    assert.match(html, /var targetOrigin = "http:\/\/localhost:4200";/);
+    assert.match(html, /window\.opener\.postMessage\(payload, targetOrigin\);/);
+    return JSON.parse(match[1]);
+  }
+
+  async function runCallback(provider, identity, extraCookie = '') {
+    oauthProviders.exchangeAuthorizationCode = async () => identity;
+    let statusCode = 200;
+    let sentHtml = '';
+    const cookieHeader = [
+      `urii_oauth_state_${provider}=${state}`,
+      extraCookie
+    ].filter(Boolean).join('; ');
+
+    await authController.oauthCallback(
+      {
+        params: { provider },
+        query: { code: 'auth-code', state },
+        headers: { cookie: cookieHeader }
+      },
+      {
+        setHeader() {},
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        send(html) {
+          sentHtml = html;
+        }
+      }
+    );
+
+    return { statusCode, payload: extractCallbackPayload(sentHtml) };
+  }
+
+  try {
+    let createCalls = 0;
+    User.create = async () => {
+      createCalls += 1;
+      throw new Error('User.create should not be called in oauthCallback');
+    };
+
+    const registeredUser = {
+      _id: '6ade4310c044b23d6c6a8681',
+      name: 'Nguyễn Minh Anh',
+      email: 'minhanh.uri@gmail.com',
+      role: 'user',
+      avatar: 'images/avatar_user.jpeg',
+      authProviders: ['password'],
+      oauthAccounts: [],
+      saved: false,
+      async save() {
+        this.saved = true;
+      }
+    };
+    User.findOne = (filter) => ({
+      select: async () => {
+        if (filter.email === 'minhanh.uri@gmail.com') return registeredUser;
+        return null;
+      }
+    });
+
+    const googleSuccess = await runCallback('google', {
+      providerUserId: 'google-sub-123',
+      email: 'minhanh.uri@gmail.com',
+      emailVerified: true,
+      name: 'Nguyễn Minh Anh',
+      picture: 'https://example.test/avatar.jpg'
+    });
+    assert.equal(googleSuccess.statusCode, 200);
+    assert.equal(googleSuccess.payload.ok, true);
+    assert.equal(googleSuccess.payload.provider, 'google');
+    assert.equal(googleSuccess.payload.user.email, 'minhanh.uri@gmail.com');
+    assert.ok(registeredUser.saved);
+    assert.ok(registeredUser.authProviders.includes('google'));
+    assert.deepEqual(registeredUser.oauthAccounts, [
+      { provider: 'google', providerUserId: 'google-sub-123' }
+    ]);
+
+    User.findOne = () => ({ select: async () => null });
+    const googleUnregistered = await runCallback('google', {
+      providerUserId: 'google-sub-new',
+      email: 'unknown@gmail.com',
+      emailVerified: true,
+      name: 'Unknown User'
+    });
+    assert.equal(googleUnregistered.statusCode, 403);
+    assert.equal(googleUnregistered.payload.ok, false);
+    assert.match(googleUnregistered.payload.message, /chưa đăng ký/i);
+
+    User.findOne = (filter) => ({
+      select: async () => (filter.email === 'admin@gmail.com'
+        ? { _id: '507f1f77bcf86cd799439011', email: 'admin@gmail.com', role: 'admin', authProviders: ['password'], oauthAccounts: [] }
+        : null)
+    });
+    const adminAttempt = await runCallback('google', {
+      providerUserId: 'google-admin-id',
+      email: 'admin@gmail.com',
+      emailVerified: true,
+      name: 'Admin'
+    });
+    assert.equal(adminAttempt.statusCode, 403);
+    assert.match(adminAttempt.payload.message, /quản trị/i);
+
+    User.findOne = () => ({ select: async () => null });
+    const fbUnlinked = await runCallback('facebook', {
+      providerUserId: 'fb-id-999',
+      email: 'minhanh.uri@gmail.com',
+      emailVerified: false,
+      name: 'Minh Anh FB'
+    });
+    assert.equal(fbUnlinked.statusCode, 403);
+    assert.match(fbUnlinked.payload.message, /chưa được liên kết/i);
+
+    User.findById = (id) => ({
+      select: async () => (id === registeredUser._id ? registeredUser : null)
+    });
+    const userJwt = jwt.sign({ id: registeredUser._id, role: 'user' }, process.env.JWT_SECRET);
+    const fbLinked = await runCallback(
+      'facebook',
+      {
+        providerUserId: 'fb-id-999',
+        email: 'minhanh.uri@gmail.com',
+        emailVerified: false,
+        name: 'Minh Anh FB'
+      },
+      `urii_oauth_link_facebook=${userJwt}`
+    );
+    assert.equal(fbLinked.statusCode, 200);
+    assert.ok(registeredUser.authProviders.includes('facebook'));
+    assert.ok(
+      registeredUser.oauthAccounts.some(
+        (acc) => acc.provider === 'facebook' && acc.providerUserId === 'fb-id-999'
+      )
+    );
+
+    User.findOne = (filter) => ({
+      select: async () => (filter.oauthAccounts ? registeredUser : null)
+    });
+    const fbLoginAfterLink = await runCallback('facebook', {
+      providerUserId: 'fb-id-999',
+      email: '',
+      emailVerified: false,
+      name: 'Minh Anh FB'
+    });
+    assert.equal(fbLoginAfterLink.statusCode, 200);
+    assert.equal(fbLoginAfterLink.payload.user.email, 'minhanh.uri@gmail.com');
+    assert.equal(createCalls, 0);
+  } finally {
+    oauthProviders.exchangeAuthorizationCode = origExchange;
+    User.findOne = origFindOne;
+    User.findById = origFindById;
+    User.create = origCreate;
+    if (prevJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = prevJwtSecret;
+    if (prevFrontendOrigin === undefined) delete process.env.OAUTH_FRONTEND_ORIGIN;
+    else process.env.OAUTH_FRONTEND_ORIGIN = prevFrontendOrigin;
+  }
+});

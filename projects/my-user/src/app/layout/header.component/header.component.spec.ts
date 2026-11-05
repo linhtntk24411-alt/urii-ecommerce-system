@@ -99,4 +99,28 @@ describe('HeaderComponent', () => {
     expect(localStorage.getItem('authToken')).toBeNull();
     expect(localStorage.getItem('isLoggedIn')).toBeNull();
   });
+
+  it('opens the account menu and logout confirmation with clicks', () => {
+    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userName', 'Test User');
+    window.dispatchEvent(new Event('auth:changed'));
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.account-circle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.isAccountMenuOpen).toBe(true);
+
+    (fixture.nativeElement.querySelector('.btn-logout') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.isLogoutModalOpen).toBe(true);
+    expect(fixture.nativeElement.querySelector('.modal.active')).not.toBeNull();
+
+    localStorage.setItem('authToken', 'test-jwt-token');
+    (fixture.nativeElement.querySelector('.modal-btn--danger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(localStorage.getItem('authToken')).toBeNull();
+    expect(localStorage.getItem('isLoggedIn')).toBeNull();
+    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
+  });
 });

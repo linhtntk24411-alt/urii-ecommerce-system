@@ -53,6 +53,76 @@ describe('LoginUser', () => {
     expect(passwordInput.type).toBe('password');
   });
 
+  it('toggles visibility independently for registration password fields', () => {
+    fixture.detectChanges();
+    const registerPassword = fixture.nativeElement.querySelector('#register-password') as HTMLInputElement;
+    const confirmPassword = fixture.nativeElement.querySelector('#confirm-password') as HTMLInputElement;
+    const registerEye = registerPassword.parentElement?.querySelector('button') as HTMLButtonElement;
+    const confirmEye = confirmPassword.parentElement?.querySelector('button') as HTMLButtonElement;
+
+    expect(registerPassword.type).toBe('password');
+    expect(confirmPassword.type).toBe('password');
+    registerEye.click();
+    fixture.detectChanges();
+    expect(registerPassword.type).toBe('text');
+    expect(confirmPassword.type).toBe('password');
+    confirmEye.click();
+    fixture.detectChanges();
+    expect(confirmPassword.type).toBe('text');
+    expect(registerPassword.type).toBe('text');
+  });
+
+  it('starts Google OAuth through the backend endpoint and reports a blocked popup', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+
+    component.startSocialLogin('google');
+
+    expect(openSpy).toHaveBeenCalledWith(
+      '/api/auth/oauth/google',
+      'urii-google-oauth',
+      'popup,width=520,height=680',
+    );
+    expect(component.socialAuthMessage).toContain('đã chặn cửa sổ đăng nhập');
+    expect(component.isSocialAuthInProgress).toBe(false);
+  });
+
+  it('starts Facebook OAuth from the registration social button', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    fixture.detectChanges();
+
+    const facebookButton = fixture.nativeElement.querySelector(
+      '.register-panel .social-button:nth-child(2)',
+    ) as HTMLButtonElement;
+    facebookButton.click();
+
+    expect(openSpy).toHaveBeenCalledWith(
+      '/api/auth/oauth/facebook',
+      'urii-facebook-oauth',
+      'popup,width=520,height=680',
+    );
+  });
+
+  it('updates password requirement indicators and blocks weak registration passwords', () => {
+    component.registerForm.patchValue({
+      name: 'Test User',
+      email: 'person@example.com',
+      password: 'lowercase1',
+      confirmPassword: 'lowercase1',
+    });
+
+    expect(component.passwordRequirementStatus).toEqual({
+      length: true,
+      uppercase: false,
+      lowercase: true,
+      number: true,
+    });
+
+    component.register();
+
+    expect(component.registerForm.controls.password.invalid).toBe(true);
+    httpTestingController.expectNone('/api/auth/register');
+  });
+
   it('logs in, stores the public profile and notifies the header', () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
@@ -82,6 +152,79 @@ describe('LoginUser', () => {
     expect(dispatchSpy.mock.calls[0][0].type).toBe('auth:changed');
     expect(navigateSpy).toHaveBeenCalledWith(['/']);
     expect(component.isSubmitting).toBe(false);
+  });
+
+  it('registers an account through the API and switches to login with the new email', () => {
+    component.registerForm.setValue({
+      name: '  Test User  ',
+      email: ' person@example.com ',
+      password: 'UriiPass123',
+      confirmPassword: 'UriiPass123',
+    });
+
+    component.register();
+
+    const request = httpTestingController.expectOne('/api/auth/register');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      name: 'Test User',
+      email: 'person@example.com',
+      password: 'UriiPass123',
+    });
+    request.flush({ message: 'Đăng ký thành công!' });
+
+    expect(component.isRegisterMode).toBe(false);
+    expect(component.loginForm.controls.email.value).toBe('person@example.com');
+    expect(component.registerSuccessMessage).toBe('Đăng ký thành công!');
+    expect(localStorage.getItem('isLoggedIn')).toBeNull();
+  });
+
+  it('signs in after registration, saves the session, and navigates to the home page', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.registerForm.setValue({
+      name: 'Test User',
+      email: 'person@example.com',
+      password: 'UriiPass123',
+      confirmPassword: 'UriiPass123',
+    });
+
+    component.register();
+    httpTestingController.expectOne('/api/auth/register').flush({ message: 'Đăng ký thành công!' });
+    fixture.detectChanges();
+
+    expect(component.isRegisterMode).toBe(false);
+    expect((fixture.nativeElement.querySelector('#login-mode') as HTMLInputElement).checked).toBe(true);
+
+    component.loginForm.controls.password.setValue('UriiPass123');
+    component.login();
+    httpTestingController.expectOne('/api/auth/login').flush({
+      token: 'new-user-token',
+      user: {
+        id: 'new-user-id',
+        name: 'Test User',
+        email: 'person@example.com',
+        role: 'user',
+      },
+    });
+
+    expect(localStorage.getItem('authToken')).toBe('new-user-token');
+    expect(localStorage.getItem('isLoggedIn')).toBe('true');
+    expect(localStorage.getItem('userEmail')).toBe('person@example.com');
+    expect(navigateSpy).toHaveBeenCalledWith(['/']);
+  });
+
+  it('does not send registration when password confirmation does not match', () => {
+    component.registerForm.setValue({
+      name: 'Test User',
+      email: 'person@example.com',
+      password: 'UriiPass123',
+      confirmPassword: 'different123',
+    });
+
+    component.register();
+
+    expect(component.registerForm.hasError('passwordsMismatch')).toBe(true);
+    httpTestingController.expectNone('/api/auth/register');
   });
 
   it('returns to a local page requested before login', () => {

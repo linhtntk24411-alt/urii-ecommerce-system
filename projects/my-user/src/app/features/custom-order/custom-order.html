@@ -37,8 +37,9 @@
   <div class="form-card">
     <p *ngIf="successMessage" class="alert alert-success" role="status">{{ successMessage }}</p>
     <p *ngIf="errorMessage" class="alert alert-danger" role="alert">{{ errorMessage }}</p>
+    <button *ngIf="hasSubmitted" type="button" class="btn-outline w-100" (click)="startNewOrder()">Tạo yêu cầu mới</button>
 
-    <form [formGroup]="customOrderForm" (ngSubmit)="onSubmit()">
+    <form *ngIf="!hasSubmitted" [formGroup]="customOrderForm" (ngSubmit)="onSubmit()">
       
       <!-- ================= BƯỚC 1 ================= -->
       <div class="step-content" *ngIf="currentStep === 1">
@@ -65,7 +66,7 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label>Kích thước mong muốn (cm)</label>
+            <label>Kích thước mong muốn (cm) *</label>
             <input type="text" formControlName="size" placeholder="VD: 15 x 15">
           </div>
           <div class="form-group">
@@ -93,17 +94,22 @@
           <!-- Cột trái: Upload -->
           <div class="upload-left">
             <h3>Tải lên hình ảnh tham khảo</h3>
-            <p class="sub-text">Vui lòng tải lên hình ảnh rõ nét để chúng tôi có thể chuyển đổi chính xác nhất sang dạng Perler Beads cho bạn.</p>
+            <p class="sub-text">Tải lên hình ảnh tham khảo nếu có để chúng tôi chuyển đổi chính xác hơn sang dạng Perler Beads.</p>
             
             <div class="upload-area" (click)="fileInput.click()">
               <input #fileInput type="file" hidden (change)="onFileSelected($event)" accept="image/*">
               <div class="upload-icon"><i class="bi bi-image"></i></div>
               <p>Kéo thả hoặc Click để tải lên</p>
-              <span>Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB/ảnh)</span>
+              <span>Hỗ trợ JPG, PNG, WEBP (Tối đa 8MB/ảnh, không bắt buộc)</span>
             </div>
 
             <div class="image-preview" *ngIf="imagePreview">
               <img [src]="imagePreview" alt="Ảnh xem trước">
+            </div>
+            <div class="form-group public-image-url">
+              <label for="custom-order-image-url">Hoặc nhập URL ảnh công khai</label>
+              <input id="custom-order-image-url" type="text" formControlName="imageUrl" placeholder="https://... hoặc /images/...">
+              <small>Dùng URL http/https hoặc đường dẫn ảnh trong thư mục public/images của máy chủ, ví dụ /images/uploads/anh.png.</small>
             </div>
           </div>
 
@@ -160,27 +166,16 @@
             </div>
           </div>
 
-          <div class="confirm-quote">
-            <div class="quote-card">
-              <h3>Báo giá dự kiến</h3>
-              <div class="quote-row">
-                <span>Phí thiết kế (Map)</span>
-                <strong>50,000đ</strong>
-              </div>
-              <div class="quote-row">
-                <span>Nguyên liệu & Công làm</span>
-                <strong>150,000đ</strong>
-              </div>
-              <hr>
-              <div class="quote-row total">
-                <span>Tổng cộng</span>
-                <strong>200,000đ</strong>
-              </div>
-              <p class="quote-note">* Lưu ý: Đây là mức giá ước tính sơ bộ.</p>
+          <div class="confirm-request">
+            <div class="request-notice">
+              <i class="bi bi-send-check" aria-hidden="true"></i>
+              <h3>Gửi yêu cầu đến admin</h3>
+              <p>Thông tin của bạn sẽ được chuyển đến đội ngũ Urii để xem xét. Admin sẽ liên hệ tư vấn và báo giá sau khi tiếp nhận yêu cầu.</p>
+              <p class="request-note">Bạn chưa bị tính phí khi gửi yêu cầu này.</p>
             </div>
             
-            <button type="submit" class="btn-primary w-100 mb-2" [disabled]="isSubmitting">
-              <i class="bi bi-send"></i> Gửi yêu cầu (chưa kết nối)
+            <button type="submit" class="btn-primary w-100 mb-2" [disabled]="isSubmitting || hasSubmitted">
+              <i class="bi bi-send"></i> {{ isSubmitting ? 'Đang gửi yêu cầu...' : hasSubmitted ? 'Đã gửi yêu cầu' : 'Gửi yêu cầu' }}
             </button>
             <button type="button" class="btn-outline w-100" (click)="prevStep()">Quay lại chỉnh sửa</button>
           </div>
@@ -198,8 +193,8 @@
     </div>
     <div class="feature-item">
       <i class="bi bi-clock-history"></i>
-      <h5>Phản hồi nhanh</h5>
-      <p>Nhận báo giá trong vòng 24h.</p>
+      <h5>Phản hồi yêu cầu</h5>
+      <p>Admin sẽ liên hệ tư vấn sau khi tiếp nhận thông tin.</p>
     </div>
     <div class="feature-item">
       <i class="bi bi-truck"></i>

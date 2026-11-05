@@ -1,6 +1,6 @@
 <main class="auth-page">
-  <input class="auth-mode" type="radio" name="auth-mode" id="login-mode" checked>
-  <input class="auth-mode" type="radio" name="auth-mode" id="register-mode">
+  <input class="auth-mode" type="radio" name="auth-mode" id="login-mode" [checked]="!isRegisterMode" (change)="setAuthMode('login')">
+  <input class="auth-mode" type="radio" name="auth-mode" id="register-mode" [checked]="isRegisterMode" (change)="setAuthMode('register')">
 
   <section class="auth-card" aria-label="Đăng nhập hoặc đăng ký Urii">
     <header class="auth-header auth-heading--login">
@@ -13,8 +13,8 @@
     </header>
 
     <div class="auth-tabs" aria-label="Chọn đăng nhập hoặc đăng ký">
-      <label class="auth-tab" for="login-mode">Đăng nhập</label>
-      <label class="auth-tab" for="register-mode">Đăng ký</label>
+      <label class="auth-tab" for="login-mode" (click)="setAuthMode('login')">Đăng nhập</label>
+      <label class="auth-tab" for="register-mode" (click)="setAuthMode('register')">Đăng ký</label>
     </div>
 
     <form class="auth-panel login-panel" aria-label="Đăng nhập" [formGroup]="loginForm" (ngSubmit)="login()">
@@ -41,13 +41,14 @@
         </div>
       </div>
       <p *ngIf="errorMessage" class="auth-error" role="alert">{{ errorMessage }}</p>
+      <p *ngIf="registerSuccessMessage" class="auth-success" role="status">{{ registerSuccessMessage }}</p>
       <button class="primary-button" type="submit" [disabled]="isSubmitting">
         {{ isSubmitting ? 'Đang đăng nhập...' : 'Tiếp tục' }}
       </button>
 
       <div class="divider"><span>HOẶC</span></div>
       <div class="social-buttons">
-        <button class="social-button" type="button">
+        <button class="social-button" type="button" [disabled]="isSocialAuthInProgress" (click)="startSocialLogin('google')">
           <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2.1H12v4h5.4a4.6 4.6 0 0 1-2 3v2.6h3.3c1.9-1.8 2.9-4.4 2.9-7.5Z"/>
             <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.6c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3v2.7A10 10 0 0 0 12 22Z"/>
@@ -56,54 +57,66 @@
           </svg>
           Google
         </button>
-        <button class="social-button" type="button">
+        <button class="social-button" type="button" [disabled]="isSocialAuthInProgress" (click)="startSocialLogin('facebook')">
           <svg class="facebook-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="currentColor" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.3c0-3 1.8-4.7 4.6-4.7 1.3 0 2.7.3 2.7.3v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.6 3.5h-2.8v8.4A12 12 0 0 0 24 12Z"/>
           </svg>
           Facebook
         </button>
       </div>
+      <p *ngIf="socialAuthMessage" class="auth-error" role="status">{{ socialAuthMessage }}</p>
       <p class="auth-help">Bạn gặp khó khăn? <span class="text-link">Trung tâm trợ giúp</span></p>
     </form>
 
-    <section class="auth-panel register-panel" aria-label="Đăng ký">
+    <form class="auth-panel register-panel" aria-label="Đăng ký" [formGroup]="registerForm" (ngSubmit)="register()">
       <div class="field-group">
         <label class="field-label" for="register-name">Họ và tên</label>
-        <input class="field-input" id="register-name" type="text" placeholder="Nguyễn Văn A" autocomplete="name">
+        <input class="field-input" id="register-name" type="text" placeholder="Nguyễn Văn A" autocomplete="name" formControlName="name">
       </div>
       <div class="field-group">
         <label class="field-label" for="register-email">Email</label>
-        <input class="field-input" id="register-email" type="email" placeholder="example@email.com" autocomplete="email">
+        <input class="field-input" id="register-email" type="email" placeholder="example@email.com" autocomplete="email" formControlName="email">
       </div>
       <div class="field-group">
         <label class="field-label" for="register-password">Mật khẩu</label>
         <div class="password-field">
-          <input class="field-input" id="register-password" type="password" placeholder="••••••••" autocomplete="new-password">
-          <span class="password-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </span>
+          <input class="field-input" id="register-password" [type]="isRegisterPasswordVisible ? 'text' : 'password'" placeholder="••••••••" autocomplete="new-password" formControlName="password">
+          <button class="password-icon" type="button" [attr.aria-label]="isRegisterPasswordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" [attr.aria-pressed]="isRegisterPasswordVisible" (click)="toggleRegisterPasswordVisibility()">
+            <svg *ngIf="!isRegisterPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg *ngIf="isRegisterPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.7 15.7 0 0 1-3.1 3.9M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 1.9-.2 2.7-.5"/></svg>
+          </button>
         </div>
         <ul class="password-hints" aria-label="Yêu cầu mật khẩu">
-          <li>Ít nhất 8 ký tự</li>
-          <li>Chữ hoa (A-Z)</li>
-          <li>Chữ thường (a-z)</li>
-          <li>Số (0-9)</li>
+          <li [class.met]="passwordRequirementStatus.length">Ít nhất 8 ký tự</li>
+          <li [class.met]="passwordRequirementStatus.uppercase">Chữ hoa (A-Z)</li>
+          <li [class.met]="passwordRequirementStatus.lowercase">Chữ thường (a-z)</li>
+          <li [class.met]="passwordRequirementStatus.number">Số (0-9)</li>
         </ul>
       </div>
       <div class="field-group">
         <label class="field-label" for="confirm-password">Xác nhận mật khẩu</label>
         <div class="password-field">
-          <input class="field-input" id="confirm-password" type="password" placeholder="••••••••" autocomplete="new-password">
-          <span class="password-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-          </span>
+          <input class="field-input" id="confirm-password" [type]="isConfirmPasswordVisible ? 'text' : 'password'" placeholder="••••••••" autocomplete="new-password" formControlName="confirmPassword">
+          <button class="password-icon" type="button" [attr.aria-label]="isConfirmPasswordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu xác nhận'" [attr.aria-pressed]="isConfirmPasswordVisible" (click)="toggleConfirmPasswordVisibility()">
+            <svg *ngIf="!isConfirmPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg *ngIf="isConfirmPasswordVisible" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.7 15.7 0 0 1-3.1 3.9M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 1.9-.2 2.7-.5"/></svg>
+          </button>
         </div>
       </div>
-      <button class="primary-button" type="button">Đăng ký</button>
+      <p *ngIf="registerForm.hasError('passwordsMismatch') && registerForm.controls.confirmPassword.touched" class="auth-error" role="alert">
+        Mật khẩu xác nhận chưa khớp.
+      </p>
+      <p *ngIf="registerForm.controls.password.invalid && registerForm.controls.password.touched" class="auth-error" role="alert">
+        Mật khẩu cần có ít nhất 8 ký tự, chữ hoa, chữ thường và số.
+      </p>
+      <p *ngIf="registerErrorMessage" class="auth-error" role="alert">{{ registerErrorMessage }}</p>
+      <button class="primary-button" type="submit" [disabled]="isRegistering">
+        {{ isRegistering ? 'Đang tạo tài khoản...' : 'Đăng ký' }}
+      </button>
 
       <div class="divider"><span>HOẶC ĐĂNG KÝ BẰNG</span></div>
       <div class="social-buttons">
-        <button class="social-button" type="button">
+        <button class="social-button" type="button" [disabled]="isSocialAuthInProgress" (click)="startSocialLogin('google')">
           <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2.1H12v4h5.4a4.6 4.6 0 0 1-2 3v2.6h3.3c1.9-1.8 2.9-4.4 2.9-7.5Z"/>
             <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.6c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3v2.7A10 10 0 0 0 12 22Z"/>
@@ -112,15 +125,16 @@
           </svg>
           Google
         </button>
-        <button class="social-button" type="button">
+        <button class="social-button" type="button" [disabled]="isSocialAuthInProgress" (click)="startSocialLogin('facebook')">
           <svg class="facebook-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="currentColor" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.3c0-3 1.8-4.7 4.6-4.7 1.3 0 2.7.3 2.7.3v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.6 3.5h-2.8v8.4A12 12 0 0 0 24 12Z"/>
           </svg>
           Facebook
         </button>
       </div>
-      <p class="auth-help">Bạn đã có tài khoản? <label class="text-link" for="login-mode">Đăng nhập ngay</label></p>
-    </section>
+      <p *ngIf="socialAuthMessage" class="auth-error" role="status">{{ socialAuthMessage }}</p>
+      <p class="auth-help">Bạn đã có tài khoản? <label class="text-link" for="login-mode" (click)="setAuthMode('login')">Đăng nhập ngay</label></p>
+    </form>
   </section>
 
 </main>

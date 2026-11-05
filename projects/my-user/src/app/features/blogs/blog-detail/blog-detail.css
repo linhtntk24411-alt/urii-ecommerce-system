@@ -148,6 +148,7 @@
 .blog-detail-comments { margin-top: 48px; border-top: 1px solid #e5bdb7; padding-top: 32px; }
 .blog-detail-comments__title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
 .blog-detail-comments__form { display: flex; gap: 16px; margin-bottom: 32px; }
+.blog-detail-comments__composer { flex: 1; min-width: 0; }
 .blog-detail-comments__avatar-placeholder {
   width: 40px; height: 40px; border-radius: 50%;
   background: url('/assets/gallery_assets/mau-ca-heo.webp') center/cover no-repeat;
@@ -160,9 +161,12 @@
 }
 .blog-detail-comments__textarea:focus { border-color: #840001; }
 .blog-detail-comments__submit {
-  padding: 8px 20px; background: #840001; color: #fff;
+  display: block; margin: 12px 0 0 auto; padding: 8px 20px; background: #840001; color: #fff;
   border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
 }
+.blog-detail-comments__submit:disabled { cursor: wait; opacity: 0.65; }
+.blog-detail-comments__error { margin: 6px 0 0; color: #a00000; font-size: 13px; }
+.blog-detail-comments__success { margin: 6px 0 0; color: #276738; font-size: 13px; }
 
 .blog-detail-comments__list { display: flex; flex-direction: column; gap: 24px; }
 .blog-detail-comments__item { display: flex; flex-direction: column; }

@@ -31,6 +31,7 @@ export const routes: Routes = [
   { path: 'sample-maps-detail', component: SampleMapsDetailComponent },
   { path: 'sample-maps-detail/:slug', component: SampleMapsDetailComponent },
   { path: 'login', component: LoginUser },
+  { path: 'register', component: LoginUser },
   { path: 'support', component: SupportComponent },
   { path: 'support/support-center', component: SupportComponent },
   { path: 'support/faq', component: SupportComponent },

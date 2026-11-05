@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { afterNextRender, ChangeDetectorRef, Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { afterNextRender, ChangeDetectorRef, Component, HostListener, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
@@ -31,6 +31,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   
   isMobileMenuOpen: boolean = false;
   isMobileProductOpen: boolean = true;
+  isAccountMenuOpen = false;
   isLogoutModalOpen: boolean = false;
   
   private storageListener: any;
@@ -169,11 +170,22 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.isMobileMenuOpen = false;
   }
 
+  @HostListener('document:click')
+  closeAccountMenu(): void {
+    this.isAccountMenuOpen = false;
+  }
+
+  toggleAccountMenu(event: Event): void {
+    event.stopPropagation();
+    this.isAccountMenuOpen = !this.isAccountMenuOpen;
+  }
+
   toggleMobileProduct(): void {
     this.isMobileProductOpen = !this.isMobileProductOpen;
   }
 
   openLogoutModal(): void {
+    this.isAccountMenuOpen = false;
     this.isLogoutModalOpen = true;
   }
 
@@ -193,8 +205,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.userName = '';
     this.userEmail = '';
     this.userAvatar = '';
+    this.isAccountMenuOpen = false;
     this.isLogoutModalOpen = false;
     window.dispatchEvent(new Event('auth:changed'));
-    this.router.navigate(['/login']);
+    void this.router.navigate(['/login']);
   }
 }

@@ -54,7 +54,7 @@ export class HomepageComponent implements OnInit {
 
   bestSellers: HomeProduct[] = [];
   communityPosts: BlogPost[] = [];
-  isCommunityLoading = false;
+  isCommunityLoading = true;
   communityErrorMessage = '';
   isLoading = false;
   errorMessage = '';
@@ -105,8 +105,8 @@ export class HomepageComponent implements OnInit {
     this.blogService.getBlogs().subscribe({
       next: (posts) => {
         this.communityPosts = posts
-          .filter((post) => post.imageAvailable && Number.isFinite(Date.parse(post.date)))
-          .sort((first, second) => Date.parse(second.date) - Date.parse(first.date))
+          .filter((post) => post.imageAvailable)
+          .sort((first, second) => this.parseCommunityPostDate(second.date) - this.parseCommunityPostDate(first.date))
           .slice(0, 6);
         this.isCommunityLoading = false;
         this.changeDetectorRef.markForCheck();
@@ -119,6 +119,17 @@ export class HomepageComponent implements OnInit {
         this.changeDetectorRef.markForCheck();
       },
     });
+  }
+
+  private parseCommunityPostDate(value: string): number {
+    const parsedDate = Date.parse(value);
+    if (Number.isFinite(parsedDate)) return parsedDate;
+
+    const vietnameseDate = /^(\d{1,2})\s+tháng\s+(\d{1,2}),?\s+(\d{4})$/i.exec(value.trim());
+    if (!vietnameseDate) return 0;
+
+    const [, day, month, year] = vietnameseDate;
+    return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
   }
 
   private parseProducts(data: unknown): HomeProduct[] {

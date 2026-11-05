@@ -1,7 +1,7 @@
 <main>
   <section class="hero" aria-label="Banner nổi bật">
     <div class="container">
-      <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+      <div id="heroCarousel" class="carousel slide">
         <!-- Nút tròn chuyển slide -->
         <div class="carousel-indicators">
           <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true"></button>
@@ -16,7 +16,7 @@
                 <p class="hero-label">Rạng rỡ sinh nhật</p>
                 <h1>BIRTHDAY MONTH</h1>
                 <p>Đón sinh nhật thêm rực rỡ cùng Urii! Khách hàng có sinh nhật trong tháng sẽ nhận ngay voucher giảm 50% để thỏa sức sáng tạo với những mẫu hạt nhựa ủi yêu thích.</p>
-                <a class="btn btn-urii btn-lg" href="#">Nhận Voucher Ngay</a>
+                <a class="btn btn-urii btn-lg" routerLink="/products">Nhận voucher ngay</a>
               </div>
             </div>
           </div>
@@ -205,12 +205,12 @@
       <div class="section-header section-header--center">
         <div>
           <h2>Góc sáng tạo cộng đồng</h2>
-          <p>Những bài viết mới nhất từ cộng đồng Urii.</p>
+          <p>Chia sẻ tác phẩm của bạn với hashtag #UriiUlaTheGioi để có cơ hội xuất hiện trên thư viện của chúng tôi.</p>
         </div>
       </div>
       <p *ngIf="isCommunityLoading" class="gallery-status" role="status">Đang tải bài viết cộng đồng...</p>
       <p *ngIf="communityErrorMessage" class="gallery-status" role="alert">{{ communityErrorMessage }}</p>
-      <div class="gallery-grid">
+      <div class="gallery-grid community-gallery-grid">
         @for (post of communityPosts; track trackCommunityPost($index, post)) {
           <a class="gallery-item img-hover-effect" [routerLink]="['/blog-detail', post.slug]">
             <img [src]="post.image" [alt]="post.title" />

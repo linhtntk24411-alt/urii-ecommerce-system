@@ -106,6 +106,8 @@
 .upload-area span { font-size: 13px; color: #888; }
 
 .image-preview img { width: 100%; border-radius: 12px; margin-top: 20px; border: 1px solid #e5bdb7; }
+.public-image-url { margin-top: 20px; }
+.public-image-url small { color: #777; display: block; font-size: 12px; line-height: 1.5; margin-top: 6px; }
 
 .tip-box { background-color: #f6f3f2; border-radius: 12px; padding: 20px; }
 .tip-box h4 { font-size: 15px; color: #840001; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
@@ -118,12 +120,11 @@
 .info-row .value { font-weight: 600; font-size: 15px; }
 .desc-box { background-color: #f6f3f2; padding: 12px; border-radius: 8px; font-size: 14px; color: #5c403b; }
 
-.quote-card { background-color: #840001; color: white; padding: 24px; border-radius: 12px; margin-bottom: 16px; }
-.quote-card h3 { font-size: 18px; margin-bottom: 20px; }
-.quote-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
-.quote-card hr { border-color: rgba(255,255,255,0.2); margin: 16px 0; }
-.quote-row.total { font-size: 18px; font-weight: bold; }
-.quote-note { font-size: 12px; opacity: 0.8; margin-top: 16px; font-style: italic; }
+.request-notice { background-color: #840001; color: white; padding: 24px; border-radius: 12px; margin-bottom: 16px; }
+.request-notice > i { display: block; font-size: 28px; margin-bottom: 16px; }
+.request-notice h3 { font-size: 18px; margin-bottom: 12px; }
+.request-notice p { font-size: 14px; line-height: 1.6; }
+.request-notice .request-note { font-size: 12px; margin-top: 16px; opacity: 0.8; }
 
 .w-100 { width: 100%; justify-content: center; }
 .mb-2 { margin-bottom: 12px; }

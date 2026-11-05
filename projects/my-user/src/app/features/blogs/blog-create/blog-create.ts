@@ -1,8 +1,10 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom, Subscription, TimeoutError } from 'rxjs';
+import { BlogService } from '../../../core/services/blog.service';
 
 interface BlogDraft {
   title: string;
@@ -37,6 +39,9 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly maxImageBytes = 6 * 1024 * 1024;
   private readonly draftStorageKey = 'blogDraft';
+  private readonly http = inject(HttpClient);
+  private readonly blogService = inject(BlogService);
+  private readonly router = inject(Router);
   private autoSaveTimer?: ReturnType<typeof setTimeout>;
   private formChanges?: Subscription;
 
@@ -148,24 +153,100 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
   publish(): void {
     if (this.isPublishing) return;
 
+    if (!isPlatformBrowser(this.platformId)) return;
+    const token = localStorage.getItem('authToken');
+    if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
+      this.showDialog('Hãy đăng nhập để đăng tải Blogs');
+      void this.router.navigate(['/login'], {
+        queryParams: { returnUrl: this.router.url },
+      });
+      return;
+    }
+
     const title = String(this.blogForm.get('title')?.value ?? '').trim();
     const content = String(this.blogForm.get('content')?.value ?? '');
     if (!title || !this.contentText(content).trim()) {
       this.blogForm.get('title')?.markAsTouched();
       this.errorMessage = 'Vui lòng nhập Tiêu đề và Nội dung bài viết!';
-      this.showDialog(this.errorMessage);
       return;
     }
 
     if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
     this.isSaving = false;
-    const saved = this.persistDraft();
-    const message = saved
-      ? 'Bản nháp đã lưu trên thiết bị. Chức năng đăng bài lên backend nhóm đang tắt để chỉ đọc dữ liệu.'
-      : this.errorMessage;
-    this.errorMessage = saved ? '' : message;
-    this.successMessage = saved ? message : '';
-    this.showDialog(message);
+    this.persistDraft();
+    this.isPublishing = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    void this.publishBlog(title, content, token);
+  }
+
+  private async publishBlog(title: string, content: string, token: string): Promise<void> {
+    try {
+      const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+      const uploadedImages = await Promise.all(this.imagePreviewUrls.map(async (image) => {
+        const response = await firstValueFrom(this.http.post<{ imageUrl?: string; url?: string }>(
+          '/api/custom-orders/upload',
+          { image },
+          { headers },
+        ));
+        const imageUrl = response.imageUrl ?? response.url;
+        if (typeof imageUrl !== 'string' || !imageUrl.trim()) {
+          throw new Error('API tải ảnh không trả về đường dẫn ảnh hợp lệ.');
+        }
+        return imageUrl;
+      }));
+      const contentWithImages = [
+        content,
+        ...uploadedImages.map((image) => `<p><img src="${image}" alt="Ảnh bài viết"></p>`),
+      ].join('');
+      const categorySlug = String(this.blogForm.get('category')?.value ?? 'huong-dan-diy');
+      const categories: Record<string, string> = {
+        'huong-dan-diy': 'Hướng dẫn DIY',
+        'y-tuong-thiet-ke': 'Ý tưởng thiết kế',
+        'goc-nghe-thuat': 'Góc nghệ thuật',
+        'meo-vat': 'Mẹo vặt',
+      };
+      const excerpt = this.contentText(content).trim().slice(0, 300);
+      const createdBlog = await firstValueFrom(this.blogService.createBlog({
+        title,
+        excerpt,
+        content: contentWithImages,
+        ...(uploadedImages[0] ? { image: uploadedImages[0] } : {}),
+        date: new Date().toISOString(),
+        category: categories[categorySlug] ?? 'Khác',
+        categorySlug,
+        tags: String(this.blogForm.get('tags')?.value ?? '')
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      }, token));
+
+      try {
+        localStorage.removeItem(this.draftStorageKey);
+      } catch (error: unknown) {
+        console.error('Không thể xóa bản nháp sau khi đăng bài:', error);
+        this.errorMessage = 'Bài viết đã được đăng nhưng không thể xóa bản nháp trên thiết bị.';
+      }
+      this.successMessage = 'Đăng bài thành công!';
+      this.autoSaveMessage = 'Bài viết đã được đăng';
+      void this.router.navigate(['/blog-detail', createdBlog.slug]);
+    } catch (error: unknown) {
+      console.error('Lỗi đăng bài viết:', error);
+      if (error instanceof TimeoutError) {
+        this.errorMessage = 'Máy chủ phản hồi quá lâu. Bài viết chưa được đăng, vui lòng thử lại.';
+      } else if (error instanceof HttpErrorResponse && error.status === 401) {
+        this.showDialog('Hãy đăng nhập để đăng tải Blogs');
+        void this.router.navigate(['/login'], {
+          queryParams: { returnUrl: this.router.url },
+        });
+      } else if (error instanceof HttpErrorResponse && error.error?.message) {
+        this.errorMessage = error.error.message;
+      } else {
+        this.errorMessage = 'Không thể đăng bài viết. Vui lòng thử lại.';
+      }
+    } finally {
+      this.isPublishing = false;
+    }
   }
 
   private showDialog(message: string): void {

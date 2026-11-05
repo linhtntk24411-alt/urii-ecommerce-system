@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { BlogCreateComponent } from './blog-create';
 
 describe('BlogCreateComponent', () => {
@@ -10,6 +10,7 @@ describe('BlogCreateComponent', () => {
   let httpTestingController: HttpTestingController;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     await TestBed.configureTestingModule({
       imports: [BlogCreateComponent],
       providers: [
@@ -19,7 +20,7 @@ describe('BlogCreateComponent', () => {
       ],
     }).compileComponents();
 
-    localStorage.removeItem('blogDraft');
+    localStorage.clear();
     fixture = TestBed.createComponent(BlogCreateComponent);
     component = fixture.componentInstance;
     httpTestingController = TestBed.inject(HttpTestingController);
@@ -32,9 +33,24 @@ describe('BlogCreateComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('keeps publishing local and does not write to the shared API', () => {
+  it('requires login before publishing a blog', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    fixture.detectChanges();
+    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    component.publish();
+
+    expect(alertSpy).toHaveBeenCalledWith('Hãy đăng nhập để đăng tải Blogs');
+    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/' },
+    });
+    httpTestingController.expectNone('/api/blogs');
+    alertSpy.mockRestore();
+  });
+
+  it('posts the blog to the API with the signed-in token', async () => {
+    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    localStorage.setItem('authToken', 'test-user-token');
+    localStorage.setItem('isLoggedIn', 'true');
     component.blogForm.patchValue({
       title: 'Hướng dẫn làm mẫu',
       content: '<p>Nội dung bài viết</p>',
@@ -42,39 +58,42 @@ describe('BlogCreateComponent', () => {
     });
 
     component.publish();
+    await Promise.resolve();
 
-    expect(localStorage.getItem('blogDraft')).toContain('Hướng dẫn làm mẫu');
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Bản nháp đã lưu trên thiết bị. Chức năng đăng bài lên backend nhóm đang tắt để chỉ đọc dữ liệu.',
-    );
-    httpTestingController.expectNone('/api/blogs');
-    alertSpy.mockRestore();
-  });
-
-  it('should show a dialog when required publish fields are missing', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-
-    component.publish();
-
-    expect(alertSpy).toHaveBeenCalledWith('Vui lòng nhập Tiêu đề và Nội dung bài viết!');
-    httpTestingController.expectNone('/api/blogs');
-    alertSpy.mockRestore();
-  });
-
-  it('never sends a valid post to the shared API', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    component.blogForm.patchValue({
+    const request = httpTestingController.expectOne('/api/blogs');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('Authorization')).toBe('Bearer test-user-token');
+    expect(request.request.body).toMatchObject({
+      title: 'Hướng dẫn làm mẫu',
+      excerpt: 'Nội dung bài viết',
+      content: '<p>Nội dung bài viết</p>',
+      category: 'Hướng dẫn DIY',
+      categorySlug: 'huong-dan-diy',
+    });
+    expect(request.request.body.date).toEqual(expect.any(String));
+    request.flush({
+      id: 21,
+      slug: 'huong-dan-lam-mau-21',
       title: 'Hướng dẫn làm mẫu',
       content: '<p>Nội dung bài viết</p>',
+      category: 'Hướng dẫn DIY',
+      date: request.request.body.date,
     });
+    await fixture.whenStable();
+
+    expect(component.successMessage).toBe('Đăng bài thành công!');
+    expect(localStorage.getItem('blogDraft')).toBeNull();
+    expect(navigateSpy).toHaveBeenCalledWith(['/blog-detail', 'huong-dan-lam-mau-21']);
+  });
+
+  it('shows validation feedback without posting an incomplete blog', () => {
+    localStorage.setItem('authToken', 'test-user-token');
+    localStorage.setItem('isLoggedIn', 'true');
 
     component.publish();
 
+    expect(component.errorMessage).toBe('Vui lòng nhập Tiêu đề và Nội dung bài viết!');
     httpTestingController.expectNone('/api/blogs');
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Bản nháp đã lưu trên thiết bị. Chức năng đăng bài lên backend nhóm đang tắt để chỉ đọc dữ liệu.',
-    );
-    alertSpy.mockRestore();
   });
 
   it('should show a confirmation after saving a draft', () => {

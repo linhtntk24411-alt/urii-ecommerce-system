@@ -206,7 +206,7 @@
     background-color: rgba(132, 0, 1, 0.08); 
     border: 1.5px solid var(--outline-color);
     display: flex; align-items: center; justify-content: center; 
-    overflow: hidden; cursor: pointer;
+    overflow: hidden; cursor: pointer; padding: 0;
     transition: border-color 0.2s;
 }
 .account-circle:hover {
@@ -226,6 +226,10 @@
 }
 .account-icon-wrapper:hover .account-dropdown { 
     opacity: 1; visibility: visible; transform: translateY(0); 
+}
+.account-icon-wrapper .account-dropdown.open,
+.account-icon-wrapper:focus-within .account-dropdown {
+    opacity: 1; visibility: visible; transform: translateY(0);
 }
 
 .account-menu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -276,6 +280,53 @@
 .btn-logout:hover { background-color: #ffdad6; }
 .logout-icon { display: flex; align-items: center; justify-content: center; }
 .logout-icon svg { width: 18px; height: 18px; }
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(20, 12, 12, 0.48);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.modal.active { opacity: 1; visibility: visible; pointer-events: auto; }
+.modal-content--logout {
+    width: min(100%, 420px);
+    padding: 28px;
+    border: 1px solid #f0eded;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 16px 48px rgba(30, 0, 0, 0.22);
+}
+.modal-title { margin: 0; color: var(--text-main); font-size: 18px; font-weight: 700; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.modal-btn {
+    padding: 9px 16px;
+    border: 1px solid var(--outline-color);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-main);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.modal-btn--danger { border-color: var(--urii-red); background: var(--urii-red); color: #fff; }
+.modal-btn--danger:hover { background: var(--urii-red-hover); }
 
 .mobile-overlay { display: none; }
 .mobile-menu-toggle { display: none; }

@@ -2,13 +2,15 @@ import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angula
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Inject, PLATFORM_ID } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BlogComment, BlogPost, BlogService } from '../../../core/services/blog.service';
-import { combineLatest, map } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { combineLatest, map, TimeoutError } from 'rxjs';
 
 @Component({
   selector: 'app-blog-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './blog-detail.html',
   styleUrl: './blog-detail.css'
 })
@@ -17,15 +19,22 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly blogService = inject(BlogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly formBuilder = inject(FormBuilder);
   private readonly bookmarksStorageKey = 'bookmarks';
   private authChangeListener?: () => void;
 
+  readonly commentForm = this.formBuilder.nonNullable.group({
+    content: ['', [Validators.required, Validators.maxLength(2000)]],
+  });
   blogData: BlogPost | null = null;
   blogComments: BlogComment[] = [];
   isLoggedIn = false;
   isLiked = false;
   isBookmarked = false;
   isCommentsLoading = false;
+  isSubmittingComment = false;
+  commentSuccessMessage = '';
+  commentErrorMessage = '';
   commentsErrorMessage = '';
   isLoading = true;
   errorMessage = '';
@@ -115,6 +124,67 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     const date = new Date(value);
     if (!value || Number.isNaN(date.getTime())) return '';
     return date.toLocaleDateString('vi-VN');
+  }
+
+  submitComment(): void {
+    if (this.isSubmittingComment) return;
+
+    const token = isPlatformBrowser(this.platformId)
+      ? localStorage.getItem('authToken')
+      : null;
+    if (!this.isLoggedIn || !token) {
+      this.requireLoginToComment();
+      return;
+    }
+
+    const blog = this.blogData;
+    if (!blog || !Number.isSafeInteger(Number(blog.id)) || Number(blog.id) < 1) {
+      this.commentErrorMessage = 'Không thể xác định bài viết để gửi bình luận.';
+      return;
+    }
+    if (this.commentForm.invalid) {
+      this.commentForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSubmittingComment = true;
+    this.commentErrorMessage = '';
+    this.commentSuccessMessage = '';
+    this.blogService.createComment({
+      blogId: Number(blog.id),
+      content: this.commentForm.controls.content.value.trim(),
+    }, token).subscribe({
+      next: (comment) => {
+        this.blogComments = [...this.blogComments, comment];
+        this.commentForm.reset();
+        this.commentSuccessMessage = 'Bình luận đã được đăng.';
+        this.isSubmittingComment = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi gửi bình luận:', error);
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.requireLoginToComment();
+        } else if (error instanceof HttpErrorResponse && error.error?.message) {
+          this.commentErrorMessage = error.error.message;
+        } else if (error instanceof TimeoutError) {
+          this.commentErrorMessage = 'Máy chủ phản hồi quá lâu. Vui lòng thử lại.';
+        } else {
+          this.commentErrorMessage = 'Không thể gửi bình luận. Vui lòng thử lại.';
+        }
+        this.isSubmittingComment = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private requireLoginToComment(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      window.alert('Hãy đăng nhập để bình luận vào bài viết');
+    }
+    void this.router.navigate(['/login'], {
+      queryParams: { returnUrl: this.router.url },
+    });
   }
 
   toggleLike(): void {

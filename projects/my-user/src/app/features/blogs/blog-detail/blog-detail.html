@@ -60,6 +60,29 @@
 
     <section class="blog-detail-comments">
       <h2 class="blog-detail-comments__title">Bình luận ({{ blogComments.length }})</h2>
+      <form class="blog-detail-comments__form" [formGroup]="commentForm" (ngSubmit)="submitComment()">
+        <div class="blog-detail-comments__avatar-placeholder" aria-hidden="true"></div>
+        <div class="blog-detail-comments__composer">
+          <textarea
+            class="blog-detail-comments__textarea"
+            formControlName="content"
+            rows="3"
+            maxlength="2000"
+            placeholder="Chia sẻ cảm nghĩ của bạn..."
+            aria-label="Nội dung bình luận"></textarea>
+          <p *ngIf="commentForm.controls.content.touched && commentForm.controls.content.hasError('required')" class="blog-detail-comments__error">
+            Vui lòng nhập nội dung bình luận.
+          </p>
+          <p *ngIf="commentForm.controls.content.hasError('maxlength')" class="blog-detail-comments__error">
+            Bình luận không được vượt quá 2000 ký tự.
+          </p>
+          <p *ngIf="commentErrorMessage" class="blog-detail-comments__error" role="alert">{{ commentErrorMessage }}</p>
+          <p *ngIf="commentSuccessMessage" class="blog-detail-comments__success" role="status">{{ commentSuccessMessage }}</p>
+          <button class="blog-detail-comments__submit" type="submit" [disabled]="isSubmittingComment">
+            {{ isSubmittingComment ? 'Đang gửi...' : 'Gửi bình luận' }}
+          </button>
+        </div>
+      </form>
       <p *ngIf="isCommentsLoading" role="status">Đang tải bình luận...</p>
       <p *ngIf="!isCommentsLoading && commentsErrorMessage" role="alert">{{ commentsErrorMessage }}</p>
       <p *ngIf="!isCommentsLoading && !commentsErrorMessage && blogComments.length === 0">

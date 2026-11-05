@@ -12,7 +12,7 @@
     <div class="blog-create-actions">
       <button type="button" class="btn-draft" (click)="saveDraft()">Lưu bản nháp</button>
       <button type="button" class="btn-publish" [disabled]="isPublishing" (click)="publish()">
-        Lưu nháp (chưa đăng)
+        {{ isPublishing ? 'Đang đăng...' : 'Đăng bài' }}
       </button>
     </div>
   </div>

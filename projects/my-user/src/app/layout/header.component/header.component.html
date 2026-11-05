@@ -108,19 +108,25 @@
                 </button>
             </div>
 
-            <div class="action-item account-icon-wrapper" *ngIf="authStatusReady && isLoggedIn">
-                <div class="account-circle">
+            <div class="action-item account-icon-wrapper" *ngIf="authStatusReady && isLoggedIn" (click)="$event.stopPropagation()">
+                <button
+                    class="account-circle"
+                    type="button"
+                    aria-label="Mở menu tài khoản"
+                    [attr.aria-expanded]="isAccountMenuOpen"
+                    (click)="toggleAccountMenu($event)"
+                    (keydown.escape)="closeAccountMenu()">
                     <img class="account-avatar" [src]="userAvatar" *ngIf="userAvatar" alt="Avatar" />
                     <svg class="account-svg" *ngIf="!userAvatar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                </div>
+                </button>
                 
-                <div class="account-dropdown">
+                <div class="account-dropdown" [class.open]="isAccountMenuOpen">
                     <ul class="account-menu">
                         <li>
-                            <a routerLink="/profile" class="account-menu-item">
+                            <a routerLink="/profile" class="account-menu-item" (click)="closeAccountMenu()">
                                 <span class="account-menu-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                 </span>
@@ -131,7 +137,7 @@
                             </a>
                         </li>
                         <li>
-                            <a routerLink="/orders" class="account-menu-item">
+                            <a routerLink="/orders" class="account-menu-item" (click)="closeAccountMenu()">
                                 <span class="account-menu-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                                 </span>
@@ -142,7 +148,7 @@
                             </a>
                         </li>
                         <li>
-                            <a routerLink="/custom-order-list" class="account-menu-item">
+                            <a routerLink="/custom-order-list" class="account-menu-item" (click)="closeAccountMenu()">
                                 <span class="account-menu-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                 </span>
@@ -153,7 +159,7 @@
                             </a>
                         </li>
                         <li>
-                            <a routerLink="/saved-maps" class="account-menu-item">
+                            <a routerLink="/saved-maps" class="account-menu-item" (click)="closeAccountMenu()">
                                 <span class="account-menu-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                                 </span>
@@ -164,7 +170,7 @@
                             </a>
                         </li>
                         <li>
-                            <a routerLink="/favorites" class="account-menu-item">
+                            <a routerLink="/favorites" class="account-menu-item" (click)="closeAccountMenu()">
                                 <span class="account-menu-icon">
                                     <i class="bi bi-heart"></i>
                                 </span>
@@ -175,7 +181,7 @@
                             </a>
                         </li>
                         <li>
-                            <a routerLink="/myreview" class="account-menu-item">
+                            <a routerLink="/myreview" class="account-menu-item" (click)="closeAccountMenu()">
                                 <span class="account-menu-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                                 </span>
@@ -187,7 +193,7 @@
                         </li>
                     </ul>
                     <div class="account-logout">
-                        <button class="btn-logout" (click)="openLogoutModal()">
+                        <button class="btn-logout" type="button" (click)="openLogoutModal()">
                             <span class="logout-icon">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                             </span>
@@ -201,12 +207,12 @@
 </header>
 
 <div class="modal-overlay" [class.active]="isLogoutModalOpen" (click)="closeLogoutModal()"></div>
-<div class="modal" [class.active]="isLogoutModalOpen">
+<div class="modal" [class.active]="isLogoutModalOpen" [attr.aria-hidden]="!isLogoutModalOpen" (click)="$event.stopPropagation()">
     <div class="modal-content modal-content--logout">
         <h3 class="modal-title">Bạn có chắc chắn muốn đăng xuất?</h3>
         <div class="modal-actions">
-            <button class="modal-btn modal-btn--cancel" (click)="closeLogoutModal()">Hủy</button>
-            <button class="modal-btn modal-btn--danger" (click)="confirmLogout()">Đăng xuất</button>
+            <button class="modal-btn modal-btn--cancel" type="button" (click)="closeLogoutModal()">Hủy</button>
+            <button class="modal-btn modal-btn--danger" type="button" (click)="confirmLogout()">Đăng xuất</button>
         </div>
     </div>
 </div>

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { EMPTY, expand, map, Observable, toArray } from 'rxjs';
 
@@ -33,9 +33,47 @@ export interface BlogComment {
   time: string;
 }
 
+export interface NewBlogPost {
+  title: string;
+  slug?: string;
+  excerpt: string;
+  content: string;
+  image?: string;
+  author?: string;
+  avatar?: string;
+  date?: string;
+  category: string;
+  categorySlug: string;
+  tags: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class BlogService {
   private readonly http = inject(HttpClient);
+
+  createBlog(post: NewBlogPost, token: string): Observable<BlogPost> {
+    return this.http.post<unknown>('/api/blogs', post, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    }).pipe(
+      map((response) => {
+        const createdPost = this.parseBlogs(response)[0];
+        if (!createdPost) throw new Error('API tạo bài viết trả về dữ liệu không hợp lệ.');
+        return createdPost;
+      }),
+    );
+  }
+
+  createComment(comment: Pick<BlogComment, 'blogId' | 'content'>, token: string): Observable<BlogComment> {
+    return this.http.post<unknown>('/api/comments', comment, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    }).pipe(
+      map((response) => {
+        const createdComment = this.parseComments(response)[0];
+        if (!createdComment) throw new Error('API tạo bình luận trả về dữ liệu không hợp lệ.');
+        return createdComment;
+      }),
+    );
+  }
 
   getBlogComments(blogId: string | number): Observable<BlogComment[]> {
     return this.loadCommentsPage(1).pipe(
@@ -65,7 +103,7 @@ export class BlogService {
     const records = Array.isArray(response)
       ? response
       : this.isRecord(response)
-        ? [response['blogs'], response['data']].find(Array.isArray) ?? []
+        ? [response['blogs'], response['data']].find(Array.isArray) ?? [response]
         : [];
 
     return records.flatMap((record): BlogPost[] => {
@@ -117,7 +155,9 @@ export class BlogService {
       ? response
       : this.isRecord(response) && Array.isArray(response['comments'])
         ? response['comments']
-        : [];
+        : this.isRecord(response)
+          ? [response]
+          : [];
 
     return records.flatMap((record): BlogComment[] => {
       if (!this.isRecord(record)) return [];

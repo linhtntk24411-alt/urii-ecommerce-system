@@ -219,6 +219,12 @@
   margin: 0 0 12px;
 }
 
+.auth-success {
+  color: #276738;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
 .password-change-backdrop {
   align-items: center;
   background: rgba(32, 20, 20, 0.48);
@@ -325,6 +331,11 @@
   justify-content: center;
 }
 
+.social-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .google-icon,
 .facebook-icon {
   height: 20px;
@@ -362,6 +373,20 @@
   margin-right: 5px;
   vertical-align: -3px;
   width: 13px;
+}
+
+.password-hints li.met {
+  color: #218838;
+}
+
+.password-hints li.met::before {
+  background: #218838;
+  border-color: #218838;
+  color: #fff;
+  content: '✓';
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
 }
 
 @media (max-width: 480px) {

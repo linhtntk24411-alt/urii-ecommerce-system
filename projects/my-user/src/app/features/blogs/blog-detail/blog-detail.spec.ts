@@ -7,6 +7,11 @@ import { BlogDetailComponent } from './blog-detail';
 describe('BlogDetailComponent', () => {
   let component: BlogDetailComponent;
   let fixture: ComponentFixture<BlogDetailComponent>;
+  const blogService = {
+    getBlogBySlug: () => of(blog),
+    getBlogComments: () => of([comment]),
+    createComment: vi.fn(() => of(comment)),
+  };
   const blog: BlogPost = {
     id: 1,
     slug: 'test-blog',
@@ -37,6 +42,7 @@ describe('BlogDetailComponent', () => {
   };
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [BlogDetailComponent],
@@ -51,10 +57,7 @@ describe('BlogDetailComponent', () => {
         },
         {
           provide: BlogService,
-          useValue: {
-            getBlogBySlug: () => of(blog),
-            getBlogComments: () => of([comment]),
-          },
+          useValue: blogService,
         },
       ],
     }).compileComponents();
@@ -106,5 +109,38 @@ describe('BlogDetailComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
       queryParams: { returnUrl: router.url },
     });
+  });
+
+  it('requires login before submitting a comment', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    component.commentForm.controls.content.setValue('Bình luận thử');
+    component.submitComment();
+
+    expect(alertSpy).toHaveBeenCalledWith('Hãy đăng nhập để bình luận vào bài viết');
+    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: router.url },
+    });
+    expect(blogService.createComment).not.toHaveBeenCalled();
+  });
+
+  it('posts an authenticated comment and adds it to the displayed list', () => {
+    localStorage.setItem('authToken', 'reader-token');
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userEmail', 'reader@example.com');
+    window.dispatchEvent(new Event('auth:changed'));
+    component.commentForm.controls.content.setValue('Bình luận thử');
+
+    component.submitComment();
+
+    expect(blogService.createComment).toHaveBeenCalledWith({
+      blogId: 1,
+      content: 'Bình luận thử',
+    }, 'reader-token');
+    expect(component.blogComments).toEqual([comment, comment]);
+    expect(component.commentSuccessMessage).toBe('Bình luận đã được đăng.');
+    expect(component.commentForm.controls.content.value).toBe('');
   });
 });

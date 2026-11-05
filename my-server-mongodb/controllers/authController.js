@@ -89,7 +89,12 @@ exports.login = async (req, res) => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
-    const isMatch = user?.password && await bcrypt.compare(password, user.password);
+    if (!user) {
+      res.status(404).json({ message: 'Không tìm thấy tài khoản với email này.' });
+      return;
+    }
+
+    const isMatch = user.password && await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(401).json({ message: 'Sai email hoặc mật khẩu.' });
       return;
@@ -334,3 +339,5 @@ exports.oauthCallback = async (req, res) => {
     });
   }
 };
+
+

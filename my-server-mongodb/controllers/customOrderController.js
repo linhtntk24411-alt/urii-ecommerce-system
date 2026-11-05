@@ -8,6 +8,9 @@ const { isValidImageUrl } = require('../utils/imageUrl');
 const { isDataImageUrl, saveDataUrlImage } = require('../utils/imageUpload');
 const { emitCrudChange } = require('../realtime');
 
+const CUSTOM_ORDER_STATUSES = ['pending', 'quoted', 'processing', 'completed', 'cancelled'];
+const ACTIVE_CUSTOM_ORDER_STATUSES = ['pending', 'quoted', 'processing'];
+
 const customerFields = [
   'userId',
   'mapId',
@@ -239,6 +242,69 @@ exports.getAllCustomOrders = async (req, res) => {
   } catch (error) {
     console.error('Lỗi tải yêu cầu đặt hàng:', error);
     res.status(500).json({ message: 'Không thể tải danh sách yêu cầu đặt hàng.' });
+  }
+};
+
+exports.getMyCustomOrders = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    return;
+  }
+
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  if (status && !CUSTOM_ORDER_STATUSES.includes(status)) {
+    res.status(400).json({ message: 'Trạng thái yêu cầu thiết kế không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const { skip, limit } = getPagination(req.query);
+    const filter = { userId };
+    if (status) filter.status = status;
+
+    const [customOrders, total, activeCount] = await Promise.all([
+      CustomOrder.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      CustomOrder.countDocuments({ userId }),
+      CustomOrder.countDocuments({ userId, status: { $in: ACTIVE_CUSTOM_ORDER_STATUSES } })
+    ]);
+
+    res.json({
+      orders: await enrichCustomOrders(customOrders),
+      total,
+      activeCount,
+      page: Math.floor(skip / limit) + 1,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    console.error('Lỗi tải yêu cầu thiết kế của khách hàng:', error);
+    res.status(500).json({ message: 'Không thể tải danh sách yêu cầu thiết kế.' });
+  }
+};
+
+exports.getMyCustomOrderById = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const customOrder = await CustomOrder.findOne({
+      userId,
+      id: req.params.id
+    }).lean();
+    if (!customOrder) {
+      res.status(404).json({ message: 'Không tìm thấy yêu cầu thiết kế.' });
+      return;
+    }
+
+    const [enriched] = await enrichCustomOrders([customOrder]);
+    res.json(enriched);
+  } catch (error) {
+    console.error('Lỗi tải chi tiết yêu cầu thiết kế của khách hàng:', error);
+    res.status(500).json({ message: 'Không thể tải chi tiết yêu cầu thiết kế.' });
   }
 };
 

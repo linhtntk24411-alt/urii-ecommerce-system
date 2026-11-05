@@ -52,6 +52,67 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+exports.getMyOrders = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    return;
+  }
+
+  const statusId = typeof req.query.statusId === 'string' ? req.query.statusId : '';
+  if (statusId && !orderStatuses.orderStatuses.some((status) => status.id === statusId)) {
+    res.status(400).json({ message: 'Trạng thái đơn hàng không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const { skip, limit } = getPagination(req.query);
+    const filter = { userId };
+    if (statusId) filter.statusId = statusId;
+
+    const [orders, total] = await Promise.all([
+      Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Order.countDocuments(filter)
+    ]);
+
+    res.json({
+      orders: await enrichOrders(orders),
+      total,
+      page: Math.floor(skip / limit) + 1,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    console.error('Lỗi tải đơn hàng của khách hàng:', error);
+    res.status(500).json({ message: 'Không thể tải danh sách đơn hàng.' });
+  }
+};
+
+exports.getMyOrderBySlug = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const order = await Order.findOne({
+      userId,
+      id: req.params.slug
+    }).lean();
+    if (!order) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+      return;
+    }
+
+    const [enriched] = await enrichOrders([order]);
+    res.json(enriched);
+  } catch (error) {
+    console.error('Lỗi tải chi tiết đơn hàng của khách hàng:', error);
+    res.status(500).json({ message: 'Không thể tải chi tiết đơn hàng.' });
+  }
+};
+
 exports.getOrderById = async (req, res) => {
   try {
     const order = mongoose.isValidObjectId(req.params.id)

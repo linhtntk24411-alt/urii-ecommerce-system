@@ -191,6 +191,17 @@
                                 </span>
                             </a>
                         </li>
+                        <li>
+                            <a routerLink="/my-blogs" class="account-menu-item" (click)="closeAccountMenu()">
+                                <span class="account-menu-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg>
+                                </span>
+                                <span class="menu-text">Bài viết của tôi</span>
+                                <span class="menu-arrow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                </span>
+                            </a>
+                        </li>
                     </ul>
                     <div class="account-logout">
                         <button class="btn-logout" type="button" (click)="openLogoutModal()">

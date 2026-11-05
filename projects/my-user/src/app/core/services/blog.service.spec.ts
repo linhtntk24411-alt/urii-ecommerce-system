@@ -38,6 +38,27 @@ describe('BlogService', () => {
     expect(result[0].imageAvailable).toBe(true);
   });
 
+  it('filters paginated blogs by the authenticated user', () => {
+    let result: BlogPost[] = [];
+
+    service.getBlogsByUser('user-token', 'user-1').subscribe((blogs) => {
+      result = blogs;
+    });
+
+    const request = httpTestingController.expectOne((candidate) =>
+      candidate.url === '/api/blogs'
+      && candidate.params.get('page') === '1'
+      && candidate.params.get('limit') === '100',
+    );
+    expect(request.request.headers.get('Authorization')).toBe('Bearer user-token');
+    request.flush([
+      { id: 21, slug: 'my-post', title: 'Bài của tôi', userId: 'user-1' },
+      { id: 22, slug: 'other-post', title: 'Bài người khác', userId: 'user-2' },
+    ]);
+
+    expect(result.map((blog) => blog.slug)).toEqual(['my-post']);
+  });
+
   it('reads and filters comments from the paginated comments endpoint', () => {
     let result: BlogComment[] = [];
 

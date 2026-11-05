@@ -47,6 +47,8 @@ describe('HeaderComponent', () => {
     expect(component.isLoggedIn).toBe(true);
     expect(fixture.nativeElement.querySelector('.account-icon-wrapper')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.auth-buttons')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/my-blogs"]')?.textContent)
+      .toContain('Bài viết của tôi');
   });
 
   it('loads the signed-in user profile from the API and updates the avatar', () => {

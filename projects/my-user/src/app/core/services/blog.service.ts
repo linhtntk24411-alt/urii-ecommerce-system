@@ -13,6 +13,7 @@ export interface BlogPost {
   avatar: string;
   date: string;
   image: string;
+  userId?: string;
   imageAvailable?: boolean;
   category: string;
   categorySlug: string;
@@ -93,6 +94,16 @@ export class BlogService {
     );
   }
 
+  getBlogsByUser(token: string, userId: string): Observable<BlogPost[]> {
+    return this.loadBlogsPage(1, token).pipe(
+      expand((blogs, pageIndex) =>
+        blogs.length === 100 ? this.loadBlogsPage(pageIndex + 2, token) : EMPTY,
+      ),
+      toArray(),
+      map((pages) => pages.flat().filter((blog) => blog.userId === userId)),
+    );
+  }
+
   getBlogBySlug(slug: string): Observable<BlogPost | undefined> {
     return this.getBlogs().pipe(
       map((blogs) => blogs.find((blog) => blog.slug === slug)),
@@ -119,6 +130,12 @@ export class BlogService {
         : this.isRecord(rawId) && typeof rawId['$oid'] === 'string'
           ? rawId['$oid']
           : slug;
+      const rawUserId = record['userId'];
+      const userId = typeof rawUserId === 'string'
+        ? rawUserId
+        : this.isRecord(rawUserId) && typeof rawUserId['$oid'] === 'string'
+          ? rawUserId['$oid']
+          : '';
       const categoryValue = record['category'];
       const category = this.isRecord(categoryValue)
         ? this.toText(categoryValue['name'] ?? categoryValue['title'])
@@ -130,6 +147,7 @@ export class BlogService {
       return [{
         id,
         slug,
+        ...(userId ? { userId } : {}),
         title,
         summary,
         excerpt: this.toText(record['excerpt'] ?? record['summary']),
@@ -197,6 +215,13 @@ export class BlogService {
     return this.http.get<unknown>('/api/comments', {
       params: { page, limit: 100 },
     }).pipe(map((response) => this.parseComments(response)));
+  }
+
+  private loadBlogsPage(page: number, token: string): Observable<BlogPost[]> {
+    return this.http.get<unknown>('/api/blogs', {
+      params: { page, limit: 100 },
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).pipe(map((response) => this.parseBlogs(response)));
   }
 
   private normalizeImagePath(value: unknown): string {

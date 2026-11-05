@@ -7,6 +7,7 @@ import { SampleMapsComponent } from './features/sample-maps/sample-maps';
 import { LoginUser } from './features/login-user/login-user';
 import { SampleMapsDetailComponent } from './features/sample-maps-detail/sample-maps-detail';
 import { BlogCreateComponent } from './features/blogs/blog-create/blog-create';
+import { MyBlogsComponent } from './features/account/my-blogs/my-blogs';
 import { SupportComponent } from './features/support/support';
 import { About } from './features/about/about';
 import { PageNotFoundComponent } from './features/page-not-found/page-not-found';
@@ -24,6 +25,7 @@ export const routes: Routes = [
   { path: 'checkout', component: CheckOut },
   { path: 'custom-order', component: CustomOrderComponent },
   { path: 'blog-list', component: BlogListComponent },
+  { path: 'my-blogs', component: MyBlogsComponent },
   { path: 'blog-detail', component: BlogDetailComponent },
   { path: 'blog-detail/:slug', component: BlogDetailComponent },
   { path: 'blog-create', component: BlogCreateComponent },

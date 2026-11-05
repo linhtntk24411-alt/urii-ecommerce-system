@@ -13,6 +13,17 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function slugifyTitle(title, id) {
+  const normalized = String(title || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized ? `${normalized}-${id}` : `bai-viet-${id}`;
+}
+
 function blogFilter(value) {
   const filters = [{ slug: value }];
   const numericId = Number(value);
@@ -71,7 +82,7 @@ exports.getBlogBySlug = async (req, res) => {
 };
 
 exports.createBlog = async (req, res) => {
-  if (!isRecord(req.body)) {
+  if (!isRecord(req.body) || typeof req.body.title !== 'string' || !req.body.title.trim()) {
     res.status(400).json({ message: 'Dữ liệu bài viết không hợp lệ.' });
     return;
   }
@@ -82,7 +93,31 @@ exports.createBlog = async (req, res) => {
       const latestBlog = await Blog.findOne().sort({ id: -1 }).select('id').lean();
       id = (latestBlog?.id || 0) + 1;
     }
-    const blog = await Blog.create({ ...req.body, id });
+    const tokenUserId = typeof req.auth?.id === 'string' && mongoose.isValidObjectId(req.auth.id)
+      ? req.auth.id
+      : undefined;
+    const bodyUserId = typeof req.body.userId === 'string' && mongoose.isValidObjectId(req.body.userId)
+      ? req.body.userId
+      : undefined;
+    const resolvedUserId = req.auth?.role === 'admin'
+      ? (bodyUserId || tokenUserId)
+      : (tokenUserId || bodyUserId);
+    const rawSlug = typeof req.body.slug === 'string' ? req.body.slug.trim() : '';
+    const slug = rawSlug || slugifyTitle(req.body.title, id);
+    const now = new Date();
+    const defaultDate = `${now.getDate()} Tháng ${now.getMonth() + 1}, ${now.getFullYear()}`;
+    const blog = await Blog.create({
+      ...req.body,
+      id,
+      title: req.body.title.trim(),
+      slug,
+      ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+      date: typeof req.body.date === 'string' && req.body.date.trim() ? req.body.date.trim() : defaultDate,
+      likes: req.body.likes ?? 0,
+      comments: req.body.comments ?? 0,
+      views: req.body.views ?? 0,
+      isFeatured: req.auth?.role === 'admin' ? Boolean(req.body.isFeatured) : false
+    });
     emitCrudChange('blogs', 'created', blog._id);
     const [enriched] = await enrichBlogs([blog.toObject()]);
     res.status(201).json(enriched);

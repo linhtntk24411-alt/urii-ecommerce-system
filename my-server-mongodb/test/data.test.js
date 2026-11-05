@@ -902,3 +902,141 @@ test('auth/me, login profile formatting, and self user read work securely with a
     User.findById = origFindById;
   }
 });
+
+test('POST /api/blogs and POST /api/comments allow authenticated non-admin users', async () => {
+  const blogRoutes = require('../routes/blogRoutes');
+  const commentRoutes = require('../routes/commentRoutes');
+  const blogController = require('../controllers/blogController');
+  const commentController = require('../controllers/commentController');
+  const { requireAdmin } = require('../middleware/auth');
+
+  const postBlogLayer = blogRoutes.stack.find(
+    (layer) => layer.route?.path === '/' && layer.route.methods.post
+  );
+  const postCommentLayer = commentRoutes.stack.find(
+    (layer) => layer.route?.path === '/' && layer.route.methods.post
+  );
+  assert.ok(postBlogLayer);
+  assert.ok(postCommentLayer);
+  assert.equal(
+    postBlogLayer.route.stack.some((s) => s.handle === requireAdmin),
+    false
+  );
+  assert.equal(
+    postCommentLayer.route.stack.some((s) => s.handle === requireAdmin),
+    false
+  );
+
+  const sampleUser = readJSON('users.json').users.find((u) => u.role === 'user');
+  const origBlogFindOne = Blog.findOne;
+  const origBlogCreate = Blog.create;
+  const origBlogExists = Blog.exists;
+  const origBlogUpdateOne = Blog.updateOne;
+  const origCommentFindOne = Comment.findOne;
+  const origCommentCreate = Comment.create;
+  const origCommentCount = Comment.countDocuments;
+  const origUserFind = User.find;
+
+  try {
+    Blog.findOne = () => ({
+      sort: () => ({
+        select: () => ({
+          lean: async () => ({ id: 12 })
+        })
+      })
+    });
+    Blog.create = async (doc) => ({
+      ...doc,
+      _id: '507f1f77bcf86cd799439099',
+      toObject() {
+        return { ...doc, _id: '507f1f77bcf86cd799439099' };
+      }
+    });
+    Blog.exists = async () => ({ _id: '507f1f77bcf86cd799439099' });
+    Blog.updateOne = async () => ({ acknowledged: true });
+    Comment.findOne = () => ({
+      sort: () => ({
+        select: () => ({
+          lean: async () => ({ id: 35 })
+        })
+      })
+    });
+    Comment.create = async (doc) => ({
+      ...doc,
+      _id: '507f1f77bcf86cd799439098',
+      toObject() {
+        return { ...doc, _id: '507f1f77bcf86cd799439098' };
+      }
+    });
+    Comment.countDocuments = async () => 4;
+    User.find = () => ({
+      select: () => ({
+        lean: async () => [sampleUser]
+      })
+    });
+
+    let blogStatus = 200;
+    let blogBody = null;
+    await blogController.createBlog(
+      {
+        auth: { id: sampleUser._id, role: 'user' },
+        body: {
+          title: 'Góc nhỏ cuối tuần của mình',
+          content: '<p>Chia sẻ góc làm đồ handmade.</p>',
+          categoryId: 'diy-guide'
+        }
+      },
+      {
+        status(code) {
+          blogStatus = code;
+          return this;
+        },
+        json(payload) {
+          blogBody = payload;
+        }
+      }
+    );
+
+    assert.equal(blogStatus, 201);
+    assert.equal(blogBody.id, 13);
+    assert.equal(blogBody.slug, 'goc-nho-cuoi-tuan-cua-minh-13');
+    assert.equal(String(blogBody.userId), sampleUser._id);
+    assert.equal(blogBody.author, sampleUser.name);
+
+    let commentStatus = 200;
+    let commentBody = null;
+    await commentController.createComment(
+      {
+        auth: { id: sampleUser._id, role: 'user' },
+        body: {
+          blogId: 1,
+          content: 'Bài viết dễ thương quá!'
+        }
+      },
+      {
+        status(code) {
+          commentStatus = code;
+          return this;
+        },
+        json(payload) {
+          commentBody = payload;
+        }
+      }
+    );
+
+    assert.equal(commentStatus, 201);
+    assert.equal(commentBody.id, 36);
+    assert.equal(commentBody.blogId, 1);
+    assert.equal(String(commentBody.userId), sampleUser._id);
+    assert.equal(commentBody.author, sampleUser.name);
+  } finally {
+    Blog.findOne = origBlogFindOne;
+    Blog.create = origBlogCreate;
+    Blog.exists = origBlogExists;
+    Blog.updateOne = origBlogUpdateOne;
+    Comment.findOne = origCommentFindOne;
+    Comment.create = origCommentCreate;
+    Comment.countDocuments = origCommentCount;
+    User.find = origUserFind;
+  }
+});

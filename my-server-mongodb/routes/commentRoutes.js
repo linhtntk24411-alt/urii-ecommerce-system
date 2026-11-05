@@ -5,7 +5,7 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 
 router.get('/', c.getAllComments);
 router.get('/:id', c.getCommentById);
-router.post('/', authenticate, requireAdmin, c.createComment);
+router.post('/', authenticate, c.createComment);
 router.put('/:id', authenticate, requireAdmin, c.updateComment);
 router.patch('/:id', authenticate, requireAdmin, c.updateComment);
 router.delete('/:id', authenticate, requireAdmin, c.deleteComment);

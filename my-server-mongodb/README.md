@@ -62,8 +62,8 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 | Users | `GET /api/users`, `GET /api/users/:id`, `POST /api/users`, `PUT/PATCH /api/users/:id`, `DELETE /api/users/:id` |
 | Promotions | `GET /api/vouchers/manage`, `GET /api/vouchers/:id`, `POST /api/vouchers`, `PUT/PATCH /api/vouchers/:id`, `DELETE /api/vouchers/:id` |
 | Categories | `GET /api/categories`, `GET /api/categories/:id`, `POST /api/categories`, `PUT/PATCH /api/categories/:id`, `DELETE /api/categories/:id` |
-| Blogs | `GET /api/blogs`, `GET /api/blogs/:slug`, `POST /api/blogs`, `PUT/PATCH /api/blogs/:id`, `DELETE /api/blogs/:id` |
-| Comments | `GET /api/comments`, `GET /api/comments/:id`, `POST /api/comments`, `PUT/PATCH /api/comments/:id`, `DELETE /api/comments/:id` |
+| Blogs | `GET /api/blogs`, `GET /api/blogs/:slug` (public); user/admin JWT: `POST /api/blogs`; admin: `PUT/PATCH /api/blogs/:id`, `DELETE /api/blogs/:id` |
+| Comments | `GET /api/comments`, `GET /api/comments/:id` (public); user/admin JWT: `POST /api/comments`; admin: `PUT/PATCH /api/comments/:id`, `DELETE /api/comments/:id` |
 | Gallery | `GET /api/gallery`, `GET /api/gallery/:mapId`, `POST /api/gallery`, `PUT/PATCH /api/gallery/:mapId`, `DELETE /api/gallery/:mapId` |
 | Saved maps | `GET /api/saved-maps`, `GET /api/saved-maps/:id`, `POST /api/saved-maps`, `PUT/PATCH /api/saved-maps/:id`, `DELETE /api/saved-maps/:id` |
 | Chatbot FAQs | `GET /api/chat/faqs`, `GET /api/chat/faqs/:id`, `POST /api/chat/faqs`, `PUT/PATCH /api/chat/faqs/:id`, `DELETE /api/chat/faqs/:id` |

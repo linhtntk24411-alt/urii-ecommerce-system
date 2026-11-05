@@ -24,6 +24,11 @@ function commentFilter(value) {
   return { $or: filters };
 }
 
+async function syncBlogCommentsCount(blogId) {
+  const count = await Comment.countDocuments({ blogId: Number(blogId) });
+  await Blog.updateOne({ id: Number(blogId) }, { $set: { comments: count } });
+}
+
 async function enrichComments(comments) {
   const userIds = [...new Set(comments.map((c) => c.userId).filter(Boolean).map(String))];
   const users = userIds.length
@@ -73,7 +78,16 @@ exports.createComment = async (req, res) => {
   }
 
   const { userId, author, blogId, content } = req.body;
-  const hasValidUser = typeof userId === 'string' && mongoose.isValidObjectId(userId);
+  const tokenUserId = typeof req.auth?.id === 'string' && mongoose.isValidObjectId(req.auth.id)
+    ? req.auth.id
+    : undefined;
+  const bodyUserId = typeof userId === 'string' && mongoose.isValidObjectId(userId)
+    ? userId
+    : undefined;
+  const resolvedUserId = req.auth?.role === 'admin'
+    ? (bodyUserId || tokenUserId)
+    : (tokenUserId || bodyUserId);
+  const hasValidUser = Boolean(resolvedUserId);
   const hasValidAuthor = typeof author === 'string' && Boolean(author.trim());
   if ((!hasValidUser && !hasValidAuthor)
     || !Number.isSafeInteger(Number(blogId)) || Number(blogId) < 1
@@ -96,9 +110,12 @@ exports.createComment = async (req, res) => {
       ...req.body,
       id,
       blogId: Number(blogId),
+      ...(resolvedUserId ? { userId: resolvedUserId } : {}),
       ...(hasValidAuthor ? { author: author.trim() } : {}),
-      content: content.trim()
+      content: content.trim(),
+      time: typeof req.body.time === 'string' && req.body.time.trim() ? req.body.time.trim() : 'Vừa xong'
     });
+    await syncBlogCommentsCount(blogId);
     emitCrudChange('comments', 'created', comment._id);
     const [enriched] = await enrichComments([comment.toObject()]);
     res.status(201).json(enriched);
@@ -149,6 +166,7 @@ exports.updateComment = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy bình luận.' });
       return;
     }
+    await syncBlogCommentsCount(comment.blogId);
     emitCrudChange('comments', 'updated', comment._id);
     const [enriched] = await enrichComments([comment.toObject()]);
     res.json(enriched);
@@ -173,6 +191,7 @@ exports.deleteComment = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy bình luận.' });
       return;
     }
+    await syncBlogCommentsCount(comment.blogId);
     emitCrudChange('comments', 'deleted', comment._id);
     res.json({ message: 'Đã xóa bình luận.' });
   } catch (error) {

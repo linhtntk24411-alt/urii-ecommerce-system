@@ -5,7 +5,7 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 
 router.get('/', c.getAllBlogs);
 router.get('/:slug', c.getBlogBySlug);
-router.post('/', authenticate, requireAdmin, c.createBlog);
+router.post('/', authenticate, c.createBlog);
 router.put('/:id', authenticate, requireAdmin, c.updateBlog);
 router.patch('/:id', authenticate, requireAdmin, c.updateBlog);
 router.delete('/:id', authenticate, requireAdmin, c.deleteBlog);

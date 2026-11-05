@@ -3,6 +3,11 @@ const router = express.Router();
 const c = require('../controllers/orderController');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
+router.get('/metadata', c.getOrderMetadata);
+router.get('/mine', authenticate, c.getMyOrders);
+router.post('/:id/cancel-request', authenticate, c.requestCancelOrder);
+router.post('/:id/return-request', authenticate, c.requestReturnOrder);
+
 router.use(authenticate, requireAdmin);
 router.get('/', c.getAllOrders);
 router.get('/:id', c.getOrderById);

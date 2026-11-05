@@ -1,13 +1,28 @@
 const Order = require('../models/Order');
 const User = require('../models/User');
 const orderStatuses = require('../data/order_statuses.json');
+const orderReasons = require('../data/order_reasons.json');
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
 
+const orderTypesById = new Map((orderStatuses.orderTypes || []).map((t) => [t.id, t]));
+const orderStatusesById = new Map((orderStatuses.orderStatuses || []).map((s) => [s.id, s]));
+const requestStatusesById = new Map((orderStatuses.requestStatuses || []).map((s) => [s.id, s]));
 const paymentMethodsById = new Map((orderStatuses.paymentMethods || []).map((m) => [m.id, m]));
+const paymentStatusesById = new Map((orderStatuses.paymentStatuses || []).map((s) => [s.id, s]));
 const shippingMethodsById = new Map((orderStatuses.shippingMethods || []).map((m) => [m.id, m]));
+const timelineStatusesById = new Map((orderStatuses.timelineStatuses || []).map((s) => [s.id, s]));
+const shippingStatusesById = new Map((orderStatuses.shippingStatuses || []).map((s) => [s.id, s]));
+const cancelReasonsById = new Map((orderReasons.cancelReasons || []).map((r) => [r.id, r]));
+const returnReasonsById = new Map((orderReasons.returnReasons || []).map((r) => [r.id, r]));
+
+function addHoursIso(isoOrDate, hours) {
+  const base = isoOrDate ? new Date(isoOrDate) : new Date();
+  const validBase = Number.isNaN(base.getTime()) ? new Date() : base;
+  return new Date(validBase.getTime() + hours * 3600 * 1000).toISOString().slice(0, 19);
+}
 
 async function enrichOrders(orders) {
   const userIds = [...new Set(orders.map((o) => o.userId).filter(Boolean).map(String))];
@@ -18,11 +33,45 @@ async function enrichOrders(orders) {
 
   return orders.map((order) => {
     const user = order.userId ? usersById.get(String(order.userId)) : null;
+    const statusMeta = order.statusId ? orderStatusesById.get(order.statusId) : null;
+    const cancelReasonMeta = order.cancellationReasonId
+      ? cancelReasonsById.get(order.cancellationReasonId)
+      : null;
+    const cancelStatusMeta = order.cancellationStatusId
+      ? requestStatusesById.get(order.cancellationStatusId)
+      : null;
+    const returnReasonMeta = order.returnReasonId
+      ? returnReasonsById.get(order.returnReasonId)
+      : null;
+    const returnStatusMeta = order.returnStatusId
+      ? requestStatusesById.get(order.returnStatusId)
+      : null;
     const pm = order.payment?.methodId ? paymentMethodsById.get(order.payment.methodId) : null;
+    const ps = order.payment?.statusId ? paymentStatusesById.get(order.payment.statusId) : null;
     const sm = order.shipping?.methodId ? shippingMethodsById.get(order.shipping.methodId) : null;
+    const waitingPolicy = order.waitingInfo?.type
+      ? orderReasons.waitingPolicies?.[order.waitingInfo.type]
+      : null;
 
     return {
       ...order,
+      orderType: order.orderType || 'normal',
+      orderTypeLabel: orderTypesById.get(order.orderType || 'normal')?.label || '',
+      status: order.status || statusMeta?.label || '',
+      statusType: order.statusType || statusMeta?.statusType || '',
+      icon: order.icon || statusMeta?.icon || '',
+      isWaiting: Boolean(statusMeta?.isWaiting),
+      waitingLabel: statusMeta?.waitingLabel || waitingPolicy?.label || '',
+      allowCancelRequest: Boolean(statusMeta?.allowCancelRequest),
+      allowReturnRequest: Boolean(statusMeta?.allowReturnRequest),
+      waitingInfo: order.waitingInfo?.type ? {
+        ...order.waitingInfo,
+        label: waitingPolicy?.label || statusMeta?.waitingLabel || ''
+      } : order.waitingInfo,
+      cancellationReason: cancelReasonMeta?.label || undefined,
+      cancellationStatus: cancelStatusMeta?.label || undefined,
+      returnReason: returnReasonMeta?.label || undefined,
+      returnStatus: returnStatusMeta?.label || undefined,
       address: order.address?.name ? order.address : (user ? {
         name: user.name,
         phone: user.phone || '',
@@ -30,21 +79,62 @@ async function enrichOrders(orders) {
       } : order.address),
       payment: order.payment ? {
         ...order.payment,
-        method: order.payment.method || pm?.label || ''
+        method: order.payment.method || pm?.label || '',
+        status: order.payment.status || ps?.label || ''
       } : order.payment,
       shipping: order.shipping ? {
         ...order.shipping,
         carrier: order.shipping.carrier || sm?.carrier || '',
         method: order.shipping.method || sm?.label || ''
-      } : order.shipping
+      } : order.shipping,
+      timeline: Array.isArray(order.timeline)
+        ? order.timeline.map((event) => ({
+            ...event,
+            status: event.status || timelineStatusesById.get(event.statusId)?.label || ''
+          }))
+        : order.timeline,
+      shippingTimeline: Array.isArray(order.shippingTimeline)
+        ? order.shippingTimeline.map((event) => ({
+            ...event,
+            status: event.status || shippingStatusesById.get(event.statusId)?.label || ''
+          }))
+        : order.shippingTimeline
     };
   });
 }
 
+exports.enrichOrders = enrichOrders;
+
+exports.getOrderMetadata = (req, res) => {
+  res.json({
+    ...orderStatuses,
+    ...orderReasons
+  });
+};
+
+exports.getMyOrders = async (req, res) => {
+  try {
+    const { skip, limit } = getPagination(req.query);
+    const filter = { userId: req.auth.id };
+    if (typeof req.query.statusId === 'string' && req.query.statusId.trim()) {
+      filter.statusId = req.query.statusId.trim();
+    }
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    res.json(await enrichOrders(orders));
+  } catch (error) {
+    console.error('Lỗi tải đơn hàng của người dùng:', error);
+    res.status(500).json({ message: 'Không thể tải danh sách đơn hàng.' });
+  }
+};
+
 exports.getAllOrders = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
-    const orders = await Order.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const filter = {};
+    if (typeof req.query.statusId === 'string' && req.query.statusId.trim()) {
+      filter.statusId = req.query.statusId.trim();
+    }
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
     res.json(await enrichOrders(orders));
   } catch (error) {
     console.error('Lỗi tải đơn hàng:', error);
@@ -76,9 +166,25 @@ exports.createOrder = async (req, res) => {
   }
 
   try {
+    const nowIso = new Date().toISOString().slice(0, 19);
+    const statusId = req.body.statusId || 'pending';
+    const waitingPolicy = orderReasons.waitingPolicies?.awaiting_confirmation;
+    const defaultWaitingInfo = statusId === 'pending' && !req.body.waitingInfo
+      ? {
+          type: 'awaiting_confirmation',
+          startedAt: nowIso,
+          deadlineAt: addHoursIso(nowIso, waitingPolicy?.slaHours || 24),
+          expectedHours: waitingPolicy?.slaHours || 24,
+          actor: 'admin',
+          note: waitingPolicy?.description || 'Chờ cửa hàng xác nhận đơn hàng trong vòng 24 giờ.'
+        }
+      : req.body.waitingInfo;
+
     const order = await Order.create({
       ...req.body,
-      id: req.body.id || `order-${randomUUID()}`
+      id: req.body.id || `order-${randomUUID()}`,
+      statusId,
+      waitingInfo: defaultWaitingInfo
     });
     emitCrudChange('orders', 'created', order._id);
     const [enriched] = await enrichOrders([order.toObject()]);
@@ -94,6 +200,152 @@ exports.createOrder = async (req, res) => {
     }
     console.error('Lỗi tạo đơn hàng:', error);
     res.status(500).json({ message: 'Không thể tạo đơn hàng.' });
+  }
+};
+
+exports.requestCancelOrder = async (req, res) => {
+  const { reasonId, note } = req.body || {};
+  const reason = cancelReasonsById.get(reasonId);
+  if (!reason) {
+    res.status(400).json({ message: 'Lý do hủy đơn hàng không hợp lệ.' });
+    return;
+  }
+  if (reason.requiresNote && (!typeof note === 'string' || !String(note || '').trim())) {
+    res.status(400).json({ message: 'Vui lòng nhập ghi chú chi tiết cho lý do hủy đơn này.' });
+    return;
+  }
+
+  try {
+    const filter = mongoose.isValidObjectId(req.params.id)
+      ? { _id: req.params.id }
+      : { id: req.params.id };
+    const order = await Order.findOne(filter);
+    if (!order) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+      return;
+    }
+    if (req.auth?.role !== 'admin' && String(order.userId) !== String(req.auth?.id)) {
+      res.status(403).json({ message: 'Bạn không có quyền yêu cầu hủy đơn hàng này.' });
+      return;
+    }
+    const allowedStatuses = reason.allowedOrderStatuses || ['pending', 'processing'];
+    if (!allowedStatuses.includes(order.statusId)) {
+      res.status(400).json({ message: 'Đơn hàng ở trạng thái hiện tại không thể gửi yêu cầu hủy.' });
+      return;
+    }
+
+    const nowIso = new Date().toISOString().slice(0, 19);
+    const slaHours = reason.slaHours || orderReasons.waitingPolicies?.awaiting_cancel_approval?.slaHours || 24;
+    const deadlineIso = addHoursIso(nowIso, slaHours);
+
+    order.statusId = 'cancel_requested';
+    order.cancellationReasonId = reason.id;
+    order.cancellationNote = typeof note === 'string' ? note.trim() : '';
+    order.cancellationStatusId = 'pending_approval';
+    order.cancellationRequestedAt = nowIso;
+    order.cancellationDeadlineAt = deadlineIso;
+    order.waitingInfo = {
+      type: 'awaiting_cancel_approval',
+      startedAt: nowIso,
+      deadlineAt: deadlineIso,
+      expectedHours: slaHours,
+      actor: 'admin',
+      note: 'Chờ cửa hàng kiểm tra kho và xác nhận yêu cầu hủy đơn.'
+    };
+    order.timeline = [
+      ...(order.timeline || []),
+      { statusId: 'cancel_requested', time: nowIso }
+    ];
+
+    await order.save();
+    emitCrudChange('orders', 'updated', order._id);
+    const [enriched] = await enrichOrders([order.toObject()]);
+    res.json(enriched);
+  } catch (error) {
+    console.error('Lỗi gửi yêu cầu hủy đơn:', error);
+    res.status(500).json({ message: 'Không thể gửi yêu cầu hủy đơn hàng.' });
+  }
+};
+
+exports.requestReturnOrder = async (req, res) => {
+  const { reasonId, note, evidence } = req.body || {};
+  const reason = returnReasonsById.get(reasonId);
+  if (!reason) {
+    res.status(400).json({ message: 'Lý do hoàn trả không hợp lệ.' });
+    return;
+  }
+  if (reason.requiresNote && !String(note || '').trim()) {
+    res.status(400).json({ message: 'Vui lòng nhập mô tả chi tiết cho yêu cầu hoàn trả.' });
+    return;
+  }
+
+  const mediaList = Array.isArray(evidence) ? evidence : [];
+  const requiredImages = reason.requiresMedia?.images || 0;
+  const requiredVideos = reason.requiresMedia?.videos || 0;
+  const imageCount = mediaList.filter((item) => item?.type === 'image').length;
+  const videoCount = mediaList.filter((item) => item?.type === 'video').length;
+  if (imageCount < requiredImages || videoCount < requiredVideos) {
+    res.status(400).json({
+      message: `Yêu cầu hoàn trả cần tối thiểu ${requiredImages} hình ảnh và ${requiredVideos} video minh chứng.`
+    });
+    return;
+  }
+
+  try {
+    const filter = mongoose.isValidObjectId(req.params.id)
+      ? { _id: req.params.id }
+      : { id: req.params.id };
+    const order = await Order.findOne(filter);
+    if (!order) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+      return;
+    }
+    if (req.auth?.role !== 'admin' && String(order.userId) !== String(req.auth?.id)) {
+      res.status(403).json({ message: 'Bạn không có quyền yêu cầu hoàn trả đơn hàng này.' });
+      return;
+    }
+    const allowedStatuses = reason.allowedOrderStatuses || ['completed'];
+    if (!allowedStatuses.includes(order.statusId)) {
+      res.status(400).json({ message: 'Chỉ đơn hàng đã giao thành công mới có thể yêu cầu hoàn trả.' });
+      return;
+    }
+
+    const nowIso = new Date().toISOString().slice(0, 19);
+    const slaHours = reason.slaHours || orderReasons.waitingPolicies?.awaiting_return_approval?.slaHours || 48;
+    const deadlineIso = addHoursIso(nowIso, slaHours);
+
+    order.statusId = 'return_requested';
+    order.returnReasonId = reason.id;
+    order.returnNote = typeof note === 'string' ? note.trim() : '';
+    order.returnEvidence = mediaList;
+    order.returnStatusId = 'pending_approval';
+    order.returnRequestedAt = nowIso;
+    order.returnDeadlineAt = deadlineIso;
+    order.waitingInfo = {
+      type: 'awaiting_return_approval',
+      startedAt: nowIso,
+      deadlineAt: deadlineIso,
+      expectedHours: slaHours,
+      actor: 'admin',
+      note: 'Chờ cửa hàng kiểm tra minh chứng và xác nhận yêu cầu trả hàng/hoàn tiền.'
+    };
+    order.timeline = [
+      ...(order.timeline || []),
+      { statusId: 'return_requested', time: nowIso },
+      { statusId: 'awaiting_return_confirmation', time: nowIso }
+    ];
+
+    await order.save();
+    emitCrudChange('orders', 'updated', order._id);
+    const [enriched] = await enrichOrders([order.toObject()]);
+    res.json(enriched);
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      res.status(400).json({ message: 'Dữ liệu minh chứng hoàn trả không hợp lệ.' });
+      return;
+    }
+    console.error('Lỗi gửi yêu cầu hoàn trả:', error);
+    res.status(500).json({ message: 'Không thể gửi yêu cầu hoàn trả.' });
   }
 };
 

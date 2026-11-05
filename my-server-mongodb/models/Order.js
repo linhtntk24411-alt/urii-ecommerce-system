@@ -11,18 +11,54 @@ const orderEvidenceSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const waitingInfoSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: [
+      'awaiting_payment',
+      'awaiting_confirmation',
+      'awaiting_pickup',
+      'awaiting_delivery',
+      'awaiting_cancel_approval',
+      'awaiting_return_approval',
+      'awaiting_return_pickup',
+      'awaiting_refund'
+    ]
+  },
+  startedAt: Date,
+  deadlineAt: Date,
+  slaHours: Number,
+  expectedHours: Number,
+  actor: { type: String, enum: ['customer', 'admin', 'carrier'] },
+  note: String
+}, { _id: false });
+
+const orderTypeEnum = (orderStatuses.orderTypes || []).map(({ id }) => id);
+const requestStatusEnum = (orderStatuses.requestStatuses || []).map(({ id }) => id);
+
 const orderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
+  orderType: { type: String, enum: orderTypeEnum, default: 'normal' },
+  customOrderId: { type: String, trim: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   userName: String,
   date: String,
   status: String,
   statusId: { type: String, enum: orderStatuses.orderStatuses.map(({ id }) => id) },
   statusType: String,
+  waitingInfo: { type: waitingInfoSchema, default: undefined },
   cancellationReasonId: String,
   cancellationNote: String,
+  cancellationStatusId: { type: String, enum: requestStatusEnum },
+  cancellationRequestedAt: Date,
+  cancellationDeadlineAt: Date,
+  cancellationResolvedAt: Date,
   returnReasonId: String,
   returnNote: String,
+  returnStatusId: { type: String, enum: requestStatusEnum },
+  returnRequestedAt: Date,
+  returnDeadlineAt: Date,
+  returnResolvedAt: Date,
   returnEvidence: { type: [orderEvidenceSchema], default: [] },
   showReview: { type: Boolean, default: false },
   deliveredAt: Date,
@@ -58,7 +94,8 @@ const orderSchema = new mongoose.Schema({
   timeline: [{
     status: String,
     statusId: { type: String, enum: orderStatuses.timelineStatuses.map(({ id }) => id) },
-    time: Date
+    time: Date,
+    note: String
   }],
   shippingTimeline: [{
     status: String,
@@ -67,4 +104,5 @@ const orderSchema = new mongoose.Schema({
     time: Date
   }]
 }, { timestamps: true });
+
 module.exports = mongoose.model('Order', orderSchema);

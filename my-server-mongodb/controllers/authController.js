@@ -9,6 +9,24 @@ const { emitCrudChange } = require('../realtime');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_BYTES = 72;
+const PROFILE_GENDERS = new Set(['', 'male', 'female', 'other', 'prefer_not_to_say']);
+
+function isValidBirthDate(value) {
+  const vietnameseDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const day = vietnameseDate ? Number(vietnameseDate[1]) : isoDate ? Number(isoDate[3]) : 0;
+  const month = vietnameseDate ? Number(vietnameseDate[2]) : isoDate ? Number(isoDate[2]) : 0;
+  const year = vietnameseDate ? Number(vietnameseDate[3]) : isoDate ? Number(isoDate[1]) : 0;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  return Boolean(day && month && year)
+    && date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    && date <= today;
+}
 
 function formatAuthUser(user) {
   if (!user) return null;
@@ -22,6 +40,8 @@ function formatAuthUser(user) {
     phone: user.phone || '',
     birth: user.birth || '',
     address: user.address || '',
+    interests: user.interests || '',
+    gender: user.gender || '',
     joinDate: user.joinDate || '',
     orders: user.orders ?? 0,
     maps: user.maps ?? 0,
@@ -70,7 +90,6 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: 'Không thể đăng ký tài khoản lúc này.' });
   }
 };
-
 exports.login = async (req, res) => {
   const { email, password } = req.body || {};
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -147,7 +166,7 @@ exports.updateMe = async (req, res) => {
     return;
   }
 
-  const allowedFields = ['name', 'phone', 'birth', 'address', 'avatar', 'password'];
+  const allowedFields = ['name', 'phone', 'birth', 'address', 'interests', 'gender', 'avatar', 'password'];
   const updates = {};
   for (const field of allowedFields) {
     if (Object.hasOwn(req.body, field)) {
@@ -161,6 +180,37 @@ exports.updateMe = async (req, res) => {
       return;
     }
     updates.name = updates.name.trim();
+  }
+
+  if (updates.phone !== undefined) {
+    if (typeof updates.phone !== 'string'
+      || !/^\+?[\d\s().-]{7,20}$/.test(updates.phone.trim())) {
+      res.status(400).json({ message: 'Số điện thoại là bắt buộc và phải hợp lệ.' });
+      return;
+    }
+    updates.phone = updates.phone.trim();
+  }
+
+  if (updates.birth !== undefined) {
+    if (typeof updates.birth !== 'string' || !isValidBirthDate(updates.birth.trim())) {
+      res.status(400).json({ message: 'Ngày sinh là bắt buộc, phải hợp lệ và không được ở tương lai.' });
+      return;
+    }
+    updates.birth = updates.birth.trim();
+  }
+
+  if (updates.interests !== undefined) {
+    if (typeof updates.interests !== 'string' || updates.interests.length > 500) {
+      res.status(400).json({ message: 'Sở thích không được vượt quá 500 ký tự.' });
+      return;
+    }
+    updates.interests = updates.interests.trim();
+  }
+
+  if (updates.gender !== undefined
+    && (typeof updates.gender !== 'string' || !PROFILE_GENDERS.has(updates.gender))) {
+    res.status(400).json({ message: 'Giới tính không hợp lệ.' });
+    return;
   }
 
   if (updates.password !== undefined) {
@@ -339,5 +389,3 @@ exports.oauthCallback = async (req, res) => {
     });
   }
 };
-
-

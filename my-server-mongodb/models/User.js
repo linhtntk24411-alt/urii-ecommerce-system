@@ -9,6 +9,11 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   birth: String,
   address: String,
+  interests: { type: String, trim: true, maxlength: 500 },
+  gender: {
+    type: String,
+    enum: ['', 'male', 'female', 'other', 'prefer_not_to_say']
+  },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   authProviders: {
     type: [{ type: String, enum: ['password', 'google', 'facebook'] }],

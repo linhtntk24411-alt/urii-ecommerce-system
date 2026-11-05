@@ -898,9 +898,9 @@ test('auth/me, login profile formatting, and self user read work securely with a
     assert.equal(body.email, sampleUser.email);
     assert.equal(body.avatar, sampleUser.avatar);
     assert.equal(Object.hasOwn(body, 'password'), false);
-  } finally {
-    User.findById = origFindById;
-  }
+    } finally {
+      User.findById = origFindById;
+    }
 });
 
 test('POST /api/blogs and POST /api/comments allow authenticated non-admin users', async () => {

@@ -469,6 +469,13 @@
                     <strong>{{ selectedReplyTarget.authorName }}</strong>
                 </div>
 
+                <div class="mb-3" *ngIf="selectedReplyTarget.reply">
+                    <div class="text-muted small mb-1">Câu trả lời gần nhất của Urii</div>
+                    <div class="p-3 bg-light rounded-3" style="white-space: pre-wrap; word-break: break-word;">
+                        {{ selectedReplyTarget.reply }}
+                    </div>
+                </div>
+
                 <!-- Nội dung gốc -->
                 <div class="mb-3">
                     <label class="form-label fw-bold">
@@ -486,7 +493,7 @@
                 <!-- Nội dung trả lời -->
                 <div class="mb-3">
                     <label class="form-label fw-bold">
-                        Nội dung trả lời:
+                        Nội dung trả lời mới:
                     </label>
 
                     <textarea
@@ -495,6 +502,10 @@
                         [(ngModel)]="replyContent"
                         placeholder="Nhập nội dung trả lời...">
                     </textarea>
+                </div>
+
+                <div class="alert alert-danger py-2 mb-0" *ngIf="replySaveError" role="alert">
+                    {{ replySaveError }}
                 </div>
 
             </div>
@@ -511,8 +522,9 @@
                     type="button"
                     class="btn btn-primary px-4 fw-bold rounded-3"
                     (click)="saveReply()">
-                    <i class="bi bi-send me-1"></i>
-                    Lưu câu trả lời
+                    <span *ngIf="isSavingReply" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                    <i *ngIf="!isSavingReply" class="bi bi-send me-1"></i>
+                    {{ isSavingReply ? 'Đang lưu...' : 'Lưu câu trả lời' }}
                 </button>
             </div>
 

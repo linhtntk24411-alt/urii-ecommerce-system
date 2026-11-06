@@ -149,6 +149,9 @@ export class OrdersAdmin implements OnInit {
           const rawStatus = String(item.statusType || item.status || '')
             .trim()
             .toLowerCase();
+          const rawCancellationStatus = String(
+            item.cancellationStatusId || item.cancellationStatus || ''
+          ).trim().toLowerCase();
 
           const statusAliases: { [key: string]: string } = {
             'pending': 'pending',
@@ -169,6 +172,18 @@ export class OrdersAdmin implements OnInit {
             'processing': 'processing',
             'đang gia công': 'processing'
           };
+          const cancellationStatusAliases: { [key: string]: string } = {
+            pending_approval: 'pending_approval',
+            'chờ duyệt': 'pending_approval',
+            'chờ shop xác nhận': 'pending_approval',
+            approved: 'approved',
+            rejected: 'rejected'
+          };
+          const cancellationStatus =
+            cancellationStatusAliases[rawCancellationStatus] || rawCancellationStatus;
+          const cancellationRequestDate = item.cancellationRequestedAt
+            ? new Date(item.cancellationRequestedAt)
+            : null;
 
           return {
             ...item,
@@ -187,7 +202,15 @@ export class OrdersAdmin implements OnInit {
             product: item.product || orderItems.map((orderItem: any) =>
               `${orderItem.name}${orderItem.variantName ? ` - ${orderItem.variantName}` : ''} (x${orderItem.quantity ?? 1})`
             ).join(', ') || '',
-            status: statusAliases[rawStatus] || 'pending'
+            reason: item.cancellationReason || item.reason || '',
+            cancellationNote: item.cancellationNote || '',
+            cancellationDate: cancellationRequestDate && !Number.isNaN(cancellationRequestDate.getTime())
+              ? cancellationRequestDate.toLocaleDateString('vi-VN')
+              : '',
+            date: item.date || '',
+            status: cancellationStatus === 'pending_approval'
+              ? 'pending_approval'
+              : statusAliases[rawStatus] || 'pending'
           };
         });
 
@@ -411,10 +434,12 @@ export class OrdersAdmin implements OnInit {
     if (!confirm(confirmMessage)) return;
 
     this.adminApi.updateOrder(id, {
-      statusType: newStatus
+      statusType: newStatus,
+      cancellationStatusId: isApproved ? 'approved' : 'rejected'
     }).subscribe({
       next: () => {
         order.status = newStatus;
+        order.cancellationStatusId = isApproved ? 'approved' : 'rejected';
         this.saveOrders();
 
         alert(

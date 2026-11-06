@@ -171,30 +171,40 @@
     text-transform: uppercase;
     border-bottom: none;
 }
-.btn-process-cancel {
-    background-color: #c80000; /* Màu đỏ đậm cho nút Đồng ý */
-    color: white;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 4px;
+/* Nút duyệt và từ chối yêu cầu hủy */
+.btn-process-cancel,
+.btn-ignore-cancel {
+    padding: 5px 11px;
+    font-size: 12px;
     font-weight: 600;
-    margin-right: 8px;
-    transition: 0.2s;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
 }
+
+/* Nút Duyệt hủy */
+.btn-process-cancel {
+    background-color: #c80000;
+    color: white;
+    border: 1px solid #c80000;
+    margin-right: 0;
+}
+
 .btn-process-cancel:hover {
     background-color: #a00000;
+    border-color: #a00000;
 }
+
+/* Nút Không duyệt */
 .btn-ignore-cancel {
-    background-color: #e9ecef; /* Màu xám nhạt cho nút Từ chối */
+    background-color: #f1f2f3;
     color: #495057;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 4px;
-    font-weight: 600;
-    transition: 0.2s;
+    border: 1px solid #e2e5e8;
 }
+
 .btn-ignore-cancel:hover {
-    background-color: #ced4da;
+    background-color: #e2e5e8;
+    color: #343a40;
 }
 
 /* Fix lỗi menu dropdown bị che khuất (Hình 3) */

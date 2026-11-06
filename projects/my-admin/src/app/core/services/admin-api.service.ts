@@ -127,6 +127,7 @@ export interface AdminComment {
   content: string;
   time?: string;
   createdAt?: string;
+  replies?: { content: string; role?: string; author?: string }[];
 }
 
 export interface AdminReview {
@@ -139,6 +140,7 @@ export interface AdminReview {
   rating: number;
   content: string;
   createdAt?: string;
+  replies?: { content: string; role?: string; author?: string }[];
 }
 
 interface LoginResponse {
@@ -830,6 +832,22 @@ export class AdminApiService {
       .pipe(timeout(8000));
   }
 
+  replyToComment(id: string | number, content: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/comments/${encodeURIComponent(String(id))}/replies`,
+      { content },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  replyToReview(id: string, content: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/reviews/${encodeURIComponent(id)}/replies`,
+      { content },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
   getAdminReviews(): Observable<AdminReview[]> {
     return this.http
       .get<AdminProduct[]>(`${this.baseUrl}/products?page=1&limit=100`)
@@ -951,6 +969,21 @@ export class AdminApiService {
   public getCustomOrders(): Observable<any> {
     return this.http.get<any>(
       `${this.baseUrl}/custom-orders?page=1&limit=100`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  public getAdminNotifications(): Observable<any> {
+    return this.http.get<any>(
+      `${this.baseUrl}/notifications?page=1&limit=100`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  public markAllNotificationsAsRead(): Observable<any> {
+    return this.http.patch(
+      `${this.baseUrl}/notifications/read-all`,
+      {},
       { headers: this.getAuthHeaders() }
     );
   }

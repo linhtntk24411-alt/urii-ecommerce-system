@@ -19,6 +19,7 @@ interface CommentItem {
   // Trạng thái trả lời
   reply?: string;
   replyStatus: 'unanswered' | 'replied';
+  replies?: { content: string; role?: string; author?: string }[];
 }
 
 @Component({
@@ -48,6 +49,8 @@ export class CommentsAdmin implements OnInit {
   selectedReplyTarget: CommentItem | null = null;
   replyContent: string = '';
   isReplyModalOpen = false;
+  isSavingReply = false;
+  replySaveError = '';
 
   // Phân trang
   currentReviewPage: number = 1;
@@ -136,7 +139,7 @@ export class CommentsAdmin implements OnInit {
       date: comment.time || comment.createdAt || '',
       rating: undefined,
       status: 'normal',
-      replyStatus: 'unanswered'
+      ...this.getReplyState(comment.replies)
     };
   }
 
@@ -151,7 +154,18 @@ export class CommentsAdmin implements OnInit {
       date: review.createdAt || '',
       rating: review.rating,
       status: 'normal',
-      replyStatus: 'unanswered'
+      ...this.getReplyState(review.replies)
+    };
+  }
+
+  private getReplyState(replies: any[] | undefined): Pick<CommentItem, 'reply' | 'replyStatus' | 'replies'> {
+    const savedReplies = Array.isArray(replies) ? replies : [];
+    const latestAdminReply = [...savedReplies].reverse().find(reply => reply.role === 'admin');
+
+    return {
+      replies: savedReplies,
+      reply: latestAdminReply?.content || '',
+      replyStatus: latestAdminReply ? 'replied' : 'unanswered'
     };
   }
 
@@ -288,7 +302,8 @@ export class CommentsAdmin implements OnInit {
   // Mở modal trả lời
   openReplyModal(comment: CommentItem): void {
     this.selectedReplyTarget = comment;
-    this.replyContent = comment.reply || '';
+    this.replyContent = '';
+    this.replySaveError = '';
     this.isReplyModalOpen = true;
   }
 
@@ -297,11 +312,12 @@ export class CommentsAdmin implements OnInit {
     this.isReplyModalOpen = false;
     this.selectedReplyTarget = null;
     this.replyContent = '';
+    this.replySaveError = '';
   }
 
   // Lưu câu trả lời
   saveReply(): void {
-    if (!this.selectedReplyTarget) return;
+    if (!this.selectedReplyTarget || this.isSavingReply) return;
 
     const content = this.replyContent.trim();
 
@@ -310,11 +326,31 @@ export class CommentsAdmin implements OnInit {
       return;
     }
 
-    this.selectedReplyTarget.reply = content;
-    this.selectedReplyTarget.replyStatus = 'replied';
+    const target = this.selectedReplyTarget;
+    const replyRequest = target.targetType === 'blog'
+      ? this.adminApi.replyToComment(target.id, content)
+      : this.adminApi.replyToReview(target.id.replace(/^review:/, ''), content);
 
-    alert('Đã lưu câu trả lời trên giao diện.');
-    this.closeReplyModal();
+    this.isSavingReply = true;
+    this.replySaveError = '';
+    replyRequest.subscribe({
+      next: (response: any) => {
+        const savedReplies = Array.isArray(response?.replies)
+          ? response.replies
+          : [...(target.replies || []), { content, role: 'admin' }];
+        Object.assign(target, this.getReplyState(savedReplies));
+        this.isSavingReply = false;
+        this.changeDetectorRef.markForCheck();
+        this.closeReplyModal();
+        this.loadComments();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi lưu câu trả lời lên MongoDB:', error);
+        this.replySaveError = 'Không thể lưu câu trả lời. Vui lòng kiểm tra kết nối hoặc quyền đăng nhập rồi thử lại.';
+        this.isSavingReply = false;
+        this.changeDetectorRef.markForCheck();
+      }
+    });
   }
   // Từ khóa cảnh báo nội dung cần kiểm tra
   private readonly sensitiveKeywords: string[] = [

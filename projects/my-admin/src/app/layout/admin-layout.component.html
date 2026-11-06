@@ -73,9 +73,59 @@
                   <span class="material-symbols-outlined">menu</span>
               </button>
               <div class="search-wrapper">
-                  <span class="material-symbols-outlined search-icon">search</span>
-                  <input class="search-input" placeholder="Tìm kiếm đơn hàng, người dùng..." type="text">
-              </div>
+                <span class="material-symbols-outlined search-icon">search</span>
+
+                <input
+                    class="search-input"
+                    type="text"
+                    placeholder="Tìm kiếm đơn hàng, người dùng..."
+                    [value]="searchKeyword"
+                    (input)="onSearchInput($any($event.target).value)"
+                    (focus)="searchKeyword && (isSearchOpen = true)"
+                >
+
+                <div class="search-dropdown" *ngIf="isSearchOpen">
+
+                    <div class="search-empty" *ngIf="searchResults.length === 0">
+                        Không tìm thấy kết quả phù hợp.
+                    </div>
+
+                    <div
+                        class="search-result-item"
+                        *ngFor="let result of searchResults"
+                        (click)="selectSearchResult(result)"
+                    >
+                        <div class="search-result-icon">
+                            <span class="material-symbols-outlined">
+                                {{
+                                    result.type === 'order' ? 'shopping_bag' :
+                                    result.type === 'user' ? 'person' :
+                                    result.type === 'product' ? 'inventory_2' :
+                                    result.type === 'promotion' ? 'local_offer' :
+                                    result.type === 'blog' ? 'article' :
+                                    result.type === 'comment' ? 'comment' :
+                                    'map'
+                                }}
+                            </span>
+                        </div>
+
+                        <div class="search-result-info">
+                            <div class="search-result-title">
+                                {{ result.title }}
+                            </div>
+
+                            <div class="search-result-description">
+                                {{ result.description }}
+                            </div>
+                        </div>
+
+                        <span class="material-symbols-outlined search-arrow">
+                            chevron_right
+                        </span>
+                    </div>
+
+                </div>
+            </div>
           </div>
 
           <div class="topbar-right">
@@ -91,10 +141,15 @@
                           <button class="btn-clear-all" (click)="clearAllNotifications()">Đọc tất cả</button>
                       </div>
                       <div class="dropdown-body custom-scrollbar">
-                          <!-- Inject thông báo từ Component -->
+                          <div class="notification-item" *ngIf="notificationLoadError">
+                              <div class="notification-content">{{ notificationLoadError }}</div>
+                          </div>
+                          <div class="notification-item" *ngIf="!notificationLoadError && notifications.length === 0">
+                              <div class="notification-content">Chưa có thông báo.</div>
+                          </div>
                           <div class="notification-item" *ngFor="let notif of notifications">
                               <div class="notification-icon-circle">
-                                  <span class="material-symbols-outlined">notifications</span>
+                                  <span class="material-symbols-outlined">{{ notif.icon || 'notifications' }}</span>
                               </div>
                               <div class="notification-content">
                                   <div class="notification-title">{{ notif.title }}</div>

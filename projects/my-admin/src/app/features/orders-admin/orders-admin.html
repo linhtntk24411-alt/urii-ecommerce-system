@@ -177,8 +177,13 @@
                     <tr>
                         <td class="ps-4"><span class="order-id">#{{ r.id }}</span></td>
                         <td>{{ r.customerName }}</td>
-                        <td class="cancel-reason" [title]="r.reason">{{ r.reason }}</td>
-                        <td>{{ r.date }}</td>
+                        <td class="cancel-reason" [title]="r.reason + (r.cancellationNote ? ' - ' + r.cancellationNote : '')">
+                            <div>{{ r.reason || 'Chưa có lý do' }}</div>
+                            @if (r.cancellationNote) {
+                                <div class="small text-muted mt-1">{{ r.cancellationNote }}</div>
+                            }
+                        </td>
+                        <td>{{ r.cancellationDate || r.date }}</td>
                         <td><span class="badge-status badge-status-pending_approval">Chờ duyệt</span></td>
                         <td class="pe-4">
                             <div class="action-btn-group">
@@ -320,9 +325,12 @@
                                 Lý do khách hàng yêu cầu hủy đơn
                             </h6>
 
-                            <p class="mb-0">
+                            <p class="mb-0"><strong>Lý do:</strong>
                                 {{ selectedOrder?.reason || 'Khách hàng chưa cung cấp lý do hủy.' }}
                             </p>
+                            @if (selectedOrder?.cancellationNote) {
+                                <p class="mb-0 mt-2"><strong>Ghi chú:</strong> {{ selectedOrder.cancellationNote }}</p>
+                            }
                         </div>
                     </div>
                     <div class="col-md-6">

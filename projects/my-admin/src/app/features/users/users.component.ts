@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminApiService, AdminUser, UserPayload } from '../../core/services/admin-api.service';
 
 export type UserStatusType = 'active' | 'pending' | 'locked';
@@ -24,6 +25,8 @@ export interface UserView extends AdminUser {
 })
 export class UsersComponent implements OnInit {
   private readonly api = inject(AdminApiService);
+  private readonly route = inject(ActivatedRoute);
+  private pendingSearchId: string | null = null;
 
   users: UserView[] = [];
   filteredUsers: UserView[] = [];
@@ -73,6 +76,12 @@ export class UsersComponent implements OnInit {
     this.users = initialItems.map((u, idx) => this.mapUserView(u, idx));
     this.applyFilters();
     this.isLoading = false;
+    this.route.queryParamMap.subscribe(params => {
+      this.pendingSearchId = params.get('searchType') === 'user'
+        ? params.get('searchId')
+        : null;
+      this.applySearchTarget();
+    });
 
     // 2. Tiếp tục đồng bộ ngầm với MongoDB, nếu có thay đổi sẽ cập nhật mượt mà
     void this.loadUsers();
@@ -84,6 +93,7 @@ export class UsersComponent implements OnInit {
       if (items && items.length > 0) {
         this.users = items.map((u, idx) => this.mapUserView(u, idx));
         this.applyFilters();
+        this.applySearchTarget();
       }
     } catch (e) {
       console.warn('Đồng bộ người dùng ngầm:', e);
@@ -228,6 +238,56 @@ export class UsersComponent implements OnInit {
   changePage(page: number): void {
     if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
+  }
+
+  searchTargetId(id: string | number | undefined | null): string {
+    return `admin-search-target-user-${encodeURIComponent(String(id ?? ''))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    this.searchQuery = '';
+    this.roleFilter = '';
+    this.statusFilter = '';
+    this.sortBy = 'newest';
+    this.applyFilters();
+    const index = this.filteredUsers.findIndex(user => String(user._id) === id);
+    if (index < 0) return;
+
+    this.currentPage = Math.floor(index / this.itemsPerPage) + 1;
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
   }
 
   openCreateModal(): void {

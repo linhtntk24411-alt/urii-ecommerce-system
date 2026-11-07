@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminApiService, Promotion, PromotionPayload } from '../../core/services/admin-api.service';
 
 export type CouponComputedStatus = 'active' | 'expiring' | 'expired' | 'inactive';
@@ -24,6 +25,8 @@ export interface CouponView extends Promotion {
 })
 export class PromotionsComponent implements OnInit {
   private readonly api = inject(AdminApiService);
+  private readonly route = inject(ActivatedRoute);
+  private pendingSearchId: string | null = null;
 
   coupons: CouponView[] = [];
   filteredCoupons: CouponView[] = [];
@@ -74,6 +77,12 @@ export class PromotionsComponent implements OnInit {
     this.coupons = initialItems.map((item) => this.mapCouponView(item));
     this.applyFilters();
     this.isLoading = false;
+    this.route.queryParamMap.subscribe(params => {
+      this.pendingSearchId = params.get('searchType') === 'promotion'
+        ? params.get('searchId')
+        : null;
+      this.applySearchTarget();
+    });
 
     // 2. Tiếp tục đồng bộ ngầm với MongoDB, nếu có thay đổi sẽ cập nhật mượt mà
     void this.loadCoupons();
@@ -85,6 +94,7 @@ export class PromotionsComponent implements OnInit {
       if (items && items.length > 0) {
         this.coupons = items.map((item) => this.mapCouponView(item));
         this.applyFilters();
+        this.applySearchTarget();
       }
     } catch (e) {
       console.warn('Đồng bộ mã giảm giá ngầm:', e);
@@ -264,6 +274,58 @@ export class PromotionsComponent implements OnInit {
   changePage(page: number): void {
     if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
+  }
+
+  searchTargetId(id: string | number | undefined | null): string {
+    return `admin-search-target-promotion-${encodeURIComponent(String(id ?? ''))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    this.searchQuery = '';
+    this.statusFilter = '';
+    this.dateFilter = '';
+    this.sortBy = 'newest';
+    this.applyFilters();
+    const index = this.filteredCoupons.findIndex(coupon =>
+      String(coupon._id || coupon.id) === id
+    );
+    if (index < 0) return;
+
+    this.currentPage = Math.floor(index / this.itemsPerPage) + 1;
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
   }
 
   openCreateModal(): void {

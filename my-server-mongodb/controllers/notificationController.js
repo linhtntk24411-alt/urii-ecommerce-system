@@ -134,9 +134,10 @@ exports.getAdminNotifications = async (req, res) => {
       filter.typeId = req.query.typeId.trim();
     }
 
+    const adminNotifications = mongoose.connection.db.collection('admin_notifications');
     const [items, unreadCount] = await Promise.all([
-      Notification.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-      Notification.countDocuments({ ...filter, isRead: false })
+      adminNotifications.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+      adminNotifications.countDocuments({ ...filter, isRead: false })
     ]);
 
     res.json({
@@ -185,9 +186,14 @@ exports.markAllAsRead = async (req, res) => {
       ? { audience: 'admin', isRead: false }
       : { audience: 'user', recipientUserId: req.auth.id, isRead: false };
     const now = new Date();
-    const result = await Notification.updateMany(filter, {
-      $set: { isRead: true, readAt: now }
-    });
+    const result = isAdmin
+      ? await mongoose.connection.db.collection('admin_notifications').updateMany(
+          filter,
+          { $set: { isRead: true, readAt: now } }
+        )
+      : await Notification.updateMany(filter, {
+          $set: { isRead: true, readAt: now }
+        });
     emitCrudChange('notifications', 'updated', req.auth.id);
     res.json({
       message: 'Đã đánh dấu đọc tất cả thông báo.',

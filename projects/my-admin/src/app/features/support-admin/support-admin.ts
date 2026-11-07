@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AdminApiService } from '../../core/services/admin-api.service';
 
 @Component({
   selector: 'app-support-admin',
@@ -19,7 +20,10 @@ export class SupportAdmin implements OnInit, OnDestroy {
   adminReplyText: string = '';
   private pollInterval: any;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private adminApi: AdminApiService
+  ) {}
 
   ngOnInit(): void {
     this.loadSessions();
@@ -130,6 +134,27 @@ export class SupportAdmin implements OnInit, OnDestroy {
   getInitials(name: string): string {
     if (!name) return 'KV';
     return name.split(' ').map((w: string) => w[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  getUserAvatarUrl(session: any): string {
+    const avatar = String(session?.avatar || session?.userAvatar || '').trim();
+    if (
+      avatar.startsWith('http://') ||
+      avatar.startsWith('https://') ||
+      avatar.startsWith('data:')
+    ) {
+      return avatar;
+    }
+
+    return this.adminApi.getLibraryMapImageUrl(avatar || 'images/avatar_user.jpeg');
+  }
+
+  onUserAvatarError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    const fallbackUrl = this.adminApi.getLibraryMapImageUrl('images/avatar-non.jpg');
+    if (image.src !== fallbackUrl) {
+      image.src = fallbackUrl;
+    }
   }
 
   selectSession(sessionId: string) {

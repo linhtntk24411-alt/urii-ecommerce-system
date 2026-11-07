@@ -33,20 +33,43 @@
 }
 
 /* --- BADGE TRẠNG THÁI --- */
+
+/* Căn giữa các trạng thái trong cột */
+.table-comments td .d-flex.flex-column.gap-1 {
+    align-items: center;
+    justify-content: center;
+    gap: 8px !important;
+    width: 100%;
+}
+
+/* Khung tag trạng thái */
 .badge-status {
-    padding: 5px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 110px;
+    padding: 6px 12px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
 }
+
+/* Màu trạng thái */
 .badge-status-approved {
-    background-color: #d1e7dd; color: #0f5132;
+    background-color: #d1e7dd;
+    color: #0f5132;
 }
+
 .badge-status-pending {
-    background-color: #fff3cd; color: #856404;
+    background-color: #fff3cd;
+    color: #856404;
 }
+
 .badge-status-flagged {
-    background-color: #f8d7da; color: #842029;
+    background-color: #f8d7da;
+    color: #842029;
 }
 
 /* --- BẢNG --- */
@@ -103,4 +126,91 @@
 }
 .pagination .page-link:hover {
     color: #dc3545;
+}
+/* Bỏ dấu chấm trước trạng thái */
+.status-list {
+    list-style: none !important;
+}
+
+.status-list .badge-status {
+    list-style: none !important;
+}
+
+.status-list .badge-status::before,
+.status-list .badge-status::marker {
+    content: none !important;
+    display: none !important;
+}
+
+.delete-confirm-overlay {
+    z-index: 1090;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(1px);
+}
+.delete-confirm-dialog {
+    width: calc(100% - 32px);
+    max-width: 376px;
+}
+.delete-confirm-content {
+    border: 0;
+    border-radius: 22px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+.delete-confirm-content .modal-body {
+    padding: 36px 30px 30px;
+}
+.delete-confirm-icon {
+    display: block;
+    margin-bottom: 24px;
+    color: #e63946;
+    font-size: 54px;
+    line-height: 1;
+}
+.delete-confirm-content h5 {
+    margin-bottom: 10px;
+    color: #171717;
+    font-size: 21px;
+    font-weight: 600;
+}
+.delete-confirm-content p {
+    margin-bottom: 26px;
+    color: #687386;
+    font-size: 15px;
+    line-height: 1.6;
+}
+.delete-confirm-content p strong {
+    color: #222;
+    overflow-wrap: anywhere;
+}
+.delete-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.delete-confirm-actions .btn {
+    min-width: 88px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+}
+.delete-cancel-btn {
+    background: #f5f6f7;
+    color: #222;
+}
+.delete-cancel-btn:hover {
+    background: #e9ebed;
+}
+.delete-accept-btn {
+    background: #a00000;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(132, 0, 1, 0.2);
+}
+.delete-accept-btn:hover {
+    background: #840001;
+    color: #fff;
+}
+.delete-confirm-actions .btn:disabled {
+    opacity: 0.65;
 }

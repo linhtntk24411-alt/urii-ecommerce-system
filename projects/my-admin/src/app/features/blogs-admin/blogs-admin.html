@@ -93,7 +93,7 @@
                                         <tr *ngIf="!loadingBlogs && !blogsError && paginatedBlogs.length === 0">
                                             <td colspan="5" class="text-center text-muted py-4">Không có bài viết nào phù hợp.</td>
                                         </tr>
-                                        <tr *ngFor="let b of paginatedBlogs" [ngClass]="{'blog-row-hidden': b.visible === false}">
+                                        <tr *ngFor="let b of paginatedBlogs" [id]="searchTargetId(b.id || b._id)" [ngClass]="{'blog-row-hidden': b.visible === false}">
                                             <td class="ps-4"><img [src]="formatImagePath(b.thumbnail)" alt="" class="blog-thumb" [ngClass]="{'img-muted': b.visible === false}"></td>
                                             <td>
                                                 <div class="blog-title" [ngClass]="{'text-muted': b.visible === false}">{{ b.title }}</div>
@@ -265,6 +265,7 @@
                                         <div class="blog-detail-banner__date" style="font-size: 13px; opacity: 0.8;">Ngày đăng: {{ selectedBlog.date }}</div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </section>
@@ -285,6 +286,22 @@
             </div>
             <div class="modal-footer border-top-0 bg-light py-3 px-4">
                 <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade show d-block delete-confirm-overlay" *ngIf="showDeleteConfirm" role="dialog" aria-modal="true" aria-labelledby="blog-delete-title" (click)="closeDeleteConfirm()">
+    <div class="modal-dialog modal-dialog-centered delete-confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-content delete-confirm-content">
+            <div class="modal-body text-center">
+                <i class="bi bi-exclamation-circle delete-confirm-icon" aria-hidden="true"></i>
+                <h5 id="blog-delete-title">Xác nhận xóa</h5>
+                <p>Bạn có chắc chắn muốn xóa bài viết <strong>{{ deletingBlogTitle }}</strong> không?</p>
+                <div class="delete-confirm-actions">
+                    <button type="button" class="btn delete-cancel-btn" (click)="closeDeleteConfirm()">Hủy</button>
+                    <button type="button" class="btn delete-accept-btn" (click)="confirmDeleteBlog()">Xóa bỏ</button>
+                </div>
             </div>
         </div>
     </div>

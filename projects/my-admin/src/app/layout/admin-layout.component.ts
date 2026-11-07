@@ -87,6 +87,9 @@ export class AdminLayoutComponent implements OnInit {
       },
       error: err => console.error('Lỗi tải mẫu bản đồ:', err)
     });
+
+    // Tải thông báo ngay khi vào trang để hiển thị badge số lượng thông báo
+    this.loadNotifications();
   }
 
   // Trạng thái đóng/mở menu trên mobile
@@ -154,12 +157,15 @@ export class AdminLayoutComponent implements OnInit {
   unreadCount = 0;
   notifications: any[] = [];
   notificationLoadError = '';
+  isLoadingNotifications = false;
   private isMarkingNotificationsRead = false;
 
-  private loadNotifications(): void {
+  loadNotifications(): void {
     this.notificationLoadError = '';
+    this.isLoadingNotifications = true;
     this.adminApi.getAdminNotifications().subscribe({
       next: (response: any) => {
+        this.isLoadingNotifications = false;
         const notificationList = Array.isArray(response)
           ? response
           : Array.isArray(response?.notifications)
@@ -188,6 +194,7 @@ export class AdminLayoutComponent implements OnInit {
           : this.notifications.filter(notification => !notification.isRead).length;
       },
       error: (error) => {
+        this.isLoadingNotifications = false;
         console.error('Lỗi tải thông báo quản trị:', error);
         this.notificationLoadError = 'Không thể tải thông báo. Vui lòng thử lại sau.';
         this.notifications = [];
@@ -216,6 +223,137 @@ export class AdminLayoutComponent implements OnInit {
     if (this.isNotificationOpen) {
       this.loadNotifications();
     }
+  }
+
+  getNotificationTarget(notif: any): { route: string; queryParams?: Record<string, string> } {
+    const ref = notif?.reference || {};
+    const typeId = String(notif?.typeId || '');
+    const actionUrl = String(notif?.actionUrl || '');
+
+    // 1. Dựa theo typeId hoặc reference data
+    if (typeId.startsWith('ADMIN_ORDER') || ref.orderId) {
+      const orderId = ref.orderId || ref.customOrderId;
+      return {
+        route: '/orders',
+        queryParams: orderId ? { searchType: 'order', searchId: String(orderId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_CUSTOM_ORDER_NEW' || ref.customOrderId) {
+      const orderId = ref.customOrderId || ref.orderId;
+      return {
+        route: '/orders',
+        queryParams: orderId ? { searchType: 'order', searchId: String(orderId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_PRODUCT_LOW_STOCK' || (ref.productId && !typeId.includes('REVIEW'))) {
+      return {
+        route: '/products',
+        queryParams: ref.productId ? { searchType: 'product', searchId: String(ref.productId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_REVIEW_NEW' || typeId === 'ADMIN_COMMENT_NEW' || ref.commentId) {
+      return {
+        route: '/comments',
+        queryParams: ref.commentId ? { searchType: 'comment', searchId: String(ref.commentId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_BLOG_NEW_POST' || ref.blogId) {
+      return {
+        route: '/blogs',
+        queryParams: ref.blogId ? { searchType: 'blog', searchId: String(ref.blogId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_CHAT_WAITING_SUPPORT' || ref.sessionId) {
+      return {
+        route: '/chatbot',
+        queryParams: ref.sessionId ? { sessionId: String(ref.sessionId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_USER_NEW_REGISTERED' || ref.actorUserId || notif?.actorUserId) {
+      const userId = ref.actorUserId || notif?.actorUserId;
+      return {
+        route: '/users',
+        queryParams: userId ? { searchType: 'user', searchId: String(userId) } : undefined
+      };
+    }
+
+    if (typeId === 'ADMIN_VOUCHER_EXPIRED_OR_LOW' || ref.voucherId || ref.couponId) {
+      const voucherId = ref.voucherId || ref.couponId;
+      return {
+        route: '/coupons',
+        queryParams: voucherId ? { searchType: 'promotion', searchId: String(voucherId) } : undefined
+      };
+    }
+
+    // 2. Dựa theo actionUrl nếu backend trả về URL cụ thể
+    if (actionUrl) {
+      const cleanUrl = actionUrl.replace(/^\/admin/, '').replace(/^\//, '');
+      const parts = cleanUrl.split('/');
+      const section = parts[0];
+      const id = parts[1];
+
+      if (section === 'orders' || section === 'custom-orders') {
+        return { route: '/orders', queryParams: id ? { searchType: 'order', searchId: id } : undefined };
+      }
+      if (section === 'products') {
+        if (parts[2] === 'reviews') {
+          return { route: '/comments', queryParams: id ? { searchType: 'comment', searchId: id } : undefined };
+        }
+        return { route: '/products', queryParams: id ? { searchType: 'product', searchId: id } : undefined };
+      }
+      if (section === 'blogs') {
+        return { route: '/blogs', queryParams: id ? { searchType: 'blog', searchId: id } : undefined };
+      }
+      if (section === 'comments') {
+        return { route: '/comments', queryParams: id ? { searchType: 'comment', searchId: id } : undefined };
+      }
+      if (section === 'chat') {
+        return { route: '/chatbot', queryParams: id ? { sessionId: id } : undefined };
+      }
+      if (section === 'users') {
+        return { route: '/users', queryParams: id ? { searchType: 'user', searchId: id } : undefined };
+      }
+      if (section === 'vouchers' || section === 'coupons' || section === 'promotions') {
+        return { route: '/coupons', queryParams: id ? { searchType: 'promotion', searchId: id } : undefined };
+      }
+    }
+
+    return { route: '/dashboard' };
+  }
+
+  onNotificationClick(notif: any, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    // Đánh dấu đã đọc nếu chưa đọc
+    if (!notif.isRead) {
+      notif.isRead = true;
+      if (this.unreadCount > 0) {
+        this.unreadCount--;
+      }
+      const notifId = notif.id || notif._id;
+      if (notifId) {
+        this.adminApi.markNotificationAsRead(String(notifId)).subscribe({
+          error: (err) => console.error('Lỗi khi đánh dấu thông báo đã đọc:', err)
+        });
+      }
+    }
+
+    // Đóng dropdown thông báo
+    this.isNotificationOpen = false;
+
+    // Điều hướng tới dữ liệu liên quan
+    const target = this.getNotificationTarget(notif);
+    this.router.navigate([target.route], {
+      queryParams: target.queryParams
+    });
   }
 
   clearAllNotifications(): void {
@@ -253,13 +391,16 @@ export class AdminLayoutComponent implements OnInit {
     this.router.navigateByUrl('/', { replaceUrl: true });
   }
 
-  // Đóng thông báo khi click ra ngoài
+  // Đóng dropdown thông báo và tìm kiếm khi click ra ngoài
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     const targetElement = event.target as HTMLElement;
     if (!targetElement.closest('.search-wrapper')) {
-    this.isSearchOpen = false;
-  }
+      this.isSearchOpen = false;
+    }
+    if (!targetElement.closest('.notification-wrapper')) {
+      this.isNotificationOpen = false;
+    }
   }
   onSearchInput(value: string): void {
     this.searchKeyword = value.trim().toLowerCase();

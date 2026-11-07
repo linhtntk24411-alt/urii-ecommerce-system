@@ -954,6 +954,14 @@ export class AdminApiService {
     );
   }
 
+  public markNotificationAsRead(id: string): Observable<any> {
+    return this.http.patch(
+      `${this.baseUrl}/notifications/${encodeURIComponent(id)}/read`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
   public updateOrder(id: string, data: any): Observable<any> {
     const headers = this.getAuthHeaders();
 

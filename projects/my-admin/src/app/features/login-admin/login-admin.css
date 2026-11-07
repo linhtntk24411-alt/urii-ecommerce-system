@@ -30,7 +30,7 @@
   max-width: 1400px;
   width: 90%;
   margin: 0 auto;
-  padding: 12px 0;
+  padding: 8px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -39,7 +39,7 @@
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .brand-link {
@@ -49,19 +49,21 @@
 }
 
 .brand-logo {
-  height: 40px;
+  height: 75px;
+  max-height: 80px;
+  width: auto;
   object-fit: contain;
   display: block;
 }
 
 .brand-divider {
-  width: 1px;
-  height: 24px;
+  width: 1.5px;
+  height: 32px;
   background-color: #d1c7c7;
 }
 
 .portal-badge {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   color: #840001;
   letter-spacing: 0.3px;
@@ -243,16 +245,31 @@
   padding-right: 44px;
 }
 
-.password-icon {
+.password-icon,
+.password-icon-btn {
+  background: none;
+  border: none;
   color: #765858;
-  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
   position: absolute;
-  right: 13px;
-  top: 10px;
-  width: 20px;
+  right: 10px;
+  top: 8px;
+  width: 24px;
+  padding: 2px;
+  transition: color 0.15s ease;
 }
 
-.password-icon svg {
+.password-icon:hover,
+.password-icon-btn:hover {
+  color: #840001;
+}
+
+.password-icon svg,
+.password-icon-btn svg {
   fill: none;
   height: 100%;
   stroke: currentColor;
@@ -401,15 +418,15 @@
 
 @media (max-width: 480px) {
   .admin-auth-header-inner {
-    padding: 10px 0;
+    padding: 6px 0;
   }
 
   .brand-logo {
-    height: 32px;
+    height: 52px;
   }
 
   .portal-badge {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .header-actions .header-link span:not(.material-symbols-outlined) {

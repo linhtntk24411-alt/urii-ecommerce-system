@@ -27,7 +27,7 @@ describe('LoginAdmin', () => {
     expect(component).toBeTruthy();
   });
 
-  it('renders header, footer and login form elements without chatbot widget', () => {
+  it('renders header, footer and login form elements without chatbot widget or shopping link', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     // Header elements
@@ -35,6 +35,9 @@ describe('LoginAdmin', () => {
     expect(header).toBeTruthy();
     expect(compiled.querySelector('.brand-logo')).toBeTruthy();
     expect(compiled.textContent).toContain('Hệ thống Quản trị');
+
+    // Shopping link should NOT exist
+    expect(compiled.textContent).not.toContain('Trang mua sắm');
 
     // Login form
     expect(compiled.textContent).toContain('Chào mừng trở lại');
@@ -49,5 +52,13 @@ describe('LoginAdmin', () => {
 
     // Chatbot red button should NOT exist
     expect(compiled.querySelector('.chatbot-button')).toBeNull();
+  });
+
+  it('toggles password visibility', () => {
+    expect(component.showPassword).toBe(false);
+    component.togglePasswordVisibility();
+    expect(component.showPassword).toBe(true);
+    component.togglePasswordVisibility();
+    expect(component.showPassword).toBe(false);
   });
 });

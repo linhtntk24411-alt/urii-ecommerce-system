@@ -11,10 +11,6 @@
       </div>
 
       <div class="header-actions">
-        <a href="http://localhost:4201/" class="header-link" target="_blank" rel="noopener noreferrer">
-          <span class="material-symbols-outlined icon-sm" aria-hidden="true">storefront</span>
-          <span>Trang mua sắm</span>
-        </a>
         <a href="mailto:support@urii.com" class="header-link">
           <span class="material-symbols-outlined icon-sm" aria-hidden="true">help</span>
           <span>Hỗ trợ</span>
@@ -41,7 +37,11 @@
         </p>
       </header>
 
-      <section class="auth-panel login-panel" aria-label="Đăng nhập Admin">
+      <form
+        class="auth-panel login-panel"
+        aria-label="Đăng nhập Admin"
+        (submit)="$event.preventDefault(); login(emailInput.value, passwordInput.value)"
+      >
 
         <div class="field-group">
           <label class="field-label" for="login-email">Email</label>
@@ -50,8 +50,9 @@
             class="field-input"
             id="login-email"
             type="email"
-            placeholder="example@gmail.com"
+            placeholder="admin@gmail.com"
             autocomplete="username"
+            (keydown.enter)="login(emailInput.value, passwordInput.value)"
           >
         </div>
 
@@ -66,24 +67,32 @@
               #passwordInput
               class="field-input"
               id="login-password"
-              type="password"
+              [type]="showPassword ? 'text' : 'password'"
               placeholder="••••••••"
               autocomplete="current-password"
+              (keydown.enter)="login(emailInput.value, passwordInput.value)"
             >
-            <span class="password-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
+            <button
+              type="button"
+              class="password-icon-btn"
+              (click)="togglePasswordVisibility()"
+              [attr.aria-label]="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+            >
+              <svg *ngIf="!showPassword" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
-            </span>
+              <svg *ngIf="showPassword" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/>
+              </svg>
+            </button>
           </div>
         </div>
 
         <button
           class="primary-button"
-          type="button"
+          type="submit"
           [disabled]="isLoading"
-          (click)="login(emailInput.value, passwordInput.value)"
         >
           {{ isLoading ? 'Đang đăng nhập...' : 'Tiếp tục' }}
         </button>
@@ -117,7 +126,7 @@
           Bạn gặp khó khăn? <span class="text-link">Trung tâm trợ giúp</span>
         </p>
 
-      </section>
+      </form>
     </section>
   </main>
 

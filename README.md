@@ -1,59 +1,65 @@
-# UriiEcommerceSystem
+# Urii Ecommerce System
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.7.
+This repository is an Angular monorepo with two applications:
 
-## Development server
+- `projects/my-user`: customer-facing storefront.
+- `projects/my-admin`: administration application.
 
-To start a local development server, run:
+Shared Angular CLI, TypeScript, npm dependencies, and development proxy
+configuration are maintained at the repository root.
 
-```bash
-ng serve
-```
+## Prerequisites
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Node.js and npm.
+- The backend API listening at `http://localhost:3002`.
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Install frontend dependencies from the repository root:
 
 ```bash
-ng generate --help
+npm install
 ```
 
-## Building
+## Development
 
-To build the project run:
+Start either application from the repository root:
 
 ```bash
-ng build
+npm start
+npm run start:admin
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Both development servers use [proxy.conf.json](./proxy.conf.json), which
+forwards `/api` requests to the local backend. The backend remains a separate
+project under `my-server-mongodb`.
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Build and test
 
 ```bash
-ng test
+npm run build
+npm run build:admin
+npm test
 ```
 
-## Running end-to-end tests
+`npm run build` and `npm test` target the customer app by default. The Angular
+projects can also be selected directly with `npx ng build my-user`,
+`npx ng build my-admin`, or `npx ng test my-user`.
 
-For end-to-end (e2e) testing, run:
+## Customer app core
 
-```bash
-ng e2e
-```
+The customer app keeps domain models in `projects/my-user/src/app/models` and
+application-wide services and HTTP interceptors in
+`projects/my-user/src/app/core`.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+- `UriUser` is the typed user model; `AuthService` expects login and
+  registration responses shaped as `{ "token": "...", "user": { "id": "...",
+"name": "...", "email": "..." } }`. MongoDB `_id` is also accepted.
+- `StorageService` persists the auth token and user in browser local storage
+  and does not access browser storage during server rendering.
+- The auth interceptor adds a bearer token only to same-origin `/api` requests.
+- `NotificationService` exposes notifications as an Angular read-only signal;
+  callers can add, dismiss, or clear success, error, warning, and info messages.
 
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The API routes used by `AuthService` are `POST /api/auth/login` and
+`POST /api/auth/register`. Update those paths or response model if the backend
+uses a different contract. For production deployments, prefer secure,
+HttpOnly cookies over long-lived tokens in local storage.

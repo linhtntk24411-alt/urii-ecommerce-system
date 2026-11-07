@@ -25,7 +25,11 @@
                 "input": "projects/my-user/public"
               }
             ],
-            "styles": ["projects/my-user/src/styles.css"],
+            "styles": [
+                        "node_modules/bootstrap/dist/css/bootstrap.min.css",
+                        "node_modules/bootstrap-icons/font/bootstrap-icons.css",
+                        "projects/my-user/src/styles.css"],
+            "scripts": ["node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"],
             "server": "projects/my-user/src/main.server.ts",
             "outputMode": "server",
             "security": {
@@ -61,6 +65,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "my-user:build:production"
@@ -94,7 +101,12 @@
                 "input": "projects/my-admin/public"
               }
             ],
-            "styles": ["projects/my-admin/src/styles.css"],
+            "styles": [
+                        "node_modules/bootstrap/dist/css/bootstrap.min.css",
+                        "node_modules/bootstrap-icons/font/bootstrap-icons.css",
+                        "projects/my-admin/src/styles.css"
+                      ],
+            "scripts": ["node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"],
             "server": "projects/my-admin/src/main.server.ts",
             "outputMode": "server",
             "security": {
@@ -130,6 +142,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "my-admin:build:production"

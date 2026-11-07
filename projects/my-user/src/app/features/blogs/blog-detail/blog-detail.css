@@ -220,3 +220,369 @@
   background-color: #840001;
   color: #ffffff;
 }
+
+/* ==================== COMMENT REPLIES STYLES ==================== */
+.comment-body-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-actions {
+  margin-top: 6px;
+}
+
+.btn-reply-toggle {
+  background: none;
+  border: none;
+  color: #840001;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-reply-toggle:hover {
+  background-color: #fee2e2;
+}
+
+.btn-reply-toggle .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.comment-reply-form {
+  margin-top: 10px;
+  background: #fdfaf9;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  padding: 10px 12px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.reply-textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.reply-textarea:focus {
+  outline: none;
+  border-color: #840001;
+  box-shadow: 0 0 0 2px rgba(132, 0, 1, 0.1);
+}
+
+.reply-error {
+  color: #dc2626;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.reply-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-reply-cancel {
+  background: #f3f4f6;
+  border: none;
+  color: #4b5563;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-reply-cancel:hover {
+  background: #e5e7eb;
+}
+
+.btn-reply-submit {
+  background: #840001;
+  border: none;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-reply-submit:hover:not(:disabled) {
+  background: #a00000;
+}
+
+.btn-reply-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.comment-replies-list {
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid #fee2e2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-reply-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #fcfcfc;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.reply-avatar img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+}
+
+.reply-content-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.reply-author {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.reply-role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: #840001;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.reply-role-badge.role-author {
+  background: #0284c7;
+}
+
+.reply-time {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-left: auto;
+}
+
+.reply-text {
+  font-size: 13px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+
+/* ================= COMMENT BODY & REPLY STYLES ================= */
+.comment-body {
+  flex: 1;
+}
+
+/* Nút Trả lời dưới mỗi comment */
+.btn-reply-toggle {
+  background: none;
+  border: none;
+  color: #840001;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-reply-toggle:hover {
+  background: #fef2f2;
+  color: #9d0203;
+}
+
+/* Form gửi phản hồi */
+.comment-reply-form {
+  margin: 10px 0 0 48px;
+  padding-left: 16px;
+  border-left: 3px solid #fecaca;
+}
+
+.reply-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply-textarea {
+  width: 100%;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #1f2937;
+  outline: none;
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.reply-textarea:focus {
+  border-color: #840001;
+  box-shadow: 0 0 0 3px rgba(132, 0, 1, 0.08);
+}
+
+.reply-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-reply-cancel {
+  background: none;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-reply-cancel:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-reply-submit {
+  background: #840001;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reply-submit:hover:not(:disabled) {
+  background: #9d0203;
+}
+
+.btn-reply-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Danh sách replies lùi lề */
+.comment-replies {
+  margin: 12px 0 0 48px;
+  padding-left: 16px;
+  border-left: 3px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-reply-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f3f4f6;
+}
+
+.reply-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.reply-body {
+  flex: 1;
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.reply-author {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.reply-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.reply-badge--admin {
+  background: #840001;
+  color: #fff;
+}
+
+.reply-badge--author {
+  background: #0284c7;
+  color: #fff;
+}
+
+.reply-time {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-left: auto;
+}
+
+.reply-content {
+  font-size: 13px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+  word-break: break-word;
+}

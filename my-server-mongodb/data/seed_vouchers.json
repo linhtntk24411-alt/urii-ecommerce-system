@@ -1,0 +1,62 @@
+[
+  {
+    "id": "voucher-bd50",
+    "code": "URIIBD50",
+    "name": "Giảm 50% Tháng Sinh Nhật",
+    "description": "Ưu đãi mừng sinh nhật giảm 50% tối đa 100.000đ cho đơn hàng từ 150.000đ",
+    "type": "percent",
+    "discountValue": 50,
+    "minOrder": 150000,
+    "maxDiscount": 100000,
+    "startDate": "01/01/2026",
+    "endDate": "31/12/2026",
+    "quantity": 1000,
+    "used": 0,
+    "isActive": true
+  },
+  {
+    "id": "voucher-freeship",
+    "code": "URIISHIP0D",
+    "name": "Miễn Phí Vận Chuyển Toàn Quốc",
+    "description": "Giảm tối đa 30.000đ phí vận chuyển cho đơn hàng từ 200.000đ",
+    "type": "shipping",
+    "discountValue": 30000,
+    "minOrder": 200000,
+    "maxDiscount": 30000,
+    "startDate": "01/01/2026",
+    "endDate": "31/12/2026",
+    "quantity": 500,
+    "used": 0,
+    "isActive": true
+  },
+  {
+    "id": "voucher-welcome20",
+    "code": "URIIWELCOME20",
+    "name": "Giảm 20.000đ Khách Hàng Mới",
+    "description": "Ưu đãi thành viên mới giảm trực tiếp 20.000đ cho đơn từ 99.000đ",
+    "type": "fixed",
+    "discountValue": 20000,
+    "minOrder": 99000,
+    "maxDiscount": 20000,
+    "startDate": "01/01/2026",
+    "endDate": "31/12/2026",
+    "quantity": 2000,
+    "used": 0,
+    "isActive": true
+  },
+  {
+    "id": "voucher-perler15",
+    "code": "URIIPERLER15",
+    "name": "Giảm 15% Bộ Kit Hạt Ủi",
+    "description": "Giảm 15% tối đa 50.000đ cho tất cả các bộ kit hạt ủi nhiệt",
+    "type": "percent",
+    "discountValue": 15,
+    "minOrder": 120000,
+    "maxDiscount": 50000,
+    "startDate": "01/01/2026",
+    "endDate": "31/12/2026",
+    "quantity": 300,
+    "used": 0,
+    "isActive": true
+  }
+]

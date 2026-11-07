@@ -181,3 +181,39 @@
 .benefit-item:last-child { margin-bottom: 0; }
 .benefit-item .material-symbols-outlined { color: #840001; font-size: 20px; margin-top: 2px; }
 .benefit-item p { font-size: 14px; color: #5c403b; margin: 0; line-height: 1.5; }
+
+/* Nút lưu map mẫu nằm ở góc phải trên cùng của hình ảnh */
+.image-box {
+    position: relative !important;
+}
+
+.btn-save-map-topright {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1.5px solid #e5bdb7;
+    color: #840001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transition: all 0.2s ease;
+    z-index: 5;
+}
+
+.btn-save-map-topright:hover {
+    background-color: #840001;
+    color: #ffffff;
+    border-color: #840001;
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(132, 0, 1, 0.25);
+}
+
+.btn-save-map-topright .material-symbols-outlined {
+    font-size: 22px;
+}

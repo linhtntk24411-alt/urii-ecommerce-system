@@ -156,7 +156,8 @@ export class LoginAdmin implements OnInit {
     console.log('[LoginAdmin] Gửi xác thực Google token tới backend...');
 
     this.http.post<LoginResponse>(`${this.apiUrl}/google`, {
-      token: accessToken
+      token: accessToken,
+      target: 'admin'
     }).subscribe({
       next: (response) => {
         console.log('[LoginAdmin] Đăng nhập Google thành công:', response);

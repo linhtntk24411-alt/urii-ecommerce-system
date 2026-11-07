@@ -24,6 +24,16 @@ export interface BlogPost {
   tags: string[];
 }
 
+export interface BlogCommentReply {
+  id: string;
+  author: string;
+  avatar: string;
+  content: string;
+  createdAt?: string;
+  time?: string;
+  role?: 'user' | 'admin' | 'author';
+}
+
 export interface BlogComment {
   id: string | number;
   blogId: string | number;
@@ -32,6 +42,7 @@ export interface BlogComment {
   content: string;
   createdAt: string;
   time: string;
+  replies?: BlogCommentReply[];
 }
 
 export interface NewBlogPost {
@@ -62,6 +73,12 @@ export class BlogService {
         return createdPost;
       }),
     );
+  }
+
+  replyComment(commentId: string | number, content: string, token: string): Observable<any> {
+    return this.http.post<any>(`/api/comments/${commentId}/replies`, { content }, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    });
   }
 
   createComment(comment: Pick<BlogComment, 'blogId' | 'content'>, token: string): Observable<BlogComment> {

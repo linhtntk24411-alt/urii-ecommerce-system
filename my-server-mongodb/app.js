@@ -122,6 +122,8 @@ app.use('/api/vouchers', voucherRoutes);
 app.use('/api/voucher', voucherRoutes);
 app.use('/api/promotions', voucherRoutes);
 app.use('/api/promotion', voucherRoutes);
+app.use('/api/user-vouchers', require('./routes/userVoucherRoutes'));
+app.use('/api/user-voucher', require('./routes/userVoucherRoutes'));
 
 app.use('/api/dashboard', dashboardRoutes);
 

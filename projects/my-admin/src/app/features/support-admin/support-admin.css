@@ -90,6 +90,24 @@
     color: #916f6a;
 }
 
+.chat-user-avatar {
+    display: block;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 50%;
+    background-color: #f1eeec;
+}
+
+.chat-user-avatar-sm {
+    width: 40px;
+    height: 40px;
+}
+
+.chat-user-avatar-lg {
+    width: 45px;
+    height: 45px;
+}
+
 /* Chat Messages Bubble Layout */
 .chat-message-row {
     display: flex;

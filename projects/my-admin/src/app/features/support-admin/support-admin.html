@@ -36,7 +36,7 @@
                 @for (s of getFilteredSessions(); track s.sessionId) {
                 <div class="session-item" [class.active]="s.sessionId === selectedSessionId" [class.unread]="s.unreadCount > 0" (click)="selectSession(s.sessionId)">
                     <div class="position-relative">
-                        <div class="avatar-circle bg-danger bg-opacity-75 text-white rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase" style="width: 40px; height: 40px; font-size: 14px;">{{ getInitials(s.userName) }}</div>
+                        <img class="chat-user-avatar chat-user-avatar-sm" [src]="getUserAvatarUrl(s)" [alt]="'Ảnh đại diện ' + (s.userName || 'khách hàng')" (error)="onUserAvatarError($event)">
                         <span class="position-absolute bottom-0 end-0 border border-2 border-white rounded-circle active-status-dot" [style.background-color]="s.status === 'ai' ? '#22c55e' : (s.status === 'waiting' ? '#f59e0b' : '#ef4444')"></span>
                     </div>
                     <div class="flex-grow-1 min-w-0">
@@ -87,7 +87,7 @@
                 <div class="p-3 border-bottom bg-white d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-3">
                         <div class="position-relative">
-                            <div class="avatar-circle bg-danger text-white rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase" style="width: 45px; height: 45px; font-size: 18px;">{{ getInitials(currentSession.userName) }}</div>
+                            <img class="chat-user-avatar chat-user-avatar-lg" [src]="getUserAvatarUrl(currentSession)" [alt]="'Ảnh đại diện ' + (currentSession.userName || 'khách hàng')" (error)="onUserAvatarError($event)">
                             <span class="active-status-dot position-absolute bottom-0 end-0 border border-2 border-white rounded-circle" style="width: 12px; height: 12px;" [style.background-color]="currentSession.status === 'ai' ? '#22c55e' : (currentSession.status === 'waiting' ? '#f59e0b' : '#ef4444')"></span>
                         </div>
                         <div>

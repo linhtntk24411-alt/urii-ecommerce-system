@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   AdminApiService,
   AdminBlog,
@@ -47,12 +48,23 @@ export class BlogsAdmin implements OnInit {
 
   constructor(
     private cdr: ChangeDetectorRef,
-    private adminApiService: AdminApiService
+    private adminApiService: AdminApiService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      this.pendingSearchId = params.get('searchType') === 'blog'
+        ? params.get('searchId')
+        : null;
+      this.applySearchTarget();
+    });
     this.loadBlogsFromCloud();
   }
+  private pendingSearchId: string | null = null;
+  showDeleteConfirm = false;
+  deletingBlogId: number | string | null = null;
+  deletingBlogTitle = '';
 
   async loadBlogsFromCloud(): Promise<void> {
     this.loadingBlogs = true;
@@ -61,6 +73,7 @@ export class BlogsAdmin implements OnInit {
     try {
       const blogs = await this.adminApiService.getBlogs();
       this.blogs = blogs.map((blog) => this.toBlogAdminItem(blog));
+      this.applySearchTarget();
     } catch (error) {
       this.blogsError = apiErrorMessage(error, 'Không thể tải danh sách bài viết.');
       console.error('Lỗi tải bài viết:', error);
@@ -152,6 +165,54 @@ export class BlogsAdmin implements OnInit {
     }
   }
 
+  searchTargetId(id: string | number | undefined | null): string {
+    return `admin-search-target-blog-${encodeURIComponent(String(id ?? ''))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    this.selectedStatus = '';
+    this.selectedAuthor = '';
+    this.currentPage = 1;
+    const index = this.filteredBlogs.findIndex(blog => String(blog.id || blog._id || '') === id);
+    if (index < 0) return;
+
+    this.currentPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
+  }
+
   onFilterChange(): void {
     this.currentPage = 1;
   }
@@ -178,11 +239,26 @@ export class BlogsAdmin implements OnInit {
 
   // Xóa bài viết
   deleteBlog(id: number | string): void {
-    if (confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
-      this.blogs = this.blogs.filter(b => b.id !== id && b._id !== id);
-      // TODO: Gửi API xóa trên MongoDB Cloud ở đây
-      this.cdr.detectChanges();
-    }
+    const blog = this.blogs.find(item => item.id === id || item._id === id);
+    this.deletingBlogId = id;
+    this.deletingBlogTitle = blog?.title || 'bài viết này';
+    this.showDeleteConfirm = true;
+  }
+
+  closeDeleteConfirm(): void {
+    this.showDeleteConfirm = false;
+    this.deletingBlogId = null;
+    this.deletingBlogTitle = '';
+  }
+
+  confirmDeleteBlog(): void {
+    const id = this.deletingBlogId;
+    if (id === null) return;
+
+    this.blogs = this.blogs.filter(blog => blog.id !== id && blog._id !== id);
+    // TODO: Gửi API xóa trên MongoDB Cloud ở đây
+    this.closeDeleteConfirm();
+    this.cdr.detectChanges();
   }
 
   // Thay đổi trạng thái qua Dropdown

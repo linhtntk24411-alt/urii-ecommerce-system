@@ -144,7 +144,7 @@
             </td>
           </tr>
 
-          <tr *ngFor="let c of pagedCoupons">
+          <tr *ngFor="let c of pagedCoupons" [id]="searchTargetId(c._id || c.id)">
             <td>
               <span class="coupon-code">{{ c.code }}</span>
             </td>

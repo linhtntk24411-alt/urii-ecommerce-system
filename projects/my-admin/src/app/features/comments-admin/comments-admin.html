@@ -107,7 +107,7 @@
                             </tr>
                         </thead>
                         <tbody class="fs-6">
-                            <tr *ngFor="let c of getPaginatedReviews()">
+                            <tr *ngFor="let c of getPaginatedReviews()" [id]="searchTargetId(c.id)">
                                 <td class="ps-4">
                                     <div class="comment-content" [title]="c.content">{{ c.content }}</div>
                                     <div *ngIf="c.rating" class="text-warning small" [attr.aria-label]="'Đánh giá ' + c.rating + ' trên 5 sao'">
@@ -129,7 +129,7 @@
                                 <td>{{ c.targetType === 'product' ? 'Sản phẩm' : 'Đơn hàng' }}</td>
                                 <td>{{ c.rating ? (c.date | date:'dd/MM/yyyy HH:mm') : c.date }}</td>
                                 <td>
-                                    <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex flex-column gap-1 status-list">
                                         <!-- Trạng thái nội dung -->
                                         <span class="badge-status"
                                             [ngClass]="statusMap[c.status]?.class">
@@ -251,7 +251,7 @@
                             </tr>
                         </thead>
                         <tbody class="fs-6">
-                            <tr *ngFor="let c of getPaginatedBlogs()">
+                            <tr *ngFor="let c of getPaginatedBlogs()" [id]="searchTargetId(c.id)">
                                 <td class="ps-4">
                                     <div class="comment-content" [title]="c.content">{{ c.content }}</div>
                                     <div class="text-muted small mt-1">Trên blog: <strong>{{ c.targetName }}</strong></div>
@@ -269,7 +269,7 @@
                                 <td>{{ c.targetName }}</td>
                                 <td>{{ c.date }}</td>
                                 <td>
-                                    <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex flex-column gap-1 status-list">
                                         <!-- Trạng thái nội dung -->
                                         <span class="badge-status"
                                             [ngClass]="statusMap[c.status]?.class">
@@ -536,4 +536,20 @@
 <div
     class="modal-backdrop fade show"
     *ngIf="isReplyModalOpen">
+</div>
+
+<div class="modal fade show d-block delete-confirm-overlay" *ngIf="showDeleteConfirm" role="dialog" aria-modal="true" aria-labelledby="comment-delete-title" (click)="closeDeleteConfirm()">
+    <div class="modal-dialog modal-dialog-centered delete-confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-content delete-confirm-content">
+            <div class="modal-body text-center">
+                <i class="bi bi-exclamation-circle delete-confirm-icon" aria-hidden="true"></i>
+                <h5 id="comment-delete-title">Xác nhận xóa</h5>
+                <p>Bạn có chắc chắn muốn xóa bình luận của <strong>{{ deletingCommentAuthor }}</strong> không?</p>
+                <div class="delete-confirm-actions">
+                    <button type="button" class="btn delete-cancel-btn" (click)="closeDeleteConfirm()">Hủy</button>
+                    <button type="button" class="btn delete-accept-btn" (click)="confirmDeleteComment()">Xóa bỏ</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

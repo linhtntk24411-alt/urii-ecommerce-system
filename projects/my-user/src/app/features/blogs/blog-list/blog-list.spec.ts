@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { BlogPost, BlogService } from '../../../core/services/blog.service';
 import { BlogListComponent } from './blog-list';
@@ -11,7 +12,10 @@ describe('BlogList', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [BlogListComponent],
-      providers: [{ provide: BlogService, useValue: { getBlogs: () => of(blogs) } }],
+      providers: [
+        provideRouter([]),
+        { provide: BlogService, useValue: { getBlogs: () => of(blogs) } },
+      ],
     }).compileComponents();
 
     blogs = [];
@@ -33,6 +37,18 @@ describe('BlogList', () => {
     component.loadBlogs();
 
     expect(component.allBlogs.map((blog) => blog.id)).toEqual(['newer', 'older']);
+  });
+
+  it('filters blogs using the selected search query', () => {
+    component.allBlogs = [
+      { ...createBlog('match', '2026-02-01T00:00:00.000Z'), title: 'Hướng dẫn làm móc khóa' },
+      { ...createBlog('other', '2026-01-01T00:00:00.000Z'), title: 'Mẹo phối màu' },
+    ];
+    component.searchTerm = 'huong dan lam moc khoa';
+
+    component.applyFilters();
+
+    expect(component.filteredBlogs.map((blog) => blog.id)).toEqual(['match']);
   });
 });
 

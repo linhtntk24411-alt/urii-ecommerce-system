@@ -11,7 +11,10 @@ export interface CatalogVariant {
 
 export interface CatalogProduct {
   id: string;
+  slug: string;
   name: string;
+  description: string;
+  category: string;
   image: string;
   price: number;
   stock?: number;
@@ -53,6 +56,10 @@ export class ProductCatalogService {
       const rawName = row['name'] ?? row['productName'];
       if ((typeof rawId !== 'string' && typeof rawId !== 'number') || typeof rawName !== 'string') return [];
 
+      const categoryValue = row['category'];
+      const category = this.isRecord(categoryValue)
+        ? categoryValue['name'] ?? categoryValue['title']
+        : categoryValue;
       const rawImage = row['image'] ?? row['imageUrl'] ?? row['images'];
       const image = typeof rawImage === 'string'
         ? rawImage
@@ -71,7 +78,12 @@ export class ProductCatalogService {
         : [];
       return [{
         id: String(rawId),
+        slug: typeof row['slug'] === 'string' && row['slug'].trim()
+          ? row['slug'].trim()
+          : this.slugify(rawName),
         name: rawName,
+        description: typeof row['description'] === 'string' ? row['description'] : '',
+        category: typeof category === 'string' ? category : '',
         image,
         price: this.toNumber(row['currentPrice'] ?? row['salePrice'] ?? row['originalPrice'] ?? row['price']),
         stock: this.optionalNumber(row['stock'] ?? row['quantity']),
@@ -92,5 +104,16 @@ export class ProductCatalogService {
 
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private slugify(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
   }
 }

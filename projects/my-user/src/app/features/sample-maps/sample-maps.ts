@@ -1,8 +1,9 @@
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PLATFORM_ID } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MapService, SampleMap } from '../../core/services/map.service';
 
 @Component({
@@ -15,6 +16,8 @@ import { MapService, SampleMap } from '../../core/services/map.service';
 export class SampleMapsComponent implements OnInit {
   private readonly mapService = inject(MapService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -32,6 +35,7 @@ export class SampleMapsComponent implements OnInit {
 
   currentPage: number = 1;
   itemsPerPage: number = 6; 
+  searchTerm = '';
   totalPages: number = 1;
   isLoading = true;
   errorMessage = '';
@@ -40,6 +44,12 @@ export class SampleMapsComponent implements OnInit {
   private readonly pendingSaveIds = new Set<string>();
 
   ngOnInit() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.searchTerm = params.get('search')?.trim() ?? '';
+      this.currentPage = 1;
+      this.applyFilters();
+    });
+
     if (this.isBrowser) {
       this.loadSavedMaps();
       this.loadMaps();
@@ -112,10 +122,13 @@ export class SampleMapsComponent implements OnInit {
   }
 
   applyFilters() {
+    const searchTerm = this.normalize(this.searchTerm);
     this.filteredMaps = this.allMaps.filter(map => {
       const matchCategory = this.selectedCategory === 'Tất cả mẫu' || map.categories.includes(this.selectedCategory);
       const matchDifficulty = this.selectedDifficulties.length === 0 || this.selectedDifficulties.includes(map.difficulty);
-      return matchCategory && matchDifficulty;
+      const matchSearch = !searchTerm
+        || [map.title, map.category, ...map.categories].some((value) => this.normalize(value).includes(searchTerm));
+      return matchCategory && matchDifficulty && matchSearch;
     });
 
     if (this.currentSort === 'name-az') {
@@ -223,5 +236,11 @@ export class SampleMapsComponent implements OnInit {
     this.currentSort = 'default';
     this.currentPage = 1;
     this.applyFilters();
+  }
+
+  private normalize(value: string): string {
+    return value.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('vi');
   }
 }

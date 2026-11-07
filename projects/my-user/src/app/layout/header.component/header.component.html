@@ -72,15 +72,7 @@
         <div class="mobile-overlay" [class.active]="isMobileMenuOpen" (click)="closeMobileMenu()"></div>
 
         <div class="header-actions">
-            <div class="search-box">
-                <button type="button" class="btn-search-icon">
-                    <svg class="search-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="7"></circle>
-                        <line x1="21" y1="21" x2="16.2" y2="16.2"></line>
-                    </svg>
-                </button>
-                <input type="text" placeholder="Tìm kiếm sản phẩm..." />
-            </div>
+            <app-header-search></app-header-search>
 
             <a routerLink="/cart" class="action-item cart-icon-wrapper">
                 <svg class="custom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -66,6 +66,18 @@ describe('SampleMapsComponent', () => {
     expect(fixture.nativeElement.querySelector('.page-number-active')?.textContent?.trim()).toBe('2');
   });
 
+  it('filters maps using the selected search query without Vietnamese accents', () => {
+    component.allMaps = [
+      { ...createMap(1), title: 'Map mèo dễ thương' },
+      { ...createMap(2), title: 'Map hoa tulip' },
+    ];
+    component.searchTerm = 'meo de thuong';
+
+    component.applyFilters();
+
+    expect(component.filteredMaps.map((map) => map.id)).toEqual(['1']);
+  });
+
   it('keeps the save button visible and saves or removes the map through the API', () => {
     const button = fixture.nativeElement.querySelector('.btn-map-action--save') as HTMLButtonElement;
 

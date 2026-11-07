@@ -1,0 +1,96 @@
+<div class="search-box">
+  <button class="search-icon-button" type="button" aria-label="Tìm kiếm" (click)="searchInput.focus()">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="m20 20-4-4"></path>
+    </svg>
+  </button>
+  <input
+    #searchInput
+    [formControl]="searchControl"
+    type="search"
+    placeholder="Tìm kiếm..."
+    autocomplete="off"
+    role="combobox"
+    aria-label="Tìm kiếm sản phẩm, bài viết blog hoặc map mẫu"
+    aria-autocomplete="list"
+    aria-haspopup="listbox"
+    [attr.aria-expanded]="isOpen"
+    [attr.aria-controls]="isOpen ? 'header-search-results' : null"
+    [attr.aria-activedescendant]="activeOptionId"
+    (focus)="onSearchFocus(searchInput.value)"
+    (input)="onSearchInput(searchInput.value)"
+    (keydown)="onKeydown($event)"
+  />
+
+  <section id="header-search-results" class="search-dropdown" *ngIf="isOpen" aria-label="Kết quả tìm kiếm">
+    <div class="search-tabs" role="tablist" aria-label="Lọc kết quả tìm kiếm">
+      <button
+        *ngFor="let tab of tabs"
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeCategory === tab.id"
+        [class.active]="activeCategory === tab.id"
+        (click)="setCategory(tab.id)"
+      >{{ tab.label }}</button>
+    </div>
+
+    <div *ngIf="isLoading && !hasResults" class="search-status" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Đang tìm kiếm...</span>
+    </div>
+
+    <div *ngIf="isLoading && hasResults" class="search-loading-inline" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Đang tải thêm kết quả...</span>
+    </div>
+
+    <div
+      *ngIf="hasResults"
+      class="search-results"
+      role="listbox"
+      aria-label="Kết quả tìm kiếm"
+    >
+      <section *ngFor="let group of groups" class="result-group" role="group" [attr.aria-label]="group.label">
+        <h2 class="group-title">{{ group.label }}</h2>
+        <a
+          *ngFor="let result of group.results"
+          [routerLink]="resultRoute(result)"
+          class="result-item"
+          [class.keyboard-active]="activeIndex === flattenedResults.indexOf(result)"
+          [id]="resultId(flattenedResults.indexOf(result))"
+          role="option"
+          [attr.aria-selected]="activeIndex === flattenedResults.indexOf(result)"
+        >
+          <span class="result-copy">
+            <span class="result-title">
+              <ng-container *ngFor="let part of (result.title | searchHighlight: query)">
+                <mark *ngIf="part.match; else plainText">{{ part.text }}</mark>
+                <ng-template #plainText>{{ part.text }}</ng-template>
+              </ng-container>
+            </span>
+            <span class="result-description">{{ result.description }}</span>
+          </span>
+          <span class="result-tags">
+            <span [class]="badgeClass(result.category)">
+              {{ result.category === 'products' ? 'Sản phẩm' : result.category === 'blogs' ? 'Blog' : 'Map mẫu' }}
+            </span>
+            <span
+              *ngIf="query.trim()"
+              class="match-badge"
+              [class.match-badge--high]="result.score >= 90"
+              [class.match-badge--medium]="result.score < 90"
+            >{{ result.score >= 90 ? 'Khớp cao' : 'Khớp vừa' }}</span>
+          </span>
+        </a>
+      </section>
+    </div>
+
+    <div *ngIf="showEmptyState" class="search-status empty-state" role="status">
+      Không tìm thấy kết quả
+    </div>
+    <div *ngIf="!isLoading && !query.trim()" class="search-status search-prompt">
+      Nhập từ khóa để tìm sản phẩm, bài viết hoặc map mẫu
+    </div>
+  </section>
+</div>

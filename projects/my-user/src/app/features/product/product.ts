@@ -336,11 +336,11 @@ export class Product implements OnInit {
       filtered = filtered.filter((product) => matchingCodes.includes(product.category.toLocaleUpperCase()));
     }
 
-    const term = this.searchTerm.trim().toLocaleLowerCase();
+    const term = this.normalize(this.searchTerm.trim());
     if (term) {
       filtered = filtered.filter((product) =>
         [product.name, product.category, product.description]
-          .some((value) => value.toLocaleLowerCase().includes(term)),
+          .some((value) => this.normalize(value).includes(term)),
       );
     }
 
@@ -478,6 +478,12 @@ export class Product implements OnInit {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+  }
+
+  private normalize(value: string): string {
+    return value.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('vi');
   }
 
   private readCachedProducts(): ProductItem[] {

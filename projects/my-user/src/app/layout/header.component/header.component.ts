@@ -4,6 +4,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
 import { Subscription, TimeoutError, timeout } from 'rxjs';
+import { HeaderSearch } from '../header-search/header-search.component';
 
 interface CurrentUserProfile {
   id?: string;
@@ -16,7 +17,7 @@ interface CurrentUserProfile {
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, HeaderSearch],
   templateUrl: './header.component.html',
   styleUrl: './header.component.css'
 })

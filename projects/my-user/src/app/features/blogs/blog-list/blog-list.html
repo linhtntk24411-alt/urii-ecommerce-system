@@ -45,11 +45,11 @@
     </div>
   }
 
-  @if (!isLoading && !errorMessage && allBlogs.length === 0) {
+  @if (!isLoading && !errorMessage && filteredBlogs.length === 0) {
     <p class="text-center py-5">Chưa có bài viết nào.</p>
   }
 
-  @if (!isLoading && !errorMessage && currentCategory === 'all' && featuredBlog) {
+  @if (!isLoading && !errorMessage && !searchTerm && currentCategory === 'all' && featuredBlog) {
     <div class="blog-featured">
       <!-- Featured Main -->
       <div class="blog-featured__main" [routerLink]="['/blog-detail', featuredBlog.slug]">
@@ -92,10 +92,10 @@
       </div>
     </div>
   }
- <div class="blog-grid-header" *ngIf="!isLoading && !errorMessage && allBlogs.length > 0">
-    <h2>Bài viết</h2>
+ <div class="blog-grid-header" *ngIf="!isLoading && !errorMessage && filteredBlogs.length > 0">
+    <h2>{{ searchTerm ? 'Kết quả tìm kiếm' : 'Bài viết' }}</h2>
   </div>
-  <div class="blog-grid" *ngIf="!isLoading && !errorMessage && allBlogs.length > 0">
+  <div class="blog-grid" *ngIf="!isLoading && !errorMessage && filteredBlogs.length > 0">
     @for (blog of paginatedBlogs; track blog.id) {
       <article class="blog-card" [routerLink]="['/blog-detail', blog.slug]">
         <div class="blog-card__image">

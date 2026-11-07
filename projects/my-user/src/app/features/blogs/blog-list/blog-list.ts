@@ -1,6 +1,8 @@
 import { ChangeDetectorRef, Component, inject, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { BlogPost, BlogService } from '../../../core/services/blog.service';
 
@@ -14,6 +16,8 @@ import { BlogPost, BlogService } from '../../../core/services/blog.service';
 export class BlogListComponent implements OnInit {
   private readonly blogService = inject(BlogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   allBlogs: BlogPost[] = [];
 
@@ -22,6 +26,7 @@ export class BlogListComponent implements OnInit {
   currentSort: string = 'newest';
   currentPage: number = 1;
   perPage: number = 6;
+  searchTerm = '';
   bookmarks: Record<string, boolean> = {};
   isLoading = true;
   errorMessage = '';
@@ -32,6 +37,12 @@ export class BlogListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.searchTerm = params.get('search')?.trim() ?? '';
+      this.currentPage = 1;
+      this.applyFilters();
+    });
+
     if (isPlatformBrowser(this.platformId)) {
       const savedBookmarks = localStorage.getItem('bookmarks');
       if (savedBookmarks) {
@@ -80,6 +91,14 @@ export class BlogListComponent implements OnInit {
 
     if (this.currentCategory !== 'all') {
       result = result.filter(b => b.categorySlug === this.currentCategory);
+    }
+
+    const searchTerm = this.normalize(this.searchTerm);
+    if (searchTerm) {
+      result = result.filter((blog) =>
+        [blog.title, blog.summary, blog.excerpt, blog.content, ...blog.tags]
+          .some((value) => this.normalize(value).includes(searchTerm)),
+      );
     }
 
     if (this.currentSort === 'newest') {
@@ -155,5 +174,11 @@ export class BlogListComponent implements OnInit {
   private dateValue(value: string): number {
     const timestamp = Date.parse(value);
     return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+
+  private normalize(value: string): string {
+    return value.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('vi');
   }
 }

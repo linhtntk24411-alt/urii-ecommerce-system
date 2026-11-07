@@ -5,8 +5,11 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 
 router.get('/metadata', c.getNotificationMetadata);
 router.get('/mine', authenticate, c.getMyNotifications);
+router.get('/user', authenticate, c.getMyNotifications);
 router.patch('/read-all', authenticate, c.markAllAsRead);
+router.put('/read-all', authenticate, c.markAllAsRead);
 router.patch('/:id/read', authenticate, c.markAsRead);
+router.put('/:id/read', authenticate, c.markAsRead);
 
 router.use(authenticate, requireAdmin);
 router.get('/', c.getAdminNotifications);

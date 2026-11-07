@@ -54,7 +54,7 @@ function requireAdmin(req, res, next) {
 }
 
 function requireCustomer(req, res, next) {
-  if (req.auth?.role !== 'user') {
+  if (req.auth?.role !== 'user' && req.auth?.role !== 'admin') {
     res.status(403).json({ message: 'Chỉ khách hàng mới có thể thực hiện thao tác này.' });
     return;
   }

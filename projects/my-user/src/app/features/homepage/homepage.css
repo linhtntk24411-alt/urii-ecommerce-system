@@ -1,3 +1,9 @@
+:host {
+    display: block;
+    --bs-primary: #840001;
+    --bs-primary-rgb: 132, 0, 1;
+}
+
 :root {
     --urii-red: #840001;
     --urii-red-hover: #b00103;
@@ -487,37 +493,55 @@ a { text-decoration: none; color: inherit; }
   cursor: not-allowed;
 }
 
-/* Icon thêm vào giỏ hàng trên ảnh card sản phẩm bán chạy */
-.product-card__media {
-  position: relative !important;
-}
-
+/* Ẩn icon bị dư trên ảnh của card sản phẩm Homepage */
 .product-card__media .cart-icon {
-  position: absolute;
-  z-index: 3;
-  top: 12px;
-  right: 12px;
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  color: #840001;
-  background: #ffffff;
-  border: 0;
-  border-radius: 50%;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  display: none !important;
+}
+
+/* Nút thêm giỏ hàng ở footer card sản phẩm bán chạy (đồng bộ chuẩn 100% như icon tròn trang Product) */
+.product-card__footer .btn-urii.btn-sm {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  background: #ffffff !important;
+  color: #840001 !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   cursor: pointer;
-  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
-.product-card__media .cart-icon:hover {
-  background-color: #840001;
-  color: #ffffff;
-  transform: scale(1.1);
+.product-card__footer .btn-urii.btn-sm:hover {
+  background: #840001 !important;
+  color: #ffffff !important;
+  transform: scale(1.08) !important;
+  box-shadow: 0 4px 12px rgba(132, 0, 1, 0.25) !important;
 }
 
-.product-card__media .cart-icon i {
+.product-card__footer .btn-urii.btn-sm i {
   font-size: 16px;
+  color: #840001 !important;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.product-card__footer .btn-urii.btn-sm:hover i {
+  color: #ffffff !important;
+}
+
+@media (max-width: 768px) {
+  .product-card__footer .btn-urii.btn-sm {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+  .product-card__footer .btn-urii.btn-sm i {
+    font-size: 14px;
+  }
 }
 
 /* ================= POPUP NHẬN VOUCHER 50% SINH NHẬT ================= */

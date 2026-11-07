@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { combineLatest, map } from 'rxjs';
 import { MapService, SampleMap } from '../../core/services/map.service';
 import { HttpErrorResponse } from '@angular/common/http';
+import { DialogService } from '../../core/services/dialog.service';
 
 @Component({
   selector: 'app-sample-maps-detail',
@@ -17,8 +18,11 @@ export class SampleMapsDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly mapService = inject(MapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly dialogService = inject(DialogService);
 
   mapDetail: SampleMap | null = null;
+  isSaved = false;
+  pendingSave = false;
   isLoading = true;
   errorMessage = '';
 
@@ -51,6 +55,9 @@ export class SampleMapsDetailComponent implements OnInit {
       next: (sampleMap) => {
         this.mapDetail = sampleMap ?? null;
         this.errorMessage = sampleMap ? '' : 'Không tìm thấy map này.';
+        if (this.mapDetail) {
+          this.checkSavedStatus();
+        }
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       },
@@ -70,7 +77,7 @@ export class SampleMapsDetailComponent implements OnInit {
     if (typeof window === 'undefined') return;
     const html2pdf = (window as any).html2pdf;
     if (!html2pdf) {
-      window.alert('Thư viện tạo PDF đang tải, vui lòng thử lại sau vài giây.');
+      this.dialogService.alert('Thư viện tạo PDF đang tải, vui lòng thử lại sau vài giây.', 'Đang chuẩn bị', 'info');
       return;
     }
 
@@ -152,7 +159,12 @@ export class SampleMapsDetailComponent implements OnInit {
       : `<div style="width:200px;height:200px;background:#f5f5f5;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-size:12px;color:#999;">Không tải được ảnh</div>`;
 
     const pdfContent = document.createElement('div');
-    pdfContent.style.cssText = 'width:190mm;padding:15px;font-family:Arial,sans-serif;font-size:13px;background:#fff;position:absolute;left:-99999px;top:0;';
+    pdfContent.style.width = '190mm';
+    pdfContent.style.padding = '15px';
+    pdfContent.style.fontFamily = '"Times New Roman", Times, serif';
+    pdfContent.style.fontSize = '13px';
+    pdfContent.style.boxSizing = 'border-box';
+    pdfContent.style.background = '#ffffff';
 
     pdfContent.innerHTML = `
       <div style="text-align:center;border-bottom:2px solid #ff2222;padding-bottom:6px;margin-bottom:12px;">
@@ -179,8 +191,6 @@ export class SampleMapsDetailComponent implements OnInit {
       </table>
     `;
 
-    document.body.appendChild(pdfContent);
-
     const cleanTitle = this.cleanPdfFileName(map.title);
     const options = {
       margin: 10,
@@ -198,13 +208,7 @@ export class SampleMapsDetailComponent implements OnInit {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    html2pdf().set(options).from(pdfContent).save().then(() => {
-      document.body.removeChild(pdfContent);
-    }).catch(() => {
-      if (document.body.contains(pdfContent)) {
-        document.body.removeChild(pdfContent);
-      }
-    });
+    html2pdf().set(options).from(pdfContent).save();
   }
 
   private cleanPdfFileName(title: string): string {
@@ -220,25 +224,72 @@ export class SampleMapsDetailComponent implements OnInit {
   saveMap(): void {
     const map = this.mapDetail;
     if (!map) return;
-    const token = localStorage.getItem('isLoggedIn') === 'true'
-      ? localStorage.getItem('authToken') || ''
-      : '';
+    const token = this.getToken();
     if (!token) {
       void this.router.navigate(['/login'], {
         queryParams: { returnUrl: `/sample-maps-detail/${encodeURIComponent(map.slug)}` },
       });
       return;
     }
+    if (this.pendingSave) return;
 
-    this.mapService.saveMyMap(token, map.id).subscribe({
-      next: () => window.alert(`Đã lưu "${map.title}" vào kho map.`),
+    this.pendingSave = true;
+    const alreadySaved = this.isSaved;
+    const request = alreadySaved
+      ? this.mapService.removeMySavedMap(token, map.id)
+      : this.mapService.saveMyMap(token, map.id);
+
+    request.subscribe({
+      next: () => {
+        this.isSaved = !alreadySaved;
+        this.pendingSave = false;
+        this.changeDetectorRef.markForCheck();
+      },
       error: (error: unknown) => {
-        console.error('Không thể lưu map:', error);
-        window.alert(error instanceof HttpErrorResponse && error.status === 409
-          ? `Map "${map.title}" đã có trong kho của bạn.`
-          : 'Không thể lưu map. Vui lòng thử lại.');
+        console.error('Không thể cập nhật bộ sưu tập map:', error);
+        this.pendingSave = false;
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          void this.router.navigate(['/login'], {
+            queryParams: { returnUrl: `/sample-maps-detail/${encodeURIComponent(map.slug)}` },
+          });
+        }
+        this.changeDetectorRef.markForCheck();
       },
     });
+  }
+
+  private checkSavedStatus(): void {
+    if (!this.mapDetail) return;
+    const token = this.getToken();
+    if (!token) {
+      this.isSaved = false;
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.mapService.getMySavedMaps(token).subscribe({
+      next: (response: unknown) => {
+        if (!Array.isArray(response)) return;
+        const currentId = this.mapDetail?.id;
+        const currentSlug = this.mapDetail?.slug;
+        this.isSaved = response.some((record) => {
+          if (typeof record !== 'object' || record === null || !('mapId' in record)) return false;
+          const mapId = record['mapId'];
+          return mapId === currentId || mapId === currentSlug;
+        });
+        this.changeDetectorRef.markForCheck();
+      },
+      error: () => {
+        this.isSaved = false;
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  private getToken(): string {
+    if (typeof window === 'undefined') return '';
+    const token = localStorage.getItem('authToken');
+    return localStorage.getItem('isLoggedIn') === 'true' ? token || '' : '';
   }
 
   scrollToGuide(): void {

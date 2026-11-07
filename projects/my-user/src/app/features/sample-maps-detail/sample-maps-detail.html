@@ -13,8 +13,9 @@
                 <div class="image-box">
                     <img [src]="map.image" [alt]="map.title" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
                     <!-- Nút lưu map mẫu nằm ở góc phải trên cùng của hình ảnh -->
-                    <button class="btn-save-map-topright" type="button" (click)="saveMap()" title="Lưu mẫu vào kho map">
-                        <span class="material-symbols-outlined">bookmark_add</span>
+                    <button class="btn-save-map-topright" [class.is-saved]="isSaved" type="button" (click)="saveMap()" [disabled]="pendingSave" [attr.aria-pressed]="isSaved" [title]="isSaved ? 'Bỏ lưu mẫu' : 'Lưu mẫu vào kho map'">
+                        <i *ngIf="isSaved" class="bi bi-bookmark-fill" aria-hidden="true"></i>
+                        <span *ngIf="!isSaved" class="material-symbols-outlined" aria-hidden="true">bookmark_add</span>
                     </button>
                 </div>
                 <button class="btn-guide" (click)="scrollToGuide()">

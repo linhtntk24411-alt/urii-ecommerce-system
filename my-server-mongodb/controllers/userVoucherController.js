@@ -239,15 +239,25 @@ exports.claimBirthdayVoucher = async (req, res) => {
 
     const standardVoucherId = String(voucher.id || voucher._id);
 
-    const existing = await UserVoucher.findOne({ userId, voucherId: standardVoucherId });
-    if (!existing) {
-      await UserVoucher.create({
-        userId,
-        voucherId: standardVoucherId,
-        code: voucher.code,
-        claimedAt: new Date()
+    const existing = await UserVoucher.findOne({
+      userId,
+      $or: [
+        { voucherId: standardVoucherId },
+        { code: voucher.code }
+      ]
+    });
+    if (existing) {
+      return res.status(400).json({
+        message: 'Bạn đã nhận voucher sinh nhật này rồi. Mỗi tài khoản chỉ được nhận 1 lần duy nhất.'
       });
     }
+
+    await UserVoucher.create({
+      userId,
+      voucherId: standardVoucherId,
+      code: voucher.code,
+      claimedAt: new Date()
+    });
 
     return res.json({
       success: true,

@@ -5,6 +5,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom, Subscription, TimeoutError } from 'rxjs';
 import { BlogService } from '../../../core/services/blog.service';
+import { DialogService } from '../../../core/services/dialog.service';
 
 interface BlogDraft {
   title: string;
@@ -41,6 +42,7 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly draftStorageKey = 'blogDraft';
   private readonly http = inject(HttpClient);
   private readonly blogService = inject(BlogService);
+  private readonly dialogService = inject(DialogService);
   private readonly router = inject(Router);
   private autoSaveTimer?: ReturnType<typeof setTimeout>;
   private formChanges?: Subscription;
@@ -251,7 +253,7 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private showDialog(message: string): void {
     if (isPlatformBrowser(this.platformId)) {
-      alert(message);
+      this.dialogService.alert(message, 'Thông báo', 'info');
     }
   }
 

@@ -9,6 +9,7 @@ import { CheckoutService, CheckoutVoucher, CreateOrderPayload } from '../../core
 import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
 import { CatalogProduct, ProductCatalogService } from '../../core/services/product-catalog.service';
 import { ToastService } from '../../core/services/toast.service';
+import { DialogService } from '../../core/services/dialog.service';
 
 interface CheckoutLine {
   item: CartItem;
@@ -40,6 +41,7 @@ export class CheckOut implements OnInit {
   private readonly selection = inject(CheckoutSelectionService);
   private readonly addressLookup = inject(AddressLookupService);
   private readonly toast = inject(ToastService);
+  private readonly dialogService = inject(DialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -304,13 +306,14 @@ export class CheckOut implements OnInit {
     this.selectAddress(id);
   }
 
-  deleteAddress(id: string, event: Event): void {
+  async deleteAddress(id: string, event: Event): Promise<void> {
     event.stopPropagation();
     if (this.addresses.length <= 1) {
       this.addressFormError = 'Bạn cần ít nhất một địa chỉ nhận hàng.';
       return;
     }
-    if (!window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return;
+    const confirmed = await this.dialogService.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?', 'Xác nhận xóa địa chỉ', 'Xóa', 'Hủy');
+    if (!confirmed) return;
 
     const deletingDefault = this.addresses.find((address) => address.id === id)?.isDefault;
     this.addresses = this.addresses.filter((address) => address.id !== id);

@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { ChangeDetectorRef, Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { DialogService } from '../../../core/services/dialog.service';
 
 interface SavedMap {
   id: string;
@@ -22,6 +23,7 @@ export class SavedMaps implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly dialogService = inject(DialogService);
 
   maps: SavedMap[] = [];
   isLoading = true;
@@ -112,8 +114,10 @@ export class SavedMaps implements OnInit {
     });
   }
 
-  removeMap(map: SavedMap): void {
-    if (!this.isBrowser || !window.confirm(`Bỏ "${map.title}" khỏi kho map đã lưu?`)) return;
+  async removeMap(map: SavedMap): Promise<void> {
+    if (!this.isBrowser) return;
+    const confirmed = await this.dialogService.confirm(`Bỏ "${map.title}" khỏi kho map đã lưu?`, 'Xác nhận xóa map', 'Xóa bỏ', 'Giữ lại');
+    if (!confirmed) return;
     const token = this.getToken();
     if (!token) {
       this.requiresLogin = true;

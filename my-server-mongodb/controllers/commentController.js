@@ -56,7 +56,9 @@ async function enrichComments(comments) {
         author: reply.author || replyUser?.name || (reply.role === 'admin' ? 'Urii Admin' : 'Khách hàng'),
         avatar: reply.avatar || replyUser?.avatar || 'images/avatar-non.jpg',
         createdAt: replyCreatedAt,
-        time: formatRelativeTime(replyCreatedAt)
+        time: formatRelativeTime(replyCreatedAt),
+        replyTo: reply.replyTo,
+        replyToAuthor: reply.replyToAuthor
       };
     });
 
@@ -201,6 +203,8 @@ exports.createCommentReply = async (req, res) => {
       id: replyId,
       ...(resolvedUserId ? { userId: resolvedUserId } : {}),
       ...(typeof req.body.author === 'string' && req.body.author.trim() ? { author: req.body.author.trim() } : {}),
+      ...(typeof req.body.replyTo === 'string' && req.body.replyTo.trim() ? { replyTo: req.body.replyTo.trim() } : {}),
+      ...(typeof req.body.replyToAuthor === 'string' && req.body.replyToAuthor.trim() ? { replyToAuthor: req.body.replyToAuthor.trim() } : {}),
       content: req.body.content.trim(),
       createdAt,
       time: formatRelativeTime(createdAt),

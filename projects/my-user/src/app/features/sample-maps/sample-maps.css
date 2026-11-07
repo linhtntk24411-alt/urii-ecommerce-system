@@ -532,3 +532,15 @@
     border-radius: var(--border-radius-lg);
     border: 1px dashed var(--outline-color);
 }
+
+.btn-map-action .bi {
+    font-size: 16px;
+    color: #840001;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.btn-map-action--save.is-saved .bi {
+    color: #840001;
+}

@@ -6,9 +6,11 @@ const router = express.Router();
 
 router.get('/mine', authenticate, requireCustomer, controller.getMySavedMaps);
 router.post('/mine', authenticate, requireCustomer, controller.saveMyMap);
-router.put('/mine/:mapId', authenticate, requireCustomer, controller.updateMySavedMap);
-router.patch('/mine/:mapId', authenticate, requireCustomer, controller.updateMySavedMap);
-router.delete('/mine/:mapId', authenticate, requireCustomer, controller.removeMySavedMap);
+router.route('/mine/:mapId')
+  .all(authenticate, requireCustomer)
+  .delete(controller.removeMySavedMap)
+  .patch(controller.updateMySavedMap)
+  .put(controller.updateMySavedMap);
 
 router.use(authenticate, requireAdmin);
 router.get('/', controller.getAllSavedMaps);

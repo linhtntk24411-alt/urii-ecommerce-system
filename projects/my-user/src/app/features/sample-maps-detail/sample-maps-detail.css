@@ -217,3 +217,25 @@
 .btn-save-map-topright .material-symbols-outlined {
     font-size: 22px;
 }
+
+
+.btn-save-map-topright.is-saved {
+    background-color: #840001;
+    color: #ffffff;
+    border-color: #840001;
+    box-shadow: 0 4px 12px rgba(132, 0, 1, 0.25);
+}
+
+.btn-save-map-topright.is-saved:hover {
+    background-color: #b00103;
+    border-color: #b00103;
+    transform: scale(1.08);
+}
+
+.btn-save-map-topright .bi {
+    font-size: 20px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

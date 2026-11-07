@@ -6,6 +6,7 @@ import { FavoriteProductsService } from '../../core/services/favorite-products.s
 import { CartService } from '../../core/services/cart.service';
 import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
 import { ToastService } from '../../core/services/toast.service';
+import { DialogService } from '../../core/services/dialog.service';
 
 interface ProductVariant {
   name: string;
@@ -78,6 +79,7 @@ export class ProductDetail implements OnInit {
     private readonly cart: CartService,
     private readonly checkoutSelection: CheckoutSelectionService,
     private readonly toast: ToastService,
+    private readonly dialogService: DialogService,
   ) {}
 
   ngOnInit(): void {
@@ -217,17 +219,15 @@ export class ProductDetail implements OnInit {
   toggleFavorite(): void {
     if (!this.product) return;
     if (!this.isBrowser || window.localStorage.getItem('isLoggedIn') !== 'true') {
-      window.alert('Bạn cần đăng nhập để sử dụng chức năng này.');
+      this.dialogService.alert('Bạn cần đăng nhập để sử dụng chức năng này.', 'Yêu cầu đăng nhập', 'warning');
       return;
     }
 
     try {
       this.isFavorite = this.favorites.toggle(this.product.id);
-      window.alert(this.isFavorite
-        ? 'Đã lưu vào Sản phẩm yêu thích.'
-        : 'Đã xóa khỏi Sản phẩm yêu thích.');
+      this.dialogService.alert(this.isFavorite ? 'Đã lưu sản phẩm vào danh sách yêu thích.' : 'Đã xóa sản phẩm khỏi danh sách yêu thích.', 'Danh sách yêu thích', 'success');
     } catch {
-      window.alert('Không thể lưu sản phẩm yêu thích. Vui lòng thử lại.');
+      this.dialogService.alert('Không thể lưu sản phẩm yêu thích. Vui lòng thử lại.', 'Lỗi', 'error');
     }
   }
 

@@ -6,6 +6,7 @@ import { FavoriteProductsService } from '../../core/services/favorite-products.s
 import { CartService } from '../../core/services/cart.service';
 import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
 import { ToastService } from '../../core/services/toast.service';
+import { DialogService } from '../../core/services/dialog.service';
 
 interface ProductVariant {
   name: string;
@@ -51,6 +52,7 @@ export class Product implements OnInit {
   private readonly cart = inject(CartService);
   private readonly checkoutSelection = inject(CheckoutSelectionService);
   private readonly toast = inject(ToastService);
+  private readonly dialogService = inject(DialogService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly itemsPerPage = 9;
 
@@ -79,7 +81,7 @@ export class Product implements OnInit {
       });
     this.favoritesOnly = this.route.snapshot.data['favoritesOnly'] === true;
     if (this.favoritesOnly && this.isBrowser && !this.isLoggedIn()) {
-      window.alert('Bạn cần đăng nhập để sử dụng chức năng sản phẩm yêu thích.');
+      this.dialogService.alert('Bạn cần đăng nhập để sử dụng chức năng sản phẩm yêu thích.', 'Yêu cầu đăng nhập', 'warning');
       void this.router.navigate(['/login']);
       return;
     }
@@ -134,7 +136,7 @@ export class Product implements OnInit {
 
   toggleFavorite(product: ProductItem): void {
     if (!this.isLoggedIn()) {
-      window.alert('Bạn cần đăng nhập để sử dụng chức năng này.');
+      this.dialogService.alert('Bạn cần đăng nhập để sử dụng chức năng này.', 'Yêu cầu đăng nhập', 'warning');
       return;
     }
 
@@ -143,11 +145,9 @@ export class Product implements OnInit {
       if (this.favoritesOnly && !saved) {
         this.applyFilters();
       }
-      window.alert(saved
-        ? 'Đã lưu vào Sản phẩm yêu thích.'
-        : 'Đã xóa khỏi Sản phẩm yêu thích.');
+      this.dialogService.alert(saved ? 'Đã lưu sản phẩm vào danh sách yêu thích.' : 'Đã xóa sản phẩm khỏi danh sách yêu thích.', 'Danh sách yêu thích', 'success');
     } catch {
-      window.alert('Không thể lưu sản phẩm yêu thích. Vui lòng thử lại.');
+      this.dialogService.alert('Không thể lưu sản phẩm yêu thích. Vui lòng thử lại.', 'Lỗi', 'error');
     }
   }
 

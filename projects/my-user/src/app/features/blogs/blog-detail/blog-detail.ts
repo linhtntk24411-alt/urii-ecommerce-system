@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Inject, PLATFORM_ID } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BlogComment, BlogPost, BlogService } from '../../../core/services/blog.service';
+import { DialogService } from '../../../core/services/dialog.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { combineLatest, map, TimeoutError } from 'rxjs';
 
@@ -18,6 +19,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly blogService = inject(BlogService);
+  private readonly dialogService = inject(DialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly bookmarksStorageKey = 'bookmarks';
@@ -180,9 +182,23 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   // ================= PHẢN HỒI BÌNH LUẬN (REPLY) =================
   activeReplyCommentId: string | number | null = null;
+  showRepliesMap: Record<string, boolean> = {};
+  replyToAuthorMap: Record<string, string> = {};
   replyContentMap: Record<string, string> = {};
   isSubmittingReplyMap: Record<string, boolean> = {};
   replyErrorMessageMap: Record<string, string> = {};
+
+  isRepliesVisible(commentId: string | number): boolean {
+    const key = String(commentId);
+    // Mặc định luôn hiện reply ngay khi vào blog (trừ khi người dùng bấm ẩn)
+    return this.showRepliesMap[key] !== false;
+  }
+
+  toggleReplies(commentId: string | number): void {
+    const key = String(commentId);
+    this.showRepliesMap[key] = !this.isRepliesVisible(commentId);
+    this.changeDetectorRef.markForCheck();
+  }
 
   openReplyForm(commentId: string | number): void {
     if (!this.isLoggedIn) {
@@ -190,7 +206,13 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
       return;
     }
     const key = String(commentId);
-    this.activeReplyCommentId = this.activeReplyCommentId === commentId ? null : commentId;
+    if (this.activeReplyCommentId === commentId && !this.replyToAuthorMap[key]) {
+      this.activeReplyCommentId = null;
+    } else {
+      this.activeReplyCommentId = commentId;
+      this.showRepliesMap[key] = true;
+      this.replyToAuthorMap[key] = '';
+    }
     this.replyErrorMessageMap[key] = '';
     if (!this.replyContentMap[key]) {
       this.replyContentMap[key] = '';
@@ -198,10 +220,25 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     this.changeDetectorRef.markForCheck();
   }
 
+  openReplyToReplyForm(comment: BlogComment, reply: any): void {
+    if (!this.isLoggedIn) {
+      this.requireLoginToComment();
+      return;
+    }
+    const key = String(comment.id);
+    this.activeReplyCommentId = comment.id;
+    this.showRepliesMap[key] = true;
+    this.replyToAuthorMap[key] = reply.author || '';
+    this.replyContentMap[key] = `@${reply.author} `;
+    this.replyErrorMessageMap[key] = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
   cancelReply(commentId: string | number): void {
     const key = String(commentId);
     this.activeReplyCommentId = null;
     this.replyContentMap[key] = '';
+    this.replyToAuthorMap[key] = '';
     this.replyErrorMessageMap[key] = '';
     this.changeDetectorRef.markForCheck();
   }
@@ -227,19 +264,17 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
     this.isSubmittingReplyMap[key] = true;
     this.replyErrorMessageMap[key] = '';
+    const replyToAuthor = this.replyToAuthorMap[key] || '';
 
-    this.blogService.replyComment(comment.id, content, token).subscribe({
+    this.blogService.replyComment(comment.id, content, token, replyToAuthor).subscribe({
       next: (res) => {
-        // Cập nhật danh sách replies trực tiếp
         if (!comment.replies) {
           comment.replies = [];
         }
         
-        // Nếu API trả về comment object đã enrich
         if (res && Array.isArray(res.replies)) {
           comment.replies = res.replies;
         } else {
-          // Fallback thêm reply mới vào mảng
           const userName = localStorage.getItem('userName') || 'Bạn';
           const userAvatar = localStorage.getItem('userAvatar') || 'assets/avatar-non.jpg';
           comment.replies.push({
@@ -248,12 +283,15 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
             avatar: userAvatar,
             content: content,
             time: 'Vừa xong',
-            role: 'user'
+            role: 'user',
+            replyToAuthor: replyToAuthor || undefined
           });
         }
 
         this.replyContentMap[key] = '';
+        this.replyToAuthorMap[key] = '';
         this.activeReplyCommentId = null;
+        this.showRepliesMap[key] = true;
         this.isSubmittingReplyMap[key] = false;
         this.changeDetectorRef.markForCheck();
       },
@@ -268,7 +306,12 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   private requireLoginToComment(): void {
     if (isPlatformBrowser(this.platformId)) {
-      window.alert('Hãy đăng nhập để bình luận vào bài viết');
+      this.dialogService.alert('Hãy đăng nhập để bình luận vào bài viết.', 'Yêu cầu đăng nhập', 'warning').then(() => {
+        void this.router.navigate(['/login'], {
+          queryParams: { returnUrl: this.router.url },
+        });
+      });
+      return;
     }
     void this.router.navigate(['/login'], {
       queryParams: { returnUrl: this.router.url },
@@ -397,7 +440,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   private showStorageError(): void {
     if (isPlatformBrowser(this.platformId)) {
-      window.alert('Không thể lưu thay đổi trên thiết bị này. Vui lòng kiểm tra bộ nhớ trình duyệt.');
+      this.dialogService.alert('Không thể lưu thay đổi trên thiết bị này. Vui lòng kiểm tra bộ nhớ trình duyệt.', 'Lỗi lưu trữ', 'error');
     }
   }
 }

@@ -66,24 +66,29 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
+      this.checkAuthStatus();
+      this.updateCartBadge();
+      this.loadCurrentUser();
+      this.loadNotifications();
+
       this.storageListener = (e: StorageEvent) => {
-        if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'authToken' || e.key === 'cart_count') {
+        if (!e.key || e.key.startsWith('cartItems') || e.key === 'cart_count' || e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'authToken') {
           this.checkAuthStatus();
           this.updateCartBadge();
           this.loadCurrentUser();
           this.loadNotifications();
-          this.changeDetectorRef.markForCheck();
+          this.changeDetectorRef.detectChanges();
         }
       };
       this.authChangeListener = () => {
         this.checkAuthStatus();
         this.loadCurrentUser();
         this.loadNotifications();
-        this.changeDetectorRef.markForCheck();
+        this.changeDetectorRef.detectChanges();
       };
       this.cartChangeListener = () => {
         this.updateCartBadge();
-        this.changeDetectorRef.markForCheck();
+        this.changeDetectorRef.detectChanges();
       };
       window.addEventListener('storage', this.storageListener);
       window.addEventListener('auth:changed', this.authChangeListener);
@@ -214,6 +219,47 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (this.isNotificationOpen) {
       this.loadNotifications();
     }
+    this.changeDetectorRef.markForCheck();
+  }
+
+  getNotificationUrl(actionUrl?: string): string {
+    if (!actionUrl) return '/';
+    let url = actionUrl.trim();
+    if (url.startsWith('/account/orders/')) {
+      return url.replace('/account/orders/', '/orders/');
+    }
+    if (url === '/account/orders') {
+      return '/orders';
+    }
+    if (url.startsWith('/account/profile')) {
+      return '/profile';
+    }
+    if (url.startsWith('/custom-order/')) {
+      return url.replace('/custom-order/', '/custom-order-list/');
+    }
+    if (url === '/custom-order') {
+      return '/custom-order-list';
+    }
+    if (url.startsWith('/blogs/')) {
+      return url.replace('/blogs/', '/blog-detail/');
+    }
+    if (url.startsWith('/vouchers')) {
+      return '/profile';
+    }
+    if (url.startsWith('/chat')) {
+      return '/support';
+    }
+    return url;
+  }
+
+  onNotificationClick(notif: any): void {
+    this.markOneAsRead(notif);
+    this.isNotificationOpen = false;
+    this.changeDetectorRef.markForCheck();
+    if (notif.actionUrl) {
+      const target = this.getNotificationUrl(notif.actionUrl);
+      void this.router.navigateByUrl(target);
+    }
   }
 
   clearAllNotifications(): void {
@@ -241,9 +287,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
   markOneAsRead(notif: any): void {
     if (notif.isRead) return;
     const token = localStorage.getItem('authToken');
-    if (!token || !notif._id) return;
+    const notifId = notif._id || notif.id;
+    if (!token || !notifId) return;
 
-    this.http.patch<any>(`/api/notifications/${notif._id}/read`, {}, {
+    this.http.patch<any>(`/api/notifications/${notifId}/read`, {}, {
       headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
     }).subscribe({
       next: () => {

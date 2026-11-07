@@ -183,21 +183,41 @@ export class HomepageComponent implements OnInit {
     this.birthdaySuccessMessage = '';
     this.isSubmittingBirthday = false;
 
-    // Lấy thông tin user hiện tại để pre-fill và kiểm tra xem đã có ngày sinh chưa
+    // Lấy thông tin user hiện tại và kiểm tra xem đã nhận voucher sinh nhật chưa
     const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
     this.http.get<any>('/api/auth/me', { headers }).subscribe({
       next: (user) => {
         this.birthdayFormName = user.name || '';
         this.birthdayFormPhone = user.phone || '';
-        if (user.birth && typeof user.birth === 'string' && user.birth.trim()) {
+        const hasBirth = user.birth && typeof user.birth === 'string' && user.birth.trim();
+        if (hasBirth) {
           this.birthdayFormBirth = user.birth.trim();
-          this.isBirthLocked = true; // Đã nhập trước đó -> KHÓA trường ngày sinh
+          this.isBirthLocked = true;
         } else {
           this.birthdayFormBirth = '';
           this.isBirthLocked = false;
         }
-        this.isBirthdayModalOpen = true;
-        this.changeDetectorRef.markForCheck();
+
+        this.http.get<any>('/api/user-vouchers/mine', { headers }).subscribe({
+          next: (vouchers) => {
+            const list = Array.isArray(vouchers) ? vouchers : [];
+            const alreadyClaimed = list.some((v: any) =>
+              v.code === 'URIIBD50' || v.voucherId === 'voucher-bd50' || v.voucher?.code === 'URIIBD50'
+            );
+            if (alreadyClaimed || hasBirth) {
+              this.isBirthLocked = true;
+            }
+            if (alreadyClaimed) {
+              this.toast.show('Bạn đã nhận voucher sinh nhật này rồi. Mỗi tài khoản chỉ được nhận 1 lần.', 'info');
+            }
+            this.isBirthdayModalOpen = true;
+            this.changeDetectorRef.markForCheck();
+          },
+          error: () => {
+            this.isBirthdayModalOpen = true;
+            this.changeDetectorRef.markForCheck();
+          }
+        });
       },
       error: () => {
         this.isBirthdayModalOpen = true;

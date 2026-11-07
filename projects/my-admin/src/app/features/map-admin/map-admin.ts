@@ -2,9 +2,6 @@ import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef } from '@angu
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminApiService } from '../../core/services/admin-api.service';
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 
 declare var bootstrap: any;
 
@@ -28,10 +25,6 @@ export class MapAdmin implements OnInit {
   mapLoadError = '';
   currentPage = 1;
   ITEMS_PER_PAGE = 8;
-  Math = Math;
-  maps: any[] = [];
-  currentPage = 1;
-  ITEMS_PER_PAGE = 4;
   editingId: string | null = null;
 
   // Form Model
@@ -105,30 +98,6 @@ export class MapAdmin implements OnInit {
     }
 
     return [];
-  async loadMaps() {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const localData = localStorage.getItem('library_maps');
-      if (localData) {
-        try {
-          this.maps = JSON.parse(localData);
-          if (Array.isArray(this.maps) && this.maps.length > 0) return;
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-
-    try {
-      const response = await fetch('../../user/data/gallery.json');
-      if (!response.ok) throw new Error(`Không thể tải file gallery.json`);
-      this.maps = await response.json();
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        localStorage.setItem('library_maps', JSON.stringify(this.maps));
-      }
-    } catch (error) {
-      console.error("❌ LỖI TẢI DỮ LIỆU:", error);
-      this.maps = [];
-    }
   }
 
   get pagedMaps() {
@@ -151,7 +120,6 @@ export class MapAdmin implements OnInit {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('data:')) return path;
     return this.adminApi.getLibraryMapImageUrl(path);
-    return '../../user/' + path;
   }
 
   getDifficultyBadgeClass(diff: string): string {

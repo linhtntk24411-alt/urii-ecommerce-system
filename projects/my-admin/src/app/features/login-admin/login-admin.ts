@@ -14,7 +14,6 @@ interface LoginResponse {
     role: string;
   };
 }
-import { Component } from '@angular/core';
 
 @Component({
   imports: [],
@@ -51,9 +50,6 @@ export class LoginAdmin implements OnInit {
       email,
       password
     }).subscribe({
-      // Thêm inject AdminApiService vào file login-admin.ts nếu chưa có:
-// private adminApi = inject(AdminApiService);
-
       next: (response) => {
         this.isLoading = false;
 
@@ -81,76 +77,74 @@ export class LoginAdmin implements OnInit {
     });
   }
   
-ngOnInit(): void {
-  this.waitForGoogleScript();
-}
-
-private waitForGoogleScript(): void {
-  let attempts = 0;
-
-  const checkGoogle = () => {
-    // Đổi sang kiểm tra oauth2 để khởi tạo Token Client (bật popup chọn tài khoản)
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-      this.tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: this.googleClientId,
-        scope: 'email profile openid',
-        callback: (response: any) => {
-          if (response && response.access_token) {
-            this.handleGoogleLogin(response.access_token);
-          }
-        },
-      });
-    } else if (attempts < 30) {
-      attempts++;
-      setTimeout(checkGoogle, 300);
-    }
-  };
-
-  checkGoogle();
-}
-
-loginWithGoogle(): void {
-  this.loginError = '';
-
-  if (!this.tokenClient) {
-    this.loginError = 'Google chưa tải xong. Vui lòng thử lại.';
-    return;
+  ngOnInit(): void {
+    this.waitForGoogleScript();
   }
 
-  // Ép buộc hiện hộp thoại chọn tài khoản Google chuẩn dạng popup
-  this.tokenClient.requestAccessToken({ prompt: 'select_account' });
-}
+  private waitForGoogleScript(): void {
+    let attempts = 0;
 
-private handleGoogleLogin(accessToken: string): void {
-  if (!accessToken) {
-    this.loginError = 'Không nhận được thông tin xác thực từ Google.';
-    return;
-  }
-
-  this.isLoading = true;
-
-  this.http.post<LoginResponse>(`${this.apiUrl}/google`, {
-    token: accessToken // Sửa từ credential thành token
-  }).subscribe({
-    next: (response) => {
-      this.isLoading = false;
-
-      if (response.user.role !== 'admin') {
-        this.loginError = 'Tài khoản không có quyền truy cập Admin.';
-        return;
+    const checkGoogle = () => {
+      // Đổi sang kiểm tra oauth2 để khởi tạo Token Client (bật popup chọn tài khoản)
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        this.tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: this.googleClientId,
+          scope: 'email profile openid',
+          callback: (response: any) => {
+            if (response && response.access_token) {
+              this.handleGoogleLogin(response.access_token);
+            }
+          },
+        });
+      } else if (attempts < 30) {
+        attempts++;
+        setTimeout(checkGoogle, 300);
       }
+    };
 
-      localStorage.setItem('adminToken', response.token);
-      localStorage.setItem('adminUser', JSON.stringify(response.user));
-      this.adminApi.setToken(response.token);
-      this.router.navigate(['/dashboard']);
-    },
-    error: (error) => {
-      this.isLoading = false;
-      this.loginError = error.error?.message || 'Đăng nhập Google thất bại.';
+    checkGoogle();
+  }
+
+  loginWithGoogle(): void {
+    this.loginError = '';
+
+    if (!this.tokenClient) {
+      this.loginError = 'Google chưa tải xong. Vui lòng thử lại.';
+      return;
     }
-  });
-}
 
+    // Ép buộc hiện hộp thoại chọn tài khoản Google chuẩn dạng popup
+    this.tokenClient.requestAccessToken({ prompt: 'select_account' });
+  }
+
+  private handleGoogleLogin(accessToken: string): void {
+    if (!accessToken) {
+      this.loginError = 'Không nhận được thông tin xác thực từ Google.';
+      return;
+    }
+
+    this.isLoading = true;
+
+    this.http.post<LoginResponse>(`${this.apiUrl}/google`, {
+      token: accessToken
+    }).subscribe({
+      next: (response) => {
+        this.isLoading = false;
+
+        if (response.user.role !== 'admin') {
+          this.loginError = 'Tài khoản không có quyền truy cập Admin.';
+          return;
+        }
+
+        localStorage.setItem('adminToken', response.token);
+        localStorage.setItem('adminUser', JSON.stringify(response.user));
+        this.adminApi.setToken(response.token);
+        this.router.navigate(['/dashboard']);
+      },
+      error: (error) => {
+        this.isLoading = false;
+        this.loginError = error.error?.message || 'Đăng nhập Google thất bại.';
+      }
+    });
+  }
 }
-export class LoginAdmin {}

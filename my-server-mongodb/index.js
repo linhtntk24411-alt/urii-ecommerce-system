@@ -1,4 +1,11 @@
 require('dotenv').config();
+const dns = require('node:dns');
+
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch {
+  // Bỏ qua nếu môi trường không cho phép setServers
+}
 
 const http = require('node:http');
 const mongoose = require('mongoose');

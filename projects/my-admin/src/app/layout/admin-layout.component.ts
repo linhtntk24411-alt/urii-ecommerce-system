@@ -2,9 +2,6 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AdminApiService } from '../core/services/admin-api.service';
-import { Component, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
   selector: 'app-admin-layout',

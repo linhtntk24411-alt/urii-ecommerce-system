@@ -118,9 +118,8 @@
 .order-id { font-weight: 700; color: #dc3545; }
 .customer-info { display: flex; align-items: center; gap: 12px; }
 .customer-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background-color: #e9ecef; display: flex; align-items: center; justify-content: center;
-    font-weight: 700; color: #555; font-size: 14px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background-color: #e9ecef; display: block; object-fit: cover; flex: 0 0 44px;
 }
 .customer-name { font-weight: 600; color: #333; }
 .order-total { font-weight: 700; color: #333; }
@@ -206,30 +205,6 @@
 .btn-ignore-cancel:hover {
     background-color: #e2e5e8;
     color: #343a40;
-.btn-process-cancel {
-    background-color: #c80000; /* Màu đỏ đậm cho nút Đồng ý */
-    color: white;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 4px;
-    font-weight: 600;
-    margin-right: 8px;
-    transition: 0.2s;
-}
-.btn-process-cancel:hover {
-    background-color: #a00000;
-}
-.btn-ignore-cancel {
-    background-color: #e9ecef; /* Màu xám nhạt cho nút Từ chối */
-    color: #495057;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 4px;
-    font-weight: 600;
-    transition: 0.2s;
-}
-.btn-ignore-cancel:hover {
-    background-color: #ced4da;
 }
 
 /* Fix lỗi menu dropdown bị che khuất (Hình 3) */

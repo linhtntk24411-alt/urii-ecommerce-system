@@ -3,9 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminApiService, AdminUser } from '../../core/services/admin-api.service';
 import { combineLatest, Subscription } from 'rxjs';
-import { Component, OnInit, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 
 declare var bootstrap: any;
 

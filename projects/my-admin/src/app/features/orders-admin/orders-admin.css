@@ -1,0 +1,227 @@
+/* =========================================
+   Container & Typography (Chuyển từ HTML inline)
+   ========================================= */
+.orders-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.font-segoe {
+    font-family: 'Segoe UI', sans-serif !important;
+}
+
+/* =========================================
+   Stats Cards & Utilities
+   ========================================= */
+.card-stats { transition: transform 0.2s; }
+.card-stats:hover { transform: translateY(-3px); }
+
+/* =========================================
+   Badges Trạng Thái
+   ========================================= */
+.badge-status {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    font-family: 'Segoe UI', sans-serif;
+}
+.badge-status-pending { background-color: #fff3cd; color: #856404; }
+.badge-status-approved { background-color: #d1e7dd; color: #0f5132; }
+.badge-status-completed { background-color: #198754; color: #fff; }
+.badge-status-cancelled { background-color: #f8d7da; color: #842029; }
+.badge-status-pending_approval { background-color: #ffe5d0; color: #b65f00; }
+
+.badge-status-waiting_quote {
+    background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+    color: #e65100;
+    border: 1px dashed #ff9800;
+    animation: pulse-glow 2s infinite;
+    font-family: 'Segoe UI', sans-serif;
+}
+.badge-status-processing {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    color: #0d47a1;
+    border: 1px solid #64b5f6;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(255, 152, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+/* =========================================
+   Filter Bar
+   ========================================= */
+.filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.filter-bar .form-control,
+.filter-bar .form-select {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+.filter-bar .form-control:focus,
+.filter-bar .form-select:focus {
+    background-color: #fff;
+    border-color: #840001;
+    box-shadow: 0 0 0 3px rgba(132, 0, 1, 0.1);
+}
+.filter-bar .form-control:hover,
+.filter-bar .form-select:hover {
+    background-color: #fff;
+    border-color: #840001;
+}
+
+.filter-btn {
+    font-family: 'Segoe UI', sans-serif;
+    padding: 10px 0;
+    border-radius: 8px;
+}
+
+/* =========================================
+   Tables
+   ========================================= */
+.table-orders th, .table-orders td,
+.table-orders-custom th, .table-orders-custom td {
+    padding: 16px 12px;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.table-orders thead th, .table-orders-custom thead th {
+    background-color: #f8f9fa;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #6c757d;
+    letter-spacing: 0.5px;
+    border-bottom: none;
+}
+.table-orders tbody tr:hover { background-color: #f8f9ff; }
+.table-orders-custom tbody tr:hover { background-color: #fff8e1; }
+
+.order-id { font-weight: 700; color: #dc3545; }
+.customer-info { display: flex; align-items: center; gap: 12px; }
+.customer-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background-color: #e9ecef; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #555; font-size: 14px;
+}
+.customer-name { font-weight: 600; color: #333; }
+.order-total { font-weight: 700; color: #333; }
+
+/* =========================================
+   Action Buttons
+   ========================================= */
+.action-btn-group { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+.btn-action-icon {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: 0.2s;
+    color: #6c757d;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-action-icon:hover { background-color: #f1f1f1; }
+.btn-action-icon.text-success { color: #198754; }
+.btn-action-icon.text-success:hover { background-color: #d4edda; color: #155724 !important; }
+.btn-action-icon.text-warning { color: #ffc107; }
+.btn-action-icon.text-warning:hover { background-color: #fff3cd; color: #856404 !important; }
+.btn-action-icon.text-danger { color: #dc3545; }
+.btn-action-icon.text-danger:hover { background-color: #f8d7da; color: #842029 !important; }
+
+/* =========================================
+   Pagination & Modals
+   ========================================= */
+.pagination .page-item.active .page-link { 
+    background-color: #dc3545; 
+    border-color: #dc3545; 
+}
+.pagination .page-link { color: #333; }
+.pagination .page-link:hover { color: #dc3545; }
+.modal-header .btn-close-white { filter: brightness(0) invert(1); }
+/* Fix lỗi bảng Yêu cầu hủy đơn hàng giống hình 1 */
+.table-orders-cancel th, .table-orders-cancel td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+}
+.table-orders-cancel thead th {
+    background-color: #f8f9fa; /* Màu nền xám nhạt cho header */
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    border-bottom: none;
+}
+.btn-process-cancel {
+    background-color: #c80000; /* Màu đỏ đậm cho nút Đồng ý */
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-right: 8px;
+    transition: 0.2s;
+}
+.btn-process-cancel:hover {
+    background-color: #a00000;
+}
+.btn-ignore-cancel {
+    background-color: #e9ecef; /* Màu xám nhạt cho nút Từ chối */
+    color: #495057;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+.btn-ignore-cancel:hover {
+    background-color: #ced4da;
+}
+
+/* Fix lỗi menu dropdown bị che khuất (Hình 3) */
+.table-responsive {
+    overflow-x: visible; /* Cho phép nội dung tràn ra ngoài theo chiều ngang */
+    overflow-y: visible; /* Cho phép nội dung tràn ra ngoài theo chiều dọc */
+}
+.custom-dropdown {
+    position: relative; /* Giữ relative ở đây để menu bám theo nút cây bút */
+}
+
+.custom-dropdown .dropdown-menu {
+    position: absolute; 
+    top: 120%; /* Đổi từ 50% hoặc giá trị cũ xuống thành 120% để menu dịch xuống dưới icon */
+    transform: none; /* Bỏ căn giữa dọc đi */
+    right: 40px; 
+    left: auto;
+    z-index: 1050;
+    display: none; 
+    min-width: 160px; 
+    background-color: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1); 
+    border-radius: 8px; 
+    padding: 6px 0; 
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.custom-dropdown .dropdown-menu.show { 
+    display: block; 
+}

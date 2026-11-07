@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 declare const google: any;
 
@@ -17,7 +17,7 @@ interface LoginResponse {
 }
 
 @Component({
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   selector: 'app-login-admin',
   styleUrl: './login-admin.css',
   templateUrl: './login-admin.html',

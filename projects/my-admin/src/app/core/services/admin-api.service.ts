@@ -521,9 +521,8 @@ export class AdminApiService {
     // Hiển thị dữ liệu cache trước để giao diện không bị trống
     this.productsSubject.next(this.readCachedProducts());
 
-    // Khôi phục phiên đăng nhập và tải dữ liệu từ API
+    // Khôi phục phiên đăng nhập; dữ liệu chỉ được tải khi trang cần.
     this.restoreSession();
-    this.loadProducts();
   }
 
   // --- 1. QUẢN LÝ TOKEN VÀ ĐĂNG NHẬP ---
@@ -828,8 +827,10 @@ export class AdminApiService {
 
   getComments(): Observable<AdminComment[]> {
     return this.http
-      .get<AdminComment[]>(`${this.baseUrl}/comments?page=1&limit=100`)
-      .pipe(timeout(8000));
+      .get<AdminComment[]>(`${this.baseUrl}/comments?page=1&limit=100`, {
+        headers: this.getAuthHeaders()
+      })
+      .pipe(timeout(15000));
   }
 
   replyToComment(id: string | number, content: string): Observable<any> {
@@ -850,45 +851,10 @@ export class AdminApiService {
 
   getAdminReviews(): Observable<AdminReview[]> {
     return this.http
-      .get<AdminProduct[]>(`${this.baseUrl}/products?page=1&limit=100`)
-      .pipe(
-        timeout(8000),
-        switchMap((products) => from(products).pipe(
-          mergeMap((product) => this.http
-            .get<{
-              productName: string;
-              reviews: Array<Omit<AdminReview, 'productName' | 'userAvatar'>>;
-            }>(`${this.baseUrl}/reviews/product/${encodeURIComponent(product.id)}?page=1&limit=100`)
-            .pipe(
-              timeout(8000),
-              map((response) => response.reviews.map((review) => ({
-                ...review,
-                productName: response.productName || product.name
-              })))
-            ),
-          8),
-          toArray(),
-          map((reviewsByProduct) => reviewsByProduct.flat().sort(
-            (left, right) => Date.parse(right.createdAt || '') - Date.parse(left.createdAt || '')
-          )),
-          switchMap((reviews) => this.http
-            .get<AdminUser[]>(`${this.baseUrl}/users?page=1&limit=100`, {
-              headers: this.getAuthHeaders()
-            })
-            .pipe(
-              timeout(8000),
-              map((users) => {
-                const avatarsByUserId = new Map(
-                  users.map((user) => [user._id, user.avatar || ''])
-                );
-                return reviews.map((review) => ({
-                  ...review,
-                  userAvatar: avatarsByUserId.get(review.userId) || ''
-                }));
-              })
-            ))
-        ))
-      );
+      .get<AdminReview[]>(`${this.baseUrl}/reviews?page=1&limit=100`, {
+        headers: this.getAuthHeaders()
+      })
+      .pipe(timeout(15000));
   }
 
   getInitialDashboard(): DashboardStats {
@@ -1019,8 +985,15 @@ export class AdminApiService {
         : (data?.orders || data?.data || []);
 
       if (list.length > 0) {
-        this.setCached('urii_admin_orders', list);
-        return list;
+        const normalizedList = list.map((item: any) => {
+          const amt = Number(item.totalAmount ?? item.total ?? item.pricing?.finalTotal ?? 0);
+          const totalStr = typeof item.total === 'string' && item.total.includes('đ')
+            ? item.total
+            : (amt > 0 ? `${amt.toLocaleString('vi-VN')}đ` : '0đ');
+          return { ...item, total: totalStr, totalAmount: amt };
+        });
+        this.setCached('urii_admin_orders', normalizedList);
+        return normalizedList;
       }
     } catch {
       // Trả về cache nếu API lỗi
@@ -1033,7 +1006,9 @@ export class AdminApiService {
   // Tạm giữ endpoint /maps theo code hiện tại sau khi Pull.
 
   public getLibraryMaps(): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/maps`);
+    return this.http.get<any>(`${this.baseUrl}/maps`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   public getLibraryMapImageUrl(imagePath: string): string {
@@ -1047,13 +1022,15 @@ export class AdminApiService {
   public saveLibraryMap(mapData: any): Observable<any> {
     return this.http.post(
       `${this.baseUrl}/maps`,
-      mapData
+      mapData,
+      { headers: this.getAuthHeaders() }
     );
   }
 
   public deleteLibraryMap(id: string): Observable<any> {
     return this.http.delete(
-      `${this.baseUrl}/maps/${encodeURIComponent(id)}`
+      `${this.baseUrl}/maps/${encodeURIComponent(id)}`,
+      { headers: this.getAuthHeaders() }
     );
   }
 
@@ -1246,7 +1223,7 @@ export class AdminApiService {
     body?: unknown
   ): Promise<T> {
     const opts = this.options();
-    const TIMEOUT_MS = 2500;
+    const TIMEOUT_MS = 15000;
 
     switch (method) {
       case 'GET':

@@ -1,3 +1,5 @@
+const path = require('node:path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config();
 const dns = require('node:dns');
 
@@ -32,7 +34,7 @@ async function start() {
     server.once('error', reject);
     server.listen(port, () => {
       server.removeListener('error', reject);
-      console.log(`Urii Backend đang chạy tại http://localhost:${port}`);
+      console.log(`Urii Backend & Admin đang chạy tại http://localhost:${port}`);
       resolve();
     });
   });

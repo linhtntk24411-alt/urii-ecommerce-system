@@ -1,0 +1,434 @@
+{
+  "notificationCategories": [
+    {
+      "id": "order",
+      "label": "Đơn hàng & Vận chuyển",
+      "icon": "shopping_bag"
+    },
+    {
+      "id": "custom_order",
+      "label": "Thiết kế riêng (Custom)",
+      "icon": "palette"
+    },
+    {
+      "id": "community",
+      "label": "Cộng đồng & Bài viết",
+      "icon": "forum"
+    },
+    {
+      "id": "catalog",
+      "label": "Sản phẩm & Đánh giá",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "promotion",
+      "label": "Khuyến mãi & Voucher",
+      "icon": "local_offer"
+    },
+    {
+      "id": "support",
+      "label": "Tin nhắn & Hỗ trợ",
+      "icon": "support_agent"
+    },
+    {
+      "id": "account",
+      "label": "Tài khoản & Bảo mật",
+      "icon": "verified_user"
+    },
+    {
+      "id": "system",
+      "label": "Hệ thống & Vận hành",
+      "icon": "notifications_active"
+    }
+  ],
+  "notificationPriorities": [
+    {
+      "id": "low",
+      "label": "Thông tin"
+    },
+    {
+      "id": "normal",
+      "label": "Bình thường"
+    },
+    {
+      "id": "high",
+      "label": "Quan trọng"
+    },
+    {
+      "id": "urgent",
+      "label": "Khẩn cấp (SLA)"
+    }
+  ],
+  "notificationTypes": [
+    {
+      "id": "USER_ORDER_PLACED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "package_2",
+      "titleTemplate": "Đặt hàng thành công #{orderId}",
+      "messageTemplate": "Đơn hàng #{orderId} của bạn đã được ghi nhận và đang chờ Urii xác nhận trong vòng 24 giờ.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_AWAITING_PAYMENT",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "payments",
+      "titleTemplate": "Nhắc thanh toán đơn hàng #{orderId}",
+      "messageTemplate": "Đơn hàng #{orderId} đang chờ thanh toán. Vui lòng hoàn tất chuyển khoản trong 24 giờ để tránh tự động hủy đơn.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_CONFIRMED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "inventory_2",
+      "titleTemplate": "Đơn hàng #{orderId} đã được xác nhận",
+      "messageTemplate": "Shop đã xác nhận đơn hàng #{orderId} và đang đóng gói chuẩn bị bàn giao cho đơn vị vận chuyển.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_SHIPPING",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "local_shipping",
+      "titleTemplate": "Đơn hàng #{orderId} đang được giao đến bạn",
+      "messageTemplate": "Đơn hàng #{orderId} đã được bàn giao cho đơn vị vận chuyển. Hãy chú ý điện thoại để nhận hàng nhé!",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_DELIVERED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "task_alt",
+      "titleTemplate": "Giao hàng thành công #{orderId}",
+      "messageTemplate": "Đơn hàng #{orderId} đã giao thành công. Hãy chia sẻ đánh giá sản phẩm để nhận thêm ưu đãi từ Urii nhé!",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_CANCEL_REQUESTED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "hourglass_top",
+      "titleTemplate": "Đã gửi yêu cầu hủy đơn #{orderId}",
+      "messageTemplate": "Yêu cầu hủy đơn hàng #{orderId} đã được gửi tới Shop. Urii sẽ kiểm tra kho và phản hồi bạn trong 24 giờ.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_CANCEL_APPROVED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "cancel",
+      "titleTemplate": "Đã chấp nhận hủy đơn #{orderId}",
+      "messageTemplate": "Yêu cầu hủy đơn hàng #{orderId} của bạn đã được chấp nhận. Tiền thanh toán trước (nếu có) sẽ được hoàn lại.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_CANCEL_REJECTED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "error_outline",
+      "titleTemplate": "Từ chối yêu cầu hủy đơn #{orderId}",
+      "messageTemplate": "Rất tiếc yêu cầu hủy đơn #{orderId} không thể thực hiện do kiện hàng đã được xuất kho bàn giao vận chuyển.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_RETURN_REQUESTED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "assignment_return",
+      "titleTemplate": "Đã tiếp nhận yêu cầu hoàn trả #{orderId}",
+      "messageTemplate": "Urii đã nhận yêu cầu trả hàng/hoàn tiền cho đơn #{orderId} và đang kiểm duyệt minh chứng trong vòng 48 giờ.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_RETURN_APPROVED_PICKUP",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "published_with_changes",
+      "titleTemplate": "Đã duyệt trả hàng #{orderId} - Chờ thu hồi",
+      "messageTemplate": "Yêu cầu hoàn trả đơn #{orderId} đã được duyệt. Vui lòng đóng gói lại sản phẩm để bưu tá đến lấy hàng hoàn trong 72 giờ.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_RETURN_REFUND_PENDING",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "account_balance_wallet",
+      "titleTemplate": "Kho đã nhận hàng hoàn đơn #{orderId}",
+      "messageTemplate": "Kho Urii đã nhận được kiện hàng hoàn của đơn #{orderId}, đang kiểm tra sản phẩm và tiến hành hoàn tiền trong 48 giờ.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_RETURN_COMPLETED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "Paid",
+      "titleTemplate": "Hoàn tiền thành công đơn #{orderId}",
+      "messageTemplate": "Urii đã hoàn tất thủ tục trả hàng và hoàn tiền cho đơn hàng #{orderId}.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_ORDER_RETURN_REJECTED",
+      "audience": "user",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "report_problem",
+      "titleTemplate": "Từ chối yêu cầu hoàn trả đơn #{orderId}",
+      "messageTemplate": "Yêu cầu hoàn trả đơn #{orderId} chưa được chấp thuận do minh chứng chưa đạt điều kiện bảo hành/đổi trả.",
+      "actionUrlTemplate": "/account/orders/{orderId}"
+    },
+    {
+      "id": "USER_CUSTOM_ORDER_SUBMITTED",
+      "audience": "user",
+      "categoryId": "custom_order",
+      "priority": "normal",
+      "icon": "brush",
+      "titleTemplate": "Đã gửi yêu cầu thiết kế riêng #{customOrderId}",
+      "messageTemplate": "Yêu cầu custom #{customOrderId} đã được gửi thành công. Kỹ thuật viên Urii đang lên bản vẽ pixel art cho bạn.",
+      "actionUrlTemplate": "/custom-order/{customOrderId}"
+    },
+    {
+      "id": "USER_CUSTOM_ORDER_QUOTED",
+      "audience": "user",
+      "categoryId": "custom_order",
+      "priority": "high",
+      "icon": "request_quote",
+      "titleTemplate": "Đã có báo giá & bản vẽ mẫu #{customOrderId}",
+      "messageTemplate": "Urii đã cập nhật bảng phối màu và báo giá cho yêu cầu custom #{customOrderId}. Hãy kiểm tra và xác nhận nhé!",
+      "actionUrlTemplate": "/custom-order/{customOrderId}"
+    },
+    {
+      "id": "USER_CUSTOM_ORDER_PROCESSING",
+      "audience": "user",
+      "categoryId": "custom_order",
+      "priority": "normal",
+      "icon": "precision_manufacturing",
+      "titleTemplate": "Đơn custom #{customOrderId} đang được chế tác",
+      "messageTemplate": "Xưởng Urii đang tiến hành xếp hạt và hoàn thiện bộ sản phẩm custom #{customOrderId} của bạn.",
+      "actionUrlTemplate": "/custom-order/{customOrderId}"
+    },
+    {
+      "id": "USER_CUSTOM_ORDER_COMPLETED",
+      "audience": "user",
+      "categoryId": "custom_order",
+      "priority": "high",
+      "icon": "auto_awesome",
+      "titleTemplate": "Hoàn thiện đơn thiết kế riêng #{customOrderId}",
+      "messageTemplate": "Bộ sản phẩm custom #{customOrderId} đã hoàn tất chế tác và sẵn sàng giao đến bạn!",
+      "actionUrlTemplate": "/custom-order/{customOrderId}"
+    },
+    {
+      "id": "USER_BLOG_LIKED",
+      "audience": "user",
+      "categoryId": "community",
+      "priority": "low",
+      "icon": "favorite",
+      "titleTemplate": "{actorName} đã yêu thích bài viết của bạn",
+      "messageTemplate": "{actorName} vừa thả tim cho bài chia sẻ #{blogId} của bạn trong Góc Cộng Đồng Urii.",
+      "actionUrlTemplate": "/blogs/{blogId}"
+    },
+    {
+      "id": "USER_BLOG_COMMENTED",
+      "audience": "user",
+      "categoryId": "community",
+      "priority": "normal",
+      "icon": "chat_bubble",
+      "titleTemplate": "{actorName} đã bình luận bài viết của bạn",
+      "messageTemplate": "{actorName} vừa để lại bình luận mới (#{commentId}) trên bài viết #{blogId} của bạn.",
+      "actionUrlTemplate": "/blogs/{blogId}#comment-{commentId}"
+    },
+    {
+      "id": "USER_VOUCHER_GRANTED",
+      "audience": "user",
+      "categoryId": "promotion",
+      "priority": "normal",
+      "icon": "redeem",
+      "titleTemplate": "Bạn nhận được mã ưu đãi {voucherId}",
+      "messageTemplate": "Urii dành tặng bạn mã khuyến mãi {voucherId}. Áp dụng ngay ở bước thanh toán trước khi hết lượt nhé!",
+      "actionUrlTemplate": "/vouchers/{voucherId}"
+    },
+    {
+      "id": "USER_CHAT_ADMIN_REPLIED",
+      "audience": "user",
+      "categoryId": "support",
+      "priority": "high",
+      "icon": "support_agent",
+      "titleTemplate": "Tư vấn viên Urii đã phản hồi bạn",
+      "messageTemplate": "Nhân viên chăm sóc khách hàng đã trả lời trong phiên trò chuyện #{sessionId}.",
+      "actionUrlTemplate": "/chat/{sessionId}"
+    },
+    {
+      "id": "USER_ACCOUNT_OAUTH_LINKED",
+      "audience": "user",
+      "categoryId": "account",
+      "priority": "low",
+      "icon": "security",
+      "titleTemplate": "Cập nhật liên kết bảo mật tài khoản",
+      "messageTemplate": "Tài khoản Urii của bạn đã được xác thực và bảo vệ an toàn.",
+      "actionUrlTemplate": "/account/profile"
+    },
+    {
+      "id": "ADMIN_ORDER_NEW",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "add_shopping_cart",
+      "titleTemplate": "Đơn hàng mới #{orderId} chờ xác nhận",
+      "messageTemplate": "Khách hàng {actorName} vừa đặt đơn hàng #{orderId}. Vui lòng kiểm tra và xác nhận trong 24 giờ.",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_ORDER_PAYMENT_RECEIVED",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "normal",
+      "icon": "price_check",
+      "titleTemplate": "Đã nhận thanh toán đơn #{orderId}",
+      "messageTemplate": "Khách hàng {actorName} đã hoàn tất thanh toán trực tuyến cho đơn hàng #{orderId}.",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_ORDER_CANCEL_REQUEST",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "urgent",
+      "icon": "cancel_schedule_send",
+      "titleTemplate": "Yêu cầu hủy đơn #{orderId} chờ duyệt",
+      "messageTemplate": "Khách hàng {actorName} gửi yêu cầu hủy đơn #{orderId}. Cần kiểm tra kho và phản hồi trước hạn SLA 24 giờ.",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_ORDER_RETURN_REQUEST",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "urgent",
+      "icon": "assignment_return",
+      "titleTemplate": "Yêu cầu hoàn trả đơn #{orderId} chờ duyệt",
+      "messageTemplate": "Khách hàng {actorName} gửi yêu cầu trả hàng/hoàn tiền kèm minh chứng cho đơn #{orderId}. Hạn duyệt SLA: 48 giờ.",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_ORDER_RETURN_WAREHOUSE_RECEIVED",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "warehouse",
+      "titleTemplate": "Kho đã nhận hàng hoàn đơn #{orderId}",
+      "messageTemplate": "Kiện hàng hoàn của đơn #{orderId} đã về kho Urii. Cần kiểm tra chất lượng và duyệt hoàn tiền cho {actorName}.",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_ORDER_SLA_WARNING",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "urgent",
+      "icon": "alarm",
+      "titleTemplate": "Cảnh báo SLA đơn hàng #{orderId}",
+      "messageTemplate": "Đơn hàng #{orderId} của khách {actorName} sắp đến hạn SLA xử lý. Vui lòng ưu tiên kiểm tra ngay!",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_ORDER_DELIVERY_ISSUE",
+      "audience": "admin",
+      "categoryId": "order",
+      "priority": "high",
+      "icon": "local_shipping",
+      "titleTemplate": "Sự cố giao vận đơn #{orderId}",
+      "messageTemplate": "Đơn vị vận chuyển báo sự cố giao hàng cho đơn #{orderId} của khách {actorName}.",
+      "actionUrlTemplate": "/admin/orders/{orderId}"
+    },
+    {
+      "id": "ADMIN_CUSTOM_ORDER_NEW",
+      "audience": "admin",
+      "categoryId": "custom_order",
+      "priority": "high",
+      "icon": "Design_services",
+      "titleTemplate": "Yêu cầu thiết kế custom mới #{customOrderId}",
+      "messageTemplate": "Khách hàng {actorName} vừa gửi yêu cầu đặt làm mẫu custom #{customOrderId} (kèm map #{mapId}), chờ lên báo giá.",
+      "actionUrlTemplate": "/admin/custom-orders/{customOrderId}"
+    },
+    {
+      "id": "ADMIN_REVIEW_NEW",
+      "audience": "admin",
+      "categoryId": "catalog",
+      "priority": "normal",
+      "icon": "star_rate",
+      "titleTemplate": "Đánh giá mới cho sản phẩm #{productId}",
+      "messageTemplate": "Khách hàng {actorName} vừa đánh giá sản phẩm #{productId} từ đơn hàng #{orderId}.",
+      "actionUrlTemplate": "/admin/products/{productId}/reviews"
+    },
+    {
+      "id": "ADMIN_PRODUCT_LOW_STOCK",
+      "audience": "admin",
+      "categoryId": "catalog",
+      "priority": "high",
+      "icon": "production_quantity_limits",
+      "titleTemplate": "Cảnh báo tồn kho sản phẩm #{productId}",
+      "messageTemplate": "Sản phẩm #{productId} đang có tốc độ bán nhanh, cần kiểm tra bổ sung tồn kho các phân loại màu.",
+      "actionUrlTemplate": "/admin/products/{productId}"
+    },
+    {
+      "id": "ADMIN_BLOG_NEW_POST",
+      "audience": "admin",
+      "categoryId": "community",
+      "priority": "normal",
+      "icon": "article",
+      "titleTemplate": "Bài viết cộng đồng mới #{blogId}",
+      "messageTemplate": "Thành viên {actorName} vừa đăng bài chia sẻ mới #{blogId} lên Góc Cộng Đồng.",
+      "actionUrlTemplate": "/admin/blogs/{blogId}"
+    },
+    {
+      "id": "ADMIN_COMMENT_NEW",
+      "audience": "admin",
+      "categoryId": "community",
+      "priority": "low",
+      "icon": "comment",
+      "titleTemplate": "Bình luận mới #{commentId} trên bài viết #{blogId}",
+      "messageTemplate": "Thành viên {actorName} vừa gửi bình luận #{commentId} tại bài viết #{blogId}.",
+      "actionUrlTemplate": "/admin/blogs/{blogId}"
+    },
+    {
+      "id": "ADMIN_CHAT_WAITING_SUPPORT",
+      "audience": "admin",
+      "categoryId": "support",
+      "priority": "urgent",
+      "icon": "mark_chat_unread",
+      "titleTemplate": "Khách hàng chờ tư vấn tại phiên #{sessionId}",
+      "messageTemplate": "Khách hàng {actorName} đang yêu cầu nhân viên tư vấn hỗ trợ trực tiếp trong phiên chat #{sessionId}.",
+      "actionUrlTemplate": "/admin/chat/{sessionId}"
+    },
+    {
+      "id": "ADMIN_USER_NEW_REGISTERED",
+      "audience": "admin",
+      "categoryId": "system",
+      "priority": "low",
+      "icon": "person_add",
+      "titleTemplate": "Thành viên mới đăng ký tài khoản",
+      "messageTemplate": "Khách hàng {actorName} vừa đăng ký tài khoản thành viên mới trên hệ thống Urii.",
+      "actionUrlTemplate": "/admin/users/{actorUserId}"
+    },
+    {
+      "id": "ADMIN_VOUCHER_EXPIRED_OR_LOW",
+      "audience": "admin",
+      "categoryId": "system",
+      "priority": "normal",
+      "icon": "confirmation_number",
+      "titleTemplate": "Cảnh báo trạng thái voucher {voucherId}",
+      "messageTemplate": "Mã khuyến mãi {voucherId} đã hết hiệu lực hoặc cần cập nhật lại ngân sách sử dụng.",
+      "actionUrlTemplate": "/admin/vouchers/{voucherId}"
+    }
+  ]
+}

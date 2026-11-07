@@ -18,7 +18,9 @@ const requireAdminLogin: CanActivateChildFn = () => {
     return true;
   }
 
-  const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+  const token = localStorage.getItem('adminToken')
+    || localStorage.getItem('urii-admin-token')
+    || localStorage.getItem('token');
   return token ? true : inject(Router).createUrlTree(['/']);
 };
 
@@ -36,8 +38,9 @@ export const routes: Routes = [
       { path: 'promotions', redirectTo: 'coupons', pathMatch: 'full' },
       { path: 'users', component: UsersComponent },
       { path: 'library', component: MapAdmin },
+      { path: 'maps', redirectTo: 'library', pathMatch: 'full' },
       { path: 'chatbot', component: SupportAdmin },
-      {path: 'blogs', component: BlogsAdmin},
+      { path: 'blogs', component: BlogsAdmin },
       { path: 'comments', component: CommentsAdmin },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const { formatRelativeTime } = require('../utils/time');
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -30,17 +31,42 @@ async function syncBlogCommentsCount(blogId) {
 }
 
 async function enrichComments(comments) {
-  const userIds = [...new Set(comments.map((c) => c.userId).filter(Boolean).map(String))];
-  const users = userIds.length
-    ? await User.find({ _id: { $in: userIds } }).select('name avatar').lean()
+  const allUserIds = [
+    ...new Set(
+      comments.flatMap((c) => [c.userId, ...(c.replies || []).map((r) => r.userId)])
+        .filter(Boolean)
+        .map(String)
+    )
+  ];
+  const users = allUserIds.length
+    ? await User.find({ _id: { $in: allUserIds } }).select('name avatar role').lean()
     : [];
   const usersById = new Map(users.map((u) => [String(u._id), u]));
+
   return comments.map((comment) => {
     const user = comment.userId ? usersById.get(String(comment.userId)) : null;
+    const createdAt = comment.createdAt || comment._id?.getTimestamp?.() || new Date();
+    const dynamicTime = formatRelativeTime(createdAt);
+
+    const enrichedReplies = (comment.replies || []).map((reply) => {
+      const replyUser = reply.userId ? usersById.get(String(reply.userId)) : null;
+      const replyCreatedAt = reply.createdAt || new Date();
+      return {
+        ...reply,
+        author: reply.author || replyUser?.name || (reply.role === 'admin' ? 'Urii Admin' : 'Khách hàng'),
+        avatar: reply.avatar || replyUser?.avatar || 'images/avatar-non.jpg',
+        createdAt: replyCreatedAt,
+        time: formatRelativeTime(replyCreatedAt)
+      };
+    });
+
     return {
       ...comment,
       author: comment.author || user?.name || 'Khách hàng',
-      avatar: comment.avatar || user?.avatar || 'images/avatar-non.jpg'
+      avatar: comment.avatar || user?.avatar || 'images/avatar-non.jpg',
+      createdAt,
+      time: dynamicTime,
+      replies: enrichedReplies
     };
   });
 }
@@ -106,6 +132,7 @@ exports.createComment = async (req, res) => {
       const latestComment = await Comment.findOne().sort({ id: -1 }).select('id').lean();
       id = (latestComment?.id || 0) + 1;
     }
+    const createdAt = req.body.createdAt ? new Date(req.body.createdAt) : new Date();
     const comment = await Comment.create({
       ...req.body,
       id,
@@ -113,7 +140,9 @@ exports.createComment = async (req, res) => {
       ...(resolvedUserId ? { userId: resolvedUserId } : {}),
       ...(hasValidAuthor ? { author: author.trim() } : {}),
       content: content.trim(),
-      time: typeof req.body.time === 'string' && req.body.time.trim() ? req.body.time.trim() : 'Vừa xong'
+      createdAt,
+      time: formatRelativeTime(createdAt),
+      replies: []
     });
     await syncBlogCommentsCount(blogId);
     emitCrudChange('comments', 'created', comment._id);
@@ -130,6 +159,64 @@ exports.createComment = async (req, res) => {
     }
     console.error('Lỗi tạo bình luận:', error);
     res.status(500).json({ message: 'Không thể tạo bình luận.' });
+  }
+};
+
+exports.createCommentReply = async (req, res) => {
+  if (!isRecord(req.body) || typeof req.body.content !== 'string' || !req.body.content.trim()) {
+    res.status(400).json({ message: 'Nội dung phản hồi không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const comment = await Comment.findOne(commentFilter(req.params.id));
+    if (!comment) {
+      res.status(404).json({ message: 'Không tìm thấy bình luận.' });
+      return;
+    }
+
+    const tokenUserId = typeof req.auth?.id === 'string' && mongoose.isValidObjectId(req.auth.id)
+      ? req.auth.id
+      : undefined;
+    const bodyUserId = typeof req.body.userId === 'string' && mongoose.isValidObjectId(req.body.userId)
+      ? req.body.userId
+      : undefined;
+    const resolvedUserId = req.auth?.role === 'admin'
+      ? (bodyUserId || tokenUserId)
+      : (tokenUserId || bodyUserId);
+
+    const blog = await Blog.findOne({ id: comment.blogId }).select('userId').lean();
+    let role = 'user';
+    if (req.auth?.role === 'admin') {
+      role = 'admin';
+    } else if (resolvedUserId && blog?.userId && String(resolvedUserId) === String(blog.userId)) {
+      role = 'author';
+    }
+
+    const replyCount = (comment.replies?.length || 0) + 1;
+    const replyId = `c${comment.id}-r${replyCount}`;
+    const createdAt = req.body.createdAt ? new Date(req.body.createdAt) : new Date();
+
+    const newReply = {
+      id: replyId,
+      ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+      ...(typeof req.body.author === 'string' && req.body.author.trim() ? { author: req.body.author.trim() } : {}),
+      content: req.body.content.trim(),
+      createdAt,
+      time: formatRelativeTime(createdAt),
+      role
+    };
+
+    comment.replies = comment.replies || [];
+    comment.replies.push(newReply);
+    await comment.save();
+
+    emitCrudChange('comments', 'updated', comment._id);
+    const [enriched] = await enrichComments([comment.toObject()]);
+    res.status(201).json(enriched);
+  } catch (error) {
+    console.error('Lỗi phản hồi bình luận:', error);
+    res.status(500).json({ message: 'Không thể phản hồi bình luận.' });
   }
 };
 

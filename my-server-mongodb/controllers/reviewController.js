@@ -18,6 +18,33 @@ function buildProductLookupFilter(value) {
   return { $or: filters };
 }
 
+function reviewFilter(value) {
+  const normalized = String(value || '').trim();
+  const filters = [{ id: normalized }];
+  if (mongoose.isValidObjectId(normalized)) {
+    filters.push({ _id: normalized });
+  }
+  return { $or: filters };
+}
+
+function enrichReview(review, usersById) {
+  const user = usersById.get(String(review.userId));
+  const replies = (review.replies || []).map((reply) => {
+    const replyUser = reply.userId ? usersById.get(String(reply.userId)) : null;
+    return {
+      ...reply,
+      author: reply.author || (reply.role === 'admin' ? 'Urii Store' : (replyUser?.name || 'Khách hàng')),
+      avatar: reply.avatar || (reply.role === 'admin' ? 'images/Urii-Logo.png' : (replyUser?.avatar || 'images/avatar-non.jpg'))
+    };
+  });
+  return {
+    ...review,
+    userName: user?.name || 'Khách hàng',
+    userAvatar: user?.avatar || '/images/avatar-non.jpg',
+    replies
+  };
+}
+
 async function getCustomerId(req, res) {
   const id = req.auth?.id;
   if (!mongoose.isValidObjectId(id)) {
@@ -57,23 +84,17 @@ exports.getAllReviews = async (req, res) => {
     const userIds = [
       ...new Set(
         reviews
-          .map((review) => String(review.userId || ''))
+          .flatMap((review) => [review.userId, ...(review.replies || []).map((r) => r.userId)])
           .filter((id) => mongoose.isValidObjectId(id))
+          .map(String)
       )
     ];
     const users = userIds.length > 0
-      ? await User.find({ _id: { $in: userIds } }).select('name avatar').lean()
+      ? await User.find({ _id: { $in: userIds } }).select('name avatar role').lean()
       : [];
     const usersById = new Map(users.map((user) => [String(user._id), user]));
 
-    res.json(reviews.map((review) => {
-      const user = usersById.get(String(review.userId));
-      return {
-        ...review,
-        userName: user?.name || 'Khách hàng',
-        userAvatar: user?.avatar || '/images/avatar-non.jpg'
-      };
-    }));
+    res.json(reviews.map((review) => enrichReview(review, usersById)));
   } catch (error) {
     console.error('Lỗi tải danh sách đánh giá:', error);
     res.status(500).json({ message: 'Không thể tải danh sách đánh giá.' });
@@ -106,12 +127,13 @@ exports.getProductReviews = async (req, res) => {
     const userIds = [
       ...new Set(
         reviews
-          .map((review) => String(review.userId || ''))
+          .flatMap((review) => [review.userId, ...(review.replies || []).map((r) => r.userId)])
           .filter((id) => mongoose.isValidObjectId(id))
+          .map(String)
       )
     ];
     const users = userIds.length > 0
-      ? await User.find({ _id: { $in: userIds } }).select('name avatar').lean()
+      ? await User.find({ _id: { $in: userIds } }).select('name avatar role').lean()
       : [];
     const usersById = new Map(users.map((user) => [String(user._id), user]));
     const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -129,14 +151,7 @@ exports.getProductReviews = async (req, res) => {
       total,
       averageRating: total ? Number((ratingTotal / total).toFixed(2)) : (product?.rating || 0),
       distribution,
-      reviews: reviews.map((review) => {
-        const user = usersById.get(String(review.userId));
-        return {
-          ...review,
-          userName: user?.name || 'Khách hàng',
-          userAvatar: user?.avatar || '/images/avatar-non.jpg'
-        };
-      })
+      reviews: reviews.map((review) => enrichReview(review, usersById))
     });
   } catch (error) {
     console.error('Lỗi tải đánh giá sản phẩm:', error);
@@ -158,7 +173,8 @@ exports.getMyReviews = async (req, res) => {
       product: productsById.get(review.productId) || null
     })));
   } catch (error) {
-    sendReviewError(res, error);
+    console.error('Lỗi tải đánh giá của tôi:', error);
+    res.status(500).json({ message: 'Không thể tải đánh giá của bạn.' });
   }
 };
 
@@ -166,67 +182,60 @@ exports.getEligibleOrders = async (req, res) => {
   try {
     const userId = await getCustomerId(req, res);
     if (!userId) return;
-    const orders = await Order.find({
-      userId,
-      $or: [{ statusId: 'completed' }, { statusType: 'completed' }]
-    }).sort({ createdAt: -1 }).lean();
-    const reviews = await Review.find({ userId }).select('orderId productId').lean();
-    const reviewed = new Set(reviews.map((review) => `${review.orderId}:${review.productId}`));
-    const productIds = [...new Set(orders.flatMap((order) => (
-      (order.items || []).map((item) => item.productId)
-    )))];
-    const products = await Product.find({ id: { $in: productIds } }).select('id name image').lean();
-    const productsById = new Map(products.map((product) => [product.id, product]));
-    res.json(orders.map((order) => ({
-      id: order.id,
-      date: order.date,
-      deliveredAt: order.deliveredAt || null,
-      items: (order.items || []).map((item) => ({
-        productId: item.productId,
-        product: productsById.get(item.productId) || null,
-        variantIndex: item.variantIndex ?? null,
-        variantName: item.variantName || 'Mặc định',
-        reviewed: reviewed.has(`${order.id}:${item.productId}`)
-      }))
-    })));
+
+    const [orders, existingReviews] = await Promise.all([
+      Order.find({ userId, statusId: 'completed' })
+        .sort({ deliveredAt: -1, createdAt: -1 })
+        .lean(),
+      Review.find({ userId }).select('orderId productId').lean()
+    ]);
+
+    const reviewedKeys = new Set(
+      existingReviews.map((review) => `${review.orderId}:${review.productId}`)
+    );
+
+    const eligibleOrders = orders
+      .map((order) => {
+        const unreviewedItems = (order.items || []).filter(
+          (item) => !reviewedKeys.has(`${order.id}:${item.productId}`)
+        );
+        return {
+          ...order,
+          items: unreviewedItems
+        };
+      })
+      .filter((order) => order.items.length > 0);
+
+    res.json(eligibleOrders);
   } catch (error) {
-    sendReviewError(res, error);
+    console.error('Lỗi tải đơn hàng chờ đánh giá:', error);
+    res.status(500).json({ message: 'Không thể tải đơn hàng chờ đánh giá.' });
   }
 };
 
 exports.createReview = async (req, res) => {
-  const { orderId, productId, rating, content = '', media = [] } = req.body || {};
-  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
-    || Object.keys(req.body).some((key) => !['orderId', 'productId', 'rating', 'content', 'media'].includes(key))
-    || typeof orderId !== 'string' || typeof productId !== 'string'
-    || !Number.isInteger(rating) || rating < 1 || rating > 5
-    || typeof content !== 'string' || content.trim().length > 1000
-    || !Array.isArray(media) || media.length > 5
-    || media.some((item) => !item || typeof item !== 'object' || Array.isArray(item)
-      || Object.keys(item).some((key) => !['type', 'url'].includes(key))
-      || !['image', 'video'].includes(item.type)
-      || !isValidImageUrl(item.url))) {
-    res.status(400).json({ message: 'Thông tin đánh giá không hợp lệ.' });
-    return;
-  }
-
   try {
     const userId = await getCustomerId(req, res);
     if (!userId) return;
-    const order = await Order.findOne({ id: orderId, userId }).lean();
+
+    const { orderId, productId, rating, content = '', media = [] } = req.body;
+    if (!orderId || !productId || !rating) {
+      res.status(400).json({ message: 'Thiếu thông tin đơn hàng, sản phẩm hoặc số sao đánh giá.' });
+      return;
+    }
+
+    const order = await Order.findOne({ id: orderId, userId, statusId: 'completed' }).lean();
     if (!order) {
-      res.status(404).json({ message: 'Không tìm thấy đơn hàng của khách hàng.' });
+      res.status(400).json({ message: 'Chỉ có thể đánh giá các sản phẩm trong đơn hàng đã giao thành công.' });
       return;
     }
-    if ((order.statusId || order.statusType) !== 'completed') {
-      res.status(409).json({ message: 'Chỉ có thể đánh giá sản phẩm từ đơn hàng đã giao thành công.' });
-      return;
-    }
+
     const orderItem = (order.items || []).find((item) => item.productId === productId);
     if (!orderItem) {
       res.status(400).json({ message: 'Sản phẩm không thuộc đơn hàng này.' });
       return;
     }
+
     const product = await Product.findOne({ id: productId }).lean();
     if (!product) {
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
@@ -245,7 +254,8 @@ exports.createReview = async (req, res) => {
       variantIndex,
       variantName,
       content: content.trim(),
-      media
+      media,
+      replies: []
     });
     const ratingStats = await syncProductRating(productId, {
       ReviewModel: Review,
@@ -259,5 +269,63 @@ exports.createReview = async (req, res) => {
     });
   } catch (error) {
     sendReviewError(res, error);
+  }
+};
+
+exports.createReviewReply = async (req, res) => {
+  if (!req.body || typeof req.body.content !== 'string' || !req.body.content.trim()) {
+    res.status(400).json({ message: 'Nội dung phản hồi không hợp lệ.' });
+    return;
+  }
+  try {
+    const review = await Review.findOne(reviewFilter(req.params.id));
+    if (!review) {
+      res.status(404).json({ message: 'Không tìm thấy đánh giá.' });
+      return;
+    }
+
+    const tokenUserId = typeof req.auth?.id === 'string' && mongoose.isValidObjectId(req.auth.id)
+      ? req.auth.id
+      : undefined;
+    const bodyUserId = typeof req.body.userId === 'string' && mongoose.isValidObjectId(req.body.userId)
+      ? req.body.userId
+      : undefined;
+    const resolvedUserId = req.auth?.role === 'admin'
+      ? (bodyUserId || tokenUserId)
+      : (tokenUserId || bodyUserId);
+
+    let role = req.auth?.role === 'admin' ? 'admin' : 'user';
+    let replyType = req.body.replyType;
+    if (!replyType) {
+      if (role === 'admin') {
+        replyType = req.body.isAuto ? 'auto_thank_you' : 'staff_support';
+      } else {
+        replyType = 'customer_inquiry';
+      }
+    }
+
+    const replyCount = (review.replies?.length || 0) + 1;
+    const replyId = `rr-${review.id}-${replyCount}`;
+    const createdAt = req.body.createdAt ? new Date(req.body.createdAt) : new Date();
+
+    const newReply = {
+      id: replyId,
+      ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+      ...(typeof req.body.author === 'string' && req.body.author.trim() ? { author: req.body.author.trim() } : {}),
+      content: req.body.content.trim(),
+      role,
+      replyType,
+      createdAt
+    };
+
+    review.replies = review.replies || [];
+    review.replies.push(newReply);
+    await review.save();
+
+    emitCrudChange('reviews', 'updated', review._id);
+    res.status(201).json(review);
+  } catch (error) {
+    console.error('Lỗi phản hồi đánh giá:', error);
+    res.status(500).json({ message: 'Không thể phản hồi đánh giá.' });
   }
 };

@@ -4,26 +4,18 @@
 
 :host {
     display: block;
-    background-color: #f4f5f8;
-    font-family: 'Nunito Sans', sans-serif;
     width: 100%;
-    min-height: 100vh;
 }
 
 .admin-layout-wrapper {
-    display: flex;
+    display: block;
     width: 100%;
-    min-height: 100vh;
-    background-color: #f4f5f8;
 }
 
 /* --- NỘI DUNG --- */
 .admin-main-content {
-    flex: 1;  
-    padding: 30px 40px 40px 40px;
+    padding: 0 !important;
     width: 100%;
-    box-sizing: border-box;
-    margin-top: 0px; 
 }
 
 /* --- BADGE TRẠNG THÁI --- */

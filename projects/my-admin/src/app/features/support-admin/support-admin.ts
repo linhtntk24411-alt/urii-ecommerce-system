@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -19,13 +19,15 @@ export class SupportAdmin implements OnInit, OnDestroy {
   adminReplyText: string = '';
   private pollInterval: any;
 
+  constructor(private cdr: ChangeDetectorRef) {}
+
   ngOnInit(): void {
     this.loadSessions();
-    this.lastKnownSessionsJSON = localStorage.getItem('urii_chat_sessions') || '{}';
+    this.lastKnownSessionsJSON = typeof localStorage !== 'undefined' ? (localStorage.getItem('urii_chat_sessions') || '{}') : '{}';
     
     // Kiểm tra đồng bộ định kỳ
     if (typeof window !== 'undefined') {
-      this.pollInterval = setInterval(() => this.checkAndSyncStorage(), 1500);
+      this.pollInterval = setInterval(() => this.checkAndSyncStorage(), 3000);
     }
   }
 
@@ -41,6 +43,10 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
   getWaitingCount(): number {
     return this.getSessionsArray().filter(s => s.status === 'waiting').length;
+  }
+
+  setFilter(filter: string) {
+    this.currentFilter = filter;
   }
 
   getFilteredSessions(): any[] {
@@ -69,12 +75,44 @@ export class SupportAdmin implements OnInit, OnDestroy {
   loadSessions() {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       try {
-        this.sessions = JSON.parse(localStorage.getItem('urii_chat_sessions') || '{}');
+        const local = JSON.parse(localStorage.getItem('urii_chat_sessions') || '{}');
+        if (local && Object.keys(local).length > 0) {
+          this.sessions = local;
+        }
       } catch (e) {
-        console.error('Error reading urii_chat_sessions:', e);
         this.sessions = {};
       }
     }
+
+    // Tải đồng bộ từ MongoDB backend
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    fetch('/api/chat/sessions', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(r => r.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data?.sessions || []);
+        if (list.length > 0) {
+          const map: { [key: string]: any } = {};
+          list.forEach((s: any) => {
+            const key = s.sessionId || s._id;
+            map[key] = {
+              ...s,
+              sessionId: key,
+              lastMessageTime: s.lastMessageTime || (s.updatedAt ? new Date(s.updatedAt).getTime() : Date.now())
+            };
+          });
+          this.sessions = map;
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('urii_chat_sessions', JSON.stringify(map));
+          }
+          this.cdr.detectChanges();
+        }
+      })
+      .catch(err => console.error('Lỗi tải chat sessions từ backend:', err));
   }
 
   saveSessions() {
@@ -150,6 +188,18 @@ export class SupportAdmin implements OnInit, OnDestroy {
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
 
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+    fetch(`/api/chat/sessions/${encodeURIComponent(this.selectedSessionId)}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ text, sender: 'admin' })
+    }).catch(err => console.error('Lỗi gửi tin nhắn admin:', err));
+
     this.adminReplyText = '';
   }
 
@@ -170,6 +220,18 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+    fetch(`/api/chat/sessions/${encodeURIComponent(this.selectedSessionId)}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ status: 'active', systemLog: 'Nhân viên tư vấn đã bắt đầu tiếp quản cuộc trò chuyện.' })
+    }).catch(err => console.error('Lỗi đổi trạng thái chat:', err));
   }
 
   handbackChat() {
@@ -179,8 +241,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     session.status = 'ai';
     session.messages.push({
-      text: 'Hệ thống đã chuyển giao lại quyền hỗ trợ cho Trợ lý ảo AI.',
-      sender: 'bot',
+      text: 'Nhân viên đã trả lại phiên chat cho Urii Bot tự động tư vấn.',
+      sender: 'admin',
       timestamp: Date.now(),
       isSystemLog: true
     });
@@ -188,24 +250,25 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
-  }
 
-  setFilter(filter: string) {
-    this.currentFilter = filter;
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+    fetch(`/api/chat/sessions/${encodeURIComponent(this.selectedSessionId)}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ status: 'ai', systemLog: 'Nhân viên đã trả lại phiên chat cho Urii Bot tự động tư vấn.' })
+    }).catch(err => console.error('Lỗi trả phiên chat cho bot:', err));
   }
 
   checkAndSyncStorage() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     const currentJSON = localStorage.getItem('urii_chat_sessions') || '{}';
     if (currentJSON !== this.lastKnownSessionsJSON) {
       this.lastKnownSessionsJSON = currentJSON;
-      this.loadSessions();
-    }
-  }
-
-  @HostListener('window:storage', ['$event'])
-  onStorageChange(event: StorageEvent) {
-    if (event.key === 'urii_chat_sessions') {
       this.loadSessions();
     }
   }

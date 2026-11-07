@@ -9,6 +9,24 @@ const { emitCrudChange } = require('../realtime');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_BYTES = 72;
+const PROFILE_GENDERS = new Set(['', 'male', 'female', 'other', 'prefer_not_to_say']);
+
+function isValidBirthDate(value) {
+  const vietnameseDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const day = vietnameseDate ? Number(vietnameseDate[1]) : isoDate ? Number(isoDate[3]) : 0;
+  const month = vietnameseDate ? Number(vietnameseDate[2]) : isoDate ? Number(isoDate[2]) : 0;
+  const year = vietnameseDate ? Number(vietnameseDate[3]) : isoDate ? Number(isoDate[1]) : 0;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  return Boolean(day && month && year)
+    && date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    && date <= today;
+}
 
 function formatAuthUser(user) {
   if (!user) return null;
@@ -22,6 +40,8 @@ function formatAuthUser(user) {
     phone: user.phone || '',
     birth: user.birth || '',
     address: user.address || '',
+    interests: user.interests || '',
+    gender: user.gender || '',
     joinDate: user.joinDate || '',
     orders: user.orders ?? 0,
     maps: user.maps ?? 0,
@@ -142,7 +162,7 @@ exports.updateMe = async (req, res) => {
     return;
   }
 
-  const allowedFields = ['name', 'phone', 'birth', 'address', 'avatar', 'password'];
+  const allowedFields = ['name', 'phone', 'birth', 'address', 'interests', 'gender', 'avatar', 'password'];
   const updates = {};
   for (const field of allowedFields) {
     if (Object.hasOwn(req.body, field)) {
@@ -157,6 +177,38 @@ exports.updateMe = async (req, res) => {
     }
     updates.name = updates.name.trim();
   }
+
+  if (updates.phone !== undefined) {
+    if (typeof updates.phone !== 'string'
+      || !/^\+?[\d\s().-]{7,20}$/.test(updates.phone.trim())) {
+      res.status(400).json({ message: 'Số điện thoại là bắt buộc và phải hợp lệ.' });
+      return;
+    }
+    updates.phone = updates.phone.trim();
+  }
+
+  if (updates.birth !== undefined) {
+    if (typeof updates.birth !== 'string' || !isValidBirthDate(updates.birth.trim())) {
+      res.status(400).json({ message: 'Ngày sinh là bắt buộc, phải hợp lệ và không được ở tương lai.' });
+      return;
+    }
+    updates.birth = updates.birth.trim();
+  }
+
+  if (updates.interests !== undefined) {
+    if (typeof updates.interests !== 'string' || updates.interests.length > 500) {
+      res.status(400).json({ message: 'Sở thích không được vượt quá 500 ký tự.' });
+      return;
+    }
+    updates.interests = updates.interests.trim();
+  }
+
+  if (updates.gender !== undefined
+    && (typeof updates.gender !== 'string' || !PROFILE_GENDERS.has(updates.gender))) {
+    res.status(400).json({ message: 'Giới tính không hợp lệ.' });
+    return;
+  }
+
 
   if (updates.password !== undefined) {
     if (typeof updates.password !== 'string'
@@ -217,11 +269,11 @@ function oauthErrorStatus(error) {
 function getFrontendOrigin() {
   const configured = (process.env.OAUTH_FRONTEND_ORIGIN || '').trim();
   if (configured) return configured;
-  const firstCors = (process.env.CORS_ORIGINS || 'http://localhost:4200')
+  const firstCors = (process.env.CORS_ORIGINS || 'http://localhost:4201')
     .split(',')
     .map((origin) => origin.trim())
     .find(Boolean);
-  return firstCors || 'http://localhost:4200';
+  return firstCors || 'http://localhost:4201';
 }
 
 function extractLinkTokenFromRequest(req) {
@@ -517,6 +569,140 @@ exports.oauthCallback = async (req, res) => {
     console.error(`Lỗi đăng nhập OAuth ${provider}:`, error.message);
     sendOAuthCallbackResult(req, res, oauthErrorStatus(error), provider, {
       message: `Không thể hoàn tất đăng nhập OAuth ${provider} lúc này.`
+    });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  const { token } = req.body || {};
+
+  if (typeof token !== 'string' || !token) {
+    return res.status(400).json({
+      message: 'Không nhận được thông tin xác thực từ Google.'
+    });
+  }
+
+  if (!process.env.JWT_SECRET) {
+    return res.status(500).json({
+      message: 'Máy chủ chưa cấu hình JWT_SECRET.'
+    });
+  }
+
+  try {
+    // 1. Dùng access_token lấy thông tin tài khoản Google
+    const googleRes = await fetch(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!googleRes.ok) {
+      return res.status(401).json({
+        message: 'Token Google không hợp lệ hoặc đã hết hạn.'
+      });
+    }
+
+    const payload = await googleRes.json();
+
+    if (
+      !payload.sub ||
+      !payload.email ||
+      payload.email_verified !== true
+    ) {
+      return res.status(401).json({
+        message: 'Tài khoản Google chưa được xác minh hợp lệ.'
+      });
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const googleId = payload.sub;
+
+    // 2. Chỉ cho phép tài khoản admin đã tồn tại
+    const user = await User.findOne({ email });
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        message: 'Tài khoản Google không có quyền truy cập Admin.'
+      });
+    }
+
+    // 3. Kiểm tra Google ID đã liên kết với tài khoản khác chưa
+    const linkedGoogleUser = await User.findOne({
+      'oauthAccounts.provider': 'google',
+      'oauthAccounts.providerUserId': googleId
+    });
+
+    if (
+      linkedGoogleUser &&
+      linkedGoogleUser._id.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({
+        message: 'Tài khoản Google đã được liên kết với tài khoản khác.'
+      });
+    }
+
+    // 4. Kiểm tra Google ID đã được liên kết với admin chưa
+    if (!Array.isArray(user.oauthAccounts)) {
+      user.oauthAccounts = [];
+    }
+    const existingGoogleAccount = user.oauthAccounts.find(
+      account => account.provider === 'google'
+    );
+
+    if (
+      existingGoogleAccount &&
+      existingGoogleAccount.providerUserId !== googleId
+    ) {
+      return res.status(403).json({
+        message: 'Tài khoản Google không khớp với tài khoản đã liên kết.'
+      });
+    }
+
+    // 5. Liên kết Google với tài khoản admin
+    if (!existingGoogleAccount) {
+      user.oauthAccounts.push({
+        provider: 'google',
+        providerUserId: googleId
+      });
+    }
+
+    if (!Array.isArray(user.authProviders)) {
+      user.authProviders = [];
+    }
+    if (!user.authProviders.includes('google')) {
+      user.authProviders.push('google');
+    }
+
+    if (!user.avatar && payload.picture) {
+      user.avatar = payload.picture;
+    }
+
+    await user.save();
+
+    // 6. Cấp JWT
+    const jwtToken = jwt.sign(
+      {
+        id: user._id.toString(),
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return res.json({
+      message: 'Đăng nhập Google thành công!',
+      token: jwtToken,
+      user: formatAuthUser(user)
+    });
+
+  } catch (error) {
+    console.error('Lỗi đăng nhập Google Admin:', error);
+
+    return res.status(500).json({
+      message: 'Không thể xác thực Google lúc này.'
     });
   }
 };

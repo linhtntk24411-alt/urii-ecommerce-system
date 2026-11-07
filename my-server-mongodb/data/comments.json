@@ -5,245 +5,431 @@
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Bài viết hay quá! Mình cũng thích ngồi làm đồ handmade vào cuối tuần.",
-      "time": "1 giờ trước"
+      "time": "1 giờ trước",
+      "replies": [
+        {
+          "id": "c1-r1",
+          "userId": "6ade4310c044b23d6c6a8681",
+          "content": "Cảm ơn bạn nhiều nha! Chúc bạn có những ngày cuối tuần vui vẻ bên góc handmade.",
+          "time": "50 phút trước",
+          "role": "author",
+          "createdAt": "2024-05-24T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-24T10:00:00.000Z"
     },
     {
       "id": 2,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8683",
       "content": "Nhìn góc bàn với ly trà là thấy bình yên rồi. Cảm ơn bạn đã chia sẻ!",
-      "time": "3 giờ trước"
+      "time": "3 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T11:25:00.000Z"
     },
     {
       "id": 3,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Nhìn những chiếc bánh sừng bò pixel thèm quá trời!",
-      "time": "5 giờ trước"
+      "time": "5 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T12:50:00.000Z"
     },
     {
       "id": 4,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Mình cũng nghiện bộ môn xếp hạt này như bạn. Xả stress cực kỳ hiệu quả.",
-      "time": "6 giờ trước"
+      "time": "6 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T13:15:00.000Z"
     },
     {
       "id": 5,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8686",
       "content": "Góc bàn nhìn ấm cúng thật đấy, thêm cái đèn vàng nữa là hết sảy.",
-      "time": "8 giờ trước"
+      "time": "8 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T14:40:00.000Z"
     },
     {
       "id": 6,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Bạn thường mua hạt perler ở đâu vậy? Mình muốn thử làm charm đồ ăn.",
-      "time": "10 giờ trước"
+      "time": "10 giờ trước",
+      "replies": [
+        {
+          "id": "c6-r1",
+          "userId": "6ade4310c044b23d6c6a8681",
+          "content": "Mình hay đặt hạt trực tiếp trên shop Urii đó bạn, hạt đều màu và không bị khét khi ủi nhiệt.",
+          "time": "9 giờ trước",
+          "role": "author",
+          "createdAt": "2024-05-24T16:25:00.000Z"
+        },
+        {
+          "id": "c6-r2",
+          "userId": "6ade4310c044b23d6c6a8680",
+          "content": "Chào bạn, Urii hiện có sẵn đầy đủ bảng 72 màu hạt Midi 5mm và Mini 2.6mm giao nhanh toàn quốc nhé!",
+          "time": "8 giờ trước",
+          "role": "admin",
+          "createdAt": "2024-05-24T16:45:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-24T16:05:00.000Z"
     },
     {
       "id": 7,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Mấy trái tim hồng có chân gỗ nhỏ xíu dễ thương ghê!",
-      "time": "12 giờ trước"
+      "time": "12 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T17:30:00.000Z"
     },
     {
       "id": 8,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8686",
       "content": "Bài viết truyền cảm hứng quá, cuối tuần này mình cũng bày ra làm mới được.",
-      "time": "14 giờ trước"
+      "time": "14 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T18:55:00.000Z"
     },
     {
       "id": 9,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8683",
       "content": "Làm handmade đúng là liều thuốc tinh thần sau ngày dài mệt mỏi.",
-      "time": "16 giờ trước"
+      "time": "16 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-24T19:20:00.000Z"
     },
     {
       "id": 10,
       "blogId": 1,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Mình thích nhất là mấy em bánh pretzel thắt nút cười toe toét.",
-      "time": "1 ngày trước"
+      "time": "1 ngày trước",
+      "replies": [],
+      "createdAt": "2024-05-24T20:45:00.000Z"
     },
     {
       "id": 11,
       "blogId": 2,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Em cáo dễ thương quá! Màu cam nhìn tươi tắn ghê.",
-      "time": "2 giờ trước"
+      "time": "2 giờ trước",
+      "replies": [
+        {
+          "id": "c11-r1",
+          "userId": "6ade4310c044b23d6c6a8681",
+          "content": "Cảm ơn bạn nhé! Dòng hạt cam tươi này lên màu ngoài đời nhìn còn mê hơn trong ảnh nữa á.",
+          "time": "2 giờ trước",
+          "role": "author",
+          "createdAt": "2024-05-22T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-22T10:00:00.000Z"
     },
     {
       "id": 12,
       "blogId": 2,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Làm theo hướng dẫn của bạn, mình đã thành công rồi! Cảm ơn nhiều nha.",
-      "time": "4 giờ trước"
+      "time": "4 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-22T11:25:00.000Z"
     },
     {
       "id": 13,
       "blogId": 2,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Cầm thành phẩm dày dặn trên tay đúng là đã thật. Bõ công hì hục cả buổi.",
-      "time": "6 giờ trước"
+      "time": "6 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-22T12:50:00.000Z"
     },
     {
       "id": 14,
       "blogId": 3,
       "userId": "6ade4310c044b23d6c6a8683",
       "content": "Bé mèo khóc mà nhìn dễ thương không tưởng. Mà công nhận trời mưa làm tâm trạng sụt sịt thật.",
-      "time": "1 giờ trước"
+      "time": "1 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-20T10:00:00.000Z"
     },
     {
       "id": 15,
       "blogId": 3,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Mình cũng đang làm một em mèo tương tự, cảm ơn ý tưởng của bạn nha!",
-      "time": "3 giờ trước"
+      "time": "3 giờ trước",
+      "replies": [
+        {
+          "id": "c15-r1",
+          "userId": "6ade4310c044b23d6c6a8685",
+          "content": "Làm xong nhớ chụp ảnh chia sẻ lên cộng đồng cho mọi người cùng ngắm với bạn nhé!",
+          "time": "3 giờ trước",
+          "role": "author",
+          "createdAt": "2024-05-20T11:45:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-20T11:25:00.000Z"
     },
     {
       "id": 16,
       "blogId": 3,
       "userId": "6ade4310c044b23d6c6a8686",
       "content": "Ảnh chụp đẹp, bài viết hài hước. Đọc xong tự nhiên thấy vui hẳn.",
-      "time": "5 giờ trước"
+      "time": "5 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-20T12:50:00.000Z"
     },
     {
       "id": 17,
       "blogId": 4,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Rèm cửa đẹp quá, mình sẽ làm một cái tặng đứa bạn thân.",
-      "time": "2 giờ trước"
+      "time": "2 giờ trước",
+      "replies": [
+        {
+          "id": "c17-r1",
+          "userId": "6ade4310c044b23d6c6a8683",
+          "content": "Làm rèm cửa cần kiên nhẫn chút nhưng treo lên phòng nhìn thích lắm bạn ơi.",
+          "time": "1 ngày trước",
+          "role": "author",
+          "createdAt": "2024-05-18T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-18T10:00:00.000Z"
     },
     {
       "id": 18,
       "blogId": 4,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Công phu thật đấy, cả tháng trời kiên trì. Bạn giỏi quá!",
-      "time": "4 giờ trước"
+      "time": "4 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-18T11:25:00.000Z"
     },
     {
       "id": 19,
       "blogId": 5,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Mang handmade ra phố hay ghê, mình cũng sẽ làm một sợi treo túi.",
-      "time": "1 giờ trước"
+      "time": "1 giờ trước",
+      "replies": [
+        {
+          "id": "c19-r1",
+          "userId": "6ade4310c044b23d6c6a8684",
+          "content": "Chuẩn luôn á bạn, mình treo balo đi học ai cũng hỏi mua ở đâu hihi.",
+          "time": "1 ngày trước",
+          "role": "user",
+          "createdAt": "2024-05-15T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-15T10:00:00.000Z"
     },
     {
       "id": 20,
       "blogId": 5,
       "userId": "6ade4310c044b23d6c6a8681",
       "content": "Mình cũng thường làm charm để tặng bạn bè. Mọi người đều thích lắm!",
-      "time": "3 giờ trước"
+      "time": "3 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-15T11:25:00.000Z"
     },
     {
       "id": 21,
       "blogId": 6,
       "userId": "6ade4310c044b23d6c6a8683",
       "content": "Bookmark đáng yêu quá, mình sẽ làm theo cho cuốn planner mới.",
-      "time": "2 giờ trước"
+      "time": "2 giờ trước",
+      "replies": [
+        {
+          "id": "c21-r1",
+          "userId": "6ade4310c044b23d6c6a8684",
+          "content": "Bạn ủi vừa tới tay đừng để hạt chảy quá thì kẹp sách sẽ rất êm và bền nha.",
+          "time": "1 ngày trước",
+          "role": "author",
+          "createdAt": "2024-05-12T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-12T10:00:00.000Z"
     },
     {
       "id": 22,
       "blogId": 6,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Mình thích nhất là bé tôm chiên giòn ôm dâu tây. Cưng xỉu!",
-      "time": "5 giờ trước"
+      "time": "5 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-12T11:25:00.000Z"
     },
     {
       "id": 23,
       "blogId": 7,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Kệ đựng hạt gọn gàng quá, mình học hỏi được nhiều. Cảm ơn bạn!",
-      "time": "1 giờ trước"
+      "time": "1 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-10T10:00:00.000Z"
     },
     {
       "id": 24,
       "blogId": 7,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Mình sẽ sắp xếp lại góc làm việc như bạn ngay. Ngăn nắp nhìn sướng mắt thật.",
-      "time": "3 giờ trước"
+      "time": "3 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-10T11:25:00.000Z"
     },
     {
       "id": 25,
       "blogId": 8,
       "userId": "6ade4310c044b23d6c6a8686",
       "content": "Bộ sưu tập Sanrio của bạn đẹp quá! Bé Kitty ngồi bánh tart dâu cưng ghê.",
-      "time": "2 giờ trước"
+      "time": "2 giờ trước",
+      "replies": [
+        {
+          "id": "c25-r1",
+          "userId": "6ade4310c044b23d6c6a8685",
+          "content": "Mình gom cả tháng mới đủ bộ đó, cảm ơn bạn đã ủng hộ bài viết nha!",
+          "time": "2 ngày trước",
+          "role": "author",
+          "createdAt": "2024-05-08T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-08T10:00:00.000Z"
     },
     {
       "id": 26,
       "blogId": 8,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Mình thích nhất là Kitty trong bánh tart dâu với lại bé Kuromi cá tính.",
-      "time": "4 giờ trước"
+      "time": "4 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-08T11:25:00.000Z"
     },
     {
       "id": 27,
       "blogId": 9,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Fan bóng đá như mình mê mấy em này luôn! Nhìn là muốn sưu tầm hết.",
-      "time": "1 giờ trước"
+      "time": "1 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-05T10:00:00.000Z"
     },
     {
       "id": 28,
       "blogId": 9,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Messi Chibi nhìn dễ thương quá trời. Bộ sọc xanh trắng chuẩn bài!",
-      "time": "3 giờ trước"
+      "time": "3 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-05T11:25:00.000Z"
     },
     {
       "id": 29,
       "blogId": 10,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Hộp quà 3D độc đáo thật, mình sẽ làm tặng người yêu dịp kỷ niệm.",
-      "time": "2 giờ trước"
+      "time": "2 giờ trước",
+      "replies": [],
+      "createdAt": "2024-05-03T10:00:00.000Z"
     },
     {
       "id": 30,
       "blogId": 10,
       "userId": "6ade4310c044b23d6c6a8681",
       "content": "Cảm ơn hướng dẫn chi tiết, mình sẽ thử ngay cuối tuần này.",
-      "time": "5 giờ trước"
+      "time": "5 giờ trước",
+      "replies": [
+        {
+          "id": "c30-r1",
+          "userId": "6ade4310c044b23d6c6a8680",
+          "content": "Mẫu hộp quà 3D này rất thích hợp để tặng bạn bè, Urii có set phụ kiện khớp nối sẵn cho mẫu này nhé!",
+          "time": "2 ngày trước",
+          "role": "admin",
+          "createdAt": "2024-05-03T11:45:00.000Z"
+        }
+      ],
+      "createdAt": "2024-05-03T11:25:00.000Z"
     },
     {
       "id": 31,
       "blogId": 11,
       "userId": "6ade4310c044b23d6c6a8685",
       "content": "Hello Kitty trong túi đào cưng xỉu! Chờ thành phẩm của bạn nha.",
-      "time": "1 giờ trước"
+      "time": "1 giờ trước",
+      "replies": [
+        {
+          "id": "c31-r1",
+          "userId": "6ade4310c044b23d6c6a8681",
+          "content": "Túi đào nhỏ nhỏ xinh xinh phối hạt pastel cưng xỉu luôn bạn ơi.",
+          "time": "3 ngày trước",
+          "role": "author",
+          "createdAt": "2024-04-30T10:20:00.000Z"
+        }
+      ],
+      "createdAt": "2024-04-30T10:00:00.000Z"
     },
     {
       "id": 32,
       "blogId": 11,
       "userId": "6ade4310c044b23d6c6a8684",
       "content": "Đợi thành phẩm của bạn nhé, nhìn phần thô đã thấy đẹp rồi.",
-      "time": "4 giờ trước"
+      "time": "4 giờ trước",
+      "replies": [
+        {
+          "id": "c32-r1",
+          "userId": "6ade4310c044b23d6c6a8680",
+          "content": "Urii đang có chương trình tặng chart đính kèm khi mua set hạt pastel dòng này đó ạ!",
+          "time": "3 ngày trước",
+          "role": "admin",
+          "createdAt": "2024-04-30T11:45:00.000Z"
+        }
+      ],
+      "createdAt": "2024-04-30T11:25:00.000Z"
     },
     {
       "id": 33,
       "blogId": 12,
       "userId": "6ade4310c044b23d6c6a8683",
       "content": "Nam châm đồ ăn nhìn thèm ghê, mình đã thử làm và thành công rồi nha!",
-      "time": "2 giờ trước"
+      "time": "2 giờ trước",
+      "replies": [],
+      "createdAt": "2024-04-28T10:00:00.000Z"
     },
     {
       "id": 34,
       "blogId": 12,
       "userId": "6ade4310c044b23d6c6a8686",
       "content": "Rất thích ý tưởng này, cảm ơn bạn đã chia sẻ!",
-      "time": "5 giờ trước"
+      "time": "5 giờ trước",
+      "replies": [
+        {
+          "id": "c34-r1",
+          "userId": "6ade4310c044b23d6c6a8685",
+          "content": "Gắn lên tủ lạnh nhìn góc bếp vui mắt lắm bạn thử làm xem sao nhé!",
+          "time": "3 ngày trước",
+          "role": "author",
+          "createdAt": "2024-04-28T11:45:00.000Z"
+        }
+      ],
+      "createdAt": "2024-04-28T11:25:00.000Z"
     },
     {
       "id": 35,
       "blogId": 12,
       "userId": "6ade4310c044b23d6c6a8682",
       "content": "Mình sẽ làm bộ sưu tập nam châm đồ ăn giống bạn. Nhìn tủ lạnh vui mắt hẳn.",
-      "time": "7 giờ trước"
+      "time": "7 giờ trước",
+      "replies": [],
+      "createdAt": "2024-04-28T12:50:00.000Z"
     }
   ]
 }

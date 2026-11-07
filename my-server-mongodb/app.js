@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 
@@ -22,10 +23,11 @@ const customOrderRoutes = require('./routes/customOrderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
-  (process.env.CORS_ORIGINS || 'http://localhost:4200,http://localhost:4201')
+  (process.env.CORS_ORIGINS || 'http://localhost:3002,http://localhost:4200,http://localhost:4201')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
@@ -37,6 +39,12 @@ app.use(cors({
     if (!origin || allowedOrigins.has(origin)) {
       callback(null, true);
       return;
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        callback(null, true);
+        return;
+      }
     }
     callback(new Error('Origin is not allowed by CORS'));
   }
@@ -120,7 +128,37 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot', chatRoutes);
 
-app.get('/', (req, res) => {
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/notification', notificationRoutes);
+
+// Phục vụ giao diện web Admin trực tiếp trên cổng 3002
+const adminDistPath = path.resolve(__dirname, '../dist/my-admin/browser');
+if (fs.existsSync(adminDistPath)) {
+  app.use(express.static(adminDistPath, {
+    maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0
+  }));
+}
+
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/images')) {
+    return next();
+  }
+
+  // Health check phản hồi JSON cho test runner
+  if (process.env.NODE_ENV === 'test' || req.query.health === 'true' || (!req.accepts('html') && req.path === '/')) {
+    return res.json({ status: 'OK', message: 'Urii Backend đang chạy!' });
+  }
+
+  const indexPath = path.join(adminDistPath, 'index.csr.html');
+  const fallbackPath = path.join(adminDistPath, 'index.html');
+
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  if (fs.existsSync(fallbackPath)) {
+    return res.sendFile(fallbackPath);
+  }
+
   res.json({ status: 'OK', message: 'Urii Backend đang chạy!' });
 });
 

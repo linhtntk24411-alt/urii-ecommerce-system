@@ -1,8 +1,4 @@
 require('dotenv').config();
-const dns = require('node:dns');
-try {
-  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-} catch {}
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -34,6 +30,26 @@ function readJSON(fileName) {
   const filePath = path.join(__dirname, 'data', fileName);
   if (!fs.existsSync(filePath)) return null;
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function normalizeTarget(value) {
+  return path.basename(value).replace(/\.json$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function isModuleFile(mod, fileName) {
+  const fileTarget = normalizeTarget(fileName);
+  return mod.aliases.some((alias) => normalizeTarget(alias) === fileTarget);
+}
+
+function getJsonRecords(fileName) {
+  const data = readJSON(fileName);
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    const keys = Object.keys(data);
+    if (keys.length === 1 && Array.isArray(data[keys[0]])) return data[keys[0]];
+    return [data];
+  }
+  throw new Error(`[${fileName}] JSON phải là một object hoặc một danh sách object.`);
 }
 
 function prepareGallery(gallery) {
@@ -246,13 +262,19 @@ async function syncModule(mod) {
     throw new Error(`[${mod.name}] Không có dữ liệu hợp lệ để tải lên.`);
   }
 
-  const operations = docs.map((doc) => ({
-    updateOne: {
-      filter: mod.filter ? mod.filter(doc) : { [mod.key]: doc[mod.key] },
-      update: { $set: doc },
-      upsert: true
-    }
-  }));
+  const operations = docs.map((doc) => {
+    const { _id, ...fields } = doc;
+    const update = { $set: fields };
+    if (_id !== undefined) update.$setOnInsert = { _id };
+
+    return {
+      updateOne: {
+        filter: mod.filter ? mod.filter(doc) : { [mod.key]: doc[mod.key] },
+        update,
+        upsert: true
+      }
+    };
+  });
 
   const result = await mod.model.bulkWrite(operations, { ordered: false });
   const inserted = result.upsertedCount || 0;
@@ -273,8 +295,48 @@ async function syncModule(mod) {
   }
 }
 
+async function syncJsonFile(fileName) {
+  const collectionName = path.basename(fileName).replace(/\.json$/i, '');
+  if (!/^[a-zA-Z0-9_-]+$/.test(collectionName)) {
+    throw new Error(`[${fileName}] Tên file không hợp lệ để dùng làm tên collection.`);
+  }
+
+  const docs = getJsonRecords(fileName);
+  if (docs.length === 0 || docs.some((doc) => !doc || typeof doc !== 'object' || Array.isArray(doc))) {
+    throw new Error(`[${fileName}] Không có danh sách object hợp lệ để tải lên.`);
+  }
+
+  const collection = mongoose.connection.collection(collectionName);
+  const operations = docs.map((doc, index) => {
+    const { _id, ...fields } = doc;
+    const id = _id ?? `${collectionName}:${doc.id ?? doc.slug ?? doc.email ?? doc.code ?? index}`;
+    return {
+      updateOne: {
+        filter: { _id: id },
+        update: { $set: fields },
+        upsert: true
+      }
+    };
+  });
+
+  const result = await collection.bulkWrite(operations, { ordered: false });
+  const inserted = result.upsertedCount || 0;
+  const modified = result.modifiedCount || 0;
+  const matched = result.matchedCount || 0;
+  const totalOnAtlas = await collection.countDocuments();
+
+  if (inserted > 0) {
+    console.log(`✨ [${fileName}]: ĐÃ THÊM MỚI ${inserted} bản ghi! (Tổng hiện có: ${totalOnAtlas})`);
+  } else if (modified > 0) {
+    console.log(`🔄 [${fileName}]: Đã cập nhật ${modified} bản ghi thay đổi. (Tổng hiện có: ${totalOnAtlas})`);
+  } else {
+    console.log(`✔️  [${fileName}]: Đã đồng bộ, không có mục mới (${matched} bản ghi giữ nguyên).`);
+  }
+}
+
 async function main() {
-  const targetArg = process.argv[2]?.toLowerCase().trim();
+  const targetArg = process.argv[2]?.trim();
+  const normalizedTarget = targetArg ? normalizeTarget(targetArg) : '';
   const uri = process.env.MONGO_URI;
 
   if (!uri) {
@@ -292,20 +354,39 @@ async function main() {
 
   // Xác định các module cần sync
   let targets = MODULES;
-  if (targetArg && targetArg !== 'all') {
-    targets = MODULES.filter((m) => m.aliases.includes(targetArg));
+  let additionalFiles = [];
+  if (targetArg && normalizedTarget !== 'all') {
+    targets = MODULES.filter((mod) => isModuleFile(mod, targetArg));
     if (targets.length === 0) {
-      console.log(`⚠️  Không tìm thấy module khớp với "${targetArg}".`);
-      console.log(`👉 Bạn có thể dùng: products, categories, blogs, orders, custom-orders, comments, gallery, vouchers, chatbot, users, carts, review-orders, reviews, hoặc không truyền tham số để sync tất cả.\n`);
-      await mongoose.disconnect();
-      return;
+      const fileName = `${path.basename(targetArg).replace(/\.json$/i, '')}.json`;
+      if (fs.existsSync(path.join(__dirname, 'data', fileName))) {
+        additionalFiles = [fileName];
+      } else {
+        console.log(`⚠️  Không tìm thấy module hoặc file JSON "${targetArg}".`);
+        console.log('👉 Dùng tên module hoặc tên file trong thư mục data (có hoặc không có .json), hoặc bỏ tham số để sync tất cả.\n');
+        await mongoose.disconnect();
+        return;
+      }
     }
+  } else if (normalizedTarget === 'all' || !normalizedTarget) {
+    additionalFiles = fs.readdirSync(path.join(__dirname, 'data'))
+      .filter((fileName) => fileName.toLowerCase().endsWith('.json'))
+      .filter((fileName) => !MODULES.some((mod) => isModuleFile(mod, fileName)));
+  }
+
+  if (targets.length === 0 && additionalFiles.length === 0) {
+    console.log('⚠️  Không có dữ liệu nào để đồng bộ.\n');
+    await mongoose.disconnect();
+    return;
   }
 
   console.log(`📦 Bắt đầu kiểm tra và tải dữ liệu mới lên MongoDB Atlas...\n`);
   try {
     for (const mod of targets) {
       await syncModule(mod);
+    }
+    for (const fileName of additionalFiles) {
+      await syncJsonFile(fileName);
     }
 
     console.log('\n====================================================');

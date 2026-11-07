@@ -1,0 +1,397 @@
+{
+  "notifications": [
+    {
+      "id": "NOTIF-USER-001",
+      "audience": "user",
+      "typeId": "USER_ORDER_PLACED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-82901"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-20T10:01:00"
+    },
+    {
+      "id": "NOTIF-USER-002",
+      "audience": "user",
+      "typeId": "USER_ORDER_PLACED",
+      "recipientUserId": "6ade4310c044b23d6c6a8683",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-82903"
+      },
+      "isRead": true,
+      "readAt": "2024-05-22T09:00:00",
+      "createdAt": "2024-05-22T08:01:00"
+    },
+    {
+      "id": "NOTIF-USER-003",
+      "audience": "user",
+      "typeId": "USER_ORDER_AWAITING_PAYMENT",
+      "recipientUserId": "6ade4310c044b23d6c6a8682",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-82902"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-21T09:20:00"
+    },
+    {
+      "id": "NOTIF-USER-004",
+      "audience": "user",
+      "typeId": "USER_ORDER_CONFIRMED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-83011"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-15T11:05:00"
+    },
+    {
+      "id": "NOTIF-USER-005",
+      "audience": "user",
+      "typeId": "USER_ORDER_CONFIRMED",
+      "recipientUserId": "6ade4310c044b23d6c6a8684",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-83014"
+      },
+      "isRead": true,
+      "readAt": "2024-05-18T15:00:00",
+      "createdAt": "2024-05-18T14:05:00"
+    },
+    {
+      "id": "NOTIF-USER-006",
+      "audience": "user",
+      "typeId": "USER_ORDER_SHIPPING",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-82701"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-11T08:30:00"
+    },
+    {
+      "id": "NOTIF-USER-007",
+      "audience": "user",
+      "typeId": "USER_ORDER_SHIPPING",
+      "recipientUserId": "6ade4310c044b23d6c6a8685",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-82705"
+      },
+      "isRead": true,
+      "readAt": "2024-05-15T10:00:00",
+      "createdAt": "2024-05-15T08:30:00"
+    },
+    {
+      "id": "NOTIF-USER-008",
+      "audience": "user",
+      "typeId": "USER_ORDER_DELIVERED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-83021"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-22T15:10:00"
+    },
+    {
+      "id": "NOTIF-USER-009",
+      "audience": "user",
+      "typeId": "USER_ORDER_DELIVERED",
+      "recipientUserId": "6ade4310c044b23d6c6a8682",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-83022"
+      },
+      "isRead": true,
+      "readAt": "2024-06-23T18:00:00",
+      "createdAt": "2024-06-23T16:10:00"
+    },
+    {
+      "id": "NOTIF-USER-010",
+      "audience": "user",
+      "typeId": "USER_ORDER_CANCEL_REQUESTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-84001"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-05T10:31:00"
+    },
+    {
+      "id": "NOTIF-USER-011",
+      "audience": "user",
+      "typeId": "USER_ORDER_CANCEL_REQUESTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8685",
+      "actorUserId": "6ade4310c044b23d6c6a8685",
+      "reference": {
+        "orderId": "UR-84005",
+        "customOrderId": "customer-order-URII-9419"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-09T10:31:00"
+    },
+    {
+      "id": "NOTIF-USER-012",
+      "audience": "user",
+      "typeId": "USER_ORDER_CANCEL_APPROVED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-80901"
+      },
+      "isRead": true,
+      "readAt": "2024-04-28T17:00:00",
+      "createdAt": "2024-04-28T16:05:00"
+    },
+    {
+      "id": "NOTIF-USER-013",
+      "audience": "user",
+      "typeId": "USER_ORDER_CANCEL_REJECTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8686",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-82706"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-15T14:05:00"
+    },
+    {
+      "id": "NOTIF-USER-014",
+      "audience": "user",
+      "typeId": "USER_ORDER_RETURN_REQUESTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-85001"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-08T10:05:00"
+    },
+    {
+      "id": "NOTIF-USER-015",
+      "audience": "user",
+      "typeId": "USER_ORDER_RETURN_APPROVED_PICKUP",
+      "recipientUserId": "6ade4310c044b23d6c6a8684",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-85004"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-11T13:00:00"
+    },
+    {
+      "id": "NOTIF-USER-016",
+      "audience": "user",
+      "typeId": "USER_ORDER_RETURN_REFUND_PENDING",
+      "recipientUserId": "6ade4310c044b23d6c6a8685",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-85005"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-13T10:05:00"
+    },
+    {
+      "id": "NOTIF-USER-017",
+      "audience": "user",
+      "typeId": "USER_ORDER_RETURN_COMPLETED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-83031"
+      },
+      "isRead": true,
+      "readAt": "2024-07-05T16:00:00",
+      "createdAt": "2024-07-05T14:10:00"
+    },
+    {
+      "id": "NOTIF-USER-018",
+      "audience": "user",
+      "typeId": "USER_ORDER_RETURN_REJECTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8686",
+      "actorUserId": null,
+      "reference": {
+        "orderId": "UR-83024"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-26T16:05:00"
+    },
+    {
+      "id": "NOTIF-USER-019",
+      "audience": "user",
+      "typeId": "USER_CUSTOM_ORDER_SUBMITTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "customOrderId": "customer-order-URII-9842",
+        "mapId": "M02"
+      },
+      "isRead": true,
+      "readAt": "2024-05-18T10:00:00",
+      "createdAt": "2024-05-18T09:30:00"
+    },
+    {
+      "id": "NOTIF-USER-020",
+      "audience": "user",
+      "typeId": "USER_CUSTOM_ORDER_QUOTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8682",
+      "actorUserId": null,
+      "reference": {
+        "customOrderId": "customer-order-URII-9811",
+        "mapId": "M06"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-19T14:00:00"
+    },
+    {
+      "id": "NOTIF-USER-021",
+      "audience": "user",
+      "typeId": "USER_CUSTOM_ORDER_PROCESSING",
+      "recipientUserId": "6ade4310c044b23d6c6a8683",
+      "actorUserId": null,
+      "reference": {
+        "customOrderId": "customer-order-URII-9755",
+        "mapId": "M07"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-20T15:00:00"
+    },
+    {
+      "id": "NOTIF-USER-022",
+      "audience": "user",
+      "typeId": "USER_CUSTOM_ORDER_COMPLETED",
+      "recipientUserId": "6ade4310c044b23d6c6a8684",
+      "actorUserId": null,
+      "reference": {
+        "customOrderId": "customer-order-URII-9620",
+        "mapId": "M08"
+      },
+      "isRead": true,
+      "readAt": "2024-05-21T18:00:00",
+      "createdAt": "2024-05-21T16:30:00"
+    },
+    {
+      "id": "NOTIF-USER-023",
+      "audience": "user",
+      "typeId": "USER_BLOG_LIKED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": "6ade4310c044b23d6c6a8682",
+      "reference": {
+        "blogId": 1
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-24T19:00:00"
+    },
+    {
+      "id": "NOTIF-USER-024",
+      "audience": "user",
+      "typeId": "USER_BLOG_COMMENTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": "6ade4310c044b23d6c6a8682",
+      "reference": {
+        "blogId": 1,
+        "commentId": 1
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-24T20:00:00"
+    },
+    {
+      "id": "NOTIF-USER-025",
+      "audience": "user",
+      "typeId": "USER_BLOG_COMMENTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8681",
+      "actorUserId": "6ade4310c044b23d6c6a8683",
+      "reference": {
+        "blogId": 1,
+        "commentId": 2
+      },
+      "isRead": true,
+      "readAt": "2024-05-24T21:00:00",
+      "createdAt": "2024-05-24T20:30:00"
+    },
+    {
+      "id": "NOTIF-USER-026",
+      "audience": "user",
+      "typeId": "USER_VOUCHER_GRANTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8683",
+      "actorUserId": null,
+      "reference": {
+        "voucherId": "FREESHIP"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-01T08:00:00"
+    },
+    {
+      "id": "NOTIF-USER-027",
+      "audience": "user",
+      "typeId": "USER_VOUCHER_GRANTED",
+      "recipientUserId": "6ade4310c044b23d6c6a8686",
+      "actorUserId": null,
+      "reference": {
+        "voucherId": "WELCOME10"
+      },
+      "isRead": true,
+      "readAt": "2024-05-02T09:00:00",
+      "createdAt": "2024-05-01T10:00:00"
+    },
+    {
+      "id": "NOTIF-USER-028",
+      "audience": "user",
+      "typeId": "USER_CHAT_ADMIN_REPLIED",
+      "recipientUserId": "6ade4310c044b23d6c6a8682",
+      "actorUserId": null,
+      "reference": {
+        "sessionId": "cs_002"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-20T15:10:00"
+    },
+    {
+      "id": "NOTIF-USER-029",
+      "audience": "user",
+      "typeId": "USER_ACCOUNT_OAUTH_LINKED",
+      "recipientUserId": "6ade4310c044b23d6c6a8685",
+      "actorUserId": "6ade4310c044b23d6c6a8685",
+      "reference": {},
+      "isRead": true,
+      "readAt": "2024-05-10T12:00:00",
+      "createdAt": "2024-05-10T11:45:00"
+    },
+    {
+      "id": "NOTIF-USER-030",
+      "audience": "user",
+      "typeId": "USER_ACCOUNT_OAUTH_LINKED",
+      "recipientUserId": "6ade4310c044b23d6c6a8684",
+      "actorUserId": "6ade4310c044b23d6c6a8684",
+      "reference": {},
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-12T09:15:00"
+    }
+  ]
+}

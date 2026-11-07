@@ -1,8 +1,4 @@
 require('dotenv').config();
-const dns = require('node:dns');
-try {
-  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-} catch {}
 
 const fs = require('fs');
 const path = require('path');
@@ -25,6 +21,7 @@ const ChatbotFaq = require('./models/ChatbotFaq');
 const CustomOrder = require('./models/CustomOrder');
 const Cart = require('./models/Cart');
 const Review = require('./models/Review');
+const Notification = require('./models/Notification');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareLikedProducts } = require('./utils/likedProducts');
 const { prepareLikedBlogs } = require('./utils/likedBlogs');
@@ -205,7 +202,20 @@ async function seed() {
       update: { $set: { likes: blog.likes, comments: blog.comments, views: blog.views } }
     }
   })), { ordered: true });
-  await insertMissing(Comment, readJSON('comments.json').comments, 'id');
+  const commentsFixture = readJSON('comments.json').comments;
+  await Comment.bulkWrite(commentsFixture.map((comment) => ({
+    updateOne: {
+      filter: { id: comment.id },
+      update: {
+        $set: {
+          createdAt: comment.createdAt,
+          time: comment.time,
+          replies: comment.replies || []
+        }
+      }
+    }
+  })), { ordered: false });
+  await insertMissing(Comment, commentsFixture, 'id');
   const gallery = prepareGallery(readJSON('gallery.json'));
   await Gallery.bulkWrite(gallery.map(({ map_id, slug }) => ({
     updateOne: {
@@ -226,6 +236,16 @@ async function seed() {
   );
   await insertMissing(Cart, carts, 'userId');
   await insertMissing(Order, reviewOrders, 'id');
+  await Review.bulkWrite(reviews.map((review) => ({
+    updateOne: {
+      filter: { id: review.id },
+      update: {
+        $set: {
+          replies: review.replies || []
+        }
+      }
+    }
+  })), { ordered: false });
   await insertMissing(Review, reviews, 'id');
   await syncAllProductRatings({ ReviewModel: Review, ProductModel: Product });
   const savedMapFixtures = readJSON('saved_maps.json');
@@ -273,6 +293,12 @@ async function seed() {
     : readJSON('chatbot.json')?.faqs;
   if (chatbotFaqs) {
     await insertMissing(ChatbotFaq, chatbotFaqs, 'id');
+  }
+  const userNotifs = readJSON('user_notifications.json')?.notifications || [];
+  const adminNotifs = readJSON('admin_notifications.json')?.notifications || [];
+  const notifications = [...userNotifs, ...adminNotifs];
+  if (Array.isArray(notifications)) {
+    await insertMissing(Notification, notifications, 'id');
   }
 
   if (generatedCredentialsPath) {

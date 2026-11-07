@@ -359,3 +359,65 @@
     height: 30px;
   }
 }
+
+
+/* Pagination: Dong bo 100% voi style thu vien map mau (sample-maps.css) */
+.pagination {
+  margin-top: 40px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+  list-style: none !important;
+  padding: 0 !important;
+}
+
+.pagination .page-item {
+  margin: 0 !important;
+}
+
+.pagination .page-item .page-link {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #e5bdb7 !important;
+  color: #5c403b !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  background-color: #ffffff !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+.pagination .page-item:not(.disabled) .page-link:hover {
+  border-color: #840001 !important;
+  background: rgba(132, 0, 1, 0.05) !important;
+  color: #840001 !important;
+}
+
+.pagination .page-item.disabled .page-link {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  border-color: #e5bdb7 !important;
+  background-color: #ffffff !important;
+  color: #5c403b !important;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #840001 !important;
+  color: #ffffff !important;
+  border-color: #840001 !important;
+}
+
+.pagination .page-item.disabled span.page-link {
+  border: none !important;
+  background: transparent !important;
+  cursor: default !important;
+  opacity: 0.7 !important;
+}

@@ -1,4 +1,884 @@
-* { box-sizing: border-box; }
-html, body { min-height: 100%; margin: 0; }
-body { background: #f7f6f2; color: #292a31; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; }
-button, input, select { font: inherit; }
+/* ==========================================================================
+   URII ADMIN - MASTER UNIFIED DESIGN SYSTEM & RESPONSIVE STYLES
+   ========================================================================== */
+
+/* 1. SCROLLBAR MÀU ĐỎ THƯƠNG HIỆU URII & BO TRÒN VIỀN (Yêu cầu 5) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f7f3f2;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #840001; /* Màu đỏ thương hiệu Urii */
+  border-radius: 10px;      /* Bo viền */
+  border: 2px solid #f7f3f2; /* Viền đệm êm ái */
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #690001; /* Đỏ đậm khi hover */
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #840001 #f7f3f2;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f7f3f2;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #840001;
+  border-radius: 10px;
+  border: 1px solid #f7f3f2;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #690001;
+}
+
+/* 2. DESIGN TOKENS & CSS VARIABLES */
+:root {
+  /* Brand Colors */
+  --urii-primary: #840001;
+  --urii-primary-hover: #690001;
+  --urii-primary-light: #fff1f1;
+  --urii-primary-border: #fcd7dd;
+  --urii-primary-rgb: 132, 0, 1;
+
+  /* Neutral & Base */
+  --urii-bg: #f8f9fa;
+  --urii-card-bg: #ffffff;
+  --urii-card-border: #eef0f3;
+  --urii-border-light: #f1f2f4;
+  --urii-text-main: #1b1c1c;
+  --urii-text-muted: #6c757d;
+  --urii-text-variant: #5c403b;
+
+  /* Semantic Status Colors */
+  --status-approved-bg: #e6f4ea;
+  --status-approved-text: #137333;
+  --status-approved-border: rgba(19, 115, 51, 0.25);
+
+  --status-pending-bg: #fef7e0;
+  --status-pending-text: #b06000;
+  --status-pending-border: rgba(176, 96, 0, 0.25);
+
+  --status-danger-bg: #fce8e6;
+  --status-danger-text: #c5221f;
+  --status-danger-border: rgba(197, 34, 31, 0.25);
+
+  --status-info-bg: #e0f2fe;
+  --status-info-text: #0284c7;
+  --status-info-border: rgba(2, 132, 199, 0.25);
+
+  --status-purple-bg: #f3e8ff;
+  --status-purple-text: #7e22ce;
+  --status-purple-border: rgba(126, 34, 206, 0.25);
+
+  /* Typography & Sizing */
+  --urii-font: 'Nunito Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --urii-radius-sm: 8px;
+  --urii-radius-md: 12px;
+  --urii-radius-lg: 14px;
+  --urii-radius-pill: 9999px;
+
+  /* Shadows */
+  --urii-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.03);
+  --urii-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --urii-shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* 3. BASE RESETS */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--urii-font);
+  background-color: var(--urii-bg);
+  color: var(--urii-text-main);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* 4. COMMON PAGE HEADERS */
+.page-title, h1.page-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--urii-text-main);
+  margin-bottom: 4px;
+  letter-spacing: -0.2px;
+}
+
+.page-subtitle, p.text-muted.small {
+  color: var(--urii-text-muted) !important;
+  font-size: 13.5px;
+  margin-bottom: 0;
+}
+
+/* 5. UNIFIED BUTTONS */
+.btn-danger,
+.btn-primary-green,
+.btn-primary-urii {
+  background-color: var(--urii-primary) !important;
+  border-color: var(--urii-primary) !important;
+  color: #ffffff !important;
+  border-radius: var(--urii-radius-sm) !important;
+  font-weight: 600 !important;
+  padding: 9px 18px !important;
+  font-size: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 6px rgba(132, 0, 1, 0.15) !important;
+}
+
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active,
+.btn-primary-green:hover,
+.btn-primary-green:focus,
+.btn-primary-green:active,
+.btn-primary-urii:hover,
+.btn-primary-urii:focus,
+.btn-primary-urii:active {
+  background-color: var(--urii-primary-hover) !important;
+  border-color: var(--urii-primary-hover) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(132, 0, 1, 0.25) !important;
+}
+
+.btn-outline-danger {
+  color: var(--urii-primary) !important;
+  border-color: var(--urii-primary) !important;
+  border-radius: var(--urii-radius-sm) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-outline-danger:hover,
+.btn-outline-danger.active,
+.btn-outline-danger:focus {
+  background-color: var(--urii-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--urii-primary) !important;
+}
+
+.btn-custom-file {
+  background-color: var(--urii-primary-light) !important;
+  color: var(--urii-primary) !important;
+  border: 1px dashed var(--urii-primary) !important;
+  border-radius: var(--urii-radius-sm) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-custom-file:hover {
+  background-color: var(--urii-primary) !important;
+  color: #ffffff !important;
+  border-style: solid !important;
+  box-shadow: 0 4px 12px rgba(132, 0, 1, 0.15) !important;
+}
+
+/* Action Icon Buttons */
+.btn-action,
+.btn-action-icon,
+.btn-action-edit,
+.btn-action-delete {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--urii-text-muted) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-size: 15px !important;
+  text-decoration: none !important;
+}
+
+.btn-action:hover,
+.btn-action-icon:hover,
+.btn-action-edit:hover {
+  background-color: var(--urii-primary-light) !important;
+  color: var(--urii-primary) !important;
+}
+
+.btn-action-delete,
+.btn-action.delete {
+  color: #dc3545 !important;
+}
+
+.btn-action-delete:hover,
+.btn-action.delete:hover,
+.btn-action-icon.text-danger:hover {
+  background-color: var(--status-danger-bg) !important;
+  color: var(--status-danger-text) !important;
+}
+
+/* 6. UNIFIED CARDS & STAT CARDS */
+.card,
+.stat-card,
+.stat-card-modern {
+  background: var(--urii-card-bg) !important;
+  border: 1px solid var(--urii-card-border) !important;
+  border-radius: var(--urii-radius-lg) !important;
+  box-shadow: var(--urii-shadow-sm) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.stat-card:hover,
+.stat-card-modern:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: var(--urii-shadow-lg) !important;
+}
+
+.stat-icon,
+.stat-icon-badge {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  border-radius: var(--urii-radius-md) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.4rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* 7. UNIFIED FORM CONTROLS & FILTER BARS */
+.filter-bar {
+  background: var(--urii-card-bg) !important;
+  border-radius: var(--urii-radius-lg) !important;
+  padding: 16px 20px !important;
+  border: 1px solid var(--urii-card-border) !important;
+  margin-bottom: 24px !important;
+  box-shadow: var(--urii-shadow-sm) !important;
+}
+
+.form-control,
+.form-select {
+  height: 42px !important;
+  border-radius: var(--urii-radius-sm) !important;
+  padding: 8px 14px !important;
+  font-size: 14px !important;
+  background-color: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  color: var(--urii-text-main) !important;
+  transition: all 0.2s ease !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: #ffffff !important;
+  border-color: var(--urii-primary) !important;
+  box-shadow: 0 0 0 3px rgba(132, 0, 1, 0.08) !important;
+  outline: none !important;
+}
+
+/* 8. UNIFIED STATUS BADGES & TAGS */
+.badge-status,
+.badge-custom,
+.table .badge,
+.table td span.badge {
+  padding: 5px 14px !important;
+  border-radius: var(--urii-radius-pill) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  line-height: 1.3 !important;
+}
+
+/* Indicator Dots for Status Badges */
+.badge-status::before,
+.badge-custom::before,
+.table td .badge::before,
+.table td span.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* TAG VAI TRÒ TRONG USER - 1 HÀNG THẲNG TẮP (Yêu cầu 2) */
+.badge-role {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  padding: 5px 14px !important;
+  border-radius: 20px !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1.3 !important;
+  border: 1px solid rgba(71, 85, 105, 0.2) !important;
+}
+
+.badge-role.admin {
+  background-color: var(--urii-primary-light) !important;
+  color: var(--urii-primary) !important;
+  border: 1px solid var(--urii-primary-border) !important;
+  white-space: nowrap !important;
+}
+
+/* TAG ĐỘ KHÓ GIỐNG DASHBOARD ADMIN (Yêu cầu 3) */
+/* Dễ: Xanh pastel */
+.badge-status-approved,
+.badge-status-completed,
+.badge-active,
+.badge-status-delivered,
+.table td .badge.bg-success,
+.table td span.badge.bg-success {
+  background-color: var(--status-approved-bg) !important;
+  color: var(--status-approved-text) !important;
+  border: 1px solid var(--status-approved-border) !important;
+}
+.badge-status-approved::before,
+.badge-active::before,
+.table td .badge.bg-success::before,
+.table td span.badge.bg-success::before {
+  background-color: var(--status-approved-text);
+}
+
+/* Trung bình / Chờ duyệt: Vàng cam pastel */
+.badge-status-pending,
+.badge-pending,
+.badge-status-waiting_quote,
+.badge-status-pending_approval,
+.table td .badge.bg-warning,
+.table td span.badge.bg-warning {
+  background-color: var(--status-pending-bg) !important;
+  color: var(--status-pending-text) !important;
+  border: 1px solid var(--status-pending-border) !important;
+}
+.badge-status-pending::before,
+.badge-pending::before,
+.table td .badge.bg-warning::before,
+.table td span.badge.bg-warning::before {
+  background-color: var(--status-pending-text);
+}
+
+/* Khó / Bị khóa / Vi phạm: Đỏ hồng pastel */
+.badge-status-cancelled,
+.badge-status-violated,
+.badge-locked,
+.badge-status-flagged,
+.table td .badge.bg-danger,
+.table td span.badge.bg-danger {
+  background-color: var(--status-danger-bg) !important;
+  color: var(--status-danger-text) !important;
+  border: 1px solid var(--status-danger-border) !important;
+}
+.badge-status-cancelled::before,
+.badge-locked::before,
+.table td .badge.bg-danger::before,
+.table td span.badge.bg-danger::before {
+  background-color: var(--status-danger-text);
+}
+
+.table td .badge.bg-secondary,
+.table td span.badge.bg-secondary {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid rgba(71, 85, 105, 0.2) !important;
+}
+.table td .badge.bg-secondary::before,
+.table td span.badge.bg-secondary::before {
+  background-color: #475569;
+}
+
+/* 9. UNIFIED TABLES */
+.table-responsive {
+  border-radius: var(--urii-radius-lg) !important;
+  border: 1px solid var(--urii-card-border) !important;
+  background: var(--urii-card-bg) !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-shadow: var(--urii-shadow-sm) !important;
+  margin-bottom: 20px !important;
+}
+
+.table {
+  width: 100% !important;
+  margin-bottom: 0 !important;
+  vertical-align: middle !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.table th,
+.table thead th {
+  background-color: #f8f9fa !important;
+  color: var(--urii-text-muted) !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 14px 16px !important;
+  border-bottom: 2px solid var(--urii-card-border) !important;
+  border-top: none !important;
+  white-space: nowrap !important;
+}
+
+.table td {
+  padding: 14px 16px !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid var(--urii-border-light) !important;
+  font-size: 13.5px !important;
+  color: var(--urii-text-main) !important;
+}
+
+.table tbody tr:hover {
+  background-color: #fff9f8 !important;
+}
+
+/* 10. UNIFIED PAGINATION */
+.pagination {
+  gap: 4px !important;
+  margin-top: 18px !important;
+  margin-bottom: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.pagination .page-item .page-link {
+  border-radius: var(--urii-radius-sm) !important;
+  border: 1px solid #e9ecef !important;
+  color: #495057 !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 10px !important;
+  transition: all 0.2s ease !important;
+  background-color: #ffffff !important;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--urii-primary) !important;
+  border-color: var(--urii-primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(132, 0, 1, 0.25) !important;
+}
+
+.pagination .page-item:not(.active) .page-link:hover {
+  background-color: var(--urii-primary-light) !important;
+  border-color: var(--urii-primary-border) !important;
+  color: var(--urii-primary) !important;
+}
+
+/* 11. CSS CHO CÁC POPUP THÔNG BÁO & MODALS (Yêu cầu 4) */
+
+/* Toast Popup thông báo nổi góc màn hình */
+.custom-toast,
+.toast-popup {
+  position: fixed !important;
+  top: 80px !important;
+  right: 28px !important;
+  color: #ffffff !important;
+  padding: 14px 22px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.custom-toast.bg-success,
+.toast-popup.toast-success {
+  background: linear-gradient(135deg, #137333, #0f5132) !important;
+}
+
+.custom-toast.bg-danger,
+.toast-popup.toast-danger {
+  background: linear-gradient(135deg, #840001, #b30002) !important;
+}
+
+.custom-toast.bg-warning,
+.toast-popup.toast-warning {
+  background: linear-gradient(135deg, #b06000, #d97706) !important;
+}
+
+.custom-toast.bg-info,
+.toast-popup.toast-info {
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(120%) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Alert thông báo inline */
+.alert {
+  border-radius: 12px !important;
+  padding: 14px 18px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.alert-success {
+  background-color: var(--status-approved-bg) !important;
+  color: var(--status-approved-text) !important;
+  border-color: var(--status-approved-border) !important;
+}
+
+.alert-danger {
+  background-color: var(--status-danger-bg) !important;
+  color: var(--status-danger-text) !important;
+  border-color: var(--status-danger-border) !important;
+}
+
+.alert-warning {
+  background-color: var(--status-pending-bg) !important;
+  color: var(--status-pending-text) !important;
+  border-color: var(--status-pending-border) !important;
+}
+
+.alert-info {
+  background-color: var(--status-info-bg) !important;
+  color: var(--status-info-text) !important;
+  border-color: var(--status-info-border) !important;
+}
+
+/* Modal Popup & Dialog */
+.modal-content,
+.modal-card-custom {
+  border-radius: 16px !important;
+  border: 1px solid var(--urii-card-border) !important;
+  overflow: hidden !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2) !important;
+  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes modalPopIn {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-header,
+.modal-header-urii {
+  background-color: var(--urii-primary) !important;
+  color: #ffffff !important;
+  padding: 18px 24px !important;
+  border-bottom: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.modal-header .modal-title,
+.modal-header-urii h5 {
+  font-weight: 700 !important;
+  font-size: 17px !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+}
+
+.modal-header .btn-close,
+.modal-header-urii .btn-close {
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.8 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.modal-header .btn-close:hover,
+.modal-header-urii .btn-close:hover {
+  opacity: 1 !important;
+}
+
+.modal-body {
+  padding: 24px !important;
+  background-color: #ffffff !important;
+}
+
+.modal-footer {
+  padding: 14px 24px !important;
+  border-top: 1px solid var(--urii-border-light) !important;
+  background-color: #fafbfc !important;
+}
+
+.modal-backdrop-custom,
+.modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 10, 10, 0.55) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 1050 !important;
+}
+
+/* Notification Popup trên Topbar (Chuông thông báo) */
+.notification-dropdown {
+  border-radius: 16px !important;
+  border: 1px solid var(--urii-card-border) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15) !important;
+  overflow: hidden !important;
+  animation: dropdownFadeIn 0.2s ease !important;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-header {
+  background: var(--urii-primary) !important;
+  color: #ffffff !important;
+  padding: 14px 20px !important;
+}
+
+.btn-clear-all {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  transition: background 0.2s !important;
+}
+
+.btn-clear-all:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* ==========================================================================
+   12. COMPREHENSIVE RESPONSIVE STYLING
+   ========================================================================== */
+
+/* Tablets & Below (<= 991.98px) */
+@media (max-width: 991.98px) {
+  .admin-main-content {
+    padding: 76px 14px 24px 14px !important;
+    width: 100% !important;
+  }
+
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .stat-card {
+    min-height: 90px !important;
+    padding: 14px 16px !important;
+  }
+
+  .stat-icon {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 1.2rem !important;
+  }
+
+  .filter-bar {
+    padding: 14px 16px !important;
+  }
+
+  /* Table horizontal scroll container */
+  .table-responsive {
+    overflow-x: auto !important;
+    border-radius: var(--urii-radius-md) !important;
+  }
+
+  .table-responsive table {
+    min-width: 720px;
+  }
+
+  /* Chat Support Workspace Responsive */
+  .chat-workspace,
+  div[style*="calc(80vh - 60px)"] {
+    height: auto !important;
+    min-height: auto !important;
+    flex-direction: column !important;
+  }
+
+  .col-12.col-md-4.border-end {
+    height: 320px !important;
+    border-right: none !important;
+    border-bottom: 2px solid var(--urii-card-border) !important;
+  }
+
+  .col-12.col-md-8 {
+    height: 520px !important;
+  }
+}
+
+/* Small Tablets & Large Mobiles (<= 768px) */
+@media (max-width: 768px) {
+  .page-title, h1.page-title {
+    font-size: 22px !important;
+  }
+
+  .admin-topbar {
+    padding: 0 12px !important;
+  }
+
+  .search-wrapper {
+    width: 170px !important;
+    margin-left: 8px !important;
+    height: 40px !important;
+    padding: 0 12px !important;
+  }
+
+  .search-input {
+    font-size: 13px !important;
+    padding-left: 28px !important;
+  }
+
+  .admin-name {
+    display: none !important;
+  }
+
+  .profile-avatar img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .filter-bar .row > div {
+    width: 100% !important;
+    margin-bottom: 8px !important;
+  }
+
+  .modal-dialog {
+    max-width: 95vw !important;
+    margin: 10px auto !important;
+  }
+}
+
+/* Mobiles (<= 576px) */
+@media (max-width: 576px) {
+  .admin-topbar {
+    height: 58px !important;
+  }
+
+  .search-wrapper {
+    width: 130px !important;
+    height: 36px !important;
+  }
+
+  .page-title, h1.page-title {
+    font-size: 20px !important;
+  }
+
+  .btn-danger,
+  .btn-custom-file,
+  .btn-primary-green {
+    width: 100% !important;
+    margin-bottom: 6px !important;
+  }
+
+  .table-responsive table {
+    min-width: 640px;
+  }
+
+  .pagination .page-item .page-link {
+    min-width: 30px !important;
+    height: 30px !important;
+    font-size: 12px !important;
+    padding: 0 6px !important;
+  }
+
+  .pagination {
+    flex-wrap: wrap !important;
+  }
+}
+
+
+/* Support Chatbot Status Badges (Unified Dashboard Style) */
+.badge-status-waiting {
+  background-color: var(--status-pending-bg) !important;
+  color: var(--status-pending-text) !important;
+  border: 1px solid var(--status-pending-border) !important;
+}
+.badge-status-waiting::before {
+  background-color: var(--status-pending-text) !important;
+}
+
+.badge-status-active {
+  background-color: var(--status-danger-bg) !important;
+  color: var(--status-danger-text) !important;
+  border: 1px solid var(--status-danger-border) !important;
+}
+.badge-status-active::before {
+  background-color: var(--status-danger-text) !important;
+}
+
+.badge-status-ai {
+  background-color: #e8f0fe !important;
+  color: #1a73e8 !important;
+  border: 1px solid rgba(26, 115, 232, 0.25) !important;
+}
+.badge-status-ai::before {
+  background-color: #1a73e8 !important;
+}

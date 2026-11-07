@@ -20,6 +20,7 @@ const CustomOrder = require('../models/CustomOrder');
 const Cart = require('../models/Cart');
 const Review = require('../models/Review');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
 const { prepareUserPassword } = require('../utils/userPassword');
@@ -62,7 +63,9 @@ test('seed fixtures validate against their MongoDB schemas', async () => {
     [ChatbotFaq, readJSON('chatbot.json').faqs],
     [ChatbotFaq, readJSON('chatbot_faqs.json')],
     [CustomOrder, readJSON('custom_orders.json')],
-    [User, readJSON('users.json').users]
+    [User, readJSON('users.json').users],
+    [Notification, readJSON('user_notifications.json').notifications],
+    [Notification, readJSON('admin_notifications.json').notifications]
   ];
 
   for (const [Model, documents] of fixtures) {
@@ -404,7 +407,7 @@ test('cart and review fixtures use real products and delivered customer orders',
   const rawReviewData = readJSON('review_orders.json');
   const allowedOrderKeys = new Set(['id', 'userId', 'statusId', 'deliveredAt', 'items']);
   const allowedOrderItemKeys = new Set(['productId', 'variantIndex']);
-  const allowedReviewKeys = new Set(['orderId', 'productId', 'rating', 'content', 'media']);
+  const allowedReviewKeys = new Set(['orderId', 'productId', 'rating', 'content', 'media', 'replies']);
   assert.ok(rawReviewData.orders.every((order) => (
     Object.keys(order).every((key) => allowedOrderKeys.has(key))
   )));
@@ -421,6 +424,18 @@ test('cart and review fixtures use real products and delivered customer orders',
       && !Object.hasOwn(review, 'variantName')
   )));
 
+  const allReviewReplies = rawReviewData.reviews.flatMap((r) => r.replies || []);
+  assert.equal(allReviewReplies.length, 18);
+  const autoReplies = allReviewReplies.filter((r) => r.replyType === 'auto_thank_you');
+  const staffReplies = allReviewReplies.filter((r) => r.replyType === 'staff_support');
+  const inquiryReplies = allReviewReplies.filter((r) => r.replyType === 'customer_inquiry');
+  const answerReplies = allReviewReplies.filter((r) => r.replyType === 'customer_answer');
+  assert.equal(autoReplies.length, 8);
+  assert.equal(staffReplies.length, 6);
+  assert.equal(inquiryReplies.length, 2);
+  assert.equal(answerReplies.length, 2);
+  assert.ok(inquiryReplies.length / rawReviewData.reviews.length < 0.05, 'Customer inquiries should have a very low proportion (< 5%)');
+
   await new Review({
     id: 'media-only-review',
     orderId: 'UR-REVIEW-001',
@@ -431,6 +446,7 @@ test('cart and review fixtures use real products and delivered customer orders',
     variantName: products[0].variants[0].name,
     media: [{ type: 'video', url: 'https://example.com/review.mp4' }]
   }).validate();
+
   await new Review({
     id: 'empty-review',
     orderId: 'UR-REVIEW-001',
@@ -1476,4 +1492,178 @@ test('order waiting states, SLA deadlines, metadata endpoint, and cancel/return 
     User.find = origUserFind;
     Order.findOne = origOrderFindOne;
   }
+});
+
+
+test('notification types, fixtures, metadata, and user/admin notification workflows operate properly', async () => {
+  const notificationController = require('../controllers/notificationController');
+  const notificationTypes = readJSON('notification_types.json');
+  const userNotifications = readJSON('user_notifications.json').notifications;
+  const adminNotifications = readJSON('admin_notifications.json').notifications;
+  const allNotifications = [...userNotifications, ...adminNotifications];
+  const users = readJSON('users.json').users;
+  const orders = readJSON('orders.json').orders;
+  const customOrders = readJSON('custom_orders.json');
+  const blogs = readJSON('blogs.json').blogs;
+  const comments = readJSON('comments.json').comments;
+  const vouchers = readJSON('vouchers.json').vouchers;
+  const sessions = readJSON('chat_sessions.json');
+
+  const userIds = new Set(users.map((u) => String(u._id)));
+  const orderIds = new Set(orders.map((o) => o.id));
+  const customOrderIds = new Set(customOrders.map((co) => co.id));
+  const blogIds = new Set(blogs.map((b) => b.id));
+  const commentIds = new Set(comments.map((c) => c.id));
+  const voucherIds = new Set(vouchers.map((v) => v.id));
+  const sessionIds = new Set(sessions.map((s) => s.sessionId));
+
+  const typeIds = new Set(notificationTypes.notificationTypes.map((t) => t.id));
+  const categoryIds = new Set(notificationTypes.notificationCategories.map((c) => c.id));
+  const priorityIds = new Set(notificationTypes.notificationPriorities.map((p) => p.id));
+
+  for (const t of notificationTypes.notificationTypes) {
+    assert.ok(categoryIds.has(t.categoryId), `Type ${t.id} must reference categoryId`);
+    assert.ok(priorityIds.has(t.priority), `Type ${t.id} must reference priority`);
+    assert.ok(['user', 'admin'].includes(t.audience));
+  }
+
+  assert.equal(userNotifications.length, 30);
+  assert.equal(adminNotifications.length, 19);
+  assert.equal(allNotifications.length, 49);
+
+  // Verify that all 22 user notification types and all 15 admin notification types have at least 1 fixture!
+  const userTypeIds = new Set(notificationTypes.notificationTypes.filter((t) => t.audience === 'user').map((t) => t.id));
+  const adminTypeIds = new Set(notificationTypes.notificationTypes.filter((t) => t.audience === 'admin').map((t) => t.id));
+  for (const utId of userTypeIds) {
+    assert.ok(userNotifications.some((n) => n.typeId === utId), `Missing user notification for ${utId}`);
+  }
+  for (const atId of adminTypeIds) {
+    assert.ok(adminNotifications.some((n) => n.typeId === atId), `Missing admin notification for ${atId}`);
+  }
+
+  for (const notif of allNotifications) {
+    assert.ok(typeIds.has(notif.typeId), `${notif.id} invalid typeId`);
+    if (notif.audience === 'user') {
+      assert.ok(userIds.has(String(notif.recipientUserId)), `${notif.id} invalid recipientUserId`);
+    }
+    if (notif.actorUserId) {
+      assert.ok(userIds.has(String(notif.actorUserId)), `${notif.id} invalid actorUserId`);
+    }
+    const ref = notif.reference || {};
+    if (ref.orderId) assert.ok(orderIds.has(ref.orderId) || ref.orderId === 'UR-REVIEW-001', `${notif.id} invalid orderId`);
+    if (ref.customOrderId) assert.ok(customOrderIds.has(ref.customOrderId), `${notif.id} invalid customOrderId`);
+    if (ref.blogId) assert.ok(blogIds.has(ref.blogId), `${notif.id} invalid blogId`);
+    if (ref.commentId) assert.ok(commentIds.has(ref.commentId), `${notif.id} invalid commentId`);
+    if (ref.voucherId) assert.ok(voucherIds.has(ref.voucherId), `${notif.id} invalid voucherId`);
+    if (ref.sessionId) assert.ok(sessionIds.has(ref.sessionId), `${notif.id} invalid sessionId`);
+  }
+
+  let metadata = null;
+  notificationController.getNotificationMetadata({}, {
+    json(payload) {
+      metadata = payload;
+    }
+  });
+  assert.ok(Array.isArray(metadata.notificationCategories));
+  assert.ok(Array.isArray(metadata.notificationTypes));
+  assert.ok(Array.isArray(metadata.notificationPriorities));
+
+  const origUserFind = User.find;
+  const origNotifFindOne = Notification.findOne;
+  const origNotifUpdateMany = Notification.updateMany;
+
+  try {
+    const sampleUser = users.find((u) => u.role === 'user');
+    User.find = () => ({
+      select: () => ({
+        lean: async () => [sampleUser]
+      })
+    });
+
+    const enriched = await notificationController.enrichNotifications([
+      userNotifications[0],
+      adminNotifications[0]
+    ]);
+    assert.equal(enriched[0].categoryLabel, 'Đơn hàng & Vận chuyển');
+    assert.ok(enriched[0].title.includes('UR-82901'));
+    assert.ok(enriched[0].actionUrl.includes('/account/orders/UR-82901'));
+    assert.equal(enriched[1].categoryLabel, 'Đơn hàng & Vận chuyển');
+    assert.ok(enriched[1].title.includes('UR-82901'));
+
+    const mutableNotif = new Notification(userNotifications[0]);
+    mutableNotif.save = async function save() { return this; };
+    Notification.findOne = async () => mutableNotif;
+
+    let readStatus = 200;
+    let readBody = null;
+    await notificationController.markAsRead(
+      {
+        params: { id: mutableNotif.id },
+        auth: { id: sampleUser._id, role: 'user' }
+      },
+      {
+        status(code) {
+          readStatus = code;
+          return this;
+        },
+        json(payload) {
+          readBody = payload;
+        }
+      }
+    );
+    assert.equal(readStatus, 200);
+    assert.equal(readBody.isRead, true);
+    assert.ok(readBody.readAt);
+
+    Notification.updateMany = async () => ({ modifiedCount: 5 });
+    let readAllBody = null;
+    await notificationController.markAllAsRead(
+      {
+        auth: { id: sampleUser._id, role: 'user' }
+      },
+      {
+        json(payload) {
+          readAllBody = payload;
+        }
+      }
+    );
+    assert.equal(readAllBody.modifiedCount, 5);
+  } finally {
+    User.find = origUserFind;
+    Notification.findOne = origNotifFindOne;
+    Notification.updateMany = origNotifUpdateMany;
+  }
+});
+
+test('comment fixtures include ISO createdAt and dynamic relative time formatting works', async () => {
+  const comments = readJSON('comments.json').comments;
+  const { formatRelativeTime } = require('../utils/time');
+  const commentController = require('../controllers/commentController');
+  const commentRoutes = require('../routes/commentRoutes');
+
+  assert.ok(comments.length > 0);
+  for (const comment of comments) {
+    assert.ok(comment.createdAt, `Comment ${comment.id} must have createdAt`);
+    assert.ok(!isNaN(new Date(comment.createdAt).getTime()), `Comment ${comment.id} createdAt must be valid ISO date`);
+    if (Array.isArray(comment.replies)) {
+      for (const reply of comment.replies) {
+        assert.ok(reply.createdAt, `Reply ${reply.id} must have createdAt`);
+        assert.ok(!isNaN(new Date(reply.createdAt).getTime()), `Reply ${reply.id} createdAt must be valid ISO date`);
+      }
+    }
+  }
+
+  // Verify formatRelativeTime calculations
+  const now = Date.now();
+  assert.equal(formatRelativeTime(new Date(now - 10 * 1000)), 'Vừa xong');
+  assert.equal(formatRelativeTime(new Date(now - 5 * 60 * 1000)), '5 phút trước');
+  assert.equal(formatRelativeTime(new Date(now - 3 * 3600 * 1000)), '3 giờ trước');
+  assert.equal(formatRelativeTime(new Date(now - 2 * 24 * 3600 * 1000)), '2 ngày trước');
+  assert.equal(formatRelativeTime(new Date(now - 45 * 24 * 3600 * 1000)), '1 tháng trước');
+
+  // Verify route POST /api/comments/:id/replies exists
+  const replyRouteLayer = commentRoutes.stack.find(
+    (layer) => layer.route?.path === '/:id/replies' && layer.route.methods.post
+  );
+  assert.ok(replyRouteLayer, 'POST /api/comments/:id/replies route must be defined');
 });

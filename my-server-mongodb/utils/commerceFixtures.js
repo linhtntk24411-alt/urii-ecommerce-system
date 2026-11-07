@@ -246,6 +246,7 @@ function prepareReviewFixtures(reviewData, users, products) {
       variantName: item.variantName,
       content: review.content.trim(),
       media,
+      replies: Array.isArray(review.replies) ? review.replies : [],
       createdAt
     };
   });

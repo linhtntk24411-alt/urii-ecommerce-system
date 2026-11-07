@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { Product } from '../../../../../my-user/src/app/models/uri.model';
 
@@ -10,7 +11,7 @@ declare var bootstrap: any;
 @Component({
   selector: 'app-products-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './products-admin.html',
   styleUrls: ['./products-admin.css']
 })
@@ -41,10 +42,6 @@ export class ProductsAdmin implements OnInit {
 
   categoriesMap: { [key: string]: string } = { 
     "HN": "Hạt nhựa", "DC": "Dụng cụ", "BST": "Bộ sưu tập", "KIT": "Bộ Kit", "TP": "Thành phần"
-  editData: any = { id: null, name: '', category: 'hat-nhua', status: 'normal', price: 0, stock: 0, image: '' };
-
-  categoriesMap: { [key: string]: string } = { 
-    "hat-nhua": "Hạt nhựa", "dung-cu": "Dụng cụ", "handmade": "Handmade", "kit": "Bộ Kit"
   };
 
   statusMap: { [key: string]: { text: string, class: string } } = { 
@@ -57,8 +54,15 @@ export class ProductsAdmin implements OnInit {
   // Các biến quản lý file ảnh tải lên
   selectedFile: File | null = null;
   imagePreview: string | null = null;
+  showDeleteConfirm = false;
+  deletingProductId: string | number | null = null;
+  deletingProductName = '';
 
-  constructor(private adminApi: AdminApiService) {}
+  constructor(
+    private adminApi: AdminApiService,
+    private route: ActivatedRoute
+  ) {}
+  private pendingSearchId: string | null = null;
 
 //  ngOnInit() {
 //     // 1. Đăng ký lắng nghe dữ liệu sản phẩm như cũ
@@ -74,6 +78,13 @@ export class ProductsAdmin implements OnInit {
 //     }
 //   }
 ngOnInit() {
+  this.route.queryParamMap.subscribe(params => {
+    this.pendingSearchId = params.get('searchType') === 'product'
+      ? params.get('searchId')
+      : null;
+    this.applySearchTarget();
+  });
+
   // Lắng nghe dữ liệu thay đổi từ service
   this.adminApi.products$.subscribe({
     next: (data) => {
@@ -83,6 +94,7 @@ ngOnInit() {
         if (typeof this.renderProducts === 'function') {
           this.renderProducts();
         }
+        this.applySearchTarget();
       }
     }
   });
@@ -90,6 +102,56 @@ ngOnInit() {
   // Gọi ngay lập tức khi vào trang (bao gồm cả lúc F5)
   this.adminApi.loadProducts();
 }
+
+  searchTargetId(id: string | number | undefined | null): string {
+    return `admin-search-target-product-${encodeURIComponent(String(id))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    this.searchName = '';
+    this.filterCategory = '';
+    this.filterStatus = '';
+    this.filterPrice = '';
+    const index = this.products.findIndex(product => String(product.id || product._id || '') === id);
+    if (index < 0) return;
+
+    this.currentPage = Math.floor(index / this.itemsPerPage) + 1;
+    this.renderProducts();
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
+  }
   updateStats() {
     this.statTotal = this.products.length;
 
@@ -104,23 +166,6 @@ ngOnInit() {
 
     // Đếm Sản phẩm hot
     this.statHot = this.products.filter(p => this.getDisplayStatus(p) === 'hot').length;
-
-  constructor(private adminApi: AdminApiService) {}
-
-  ngOnInit() {
-    this.adminApi.products$.subscribe(data => {
-      this.products = data;
-      this.updateStats();
-      this.renderProducts();
-    });
-  }
-
-  updateStats() {
-    this.statTotal = this.products.length;
-    this.statWarning = this.products.filter(p => p.status === 'sap-het').length;
-    this.statDanger = this.products.filter(p => p.status === 'het-hang').length;
-    this.statNew = this.products.filter(p => p.status === 'new').length;
-    this.statHot = this.products.filter(p => p.status === 'hot').length;
   }
 
   onFilter() {
@@ -209,14 +254,29 @@ ngOnInit() {
   }
 
   deleteProduct(id: string | number) {
-    if (confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
-      this.adminApi.deleteProduct(id).subscribe({
-        next: () => {
-          this.adminApi.loadProducts();
-        },
-        error: (err) => console.error('Lỗi khi xóa sản phẩm:', err)
-      });
-    }
+    const product = this.products.find(item => String(item.id || item._id || '') === String(id));
+    this.deletingProductId = id;
+    this.deletingProductName = product?.name || 'sản phẩm này';
+    this.showDeleteConfirm = true;
+  }
+
+  closeDeleteConfirm(): void {
+    this.showDeleteConfirm = false;
+    this.deletingProductId = null;
+    this.deletingProductName = '';
+  }
+
+  confirmDeleteProduct(): void {
+    const id = this.deletingProductId;
+    if (id === null) return;
+
+    this.adminApi.deleteProduct(id).subscribe({
+      next: () => {
+        this.closeDeleteConfirm();
+        this.adminApi.loadProducts();
+      },
+      error: (err) => console.error('Lỗi khi xóa sản phẩm:', err)
+    });
   }
 
   onSaveEdit(event: Event) {

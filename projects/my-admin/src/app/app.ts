@@ -1,10 +1,10 @@
 import { afterNextRender, Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterOutlet } from '@angular/router';
+
+import { RouterOutlet } from '@angular/router';
 import { AdminApiService, apiErrorMessage } from './admin-api.service';
 
 @Component({
-  imports: [FormsModule, RouterLink, RouterOutlet],
+  imports: [RouterOutlet],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',

@@ -1,10 +1,8 @@
 import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 
 declare var bootstrap: any;
 
@@ -19,7 +17,8 @@ export class MapAdmin implements OnInit {
   constructor(
     private adminApi: AdminApiService,
     private changeDetectorRef: ChangeDetectorRef,
-    @Inject(PLATFORM_ID) private platformId: object
+    @Inject(PLATFORM_ID) private platformId: object,
+    private route: ActivatedRoute
   ) {}
 
   Math = Math;
@@ -28,11 +27,11 @@ export class MapAdmin implements OnInit {
   mapLoadError = '';
   currentPage = 1;
   ITEMS_PER_PAGE = 8;
-  Math = Math;
-  maps: any[] = [];
-  currentPage = 1;
-  ITEMS_PER_PAGE = 4;
   editingId: string | null = null;
+  private pendingSearchId: string | null = null;
+  showDeleteConfirm = false;
+  deletingMapId: string | null = null;
+  deletingMapName = '';
 
   // Form Model
   mapIdInput: string = '';
@@ -47,6 +46,12 @@ export class MapAdmin implements OnInit {
   mapDesc: string = '';
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      this.pendingSearchId = params.get('searchType') === 'map'
+        ? params.get('searchId')
+        : null;
+      this.applySearchTarget();
+    });
     this.loadMaps();
   }
 
@@ -56,6 +61,7 @@ export class MapAdmin implements OnInit {
     }
 
     this.maps = this.readCachedMaps();
+    this.applySearchTarget();
     this.mapLoadError = '';
     this.isLoading = true;
 
@@ -73,6 +79,7 @@ export class MapAdmin implements OnInit {
         } else {
           this.maps = mapList;
           this.currentPage = 1;
+          this.applySearchTarget();
           try {
             localStorage.setItem('library_maps', JSON.stringify(mapList));
           } catch (error) {
@@ -105,30 +112,6 @@ export class MapAdmin implements OnInit {
     }
 
     return [];
-  async loadMaps() {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const localData = localStorage.getItem('library_maps');
-      if (localData) {
-        try {
-          this.maps = JSON.parse(localData);
-          if (Array.isArray(this.maps) && this.maps.length > 0) return;
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-
-    try {
-      const response = await fetch('../../user/data/gallery.json');
-      if (!response.ok) throw new Error(`Không thể tải file gallery.json`);
-      this.maps = await response.json();
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        localStorage.setItem('library_maps', JSON.stringify(this.maps));
-      }
-    } catch (error) {
-      console.error("❌ LỖI TẢI DỮ LIỆU:", error);
-      this.maps = [];
-    }
   }
 
   get pagedMaps() {
@@ -147,11 +130,57 @@ export class MapAdmin implements OnInit {
     }
   }
 
+  searchTargetId(id: string | number | undefined | null): string {
+    return `admin-search-target-map-${encodeURIComponent(String(id ?? ''))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    const index = this.maps.findIndex(map =>
+      String(map.map_id || map.id || map._id || '') === id
+    );
+    if (index < 0) return;
+
+    this.currentPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
+  }
+
   getImagePath(path: string): string {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('data:')) return path;
     return this.adminApi.getLibraryMapImageUrl(path);
-    return '../../user/' + path;
   }
 
   getDifficultyBadgeClass(diff: string): string {
@@ -265,11 +294,26 @@ export class MapAdmin implements OnInit {
   }
 
   deleteMap(id: string) {
-    if (confirm("Bạn có chắc muốn xóa mẫu này?")) {
-      this.maps = this.maps.filter(m => m.map_id !== id);
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        localStorage.setItem('library_maps', JSON.stringify(this.maps));
-      }
+    const map = this.maps.find(item => String(item.map_id || item.id || item._id || '') === id);
+    this.deletingMapId = id;
+    this.deletingMapName = map?.map_name || map?.name || 'mẫu này';
+    this.showDeleteConfirm = true;
+  }
+
+  closeDeleteConfirm(): void {
+    this.showDeleteConfirm = false;
+    this.deletingMapId = null;
+    this.deletingMapName = '';
+  }
+
+  confirmDeleteMap(): void {
+    const id = this.deletingMapId;
+    if (!id) return;
+
+    this.maps = this.maps.filter(m => String(m.map_id || m.id || m._id || '') !== id);
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('library_maps', JSON.stringify(this.maps));
     }
+    this.closeDeleteConfirm();
   }
 }

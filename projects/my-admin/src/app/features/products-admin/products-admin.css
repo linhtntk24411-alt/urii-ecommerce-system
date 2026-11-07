@@ -156,6 +156,31 @@
     font-weight: 600;
 }
 
+/* Trạng thái sản phẩm đồng bộ với badge trạng thái ở trang đơn hàng */
+/* Badge trạng thái sản phẩm */
+.table-products td .product-status-badge {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 6px 12px !important;
+    box-sizing: border-box;
+    border-radius: 20px !important;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+}
+/* Căn giữa badge trong cột trạng thái */
+.table-products tbody td:nth-child(6) {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
 /* Trạng thái Bán chạy (Màu đỏ/hồng nhạt dễ nhìn) */
 .table .badge.bg-danger, 
 .table .badge.text-bg-danger,
@@ -164,11 +189,16 @@
     color: #840001 !important;
 }
 
-/* Trạng thái Mới */
 .table .badge.bg-success, 
 .table .badge.text-bg-success {
     background-color: #d1e7dd !important;
     color: #0f5132 !important;
+}
+/* Trạng thái Mới - Xanh dương */
+.table-products .product-status-new {
+    background-color: #dbeafe !important;
+    color: #1d4ed8 !important;
+    border: 1px solid #bfdbfe !important;
 }
 
 /* Trạng thái Sắp hết hàng / Chờ xác nhận */
@@ -190,4 +220,109 @@
     background-color: #fff5f5 !important;  /* Nền hồng nhạt rất nhẹ hoặc giữ nguyên #ffffff nếu muốn trắng hoàn toàn */
     color: #b02a37 !important;
     border-color: #b02a37 !important;
+}
+/* Căn thẳng hàng tiêu đề và nội dung cột Trạng thái */
+.table-products th.status-column,
+.table-products td.status-column {
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+}
+
+/* Badge không bị kéo rộng hoặc lệch */
+.table-products td.status-column .product-status-badge {
+    display: inline-flex !important;
+    width: fit-content !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 6px 12px !important;
+    white-space: nowrap;
+}
+/* Dấu chấm bên trong badge trạng thái Mới */
+.table-products .product-status-new::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    min-width: 7px;
+    border-radius: 50%;
+    background-color: #1d4ed8;
+    margin-right: 7px;
+    flex-shrink: 0;
+}
+
+.delete-confirm-overlay {
+    z-index: 1090;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(1px);
+}
+.delete-confirm-dialog {
+    width: calc(100% - 32px);
+    max-width: 376px;
+}
+.delete-confirm-content {
+    border: 0;
+    border-radius: 22px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+.delete-confirm-content .modal-body {
+    padding: 36px 30px 30px;
+}
+.delete-confirm-icon {
+    display: block;
+    margin-bottom: 24px;
+    color: #e63946;
+    font-size: 54px;
+    line-height: 1;
+}
+.delete-confirm-content h5 {
+    margin-bottom: 10px;
+    color: #171717;
+    font-size: 21px;
+    font-weight: 600;
+}
+.delete-confirm-content p {
+    margin-bottom: 26px;
+    color: #687386;
+    font-size: 15px;
+    line-height: 1.6;
+}
+.delete-confirm-content p strong {
+    color: #222;
+    overflow-wrap: anywhere;
+}
+.delete-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.delete-confirm-actions .btn {
+    min-width: 88px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+}
+.delete-cancel-btn {
+    background: #f5f6f7;
+    color: #222;
+}
+.delete-cancel-btn:hover {
+    background: #e9ebed;
+}
+.delete-accept-btn {
+    background: #a00000;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(132, 0, 1, 0.2);
+}
+.delete-accept-btn:hover {
+    background: #840001;
+    color: #fff;
+}
+.delete-confirm-actions .btn:disabled {
+    opacity: 0.65;
 }

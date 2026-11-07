@@ -498,10 +498,6 @@ const FALLBACK_BLOGS: AdminBlog[] = [
     likes: 215
   }
 ];
-import { Injectable, PLATFORM_ID, Inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -514,7 +510,6 @@ export class AdminApiService {
 
   // Token được truyền trực tiếp từ trang đăng nhập
   private currentAuthToken = '';
-  private baseUrl = 'http://localhost:3002/api'; // Trỏ tới server Node.js tổng
 
   private productsSubject = new BehaviorSubject<any[]>([]);
   public products$ = this.productsSubject.asObservable();
@@ -526,9 +521,8 @@ export class AdminApiService {
     // Hiển thị dữ liệu cache trước để giao diện không bị trống
     this.productsSubject.next(this.readCachedProducts());
 
-    // Khôi phục phiên đăng nhập và tải dữ liệu từ API
+    // Khôi phục phiên đăng nhập; dữ liệu chỉ được tải khi trang cần.
     this.restoreSession();
-    this.loadProducts();
   }
 
   // --- 1. QUẢN LÝ TOKEN VÀ ĐĂNG NHẬP ---
@@ -734,34 +728,6 @@ export class AdminApiService {
       productData,
       { headers }
     ).pipe(
-    this.loadProducts();
-  }
-
-  // --- 1. QUẢN LÝ SẢN PHẨM ---
-  public loadProducts(): void {
-    this.http.get<any>(`${this.baseUrl}/products`).subscribe({
-      next: (res) => {
-        const productList = res.products || res;
-        this.productsSubject.next(productList);
-        if (isPlatformBrowser(this.platformId)) {
-          localStorage.setItem('urii_admin_products', JSON.stringify(productList));
-        }
-      },
-      error: (err) => {
-        console.error('Lỗi khi gọi API lấy sản phẩm:', err);
-        if (isPlatformBrowser(this.platformId)) {
-          const cached = localStorage.getItem('urii_admin_products');
-          if (cached) {
-            this.productsSubject.next(JSON.parse(cached));
-          }
-        }
-      }
-    });
-  }
-
-  // Thêm sản phẩm mới
-  public addProduct(productData: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/products`, productData).pipe(
       tap(() => this.loadProducts())
     );
   }
@@ -861,8 +827,10 @@ export class AdminApiService {
 
   getComments(): Observable<AdminComment[]> {
     return this.http
-      .get<AdminComment[]>(`${this.baseUrl}/comments?page=1&limit=100`)
-      .pipe(timeout(8000));
+      .get<AdminComment[]>(`${this.baseUrl}/comments?page=1&limit=100`, {
+        headers: this.getAuthHeaders()
+      })
+      .pipe(timeout(15000));
   }
 
   replyToComment(id: string | number, content: string): Observable<any> {
@@ -883,45 +851,10 @@ export class AdminApiService {
 
   getAdminReviews(): Observable<AdminReview[]> {
     return this.http
-      .get<AdminProduct[]>(`${this.baseUrl}/products?page=1&limit=100`)
-      .pipe(
-        timeout(8000),
-        switchMap((products) => from(products).pipe(
-          mergeMap((product) => this.http
-            .get<{
-              productName: string;
-              reviews: Array<Omit<AdminReview, 'productName' | 'userAvatar'>>;
-            }>(`${this.baseUrl}/reviews/product/${encodeURIComponent(product.id)}?page=1&limit=100`)
-            .pipe(
-              timeout(8000),
-              map((response) => response.reviews.map((review) => ({
-                ...review,
-                productName: response.productName || product.name
-              })))
-            ),
-          8),
-          toArray(),
-          map((reviewsByProduct) => reviewsByProduct.flat().sort(
-            (left, right) => Date.parse(right.createdAt || '') - Date.parse(left.createdAt || '')
-          )),
-          switchMap((reviews) => this.http
-            .get<AdminUser[]>(`${this.baseUrl}/users?page=1&limit=100`, {
-              headers: this.getAuthHeaders()
-            })
-            .pipe(
-              timeout(8000),
-              map((users) => {
-                const avatarsByUserId = new Map(
-                  users.map((user) => [user._id, user.avatar || ''])
-                );
-                return reviews.map((review) => ({
-                  ...review,
-                  userAvatar: avatarsByUserId.get(review.userId) || ''
-                }));
-              })
-            ))
-        ))
-      );
+      .get<AdminReview[]>(`${this.baseUrl}/reviews?page=1&limit=100`, {
+        headers: this.getAuthHeaders()
+      })
+      .pipe(timeout(15000));
   }
 
   getInitialDashboard(): DashboardStats {
@@ -1052,8 +985,15 @@ export class AdminApiService {
         : (data?.orders || data?.data || []);
 
       if (list.length > 0) {
-        this.setCached('urii_admin_orders', list);
-        return list;
+        const normalizedList = list.map((item: any) => {
+          const amt = Number(item.totalAmount ?? item.total ?? item.pricing?.finalTotal ?? 0);
+          const totalStr = typeof item.total === 'string' && item.total.includes('đ')
+            ? item.total
+            : (amt > 0 ? `${amt.toLocaleString('vi-VN')}đ` : '0đ');
+          return { ...item, total: totalStr, totalAmount: amt };
+        });
+        this.setCached('urii_admin_orders', normalizedList);
+        return normalizedList;
       }
     } catch {
       // Trả về cache nếu API lỗi
@@ -1066,7 +1006,9 @@ export class AdminApiService {
   // Tạm giữ endpoint /maps theo code hiện tại sau khi Pull.
 
   public getLibraryMaps(): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/maps`);
+    return this.http.get<any>(`${this.baseUrl}/maps`, {
+      headers: this.getAuthHeaders()
+    });
   }
 
   public getLibraryMapImageUrl(imagePath: string): string {
@@ -1080,13 +1022,15 @@ export class AdminApiService {
   public saveLibraryMap(mapData: any): Observable<any> {
     return this.http.post(
       `${this.baseUrl}/maps`,
-      mapData
+      mapData,
+      { headers: this.getAuthHeaders() }
     );
   }
 
   public deleteLibraryMap(id: string): Observable<any> {
     return this.http.delete(
-      `${this.baseUrl}/maps/${encodeURIComponent(id)}`
+      `${this.baseUrl}/maps/${encodeURIComponent(id)}`,
+      { headers: this.getAuthHeaders() }
     );
   }
 
@@ -1279,7 +1223,7 @@ export class AdminApiService {
     body?: unknown
   ): Promise<T> {
     const opts = this.options();
-    const TIMEOUT_MS = 2500;
+    const TIMEOUT_MS = 15000;
 
     switch (method) {
       case 'GET':
@@ -1337,40 +1281,4 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     return typeof message === 'string' ? message : fallback;
   }
   return error instanceof Error ? error.message : fallback;
-}
-  // Cập nhật sản phẩm (hỗ trợ cả id số hoặc _id của MongoDB)
-  public updateProduct(id: string | number, productData: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/products/${id}`, productData).pipe(
-      tap(() => this.loadProducts()) 
-    );
-  }
-
-  // Xóa sản phẩm
-  public deleteProduct(id: string | number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/products/${id}`).pipe(
-      tap(() => this.loadProducts()) 
-    );
-  }
-
-  // --- 2. QUẢN LÝ ĐƠN HÀNG ---
-  public getOrders(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/orders`);
-  }
-
-  public updateOrderStatus(id: string, status: string): Observable<any> {
-    return this.http.put(`${this.baseUrl}/orders/${id}`, { status });
-  }
-
-  // --- 3. QUẢN LÝ THƯ VIỆN MAP MẪU ---
-  public getLibraryMaps(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/library-maps`);
-  }
-
-  public saveLibraryMap(mapData: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/library-maps`, mapData);
-  }
-
-  public deleteLibraryMap(id: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/library-maps/${id}`);
-  }
 }

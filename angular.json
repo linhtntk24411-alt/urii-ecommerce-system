@@ -26,10 +26,13 @@
               }
             ],
             "styles": [
-                        "node_modules/bootstrap/dist/css/bootstrap.min.css",
-                        "node_modules/bootstrap-icons/font/bootstrap-icons.css",
-                        "projects/my-user/src/styles.css"],
-            "scripts": ["node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"],
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/bootstrap-icons/font/bootstrap-icons.css",
+              "projects/my-user/src/styles.css"
+            ],
+            "scripts": [
+              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
+            ],
             "server": "projects/my-user/src/main.server.ts",
             "outputMode": "server",
             "security": {
@@ -66,7 +69,8 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "port": 4201
           },
           "configurations": {
             "production": {
@@ -102,15 +106,17 @@
               }
             ],
             "styles": [
-                        "node_modules/bootstrap/dist/css/bootstrap.min.css",
-                        "node_modules/bootstrap-icons/font/bootstrap-icons.css",
-                        "projects/my-admin/src/styles.css"
-                      ],
-            "scripts": ["node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"],
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/bootstrap-icons/font/bootstrap-icons.css",
+              "projects/my-admin/src/styles.css"
+            ],
+            "scripts": [
+              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
+            ],
             "server": "projects/my-admin/src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": ["localhost"]
             },
             "ssr": {
               "entry": "projects/my-admin/src/server.ts"
@@ -143,7 +149,9 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "port": 4200,
+            "allowedHosts": ["localhost"]
           },
           "configurations": {
             "production": {

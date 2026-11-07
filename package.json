@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve my-user",
-    "start:admin": "ng serve my-admin",
+    "start": "ng serve my-user --port 4201",
+    "start:user": "ng serve my-user --port 4201",
+    "start:admin": "ng serve my-admin --port 4200",
+    "start:mongo": "node my-server-mongodb/index.js",
+    "start:server": "node my-server-mongodb/index.js",
     "build": "ng build my-user",
     "build:admin": "ng build my-admin",
     "watch": "ng build my-user --watch --configuration development",

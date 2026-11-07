@@ -365,7 +365,7 @@
                   {{ order.status }}
                 </span>
               </td>
-              <td class="fw-bold" style="color: #840001">{{ order.total }}</td>
+              <td class="fw-bold" style="color: #840001">{{ formatOrderTotal(order) }}</td>
               <td class="text-center" style="white-space: nowrap;">
                 <button
                   type="button"
@@ -627,7 +627,7 @@
 
         <div class="d-flex justify-content-between align-items-center mt-3 pt-2">
           <span class="fw-bold">Tổng thanh toán:</span>
-          <span class="fs-5 fw-bold" style="color: #840001">{{ ord.total }}</span>
+          <span class="fs-5 fw-bold" style="color: #840001">{{ formatOrderTotal(ord) }}</span>
         </div>
       </div>
       <div class="px-4 pb-4 text-end">

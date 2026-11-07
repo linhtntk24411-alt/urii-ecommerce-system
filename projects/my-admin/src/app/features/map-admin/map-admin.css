@@ -1,3 +1,9 @@
+.map-admin-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+}
 .table thead th {
     background-color: #f8f9fa;
     border-bottom: none;
@@ -33,3 +39,134 @@
 .btn-action-delete { color: #dc3545; }
 .btn-action-edit:hover { color: #333; background: #eee; border-radius: 6px; }
 .btn-action-delete:hover { color: #a71d2a; background: #f8d7da; border-radius: 6px; }
+/* Badge độ khó đồng bộ với badge trạng thái ở trang đơn hàng */
+.table td .map-difficulty-badge {
+  padding: 5px 14px !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  font-family: 'Segoe UI', sans-serif;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  gap: 0 !important;
+  white-space: nowrap !important;
+  line-height: normal !important;
+  text-align: center;
+  box-shadow: none !important;
+}
+
+.table-maps thead th:nth-child(3),
+.table-maps tbody td:nth-child(3) {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+table.table-maps tbody td .map-difficulty-badge::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Dễ: Xanh lá pastel giống Dashboard Admin */
+.table td .badge.bg-success {
+  background-color: #e6f4ea !important;
+  color: #137333 !important;
+  border: 1px solid rgba(19, 115, 51, 0.25) !important;
+}
+
+/* Trung bình: Vàng cam pastel giống Dashboard Admin */
+.table td .badge.bg-warning {
+  background-color: #fef7e0 !important;
+  color: #b06000 !important;
+  border: 1px solid rgba(176, 96, 0, 0.25) !important;
+}
+
+/* Khó: Đỏ hồng pastel giống Dashboard Admin */
+.table td .badge.bg-danger {
+  background-color: #fce8e6 !important;
+  color: #c5221f !important;
+  border: 1px solid rgba(197, 34, 31, 0.25) !important;
+}
+
+.table td .badge.bg-secondary {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid rgba(71, 85, 105, 0.25) !important;
+}
+
+.delete-confirm-overlay {
+    z-index: 1090;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(1px);
+}
+.delete-confirm-dialog {
+    width: calc(100% - 32px);
+    max-width: 376px;
+}
+.delete-confirm-content {
+    border: 0;
+    border-radius: 22px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+.delete-confirm-content .modal-body {
+    padding: 36px 30px 30px;
+}
+.delete-confirm-icon {
+    display: block;
+    margin-bottom: 24px;
+    color: #e63946;
+    font-size: 54px;
+    line-height: 1;
+}
+.delete-confirm-content h5 {
+    margin-bottom: 10px;
+    color: #171717;
+    font-size: 21px;
+    font-weight: 600;
+}
+.delete-confirm-content p {
+    margin-bottom: 26px;
+    color: #687386;
+    font-size: 15px;
+    line-height: 1.6;
+}
+.delete-confirm-content p strong {
+    color: #222;
+    overflow-wrap: anywhere;
+}
+.delete-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.delete-confirm-actions .btn {
+    min-width: 88px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+}
+.delete-cancel-btn {
+    background: #f5f6f7;
+    color: #222;
+}
+.delete-cancel-btn:hover {
+    background: #e9ebed;
+}
+.delete-accept-btn {
+    background: #a00000;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(132, 0, 1, 0.2);
+}
+.delete-accept-btn:hover {
+    background: #840001;
+    color: #fff;
+}
+.delete-confirm-actions .btn:disabled {
+    opacity: 0.65;
+}

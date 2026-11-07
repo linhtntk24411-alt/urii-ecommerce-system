@@ -1,0 +1,257 @@
+{
+  "notifications": [
+    {
+      "id": "NOTIF-ADMIN-001",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_NEW",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-82901"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-20T10:00:30"
+    },
+    {
+      "id": "NOTIF-ADMIN-002",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_NEW",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8685",
+      "reference": {
+        "orderId": "UR-82905",
+        "customOrderId": "customer-order-URII-9842"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-24T11:00:30"
+    },
+    {
+      "id": "NOTIF-ADMIN-003",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_PAYMENT_RECEIVED",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8684",
+      "reference": {
+        "orderId": "UR-82904"
+      },
+      "isRead": true,
+      "readAt": "2024-05-23T20:10:00",
+      "createdAt": "2024-05-23T19:21:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-004",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_CANCEL_REQUEST",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-84001"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-05T10:30:15"
+    },
+    {
+      "id": "NOTIF-ADMIN-005",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_CANCEL_REQUEST",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8682",
+      "reference": {
+        "orderId": "UR-84008",
+        "customOrderId": "customer-order-URII-9421"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-07T10:30:15"
+    },
+    {
+      "id": "NOTIF-ADMIN-006",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_RETURN_REQUEST",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-85001"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-08T10:00:30"
+    },
+    {
+      "id": "NOTIF-ADMIN-007",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_RETURN_REQUEST",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-85007",
+        "customOrderId": "customer-order-URII-9422"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-09T10:00:30"
+    },
+    {
+      "id": "NOTIF-ADMIN-008",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_RETURN_WAREHOUSE_RECEIVED",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8685",
+      "reference": {
+        "orderId": "UR-85005"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-13T09:30:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-009",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_SLA_WARNING",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8683",
+      "reference": {
+        "orderId": "UR-82903"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-23T06:00:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-010",
+      "audience": "admin",
+      "typeId": "ADMIN_ORDER_DELIVERY_ISSUE",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-83031"
+      },
+      "isRead": true,
+      "readAt": "2024-07-04T10:00:00",
+      "createdAt": "2024-07-04T08:15:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-011",
+      "audience": "admin",
+      "typeId": "ADMIN_CUSTOM_ORDER_NEW",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "customOrderId": "customer-order-URII-9842",
+        "mapId": "M02"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-18T09:30:10"
+    },
+    {
+      "id": "NOTIF-ADMIN-012",
+      "audience": "admin",
+      "typeId": "ADMIN_CUSTOM_ORDER_NEW",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8684",
+      "reference": {
+        "customOrderId": "customer-order-URII-9412",
+        "mapId": "M27"
+      },
+      "isRead": true,
+      "readAt": "2024-05-19T11:00:00",
+      "createdAt": "2024-05-19T10:15:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-013",
+      "audience": "admin",
+      "typeId": "ADMIN_REVIEW_NEW",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "orderId": "UR-REVIEW-001",
+        "productId": "1075483767"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-25T14:20:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-014",
+      "audience": "admin",
+      "typeId": "ADMIN_PRODUCT_LOW_STOCK",
+      "recipientUserId": null,
+      "actorUserId": null,
+      "reference": {
+        "productId": "1075486161"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-06-10T08:00:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-015",
+      "audience": "admin",
+      "typeId": "ADMIN_BLOG_NEW_POST",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "blogId": 1
+      },
+      "isRead": true,
+      "readAt": "2024-05-24T12:00:00",
+      "createdAt": "2024-05-24T10:00:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-016",
+      "audience": "admin",
+      "typeId": "ADMIN_COMMENT_NEW",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8682",
+      "reference": {
+        "blogId": 1,
+        "commentId": 1
+      },
+      "isRead": true,
+      "readAt": "2024-05-24T21:00:00",
+      "createdAt": "2024-05-24T20:00:10"
+    },
+    {
+      "id": "NOTIF-ADMIN-017",
+      "audience": "admin",
+      "typeId": "ADMIN_CHAT_WAITING_SUPPORT",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8681",
+      "reference": {
+        "sessionId": "cs_001",
+        "orderId": "UR-82901"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-05-20T15:30:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-018",
+      "audience": "admin",
+      "typeId": "ADMIN_USER_NEW_REGISTERED",
+      "recipientUserId": null,
+      "actorUserId": "6ade4310c044b23d6c6a8686",
+      "reference": {},
+      "isRead": true,
+      "readAt": "2024-05-01T11:00:00",
+      "createdAt": "2024-05-01T09:00:00"
+    },
+    {
+      "id": "NOTIF-ADMIN-019",
+      "audience": "admin",
+      "typeId": "ADMIN_VOUCHER_EXPIRED_OR_LOW",
+      "recipientUserId": null,
+      "actorUserId": null,
+      "reference": {
+        "voucherId": "HAPPYDAY"
+      },
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2024-07-01T00:05:00"
+    }
+  ]
+}

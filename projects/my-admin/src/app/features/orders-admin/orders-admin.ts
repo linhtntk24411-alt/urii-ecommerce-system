@@ -1,11 +1,9 @@
 import { ChangeDetectorRef, Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminApiService, AdminUser } from '../../core/services/admin-api.service';
 import { combineLatest, Subscription } from 'rxjs';
-import { Component, OnInit, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 
 declare var bootstrap: any;
 
@@ -19,7 +17,8 @@ declare var bootstrap: any;
 export class OrdersAdmin implements OnInit {
   constructor(
     private adminApi: AdminApiService,
-    private changeDetectorRef: ChangeDetectorRef
+    private changeDetectorRef: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {}
   // --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI DROPDOWN ---
   activeDropdownId: string | null = null;
@@ -43,6 +42,10 @@ export class OrdersAdmin implements OnInit {
   orders: any[] = [];
   orderLoadError = '';
   private orderDataSubscription?: Subscription;
+  private pendingSearchId: string | null = null;
+  showDeleteConfirm = false;
+  deletingOrderId: string | null = null;
+  isDeletingOrder = false;
   
   // --- Pagination ---
   currentPage = 1;
@@ -79,8 +82,75 @@ export class OrdersAdmin implements OnInit {
   };
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      this.pendingSearchId = params.get('searchType') === 'order'
+        ? params.get('searchId')
+        : null;
+      this.applySearchTarget();
+    });
     this.loadCustomerAvatars();
     this.loadOrders();
+  }
+
+  searchTargetId(id: string | number): string {
+    return `admin-search-target-order-${encodeURIComponent(String(id))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    const order = this.originalOrders.find(item => String(item.id) === id);
+    if (!order) return;
+
+    this.searchQuery = '';
+    this.filterStatus = '';
+    this.filterDate = '';
+    this.filterSort = 'newest';
+    this.applyFilters();
+
+    if (order.isCustomOrder) {
+      const index = this.customOrders.findIndex(item => String(item.id) === id);
+      this.currentCustomPage = Math.floor(index / this.CUSTOM_ITEMS_PER_PAGE) + 1;
+    } else if (order.status === 'pending_approval') {
+      const index = this.cancelRequests.findIndex(item => String(item.id) === id);
+      this.currentCancelPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    } else {
+      const index = this.regularOrders.findIndex(item => String(item.id) === id);
+      this.currentPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    }
+
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
   }
 
   // --- Computed Lists ---
@@ -198,9 +268,7 @@ export class OrdersAdmin implements OnInit {
               : 'KH',
             phone: item.phone || item.address?.phone || '',
             address: item.address?.address || item.address || '',
-            total: typeof item.total === 'string'
-              ? Number(item.total.replace(/[^0-9]/g, '')) || 0
-              : Number(item.total) || 0,
+            total: this.getOrderTotal(item, orderItems),
             items: orderItems,
             product: item.product || orderItems.map((orderItem: any) =>
               `${orderItem.name}${orderItem.variantName ? ` - ${orderItem.variantName}` : ''} (x${orderItem.quantity ?? 1})`
@@ -222,6 +290,7 @@ export class OrdersAdmin implements OnInit {
           ...customOrderList.map((item: any) => this.normalizeCustomOrder(item))
         ];
         this.orders = [...this.originalOrders];
+        this.applySearchTarget();
         this.changeDetectorRef.markForCheck();
       },
       error: (err: any) => {
@@ -251,6 +320,28 @@ export class OrdersAdmin implements OnInit {
       image: orderItem.image || variant?.image || product?.image || '',
       variantName: orderItem.variantName || variant?.name || ''
     };
+  }
+
+  private getOrderTotal(order: any, items: any[]): number {
+    const totalValues = [
+      order.totalAmount,
+      order.total,
+      order.pricing?.finalTotal
+    ];
+
+    for (const value of totalValues) {
+      if (value === null || value === undefined || value === '') continue;
+      const amount = typeof value === 'number'
+        ? value
+        : Number(String(value).replace(/[^0-9]/g, ''));
+      if (Number.isFinite(amount) && amount >= 0) return amount;
+    }
+
+    return items.reduce((sum, item) => {
+      const price = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 0;
+      return sum + price * quantity;
+    }, 0);
   }
 
   private normalizeCustomOrder(item: any): any {
@@ -405,20 +496,37 @@ export class OrdersAdmin implements OnInit {
  }
 
   deleteOrder(id: string) {
-  if (confirm(`Bạn có chắc chắn muốn xóa đơn hàng #${id} không?`)) {
+    this.deletingOrderId = id;
+    this.showDeleteConfirm = true;
+  }
+
+  closeDeleteConfirm(): void {
+    if (this.isDeletingOrder) return;
+    this.showDeleteConfirm = false;
+    this.deletingOrderId = null;
+  }
+
+  confirmDeleteOrder(): void {
+    const id = this.deletingOrderId;
+    if (!id || this.isDeletingOrder) return;
+
+    this.isDeletingOrder = true;
     this.adminApi.deleteOrder(id).subscribe({
       next: () => {
         this.originalOrders = this.originalOrders.filter(o => o.id !== id);
         this.saveOrders();
+        this.showDeleteConfirm = false;
+        this.deletingOrderId = null;
+        this.isDeletingOrder = false;
         alert('Đã xóa đơn hàng!');
       },
       error: (err) => {
         console.error('Lỗi xóa đơn hàng:', err);
+        this.isDeletingOrder = false;
         alert('Không thể xóa đơn hàng!');
       }
     });
   }
- }
 
   handleCancelRequest(id: string, isApproved: boolean): void {
     const order = this.originalOrders.find(o => o.id === id);

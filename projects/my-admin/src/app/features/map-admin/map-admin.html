@@ -19,7 +19,7 @@
     <div class="card border-0 shadow-sm rounded-4 bg-white">
         <div class="card-body p-0">
             <div class="table-responsive p-0">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0 table-maps">
                     <thead class="bg-light text-muted" style="font-size: 13px; font-weight: 600;">
                          <tr>
                              <th class="ps-4 py-3" style="width: 80px;">Ảnh mẫu</th>
@@ -32,12 +32,12 @@
                     </thead>
                     <tbody class="fs-6">
                         @for (m of pagedMaps; track m.map_id) {
-                        <tr>
+                        <tr [id]="searchTargetId(m.map_id || m.id || m._id)">
                             <td class="ps-4">
                                 <img [src]="getImagePath(m.main_image)" [alt]="m.map_name" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
                             </td>
                             <td><strong>{{ m.map_name }}</strong></td>
-                            <td><span class="badge" [ngClass]="getDifficultyBadgeClass(m.difficulty)">{{ m.difficulty || 'Chưa rõ' }}</span></td>
+                            <td><span class="badge map-difficulty-badge" [ngClass]="getDifficultyBadgeClass(m.difficulty)">{{ m.difficulty || 'Chưa rõ' }}</span></td>
                             <td>{{ m.grid_size || '--' }}</td>
                             <td><span class="fw-bold text-danger">{{ m.total_beads || 0 }}</span> hạt</td>
                             <td class="pe-4 text-end">
@@ -108,6 +108,7 @@
                             <img [src]="getImagePath(mapImage)" class="img-thumbnail" style="max-height: 120px;">
                         </div>
                     </div>
+
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label fw-bold">Độ khó</label>
@@ -145,6 +146,22 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                 <button type="button" class="btn btn-danger fw-bold px-4" (click)="saveMap()"><i class="bi bi-save"></i> Lưu mẫu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade show d-block delete-confirm-overlay" *ngIf="showDeleteConfirm" role="dialog" aria-modal="true" aria-labelledby="map-delete-title" (click)="closeDeleteConfirm()">
+    <div class="modal-dialog modal-dialog-centered delete-confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-content delete-confirm-content">
+            <div class="modal-body text-center">
+                <i class="bi bi-exclamation-circle delete-confirm-icon" aria-hidden="true"></i>
+                <h5 id="map-delete-title">Xác nhận xóa</h5>
+                <p>Bạn có chắc chắn muốn xóa mẫu <strong>{{ deletingMapName }}</strong> không?</p>
+                <div class="delete-confirm-actions">
+                    <button type="button" class="btn delete-cancel-btn" (click)="closeDeleteConfirm()">Hủy</button>
+                    <button type="button" class="btn delete-accept-btn" (click)="confirmDeleteMap()">Xóa bỏ</button>
+                </div>
             </div>
         </div>
     </div>

@@ -16,7 +16,7 @@
                 <p class="hero-label">Rạng rỡ sinh nhật</p>
                 <h1>BIRTHDAY MONTH</h1>
                 <p>Đón sinh nhật thêm rực rỡ cùng Urii! Khách hàng có sinh nhật trong tháng sẽ nhận ngay voucher giảm 50% để thỏa sức sáng tạo với những mẫu hạt nhựa ủi yêu thích.</p>
-                <a class="btn btn-urii btn-lg" routerLink="/products">Nhận voucher ngay</a>
+                <button type="button" class="btn btn-urii btn-lg" (click)="openBirthdayModal()">Nhận voucher ngay</button>
               </div>
             </div>
           </div>
@@ -122,6 +122,9 @@
               @if (item.isSale) {
                 <span class="product-card__badge product-card__badge--sale">{{item.badge}}</span>
               }
+              <button type="button" class="cart-icon" [attr.aria-label]="'Thêm ' + item.name + ' vào giỏ hàng'" (click)="addToCart(item)">
+                <i class="bi bi-cart-plus"></i>
+              </button>
             </div>
             <div class="product-card__body">
               <h3>{{item.name}}</h3>
@@ -145,8 +148,8 @@
                     <span class="price">{{item.originalPrice | number}}đ</span>
                   }
                 </div>
-                <button class="btn btn-urii btn-sm" type="button">
-                  <i class="bi bi-cart"></i>
+                <button class="btn btn-urii btn-sm" type="button" (click)="addToCart(item)" [title]="'Thêm ' + item.name + ' vào giỏ hàng'">
+                  <i class="bi bi-cart-plus"></i>
                 </button>
               </div>
             </div>
@@ -227,4 +230,191 @@
       </div>
     </div>
   </section>
+
+  <!-- ===================== POPUP KHO VOUCHER ===================== -->
+  <div *ngIf="isVoucherModalOpen" class="voucher-modal-backdrop" (click)="closeVoucherModal()">
+    <div class="voucher-modal-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button class="voucher-modal-close" type="button" aria-label="Đóng" (click)="closeVoucherModal()">×</button>
+      
+      <div class="voucher-modal-header">
+        <div class="voucher-header-badge">
+          <i class="bi bi-gift-fill me-1"></i> Ưu Đãi Urii
+        </div>
+        <h2 class="voucher-modal-title">Kho Voucher Khuyến Mãi</h2>
+        <p class="voucher-modal-subtitle">Thu thập các mã giảm giá hấp dẫn để mua sắm tiết kiệm hơn!</p>
+        
+        <div class="voucher-header-actions" *ngIf="unclaimedVouchers.length > 0">
+          <button class="btn-claim-all" type="button" [disabled]="isClaimingAll" (click)="claimAllVouchers()">
+            <i class="bi bi-check2-all"></i>
+            {{ isClaimingAll ? 'Đang nhận...' : 'Nhận tất cả mã' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="voucher-modal-body custom-scrollbar">
+        <!-- Toast message -->
+        <div *ngIf="voucherToastMessage" class="voucher-alert-toast" role="status">
+          <i class="bi bi-info-circle-fill me-1"></i> {{ voucherToastMessage }}
+        </div>
+
+        <!-- Trạng thái loading / lỗi -->
+        <div *ngIf="isLoadingVouchers" class="voucher-empty-state">
+          <div class="spinner-border text-danger" role="status"></div>
+          <p class="mt-2 mb-0">Đang đọc dữ liệu voucher từ hệ thống...</p>
+        </div>
+
+        <div *ngIf="!isLoadingVouchers && voucherLoadError" class="voucher-empty-state text-danger">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+          <p class="mt-2 mb-0">{{ voucherLoadError }}</p>
+          <button class="btn btn-sm btn-outline-danger mt-2" (click)="loadUnclaimedVouchers()">Thử lại</button>
+        </div>
+
+        <!-- Danh sách voucher trống (đã nhận hết) -->
+        <div *ngIf="!isLoadingVouchers && !voucherLoadError && unclaimedVouchers.length === 0" class="voucher-empty-state">
+          <div class="voucher-empty-icon">
+            <i class="bi bi-ticket-perforated"></i>
+          </div>
+          <h4>Tuyệt vời!</h4>
+          <p>Bạn đã nhận tất cả voucher khả dụng hiện có của Urii.</p>
+          <a routerLink="/products" class="btn btn-sm btn-danger mt-1" (click)="closeVoucherModal()">Mua sắm ngay</a>
+        </div>
+
+        <!-- Danh sách voucher chưa có -->
+        <div class="voucher-list" *ngIf="!isLoadingVouchers && !voucherLoadError && unclaimedVouchers.length > 0">
+          <div class="voucher-ticket-card" *ngFor="let voucher of unclaimedVouchers">
+            <div class="voucher-ticket-left" [ngClass]="'type-' + voucher.type">
+              <span class="voucher-discount-val">{{ formatVoucherDiscount(voucher) }}</span>
+              <span class="voucher-type-badge">{{ voucher.type === 'shipping' ? 'Vận chuyển' : 'Đơn hàng' }}</span>
+            </div>
+
+            <div class="voucher-ticket-divider">
+              <div class="notch notch-top"></div>
+              <div class="notch notch-bottom"></div>
+            </div>
+
+            <div class="voucher-ticket-right">
+              <div class="voucher-ticket-info">
+                <div class="voucher-code-badge">{{ voucher.code }}</div>
+                <h4 class="voucher-name">{{ voucher.name }}</h4>
+                <p class="voucher-desc">{{ voucher.description }}</p>
+                <div class="voucher-meta">
+                  <span *ngIf="voucher.minOrder">Đơn từ {{ voucher.minOrder | number:'1.0-0' }}đ</span>
+                  <span *ngIf="voucher.endDate">HSD: {{ voucher.endDate }}</span>
+                </div>
+              </div>
+
+              <div class="voucher-ticket-action">
+                <button
+                  class="btn-claim-single"
+                  type="button"
+                  [disabled]="isClaimingMap[voucher.id || voucher._id || voucher.code]"
+                  (click)="claimSingleVoucher(voucher)">
+                  {{ isClaimingMap[voucher.id || voucher._id || voucher.code] ? '...' : 'Nhận' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP NHẬN VOUCHER 50% SINH NHẬT -->
+  <div class="birthday-modal-backdrop" *ngIf="isBirthdayModalOpen" (click)="closeBirthdayModal()">
+    <div class="birthday-modal-dialog" (click)="$event.stopPropagation()">
+      <button type="button" class="birthday-modal-close" (click)="closeBirthdayModal()" aria-label="Đóng popup">
+        <i class="bi bi-x-lg"></i>
+      </button>
+
+      <!-- Icon hộp quà trong vòng tròn màu pastel nhẹ -->
+      <div class="birthday-icon-circle">
+        <svg class="gift-box-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 20H40V40C40 41.1 39.1 42 38 42H10C8.9 42 8 41.1 8 40V20Z" fill="#840001"/>
+          <path d="M5 14C5 12.8954 5.89543 12 7 12H41C42.1046 12 43 12.8954 43 14V20H5V14Z" fill="#840001"/>
+          <path d="M21 12H27V42H21V12Z" fill="#ffffff" fill-opacity="0.9"/>
+          <!-- Ribbon bows -->
+          <path d="M24 12C24 12 21 4 15 4C11 4 9 7 9 9.5C9 13.5 24 12 24 12Z" fill="#840001"/>
+          <path d="M24 12C24 12 27 4 33 4C37 4 39 7 39 9.5C39 13.5 24 12 24 12Z" fill="#840001"/>
+        </svg>
+      </div>
+
+      <h2 class="birthday-modal-title">Nhận Voucher 50%</h2>
+      <p class="birthday-modal-subtitle">
+        Điền thông tin để nhận ngay voucher giảm 50% cho sinh nhật của bạn!
+      </p>
+
+      <!-- Alert thông báo lỗi / thành công -->
+      <div *ngIf="birthdayErrorMessage" class="birthday-alert birthday-alert--danger">
+        <i class="bi bi-exclamation-circle-fill me-1"></i> {{ birthdayErrorMessage }}
+      </div>
+      <div *ngIf="birthdaySuccessMessage" class="birthday-alert birthday-alert--success">
+        <i class="bi bi-check-circle-fill me-1"></i> {{ birthdaySuccessMessage }}
+      </div>
+
+      <form class="birthday-form" (ngSubmit)="submitBirthdayVoucher()">
+        <div class="birthday-form-group">
+          <label class="birthday-label">Họ và tên</label>
+          <input
+            type="text"
+            class="birthday-input"
+            name="name"
+            [(ngModel)]="birthdayFormName"
+            placeholder="Nguyễn Minh Anh"
+            required
+          />
+        </div>
+
+        <div class="birthday-form-group">
+          <div class="birthday-label-row">
+            <label class="birthday-label">Ngày sinh</label>
+            <span *ngIf="isBirthLocked" class="badge-birth-locked">
+              <i class="bi bi-lock-fill"></i> Đã khóa
+            </span>
+          </div>
+          <div class="birthday-input-wrapper">
+            <input
+              type="date"
+              class="birthday-input"
+              [class.is-locked]="isBirthLocked"
+              name="birth"
+              [(ngModel)]="birthdayFormBirth"
+              [disabled]="isBirthLocked"
+              required
+            />
+            <i *ngIf="isBirthLocked" class="bi bi-lock-fill lock-badge-icon" title="Ngày sinh chỉ được nhập 1 lần duy nhất"></i>
+          </div>
+          <p *ngIf="isBirthLocked" class="birthday-locked-hint">
+            <i class="bi bi-info-circle me-1"></i> Mỗi tài khoản chỉ được nhập ngày sinh duy nhất 1 lần.
+          </p>
+        </div>
+
+        <div class="birthday-form-group">
+          <label class="birthday-label">Số điện thoại</label>
+          <input
+            type="tel"
+            class="birthday-input"
+            name="phone"
+            [(ngModel)]="birthdayFormPhone"
+            placeholder="0901 234 567"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn-submit-birthday"
+          [disabled]="isSubmittingBirthday || isBirthLocked"
+        >
+          <i class="bi bi-gift-fill me-2"></i>
+          <ng-container *ngIf="isBirthLocked">Đã nhận voucher sinh nhật</ng-container>
+          <ng-container *ngIf="!isBirthLocked">{{ isSubmittingBirthday ? 'Đang gửi...' : 'Nhận Voucher Ngay' }}</ng-container>
+        </button>
+      </form>
+
+      <div class="birthday-security-note">
+        <i class="bi bi-shield-check me-1"></i> Thông tin của bạn được bảo mật
+      </div>
+    </div>
+  </div>
+
 </main>

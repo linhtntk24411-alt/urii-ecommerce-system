@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angula
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Inject, PLATFORM_ID } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BlogComment, BlogPost, BlogService } from '../../../core/services/blog.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { combineLatest, map, TimeoutError } from 'rxjs';
@@ -10,7 +10,7 @@ import { combineLatest, map, TimeoutError } from 'rxjs';
 @Component({
   selector: 'app-blog-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './blog-detail.html',
   styleUrl: './blog-detail.css'
 })
@@ -175,6 +175,94 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
         this.isSubmittingComment = false;
         this.changeDetectorRef.markForCheck();
       },
+    });
+  }
+
+  // ================= PHẢN HỒI BÌNH LUẬN (REPLY) =================
+  activeReplyCommentId: string | number | null = null;
+  replyContentMap: Record<string, string> = {};
+  isSubmittingReplyMap: Record<string, boolean> = {};
+  replyErrorMessageMap: Record<string, string> = {};
+
+  openReplyForm(commentId: string | number): void {
+    if (!this.isLoggedIn) {
+      this.requireLoginToComment();
+      return;
+    }
+    const key = String(commentId);
+    this.activeReplyCommentId = this.activeReplyCommentId === commentId ? null : commentId;
+    this.replyErrorMessageMap[key] = '';
+    if (!this.replyContentMap[key]) {
+      this.replyContentMap[key] = '';
+    }
+    this.changeDetectorRef.markForCheck();
+  }
+
+  cancelReply(commentId: string | number): void {
+    const key = String(commentId);
+    this.activeReplyCommentId = null;
+    this.replyContentMap[key] = '';
+    this.replyErrorMessageMap[key] = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  submitReply(comment: BlogComment): void {
+    const key = String(comment.id);
+    const content = (this.replyContentMap[key] || '').trim();
+
+    if (!content) {
+      this.replyErrorMessageMap[key] = 'Vui lòng nhập nội dung phản hồi.';
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    const token = isPlatformBrowser(this.platformId)
+      ? localStorage.getItem('authToken')
+      : null;
+
+    if (!this.isLoggedIn || !token) {
+      this.requireLoginToComment();
+      return;
+    }
+
+    this.isSubmittingReplyMap[key] = true;
+    this.replyErrorMessageMap[key] = '';
+
+    this.blogService.replyComment(comment.id, content, token).subscribe({
+      next: (res) => {
+        // Cập nhật danh sách replies trực tiếp
+        if (!comment.replies) {
+          comment.replies = [];
+        }
+        
+        // Nếu API trả về comment object đã enrich
+        if (res && Array.isArray(res.replies)) {
+          comment.replies = res.replies;
+        } else {
+          // Fallback thêm reply mới vào mảng
+          const userName = localStorage.getItem('userName') || 'Bạn';
+          const userAvatar = localStorage.getItem('userAvatar') || 'assets/avatar-non.jpg';
+          comment.replies.push({
+            id: 'r-' + Date.now(),
+            author: userName,
+            avatar: userAvatar,
+            content: content,
+            time: 'Vừa xong',
+            role: 'user'
+          });
+        }
+
+        this.replyContentMap[key] = '';
+        this.activeReplyCommentId = null;
+        this.isSubmittingReplyMap[key] = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        console.error('Lỗi phản hồi bình luận:', err);
+        this.replyErrorMessageMap[key] = err.error?.message || 'Không thể gửi phản hồi lúc này.';
+        this.isSubmittingReplyMap[key] = false;
+        this.changeDetectorRef.markForCheck();
+      }
     });
   }
 

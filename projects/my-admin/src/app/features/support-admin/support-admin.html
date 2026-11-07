@@ -36,7 +36,7 @@
                 @for (s of getFilteredSessions(); track s.sessionId) {
                 <div class="session-item" [class.active]="s.sessionId === selectedSessionId" [class.unread]="s.unreadCount > 0" (click)="selectSession(s.sessionId)">
                     <div class="position-relative">
-                        <div class="avatar-circle bg-danger bg-opacity-75 text-white rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase" style="width: 40px; height: 40px; font-size: 14px;">{{ getInitials(s.userName) }}</div>
+                        <img class="chat-user-avatar chat-user-avatar-sm" [src]="getUserAvatarUrl(s)" [alt]="'Ảnh đại diện ' + (s.userName || 'khách hàng')" (error)="onUserAvatarError($event)">
                         <span class="position-absolute bottom-0 end-0 border border-2 border-white rounded-circle active-status-dot" [style.background-color]="s.status === 'ai' ? '#22c55e' : (s.status === 'waiting' ? '#f59e0b' : '#ef4444')"></span>
                     </div>
                     <div class="flex-grow-1 min-w-0">
@@ -48,13 +48,13 @@
                             <div class="session-preview text-truncate">{{ getLastMessage(s) }}</div>
                             <div class="d-flex align-items-center gap-1.5">
                                 @if (s.status === 'waiting') {
-                                    <span class="badge bg-warning text-dark px-1.5 py-0.5 small" style="font-size: 10px;">Chờ hỗ trợ</span>
+                                    <span class="badge-status badge-status-sm badge-status-waiting">Chờ hỗ trợ</span>
                                 } @else if (s.status === 'active') {
-                                    <span class="badge bg-danger px-1.5 py-0.5 small" style="font-size: 10px;">Đang hỗ trợ</span>
+                                    <span class="badge-status badge-status-sm badge-status-active">Đang hỗ trợ</span>
                                 } @else {
-                                    <span class="badge bg-secondary px-1.5 py-0.5 small" style="font-size: 10px;">AI Tư vấn</span>
+                                    <span class="badge-status badge-status-sm badge-status-ai">AI Tư vấn</span>
                                 }
-                                <span class="badge bg-danger rounded-pill" *ngIf="s.unreadCount > 0">{{ s.unreadCount }}</span>
+                                <span class="badge-unread-count" *ngIf="s.unreadCount > 0">{{ s.unreadCount }}</span>
                             </div>
                         </div>
                     </div>
@@ -87,7 +87,7 @@
                 <div class="p-3 border-bottom bg-white d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-3">
                         <div class="position-relative">
-                            <div class="avatar-circle bg-danger text-white rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase" style="width: 45px; height: 45px; font-size: 18px;">{{ getInitials(currentSession.userName) }}</div>
+                            <img class="chat-user-avatar chat-user-avatar-lg" [src]="getUserAvatarUrl(currentSession)" [alt]="'Ảnh đại diện ' + (currentSession.userName || 'khách hàng')" (error)="onUserAvatarError($event)">
                             <span class="active-status-dot position-absolute bottom-0 end-0 border border-2 border-white rounded-circle" style="width: 12px; height: 12px;" [style.background-color]="currentSession.status === 'ai' ? '#22c55e' : (currentSession.status === 'waiting' ? '#f59e0b' : '#ef4444')"></span>
                         </div>
                         <div>
@@ -110,11 +110,11 @@
                     <div class="d-flex align-items-center gap-1.5 text-secondary">
                         <span class="fw-semibold">Trạng thái:</span>
                         @if (currentSession.status === 'ai') {
-                            <span class="badge bg-secondary">AI đang hỗ trợ tự động</span>
+                            <span class="badge-status badge-status-lg badge-status-ai">AI đang hỗ trợ tự động</span>
                         } @else if (currentSession.status === 'waiting') {
-                            <span class="badge bg-warning text-dark">Khách hàng đang chờ nhân viên tiếp quản</span>
+                            <span class="badge-status badge-status-lg badge-status-waiting">Khách hàng đang chờ nhân viên tiếp quản</span>
                         } @else {
-                            <span class="badge bg-danger">Nhân viên đang hỗ trợ trực tiếp</span>
+                            <span class="badge-status badge-status-lg badge-status-active">Nhân viên đang hỗ trợ trực tiếp</span>
                         }
                     </div>
                     <div class="text-muted" style="font-size: 11px; font-family: monospace;">ID: {{ currentSession.sessionId }}</div>
@@ -141,7 +141,7 @@
                                 <div class="message-bubble">
                                     <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
                                     <div class="message-meta">
-                                        <span class="badge p-0.5 fw-bold" [ngClass]="msg.sender === 'bot' ? 'bg-secondary' : 'bg-danger'" style="font-size: 8px;">{{ msg.sender === 'bot' ? 'AI' : 'ADMIN' }}</span>
+                                        <span class="chat-sender-badge" [ngClass]="msg.sender === 'bot' ? 'bot-badge' : 'admin-badge'">{{ msg.sender === 'bot' ? 'AI' : 'ADMIN' }}</span>
                                         <span>{{ formatTime(msg.timestamp) }}</span>
                                     </div>
                                 </div>

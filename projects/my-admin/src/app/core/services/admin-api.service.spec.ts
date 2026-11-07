@@ -29,7 +29,7 @@ describe('AdminApiService', () => {
     localStorage.removeItem('urii_admin_products');
   });
 
-  it('loads products when no admin token is available', () => {
+  it('loads products when requested without an admin token', () => {
     const service = TestBed.inject(AdminApiService);
     const products = [{ id: 'product-1', name: 'Test product' }];
     let receivedProducts: unknown;
@@ -37,10 +37,12 @@ describe('AdminApiService', () => {
     service.products$.subscribe((items) => {
       receivedProducts = items;
     });
+    expect(httpTestingController.match('http://localhost:3002/api/products')).toHaveLength(0);
+
     service.loadProducts();
 
     const requests = httpTestingController.match('http://localhost:3002/api/products');
-    expect(requests.length).toBe(2);
+    expect(requests.length).toBe(1);
     for (const request of requests) {
       expect(request.request.method).toBe('GET');
       request.flush(products);
@@ -62,6 +64,10 @@ describe('AdminApiService', () => {
     });
 
     expect(receivedProducts).toEqual(products);
+    expect(httpTestingController.match('http://localhost:3002/api/products')).toHaveLength(0);
+
+    service.loadProducts();
+
     const requests = httpTestingController.match('http://localhost:3002/api/products');
     expect(requests.length).toBe(1);
     requests[0].flush(products);
@@ -70,7 +76,7 @@ describe('AdminApiService', () => {
   it('clears all persisted session data on logout', () => {
     const service = TestBed.inject(AdminApiService);
     const productRequests = httpTestingController.match('http://localhost:3002/api/products');
-    expect(productRequests.length).toBe(1);
+    expect(productRequests.length).toBe(0);
 
     localStorage.setItem('adminToken', 'admin-token');
     localStorage.setItem('urii-admin-token', 'legacy-admin-token');
@@ -86,14 +92,12 @@ describe('AdminApiService', () => {
     expect(localStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('adminUser')).toBeNull();
 
-    productRequests[0].flush([]);
   });
 
   it('does not create a fake session when an admin token is missing', () => {
     const service = TestBed.inject(AdminApiService);
     const productRequests = httpTestingController.match('http://localhost:3002/api/products');
-    expect(productRequests.length).toBe(1);
-    productRequests[0].flush([]);
+    expect(productRequests.length).toBe(0);
 
     const request = service.getOrders().subscribe();
     const ordersRequest = httpTestingController.expectOne('http://localhost:3002/api/orders');

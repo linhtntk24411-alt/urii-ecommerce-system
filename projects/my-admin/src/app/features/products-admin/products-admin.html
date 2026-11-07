@@ -114,7 +114,7 @@
     <!-- Bảng danh sách sản phẩm -->
     <div class="card border-0 shadow-sm rounded-4 bg-white">
         <div class="table-responsive p-0">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 table-products">
                 <thead class="thead-custom">
                     <tr>
                         <th class="ps-4 py-3 col-image">Hình ảnh</th>
@@ -122,13 +122,13 @@
                         <th class="py-3">Danh mục</th>
                         <th class="py-3">Giá bán</th>
                         <th class="py-3">Tồn kho</th>
-                        <th class="py-3">Trạng thái</th>
+                        <th class="py-3 text-center status-column">Trạng thái</th>
                         <th class="pe-4 text-end py-3 col-actions">Hành động</th>
                     </tr>
                 </thead>
                 <tbody id="product-list" class="fs-6">
                     @for (p of pageItems; track p.id || p._id) {
-                        <tr>
+                        <tr [id]="searchTargetId(p.id || p._id)">
                             <!-- 1. Hình ảnh -->
                             <td class="ps-4">
                                 <img [src]="formatImagePath(p.image)" [alt]="p.name" class="product-thumb">
@@ -166,17 +166,17 @@
                             </td>
 
                             <!-- 6. Trạng thái (Mỗi trạng thái một màu chuẩn, rõ nét) -->
-                            <td>
+                            <td class="text-center status-column">
                                 @if (getDisplayStatus(p) === 'hot') {
-                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #f8d7da !important; color: #840001 !important; font-weight: 600; font-size: 12px;">Bán chạy</span>
+                                    <span class="badge badge-status product-status-badge badge-status-cancelled">Bán chạy</span>
                                 } @else if (getDisplayStatus(p) === 'new') {
-                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #d1e7dd !important; color: #0f5132 !important; font-weight: 600; font-size: 12px;">Mới</span>
+                                    <span class="badge badge-status product-status-badge product-status-new">Mới</span>
                                 } @else if (getDisplayStatus(p) === 'sap-het') {
-                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #fff3cd !important; color: #664d03 !important; font-weight: 600; font-size: 12px;">Sắp hết hàng</span>
+                                    <span class="badge badge-status product-status-badge badge-status-pending">Sắp hết hàng</span>
                                 } @else if (getDisplayStatus(p) === 'het-hang') {
-                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #e2e3e5 !important; color: #383d41 !important; font-weight: 600; font-size: 12px;">Hết hàng</span>
+                                    <span class="badge badge-status product-status-badge product-status-out">Hết hàng</span>
                                 } @else {
-                                    <span class="badge rounded-pill px-3 py-1" style="background-color: #c6efd2 !important; color: #029739 !important; font-weight: 600; font-size: 12px;">Bình thường</span>
+                                    <span class="badge badge-status product-status-badge badge-status-approved">Bình thường</span>
                                 }
                             </td>
 
@@ -255,6 +255,7 @@
                             </select>
                         </div>
                     </div>
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="edit-price" class="form-label fw-bold">Giá bán (VNĐ)</label>
@@ -283,6 +284,22 @@
                     <button type="submit" class="btn btn-danger fw-bold px-4"><i class="bi bi-save"></i> Lưu thay đổi</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade show d-block delete-confirm-overlay" *ngIf="showDeleteConfirm" role="dialog" aria-modal="true" aria-labelledby="product-delete-title" (click)="closeDeleteConfirm()">
+    <div class="modal-dialog modal-dialog-centered delete-confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-content delete-confirm-content">
+            <div class="modal-body text-center">
+                <i class="bi bi-exclamation-circle delete-confirm-icon" aria-hidden="true"></i>
+                <h5 id="product-delete-title">Xác nhận xóa</h5>
+                <p>Bạn có chắc chắn muốn xóa sản phẩm <strong>{{ deletingProductName }}</strong> không?</p>
+                <div class="delete-confirm-actions">
+                    <button type="button" class="btn delete-cancel-btn" (click)="closeDeleteConfirm()">Hủy</button>
+                    <button type="button" class="btn delete-accept-btn" (click)="confirmDeleteProduct()">Xóa bỏ</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

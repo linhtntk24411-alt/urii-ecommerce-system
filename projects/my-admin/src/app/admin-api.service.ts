@@ -67,7 +67,7 @@ export interface ChatSession {
   messages: ChatMessage[];
 }
 
-interface LoginResponse {
+export interface LoginResponse {
   token: string;
   user: { id: string; name: string; email: string; role: string };
 }
@@ -76,73 +76,100 @@ interface LoginResponse {
 export class AdminApiService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly baseUrl = 'http://localhost:3002/api';
   readonly token = signal<string | null>(null);
 
   restoreSession(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.token.set(window.localStorage.getItem('urii-admin-token'));
+      const saved = window.localStorage.getItem('adminToken')
+        || window.localStorage.getItem('urii-admin-token')
+        || window.localStorage.getItem('token');
+      this.token.set(saved);
     }
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await firstValueFrom(
-      this.http.post<LoginResponse>('/api/auth/login', { email, password })
+      this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, { email, password })
     );
     if (response.user.role !== 'admin') {
       throw new Error('Tài khoản này không có quyền quản trị.');
     }
-    this.token.set(response.token);
-    if (isPlatformBrowser(this.platformId)) {
-      window.localStorage.setItem('urii-admin-token', response.token);
-    }
+    this.setSession(response.token, response.user);
     return response;
+  }
+
+  async loginGoogle(googleToken: string): Promise<LoginResponse> {
+    const response = await firstValueFrom(
+      this.http.post<LoginResponse>(`${this.baseUrl}/auth/google`, { token: googleToken })
+    );
+    if (response.user.role !== 'admin') {
+      throw new Error('Tài khoản này không có quyền quản trị.');
+    }
+    this.setSession(response.token, response.user);
+    return response;
+  }
+
+  setSession(token: string, user?: any): void {
+    this.token.set(token);
+    if (isPlatformBrowser(this.platformId)) {
+      window.localStorage.setItem('adminToken', token);
+      window.localStorage.setItem('urii-admin-token', token);
+      window.localStorage.setItem('token', token);
+      if (user) {
+        window.localStorage.setItem('adminUser', JSON.stringify(user));
+      }
+    }
   }
 
   logout(): void {
     this.token.set(null);
     if (isPlatformBrowser(this.platformId)) {
+      window.localStorage.removeItem('adminToken');
       window.localStorage.removeItem('urii-admin-token');
+      window.localStorage.removeItem('token');
+      window.localStorage.removeItem('adminUser');
     }
   }
 
   async getDashboard(): Promise<DashboardStats> {
-    return firstValueFrom(this.http.get<DashboardStats>('/api/dashboard', this.options()));
+    return firstValueFrom(this.http.get<DashboardStats>(`${this.baseUrl}/dashboard`, this.options()));
   }
 
   async getUsers(): Promise<AdminUser[]> {
-    return firstValueFrom(this.http.get<AdminUser[]>('/api/users?page=1&limit=100', this.options()));
+    return firstValueFrom(this.http.get<AdminUser[]>(`${this.baseUrl}/users?page=1&limit=100`, this.options()));
   }
 
   async createUser(payload: UserPayload): Promise<AdminUser> {
-    return firstValueFrom(this.http.post<AdminUser>('/api/users', payload, this.options()));
+    return firstValueFrom(this.http.post<AdminUser>(`${this.baseUrl}/users`, payload, this.options()));
   }
 
   async updateUser(id: string, payload: Partial<UserPayload>): Promise<AdminUser> {
-    return firstValueFrom(this.http.patch<AdminUser>(`/api/users/${encodeURIComponent(id)}`, payload, this.options()));
+    return firstValueFrom(this.http.patch<AdminUser>(`${this.baseUrl}/users/${encodeURIComponent(id)}`, payload, this.options()));
   }
 
   async deleteUser(id: string): Promise<void> {
-    await firstValueFrom(this.http.delete<void>(`/api/users/${encodeURIComponent(id)}`, this.options()));
+    await firstValueFrom(this.http.delete<void>(`${this.baseUrl}/users/${encodeURIComponent(id)}`, this.options()));
   }
 
   async getPromotions(): Promise<Promotion[]> {
-    return firstValueFrom(this.http.get<Promotion[]>('/api/vouchers/manage?page=1&limit=100', this.options()));
+    return firstValueFrom(this.http.get<Promotion[]>(`${this.baseUrl}/vouchers/manage?page=1&limit=100`, this.options()));
   }
 
   async createPromotion(payload: PromotionPayload): Promise<Promotion> {
-    return firstValueFrom(this.http.post<Promotion>('/api/vouchers', payload, this.options()));
+    return firstValueFrom(this.http.post<Promotion>(`${this.baseUrl}/vouchers`, payload, this.options()));
   }
 
   async updatePromotion(id: string, payload: Partial<PromotionPayload>): Promise<Promotion> {
-    return firstValueFrom(this.http.patch<Promotion>(`/api/vouchers/${encodeURIComponent(id)}`, payload, this.options()));
+    return firstValueFrom(this.http.patch<Promotion>(`${this.baseUrl}/vouchers/${encodeURIComponent(id)}`, payload, this.options()));
   }
 
   async deletePromotion(id: string): Promise<void> {
-    await firstValueFrom(this.http.delete<void>(`/api/vouchers/${encodeURIComponent(id)}`, this.options()));
+    await firstValueFrom(this.http.delete<void>(`${this.baseUrl}/vouchers/${encodeURIComponent(id)}`, this.options()));
   }
 
   async getChatSessions(status?: string, query?: string): Promise<{ sessions: ChatSession[]; sessionMap: Record<string, ChatSession> }> {
-    let url = '/api/chat/sessions';
+    let url = `${this.baseUrl}/chat/sessions`;
     const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
     if (query) params.set('q', query);
@@ -152,15 +179,20 @@ export class AdminApiService {
   }
 
   async sendAdminChatMessage(sessionId: string, text: string): Promise<ChatSession> {
-    return firstValueFrom(this.http.post<ChatSession>(`/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`, { text, sender: 'admin' }, this.options()));
+    return firstValueFrom(this.http.post<ChatSession>(`${this.baseUrl}/chat/sessions/${encodeURIComponent(sessionId)}/messages`, { text, sender: 'admin' }, this.options()));
   }
 
   async updateChatSessionStatus(sessionId: string, status: 'ai' | 'waiting' | 'active', systemLog?: string): Promise<ChatSession> {
-    return firstValueFrom(this.http.put<ChatSession>(`/api/chat/sessions/${encodeURIComponent(sessionId)}/status`, { status, systemLog }, this.options()));
+    return firstValueFrom(this.http.put<ChatSession>(`${this.baseUrl}/chat/sessions/${encodeURIComponent(sessionId)}/status`, { status, systemLog }, this.options()));
   }
 
   private options(): { headers: HttpHeaders } {
-    const token = this.token();
+    let token = this.token();
+    if (!token && isPlatformBrowser(this.platformId)) {
+      token = window.localStorage.getItem('adminToken')
+        || window.localStorage.getItem('urii-admin-token')
+        || window.localStorage.getItem('token');
+    }
     return {
       headers: token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders()
     };

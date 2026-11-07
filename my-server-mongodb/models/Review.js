@@ -11,6 +11,21 @@ const reviewMediaSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const reviewReplySchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  author: { type: String, trim: true },
+  avatar: String,
+  role: { type: String, enum: ['admin', 'user'], default: 'admin' },
+  replyType: {
+    type: String,
+    enum: ['auto_thank_you', 'staff_support', 'customer_inquiry', 'customer_answer'],
+    default: 'staff_support'
+  },
+  content: { type: String, required: true, trim: true, maxlength: 1000 },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: false });
+
 const reviewSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   orderId: { type: String, required: true },
@@ -32,6 +47,10 @@ const reviewSchema = new mongoose.Schema({
       validator: (media) => media.length <= 5,
       message: 'Mỗi đánh giá được đính kèm tối đa 5 ảnh hoặc video.'
     }
+  },
+  replies: {
+    type: [reviewReplySchema],
+    default: []
   }
 }, { timestamps: true });
 

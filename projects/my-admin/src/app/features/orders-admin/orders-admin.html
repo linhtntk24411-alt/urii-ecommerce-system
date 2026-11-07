@@ -101,7 +101,7 @@
                 </thead>
                 <tbody class="fs-6">
                     @for (o of pagedRegularOrders; track o.id) {
-                    <tr>
+                    <tr [id]="searchTargetId(o.id)">
                         <td class="ps-4"><span class="order-id">#{{ o.id }}</span></td>
                         <td>
                             <div class="customer-info">
@@ -174,7 +174,7 @@
                 </thead>
                 <tbody class="fs-6">
                     @for (r of pagedCancelRequests; track r.id) {
-                    <tr>
+                    <tr [id]="searchTargetId(r.id)">
                         <td class="ps-4"><span class="order-id">#{{ r.id }}</span></td>
                         <td>{{ r.customerName }}</td>
                         <td class="cancel-reason" [title]="r.reason + (r.cancellationNote ? ' - ' + r.cancellationNote : '')">
@@ -260,7 +260,7 @@
                 </thead>
                 <tbody class="fs-6">
                     @for (o of pagedCustomOrders; track o.id) {
-                    <tr>
+                    <tr [id]="searchTargetId(o.id)">
                         <td class="ps-4"><span class="order-id">#{{ o.id }}</span></td>
                         <td>
                             <div class="customer-info">
@@ -479,10 +479,29 @@
                         <textarea class="form-control" rows="3" [(ngModel)]="editQuoteNote"></textarea>
                     </div>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                 <button type="button" class="btn btn-warning fw-bold" (click)="updateQuote()"><i class="bi bi-save me-1"></i> Cập nhật</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade show d-block delete-confirm-overlay" *ngIf="showDeleteConfirm" role="dialog" aria-modal="true" aria-labelledby="order-delete-title" (click)="closeDeleteConfirm()">
+    <div class="modal-dialog modal-dialog-centered delete-confirm-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-content delete-confirm-content">
+            <div class="modal-body text-center">
+                <i class="bi bi-exclamation-circle delete-confirm-icon" aria-hidden="true"></i>
+                <h5 id="order-delete-title">Xác nhận xóa</h5>
+                <p>Bạn có chắc chắn muốn xóa đơn hàng <strong>#{{ deletingOrderId }}</strong> không?</p>
+                <div class="delete-confirm-actions">
+                    <button type="button" class="btn delete-cancel-btn" (click)="closeDeleteConfirm()" [disabled]="isDeletingOrder">Hủy</button>
+                    <button type="button" class="btn delete-accept-btn" (click)="confirmDeleteOrder()" [disabled]="isDeletingOrder">
+                        {{ isDeletingOrder ? 'Đang xóa...' : 'Xóa bỏ' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>

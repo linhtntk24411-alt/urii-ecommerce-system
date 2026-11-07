@@ -509,4 +509,230 @@
 }
 /* ==============================
    TOPBAR SEARCH
+============================== */
+
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 400px;
+    height: 40px;
+    background: #e5e5e5;
+    border-radius: 30px;
+    padding: 0 20px;
+    z-index: 100;
+}
+
+.search-input {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    padding-left: 18px;
+    color: #a3a3a3;
+}
+
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 100%;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+    max-height: 460px;
+    overflow-y: auto;
+    z-index: 9999;
+    border: 1px solid #eee;
+}
+
+.search-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 12px 12px 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid #eee;
+}
+
+.search-tab {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 12px;
+    background: #f3f4f6;
+    color: #555;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.search-tab.active {
+    background: #a00000;
+    color: #fff;
+}
+
+.search-result-group {
+    padding: 8px 0 4px;
+}
+
+.search-group-title {
+    margin: 0;
+    padding: 6px 16px;
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 16px;
+    border: 0;
+    background: #fff;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: #f5f5f5;
+}
+
+.search-result-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a00000;
+    flex-shrink: 0;
+}
+
+.search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-title {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+}
+
+.search-result-description {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.search-arrow {
+    color: #999;
+    font-size: 20px;
+}
+
+.search-empty {
+    padding: 20px;
+    text-align: center;
+    color: #888;
+    font-size: 13px;
+}
+
+.logout-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(1px);
+}
+
+.logout-confirm-dialog {
+    width: 100%;
+    max-width: 376px;
+    padding: 36px 30px 30px;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    text-align: center;
+}
+
+.logout-confirm-icon {
+    display: block;
+    margin: 0 auto 24px;
+    color: #e63946;
+    font-size: 54px;
+}
+
+.logout-confirm-dialog h2 {
+    margin: 0 0 10px;
+    color: #171717;
+    font-size: 21px;
+    font-weight: 600;
+}
+
+.logout-confirm-dialog p {
+    margin: 0 0 26px;
+    color: #687386;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.logout-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.logout-confirm-actions button {
+    min-width: 88px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.logout-cancel-btn {
+    background: #f5f6f7;
+    color: #222;
+}
+
+.logout-cancel-btn:hover {
+    background: #e9ebed;
+}
+
+.logout-accept-btn {
+    background: #a00000;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(132, 0, 1, 0.2);
+}
+
+.logout-accept-btn:hover {
+    background: #840001;
+}
+/* Hiệu ứng khi nhấn vào ô tìm kiếm */
+.search-wrapper:focus-within {
+    background: #fffafa;
+    border: 1px solid #840001;
+    box-shadow: 0 0 0 2px rgba(132, 0, 1, 0.08);
+}
+
+.search-wrapper:focus-within .search-input {
+    background: transparent;
 }

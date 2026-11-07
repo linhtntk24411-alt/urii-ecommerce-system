@@ -522,6 +522,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  formatOrderTotal(order: any): string {
+    if (!order) return '0đ';
+    if (order.total && typeof order.total === 'string' && order.total.trim()) {
+      return order.total.includes('đ') ? order.total : `${order.total}đ`;
+    }
+    const amt = Number(order.totalAmount ?? order.total ?? order.pricing?.finalTotal ?? 0);
+    return amt > 0 ? `${amt.toLocaleString('vi-VN')}đ` : '0đ';
+  }
+
   showToast(type: 'success' | 'danger' | 'warning' | 'info', message: string): void {
     this.toast.set({ type, message });
     if (this.toastTimer) {

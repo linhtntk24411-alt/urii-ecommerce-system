@@ -151,7 +151,7 @@
             </td>
           </tr>
 
-          <tr *ngFor="let u of pagedUsers">
+          <tr *ngFor="let u of pagedUsers" [id]="searchTargetId(u._id)">
             <td><input class="form-check-input" type="checkbox"></td>
             <td>
               <div class="user-cell">

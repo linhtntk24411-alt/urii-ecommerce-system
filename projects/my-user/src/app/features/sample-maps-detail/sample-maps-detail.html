@@ -12,6 +12,10 @@
             <div class="image-col">
                 <div class="image-box">
                     <img [src]="map.image" [alt]="map.title" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+                    <!-- Nút lưu map mẫu nằm ở góc phải trên cùng của hình ảnh -->
+                    <button class="btn-save-map-topright" type="button" (click)="saveMap()" title="Lưu mẫu vào kho map">
+                        <span class="material-symbols-outlined">bookmark_add</span>
+                    </button>
                 </div>
                 <button class="btn-guide" (click)="scrollToGuide()">
                     <span class="material-symbols-outlined">menu_book</span> Hướng dẫn thực hiện
@@ -44,8 +48,8 @@
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn-primary" (click)="saveMap()">
-                        <span class="material-symbols-outlined">bookmark_add</span> Lưu mẫu vào kho map
+                    <button class="btn-primary" type="button" (click)="downloadPdf()">
+                        <span class="material-symbols-outlined">download</span> Tải hướng dẫn miễn phí (PDF)
                     </button>
                     <a class="btn-outline" routerLink="/blog-create">
                         <span class="material-symbols-outlined">share</span> Chia sẻ với cộng đồng
@@ -98,7 +102,7 @@
                 </div>
                 <div class="benefit-item">
                     <span class="material-symbols-outlined">groups</span>
-                    <p>Cộng đồng đã làm: Hơn 1000+ người dùng đã hoàn thiện.</p>
+                    <p>Hỗ trợ chia sẻ tác phẩm với cộng đồng Urii Handmade.</p>
                 </div>
             </div>
         </div>
@@ -106,9 +110,9 @@
 </ng-container>
 
 <ng-template #detailState>
-    <div class="detail-wrapper text-center py-5" role="status">
-        <p *ngIf="isLoading">Đang tải map...</p>
-        <p *ngIf="!isLoading && errorMessage" role="alert">{{ errorMessage }}</p>
-        <a routerLink="/sample-maps">Quay lại thư viện map</a>
+    <div class="detail-wrapper text-center py-5">
+        <p *ngIf="isLoading">Đang tải chi tiết map mẫu...</p>
+        <p *ngIf="!isLoading && errorMessage" class="text-danger">{{ errorMessage }}</p>
+        <a routerLink="/sample-maps" class="btn-back">Quay lại Thư viện map</a>
     </div>
 </ng-template>

@@ -3,11 +3,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ng serve",
+      "name": "ng serve: my-admin",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "npm: start:admin",
+      "url": "http://localhost:4200/"
+    },
+    {
+      "name": "ng serve: my-user",
       "type": "chrome",
       "request": "launch",
       "preLaunchTask": "npm: start",
-      "url": "http://localhost:4200/"
+      "url": "http://localhost:4201/"
     },
     {
       "name": "ng test",

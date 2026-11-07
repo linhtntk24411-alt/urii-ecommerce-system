@@ -1,4 +1,13 @@
+const path = require('node:path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config();
+const dns = require('node:dns');
+
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch {
+  // Bỏ qua nếu môi trường không cho phép setServers
+}
 
 const http = require('node:http');
 const mongoose = require('mongoose');
@@ -25,7 +34,7 @@ async function start() {
     server.once('error', reject);
     server.listen(port, () => {
       server.removeListener('error', reject);
-      console.log(`Urii Backend đang chạy tại http://localhost:${port}`);
+      console.log(`Urii Backend & Admin đang chạy tại http://localhost:${port}`);
       resolve();
     });
   });

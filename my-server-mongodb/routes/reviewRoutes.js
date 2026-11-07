@@ -11,6 +11,7 @@ router.get('/products/:productId', controller.getProductReviews);
 router.get('/mine', authenticate, requireCustomer, controller.getMyReviews);
 router.get('/eligible-orders', authenticate, requireCustomer, controller.getEligibleOrders);
 router.post('/', authenticate, requireCustomer, controller.createReview);
+router.post('/:id/replies', authenticate, controller.createReviewReply);
 
 router.get('/:productId', controller.getProductReviews);
 

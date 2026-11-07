@@ -4,9 +4,9 @@ Urii is an ecommerce application with separate Angular storefront and admin appl
 
 ## Project structure
 
-- `projects/my-user/` — customer-facing Angular application.
-- `projects/my-admin/` — admin dashboard, promotions, and user management.
-- `my-server-mongodb/` — Express API, Mongoose models, seed data, and backend tests.
+- `projects/my-user/` — customer-facing Angular application (port 4201).
+- `projects/my-admin/` — admin dashboard, promotions, and user management (port 4200).
+- `my-server-mongodb/` — Express API, Mongoose models, seed data, and backend tests (port 3002).
 
 ## Run locally
 

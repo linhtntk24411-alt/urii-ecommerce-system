@@ -2,9 +2,17 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AdminApiService } from '../core/services/admin-api.service';
-import { Component, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+
+type AdminSearchType = 'order' | 'user' | 'product' | 'promotion' | 'blog' | 'comment' | 'map';
+type AdminSearchTab = 'all' | AdminSearchType;
+
+interface AdminSearchResult {
+  type: AdminSearchType;
+  id: string;
+  title: string;
+  description: string;
+  route: string;
+}
 
 @Component({
   selector: 'app-admin-layout',
@@ -83,12 +91,25 @@ export class AdminLayoutComponent implements OnInit {
 
   // Trạng thái đóng/mở menu trên mobile
   isMobileMenuOpen: boolean = false;
+  isLogoutConfirmOpen = false;
   
   // Trạng thái đóng/mở dropdown thông báo
   isNotificationOpen: boolean = false;
   // Trạng thái tìm kiếm trên Topbar
   searchKeyword = '';
   isSearchOpen = false;
+  activeSearchTab: AdminSearchTab = 'all';
+
+  readonly searchTabs: { type: AdminSearchTab; label: string }[] = [
+    { type: 'all', label: 'Tất cả' },
+    { type: 'order', label: 'Đơn hàng' },
+    { type: 'user', label: 'Người dùng' },
+    { type: 'product', label: 'Sản phẩm' },
+    { type: 'promotion', label: 'Khuyến mãi' },
+    { type: 'blog', label: 'Bài viết' },
+    { type: 'comment', label: 'Bình luận' },
+    { type: 'map', label: 'Mẫu map' }
+  ];
 
   allOrders: any[] = [];
   allUsers: any[] = [];
@@ -98,12 +119,37 @@ export class AdminLayoutComponent implements OnInit {
   allComments: any[] = [];
   allMaps: any[] = [];
 
-  searchResults: {
-    type: 'order' | 'user'| 'product'|'promotion' | 'blog' | 'comment' | 'map';
-    title: string;
-    description: string;
-    route: string;
-  }[] = [];
+  searchResults: AdminSearchResult[] = [];
+
+  private readonly searchGroupLabels: Record<AdminSearchType, string> = {
+    order: 'Đơn hàng',
+    user: 'Người dùng',
+    product: 'Sản phẩm',
+    promotion: 'Khuyến mãi',
+    blog: 'Bài viết',
+    comment: 'Bình luận',
+    map: 'Mẫu map'
+  };
+
+  get visibleSearchGroups(): { type: AdminSearchType; label: string; results: AdminSearchResult[] }[] {
+    const types: AdminSearchType[] = this.activeSearchTab === 'all'
+      ? ['order', 'user', 'product', 'promotion', 'blog', 'comment', 'map']
+      : [this.activeSearchTab];
+
+    return types
+      .map(type => ({
+        type,
+        label: this.searchGroupLabels[type],
+        results: this.searchResults.filter(result => result.type === type).slice(0, 4)
+      }))
+      .filter(group => group.results.length > 0);
+  }
+
+  get activeSearchResultCount(): number {
+    return this.activeSearchTab === 'all'
+      ? this.searchResults.length
+      : this.searchResults.filter(result => result.type === this.activeSearchTab).length;
+  }
 
   unreadCount = 0;
   notifications: any[] = [];
@@ -194,6 +240,15 @@ export class AdminLayoutComponent implements OnInit {
   // Xử lý đăng xuất
   onLogout(event: Event): void {
     event.preventDefault();
+    this.isLogoutConfirmOpen = true;
+  }
+
+  cancelLogout(): void {
+    this.isLogoutConfirmOpen = false;
+  }
+
+  confirmLogout(): void {
+    this.isLogoutConfirmOpen = false;
     this.adminApi.logout();
     this.router.navigateByUrl('/', { replaceUrl: true });
   }
@@ -207,145 +262,141 @@ export class AdminLayoutComponent implements OnInit {
   }
   }
   onSearchInput(value: string): void {
-  this.searchKeyword = value.trim().toLowerCase();
+    this.searchKeyword = value.trim().toLowerCase();
 
-  if (!this.searchKeyword) {
-    this.searchResults = [];
-    this.isSearchOpen = false;
-    return;
+    if (!this.searchKeyword) {
+      this.searchResults = [];
+      this.isSearchOpen = false;
+      this.activeSearchTab = 'all';
+      return;
+    }
+
+    this.activeSearchTab = 'all';
+
+    const orderResults = this.allOrders
+      .filter(order =>
+        String(order.id || order._id || '').toLowerCase().includes(this.searchKeyword) ||
+        String(order.userName || order.customerName || '').toLowerCase().includes(this.searchKeyword)
+      )
+      .slice(0, 5)
+      .map(order => ({
+        type: 'order' as const,
+        id: String(order.id || order._id || ''),
+        title: `Đơn hàng #${order.id || order._id}`,
+        description: `${order.userName || order.customerName || 'Khách hàng'} - ${order.total || ''}`,
+        route: '/orders'
+      }));
+
+    const userResults = this.allUsers
+      .filter(user =>
+        String(user.name || '').toLowerCase().includes(this.searchKeyword) ||
+        String(user.email || '').toLowerCase().includes(this.searchKeyword) ||
+        String(user.phone || '').toLowerCase().includes(this.searchKeyword)
+      )
+      .slice(0, 5)
+      .map(user => ({
+        type: 'user' as const,
+        id: String(user._id || user.id || ''),
+        title: user.name || 'Người dùng',
+        description: user.email || user.phone || 'Người dùng',
+        route: '/users'
+      }));
+
+    const productResults = this.allProducts
+      .filter(product =>
+        String(product.name || '').toLowerCase().includes(this.searchKeyword) ||
+        String(product.id || product._id || '').toLowerCase().includes(this.searchKeyword) ||
+        String(product.category || '').toLowerCase().includes(this.searchKeyword) ||
+        String(product.slug || '').toLowerCase().includes(this.searchKeyword)
+      )
+      .slice(0, 5)
+      .map(product => ({
+        type: 'product' as const,
+        id: String(product.id || product._id || ''),
+        title: product.name || 'Sản phẩm',
+        description: `Mã SP: ${product.id || product._id || ''} - ${Number(product.currentPrice || 0).toLocaleString('vi-VN')}đ`,
+        route: '/products'
+      }));
+
+    const promotionResults = this.allPromotions
+      .filter(promotion =>
+        String(promotion.code || '').toLowerCase().includes(this.searchKeyword) ||
+        String(promotion.id || promotion._id || '').toLowerCase().includes(this.searchKeyword) ||
+        String(promotion.name || '').toLowerCase().includes(this.searchKeyword) ||
+        String(promotion.description || '').toLowerCase().includes(this.searchKeyword)
+      )
+      .slice(0, 5)
+      .map(promotion => ({
+        type: 'promotion' as const,
+        id: String(promotion.id || promotion._id || ''),
+        title: promotion.code || promotion.name || 'Mã giảm giá',
+        description: promotion.name || promotion.description || 'Chương trình khuyến mãi',
+        route: '/coupons'
+      }));
+
+    const blogResults = this.allBlogs
+      .filter(blog =>
+        String(blog.title || '').toLowerCase().includes(this.searchKeyword) ||
+        String(blog.slug || '').toLowerCase().includes(this.searchKeyword) ||
+        String(blog.author || '').toLowerCase().includes(this.searchKeyword) ||
+        String(blog.category || '').toLowerCase().includes(this.searchKeyword) ||
+        String(blog.excerpt || '').toLowerCase().includes(this.searchKeyword)
+      )
+      .slice(0, 5)
+      .map(blog => ({
+        type: 'blog' as const,
+        id: String(blog.id || blog._id || ''),
+        title: blog.title || 'Bài blog',
+        description: `${blog.author || 'Tác giả'} - ${blog.category || 'Bài viết'}`,
+        route: '/blogs'
+      }));
+
+    const commentResults = this.allComments
+      .filter(comment =>
+        String(comment.content || '').toLowerCase().includes(this.searchKeyword) ||
+        String(comment.author || '').toLowerCase().includes(this.searchKeyword) ||
+        String(comment.id || comment._id || '').toLowerCase().includes(this.searchKeyword) ||
+        String(comment.blogId || '').toLowerCase().includes(this.searchKeyword)
+      )
+      .slice(0, 5)
+      .map(comment => ({
+        type: 'comment' as const,
+        id: String(comment.id || comment._id || ''),
+        title: comment.author || 'Bình luận',
+        description: String(comment.content || 'Nội dung bình luận'),
+        route: '/comments'
+      }));
+
+    const mapResults = this.allMaps
+      .filter(map => JSON.stringify(map).toLowerCase().includes(this.searchKeyword))
+      .slice(0, 5)
+      .map(map => ({
+        type: 'map' as const,
+        id: String(map.map_id || map.id || map._id || ''),
+        title: map.map_name || map.name || map.title || map.map_id || map.id || map._id || 'Mẫu bản đồ',
+        description: map.description || map.category || 'Mẫu trong thư viện',
+        route: '/library'
+      }));
+
+    this.searchResults = [
+      ...orderResults,
+      ...userResults,
+      ...productResults,
+      ...promotionResults,
+      ...blogResults,
+      ...commentResults,
+      ...mapResults
+    ];
+    this.isSearchOpen = true;
   }
 
-  // 1. Tìm đơn hàng
-  const orderResults = this.allOrders
-    .filter(order =>
-      String(order.id || '').toLowerCase().includes(this.searchKeyword) ||
-      String(order.userName || '').toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(order => ({
-      type: 'order' as const,
-      title: `Đơn hàng #${order.id}`,
-      description: `${order.userName || 'Khách hàng'} - ${order.total || ''}`,
-      route: '/orders'
-    }));
-
-  // 2. Tìm người dùng
-  const userResults = this.allUsers
-    .filter(user =>
-      String(user.name || '').toLowerCase().includes(this.searchKeyword) ||
-      String(user.email || '').toLowerCase().includes(this.searchKeyword) ||
-      String(user.phone || '').toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(user => ({
-      type: 'user' as const,
-      title: user.name || 'Người dùng',
-      description: user.email || user.phone || 'Người dùng',
-      route: '/users'
-    }));
-
-  // 3. Tìm sản phẩm
-  const productResults = this.allProducts
-    .filter(product =>
-      String(product.name || '').toLowerCase().includes(this.searchKeyword) ||
-      String(product.id || '').toLowerCase().includes(this.searchKeyword) ||
-      String(product.category || '').toLowerCase().includes(this.searchKeyword) ||
-      String(product.slug || '').toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(product => ({
-      type: 'product' as const,
-      title: product.name || 'Sản phẩm',
-      description: `Mã SP: ${product.id || ''} - ${Number(product.currentPrice || 0).toLocaleString('vi-VN')}đ`,
-      route: '/products'
-    }));
-
-  // 4. Tìm mã giảm giá
-  const promotionResults = this.allPromotions
-    .filter(promotion =>
-      String(promotion.code || '').toLowerCase().includes(this.searchKeyword) ||
-      String(promotion.id || '').toLowerCase().includes(this.searchKeyword) ||
-      String(promotion.name || '').toLowerCase().includes(this.searchKeyword) ||
-      String(promotion.description || '').toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(promotion => ({
-      type: 'promotion' as const,
-      title: promotion.code || promotion.name || 'Mã giảm giá',
-      description: promotion.name || promotion.description || 'Chương trình khuyến mãi',
-      route: '/promotions'
-    }));
-
-  // 5. Tìm bài blog
-  const blogResults = this.allBlogs
-    .filter(blog =>
-      String(blog.title || '').toLowerCase().includes(this.searchKeyword) ||
-      String(blog.slug || '').toLowerCase().includes(this.searchKeyword) ||
-      String(blog.author || '').toLowerCase().includes(this.searchKeyword) ||
-      String(blog.category || '').toLowerCase().includes(this.searchKeyword) ||
-      String(blog.excerpt || '').toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(blog => ({
-      type: 'blog' as const,
-      title: blog.title || 'Bài blog',
-      description: `${blog.author || 'Tác giả'} - ${blog.category || 'Bài viết'}`,
-      route: '/blogs'
-    }));
-
-  // 6. Tìm comment
-  const commentResults = this.allComments
-    .filter(comment =>
-      String(comment.content || '').toLowerCase().includes(this.searchKeyword) ||
-      String(comment.author || '').toLowerCase().includes(this.searchKeyword) ||
-      String(comment.id || '').toLowerCase().includes(this.searchKeyword) ||
-      String(comment.blogId || '').toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(comment => ({
-      type: 'comment' as const,
-      title: comment.author || 'Bình luận',
-      description: String(comment.content || 'Nội dung bình luận'),
-      route: '/comments'
-    }));
-
-  // 7. Tìm mẫu bản đồ trong thư viện
-  const mapResults = this.allMaps
-    .filter(map =>
-      JSON.stringify(map).toLowerCase().includes(this.searchKeyword)
-    )
-    .slice(0, 5)
-    .map(map => ({
-      type: 'map' as const,
-      title: map.name || map.title || map.mapName || map.id || map._id || 'Mẫu bản đồ',
-      description: map.description || map.category || 'Mẫu trong thư viện',
-      route: '/library'
-    }));
-
-  // Gộp tất cả kết quả
-  this.searchResults = [
-    ...productResults,
-    ...promotionResults,
-    ...userResults,
-    ...blogResults,
-    ...commentResults,
-    ...mapResults,
-    ...orderResults
-  ];
-
-  this.isSearchOpen = true;
-}
-
-
-  selectSearchResult(result: {
-    type: 'order' | 'user' | 'product'| 'promotion' | 'blog' | 'comment' | 'map';
-    title: string;
-    description: string;
-    route: string;
-  }): void {
-    this.router.navigateByUrl(result.route);
+  selectSearchResult(result: AdminSearchResult): void {
+    this.router.navigate([result.route], {
+      queryParams: { searchType: result.type, searchId: result.id }
+    });
     this.searchKeyword = '';
     this.searchResults = [];
     this.isSearchOpen = false;
+    this.activeSearchTab = 'all';
   }
 }

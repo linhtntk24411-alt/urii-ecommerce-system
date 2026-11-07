@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { TimeoutError, catchError, forkJoin, of } from 'rxjs';
 import { AdminApiService, AdminComment, AdminReview } from '../../core/services/admin-api.service';
 
@@ -33,7 +34,8 @@ export class CommentsAdmin implements OnInit {
   constructor(
     private adminApi: AdminApiService,
     private changeDetectorRef: ChangeDetectorRef,
-    @Inject(PLATFORM_ID) private platformId: object
+    @Inject(PLATFORM_ID) private platformId: object,
+    private route: ActivatedRoute
   ) {}
 
   allComments: CommentItem[] = [];
@@ -51,6 +53,10 @@ export class CommentsAdmin implements OnInit {
   isReplyModalOpen = false;
   isSavingReply = false;
   replySaveError = '';
+  private pendingSearchId: string | null = null;
+  showDeleteConfirm = false;
+  deletingCommentId: string | null = null;
+  deletingCommentAuthor = '';
 
   // Phân trang
   currentReviewPage: number = 1;
@@ -70,6 +76,12 @@ export class CommentsAdmin implements OnInit {
   };
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      this.pendingSearchId = params.get('searchType') === 'comment'
+        ? params.get('searchId')
+        : null;
+      this.applySearchTarget();
+    });
     if (isPlatformBrowser(this.platformId)) {
       this.loadComments();
     }
@@ -115,6 +127,7 @@ export class CommentsAdmin implements OnInit {
       this.commentsLoadError = errors.join(' ');
       this.currentReviewPage = 1;
       this.currentBlogPage = 1;
+      this.applySearchTarget();
       this.isLoading = false;
       this.changeDetectorRef.markForCheck();
     });
@@ -289,6 +302,63 @@ export class CommentsAdmin implements OnInit {
     this.currentBlogPage = 1;
   }
 
+  searchTargetId(id: string | number | undefined | null): string {
+    return `admin-search-target-comment-${encodeURIComponent(String(id ?? ''))}`;
+  }
+
+  private applySearchTarget(): void {
+    const id = this.pendingSearchId;
+    if (!id) return;
+
+    this.searchKeyword = '';
+    this.filterType = '';
+    this.filterStatus = '';
+    this.currentReviewPage = 1;
+    this.currentBlogPage = 1;
+    const item = this.allComments.find(comment => comment.id === id);
+    if (!item) return;
+
+    if (item.targetType === 'blog') {
+      const index = this.getFilteredBlogs().findIndex(comment => comment.id === id);
+      this.currentBlogPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    } else {
+      const index = this.getFilteredReviews().findIndex(comment => comment.id === id);
+      this.currentReviewPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    }
+
+    this.pendingSearchId = null;
+    this.scrollToSearchTarget(this.searchTargetId(id));
+  }
+
+  private scrollToSearchTarget(elementId: string): void {
+    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
+    requestAnimationFrame(() => {
+      const row = document.getElementById(elementId);
+      if (!(row instanceof HTMLTableRowElement)) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const cells = Array.from(row.cells);
+      const originalStyles = cells.map(cell => ({
+        backgroundColor: cell.style.getPropertyValue('background-color'),
+        backgroundPriority: cell.style.getPropertyPriority('background-color')
+      }));
+
+      cells.forEach(cell => {
+        cell.style.setProperty('background-color', '#fffbea', 'important');
+      });
+
+      window.setTimeout(() => {
+        cells.forEach((cell, index) => {
+          const original = originalStyles[index];
+          if (original.backgroundColor) {
+            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+          } else {
+            cell.style.removeProperty('background-color');
+          }
+        });
+      }, 3000);
+    });
+  }
+
   // Hàm mở modal chi tiết bình luận khi ấn vào icon con mắt
   viewCommentDetail(comment: any): void {
     this.selectedComment = comment;
@@ -376,9 +446,24 @@ export class CommentsAdmin implements OnInit {
     }
   }
   deleteComment(id: string) {
-    if (confirm('Bạn có chắc chắn muốn xóa bình luận này?')) {
-      this.allComments = this.allComments.filter(c => c.id !== id);
-    }
+    const comment = this.allComments.find(item => item.id === id);
+    this.deletingCommentId = id;
+    this.deletingCommentAuthor = comment?.authorName || 'bình luận này';
+    this.showDeleteConfirm = true;
+  }
+
+  closeDeleteConfirm(): void {
+    this.showDeleteConfirm = false;
+    this.deletingCommentId = null;
+    this.deletingCommentAuthor = '';
+  }
+
+  confirmDeleteComment(): void {
+    const id = this.deletingCommentId;
+    if (!id) return;
+
+    this.allComments = this.allComments.filter(comment => comment.id !== id);
+    this.closeDeleteConfirm();
   }
   changeReviewPage(page: number) {
     if (page >= 1 && page <= this.getReviewTotalPages()) {

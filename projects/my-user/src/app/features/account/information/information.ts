@@ -22,6 +22,19 @@ interface UserProfile {
   authProviders: string[];
 }
 
+interface ImageUploadResponse {
+  imageUrl?: string;
+  url?: string;
+}
+
+const PRESET_AVATARS = [
+  { url: '/images/avatar_user.jpeg', label: 'Avatar Nữ 1' },
+  { url: '/images/avatar_user1.jpeg', label: 'Avatar Nữ 2' },
+  { url: '/images/avatar_user2.jpeg', label: 'Avatar Nữ 3' },
+  { url: '/images/avatar_user3.jpeg', label: 'Avatar Nam' },
+  { url: '/images/avatar-non.jpg', label: 'Avatar Mặc định' },
+];
+
 function parseBirthDate(value: string): { day: number; month: number; year: number } | null {
   const vietnameseDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
   const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
@@ -78,6 +91,13 @@ export class Information implements OnInit {
   requiresLogin = false;
   errorMessage = '';
   successMessage = '';
+
+  readonly presetAvatars = PRESET_AVATARS;
+  isAvatarModalOpen = false;
+  avatarPreview = '';
+  avatarFile: File | null = null;
+  isSavingAvatar = false;
+  avatarModalError = '';
 
   ngOnInit(): void {
     if (this.isBrowser) this.loadProfile();
@@ -227,6 +247,134 @@ export class Information implements OnInit {
 
   signIn(): void {
     void this.router.navigate(['/login'], { queryParams: { returnUrl: '/profile' } });
+  }
+
+  openAvatarModal(): void {
+    if (!this.profile) return;
+    this.avatarPreview = this.profile.avatar;
+    this.avatarFile = null;
+    this.avatarModalError = '';
+    this.isAvatarModalOpen = true;
+  }
+
+  closeAvatarModal(force = false): void {
+    if (this.isSavingAvatar && !force) return;
+    this.isSavingAvatar = false;
+    this.isAvatarModalOpen = false;
+    this.avatarFile = null;
+    this.avatarPreview = '';
+    this.avatarModalError = '';
+  }
+
+  selectPresetAvatar(url: string): void {
+    this.avatarFile = null;
+    this.avatarPreview = url;
+    this.avatarModalError = '';
+  }
+
+  onAvatarFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    if (!file.type.startsWith('image/')) {
+      this.avatarModalError = 'Vui lòng chọn file hình ảnh hợp lệ (PNG, JPG, WEBP, GIF).';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      this.avatarModalError = 'Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.';
+      return;
+    }
+
+    this.avatarModalError = '';
+    this.avatarFile = file;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.avatarPreview = String(reader.result || '');
+      this.changeDetectorRef.markForCheck();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  saveAvatar(): void {
+    const token = localStorage.getItem('authToken');
+    if (!token || !this.profile) {
+      this.requiresLogin = true;
+      this.closeAvatarModal();
+      return;
+    }
+
+    if (!this.avatarFile && !this.avatarPreview) {
+      this.avatarModalError = 'Vui lòng chọn hoặc tải lên một ảnh đại diện.';
+      return;
+    }
+
+    this.isSavingAvatar = true;
+    this.avatarModalError = '';
+
+    const executePatch = (finalAvatarUrl: string) => {
+      this.http.patch<unknown>(
+        '/api/auth/me',
+        { avatar: finalAvatarUrl },
+        { headers: this.authorizationHeaders(token) }
+      ).pipe(
+        finalize(() => {
+          this.isSavingAvatar = false;
+          this.changeDetectorRef.markForCheck();
+        })
+      ).subscribe({
+        next: (response) => {
+          const updated = this.parseProfile(response);
+          if (updated) {
+            this.profile = {
+              ...this.profile!,
+              ...updated,
+              avatar: updated.avatar,
+            };
+          } else {
+            this.profile = {
+              ...this.profile!,
+              avatar: this.normalizeAvatar(finalAvatarUrl),
+            };
+          }
+
+          if (this.isBrowser) {
+            localStorage.setItem('userAvatar', this.profile.avatar);
+            window.dispatchEvent(new Event('auth:changed'));
+          }
+
+          this.successMessage = 'Đã cập nhật ảnh đại diện thành công.';
+          this.closeAvatarModal(true);
+        },
+        error: (error: unknown) => {
+          console.error('Lỗi khi cập nhật ảnh đại diện:', error);
+          this.avatarModalError = error instanceof HttpErrorResponse && error.error?.message
+            ? error.error.message
+            : 'Không thể cập nhật ảnh đại diện. Vui lòng thử lại.';
+        }
+      });
+    };
+
+    if (this.avatarFile) {
+      const uploadHeaders = new HttpHeaders({
+        'Content-Type': this.avatarFile.type,
+        Authorization: `Bearer ${token}`,
+      });
+      this.http.post<ImageUploadResponse>('/api/upload', this.avatarFile, { headers: uploadHeaders }).subscribe({
+        next: (res) => {
+          const uploadedUrl = res?.imageUrl ?? res?.url;
+          executePatch(uploadedUrl && typeof uploadedUrl === 'string' ? uploadedUrl : this.avatarPreview);
+        },
+        error: (err) => {
+          console.warn('Lỗi khi upload qua /api/upload, tiếp tục với Data URL:', err);
+          executePatch(this.avatarPreview);
+        }
+      });
+    } else {
+      executePatch(this.avatarPreview);
+    }
   }
 
   private setProfile(profile: UserProfile): void {

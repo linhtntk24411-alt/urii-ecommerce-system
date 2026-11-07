@@ -1,0 +1,368 @@
+{
+  "carts": [
+    {
+      "userId": "6ade4310c044b23d6c6a8681",
+      "items": [
+        {
+          "itemId": "cart-anh-but-hong",
+          "productId": "1075483767",
+          "variantIndex": 0,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-anh-hat-a",
+          "productId": "1075486162",
+          "variantIndex": 3,
+          "quantity": 2,
+          "selected": true
+        },
+        {
+          "itemId": "cart-8681-1075486164",
+          "productId": "1075486164",
+          "quantity": 2,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8681-1075486165",
+          "productId": "1075486165",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 1
+        },
+        {
+          "itemId": "cart-8681-1075486167",
+          "productId": "1075486167",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 2
+        },
+        {
+          "itemId": "cart-8681-1075486168",
+          "productId": "1075486168",
+          "quantity": 2,
+          "selected": false,
+          "variantIndex": 3
+        },
+        {
+          "itemId": "cart-8681-1075486180",
+          "productId": "1075486180",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 4
+        },
+        {
+          "itemId": "cart-8681-1075486181",
+          "productId": "1075486181",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 2
+        }
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8682",
+      "items": [
+        {
+          "itemId": "cart-ngoc-diy",
+          "productId": "1075483768",
+          "variantIndex": 0,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-ngoc-kit",
+          "productId": "1075486180",
+          "variantIndex": 2,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-8682-1075486183",
+          "productId": "1075486183",
+          "quantity": 2,
+          "selected": true,
+          "variantIndex": 1
+        },
+        {
+          "itemId": "cart-8682-1075486184",
+          "productId": "1075486184",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8682-1075502443",
+          "productId": "1075502443",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8682-1075502449",
+          "productId": "1075502449",
+          "quantity": 2,
+          "selected": false,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8682-1075502451",
+          "productId": "1075502451",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8682-1075502456",
+          "productId": "1075502456",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        }
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8683",
+      "items": [
+        {
+          "itemId": "cart-nam-paper",
+          "productId": "1075502443",
+          "quantity": 3,
+          "selected": true
+        },
+        {
+          "itemId": "cart-nam-flower",
+          "productId": "1075503653",
+          "variantIndex": 0,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-8683-1075502458",
+          "productId": "1075502458",
+          "quantity": 2,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8683-1075503644",
+          "productId": "1075503644",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 3
+        },
+        {
+          "itemId": "cart-8683-1075503649",
+          "productId": "1075503649",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8683-1075503652",
+          "productId": "1075503652",
+          "quantity": 2,
+          "selected": false,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8683-1075503654",
+          "productId": "1075503654",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8683-1075503657",
+          "productId": "1075503657",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        }
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8684",
+      "items": [
+        {
+          "itemId": "cart-ha-tray",
+          "productId": "1075503644",
+          "variantIndex": 4,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-ha-rose",
+          "productId": "1075503654",
+          "variantIndex": 0,
+          "quantity": 2,
+          "selected": false
+        },
+        {
+          "itemId": "cart-8684-1075503658",
+          "productId": "1075503658",
+          "quantity": 2,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8684-1075503661",
+          "productId": "1075503661",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8684-1075503662",
+          "productId": "1075503662",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8684-1075503663",
+          "productId": "1075503663",
+          "quantity": 2,
+          "selected": false,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8684-1075503664",
+          "productId": "1075503664",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8684-1075503666",
+          "productId": "1075503666",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        }
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8685",
+      "items": [
+        {
+          "itemId": "cart-huy-nmixx",
+          "productId": "1075506391",
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-huy-star",
+          "productId": "1075506399",
+          "variantIndex": 7,
+          "quantity": 2,
+          "selected": true
+        },
+        {
+          "itemId": "cart-8685-1075504621",
+          "productId": "1075504621",
+          "quantity": 2,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8685-1075504623",
+          "productId": "1075504623",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8685-1075504624",
+          "productId": "1075504624",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8685-1075504626",
+          "productId": "1075504626",
+          "quantity": 2,
+          "selected": false,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8685-1075504627",
+          "productId": "1075504627",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8685-1075504628",
+          "productId": "1075504628",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        }
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8686",
+      "items": [
+        {
+          "itemId": "cart-linh-kuromi",
+          "productId": "1075506444",
+          "variantIndex": 0,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-linh-snoopy",
+          "productId": "1075506402",
+          "variantIndex": 0,
+          "quantity": 1,
+          "selected": true
+        },
+        {
+          "itemId": "cart-8686-1075506392",
+          "productId": "1075506392",
+          "quantity": 2,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8686-1075506393",
+          "productId": "1075506393",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8686-1075506394",
+          "productId": "1075506394",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8686-1075506395",
+          "productId": "1075506395",
+          "quantity": 2,
+          "selected": false,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8686-1075506396",
+          "productId": "1075506396",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        },
+        {
+          "itemId": "cart-8686-1075506398",
+          "productId": "1075506398",
+          "quantity": 1,
+          "selected": true,
+          "variantIndex": 0
+        }
+      ]
+    }
+  ]
+}

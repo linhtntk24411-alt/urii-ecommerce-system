@@ -1,0 +1,7 @@
+[
+  { "_id": "DC", "name": "Dụng Cụ", "slug": "dung-cu" },
+  { "_id": "KIT", "name": "Bộ KIT DIY", "slug": "bo-kit-diy" },
+  { "_id": "HN", "name": "Hạt Nhựa Lẻ", "slug": "hat-nhua-le" },
+  { "_id": "TP", "name": "Thành Phẩm", "slug": "thanh-pham" },
+  { "_id": "BST", "name": "Bộ Sưu Tập", "slug": "bo-suu-tap" }
+]

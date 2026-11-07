@@ -8,7 +8,11 @@
 
 # Node
 /node_modules
-**/node_modules/
+/my-server-mongodb/node_modules/
+/my-server-mongodb/.env
+/my-server-mongodb/.seed-user-credentials.json
+/my-server-mongodb/.seed-user-credentials.json.tmp
+/my-server-mongodb/public/images/uploads/
 npm-debug.log
 yarn-error.log
 
@@ -43,12 +47,3 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
-node_modules/
-*/node_modules/
-package.json
-*/package.json
-package-lock.json
-*/package-lock.json
-.env
-index.js
-*/index.js

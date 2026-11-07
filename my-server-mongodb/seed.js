@@ -1,0 +1,299 @@
+require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
+const Product = require('./models/Product');
+const Category = require('./models/Category');
+const Gallery = require('./models/Gallery');
+const Voucher = require('./models/Voucher');
+const Order = require('./models/Order');
+const Blog = require('./models/Blog');
+const Comment = require('./models/Comment');
+const User = require('./models/User');
+const SavedMap = require('./models/SavedMap');
+const LikedProduct = require('./models/LikedProduct');
+const LikedBlog = require('./models/LikedBlog');
+const ChatSession = require('./models/ChatSession');
+const ChatbotFaq = require('./models/ChatbotFaq');
+const CustomOrder = require('./models/CustomOrder');
+const Cart = require('./models/Cart');
+const Review = require('./models/Review');
+const { prepareSavedMaps } = require('./utils/savedMaps');
+const { prepareLikedProducts } = require('./utils/likedProducts');
+const { prepareLikedBlogs } = require('./utils/likedBlogs');
+const { prepareCartFixtures, prepareReviewFixtures, syncAllProductRatings } = require('./utils/commerceFixtures');
+const { isBcryptHash } = require('./utils/userPassword');
+
+function readJSON(fileName) {
+  const filePath = path.join(__dirname, 'data', fileName);
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+async function prepareNewUsers(users, existingEmails, generatePassword = () => (
+  crypto.randomBytes(24).toString('base64url')
+)) {
+  if (!Array.isArray(users)) {
+    throw new TypeError('User seed data must be an array.');
+  }
+
+  const existing = new Set(existingEmails.map((email) => email.toLowerCase()));
+  const documents = [];
+  const credentials = [];
+
+  for (const user of users) {
+    const email = user.email.trim().toLowerCase();
+    if (existing.has(email)) {
+      continue;
+    }
+    if (isBcryptHash(user.password)) {
+      documents.push({ ...user, email });
+      existing.add(email);
+      continue;
+    }
+    if (user.password == null
+      && Array.isArray(user.authProviders)
+      && user.authProviders.some((provider) => provider === 'google' || provider === 'facebook')) {
+      documents.push({ ...user, email });
+      existing.add(email);
+      continue;
+    }
+    const isGeneratedPassword = user.password === '$GENERATE';
+    const password = isGeneratedPassword ? generatePassword() : user.password;
+    if (typeof password !== 'string'
+      || password.length === 0
+      || Buffer.byteLength(password, 'utf8') > 72
+      || (isGeneratedPassword && password.length < 12)) {
+      throw new TypeError('User passwords must be 1-72 bytes; generated passwords must be at least 12 characters.');
+    }
+
+    documents.push({
+      ...user,
+      email,
+      password: await bcrypt.hash(password, 12)
+    });
+    if (isGeneratedPassword) {
+      credentials.push({ email, name: user.name, password });
+    }
+    existing.add(email);
+  }
+
+  return { documents, credentials };
+}
+
+async function insertMissing(Model, documents, key) {
+  if (!Array.isArray(documents)) {
+    throw new TypeError(`${Model.modelName} seed data must be an array.`);
+  }
+  if (documents.length === 0) {
+    return;
+  }
+
+  await Model.bulkWrite(documents.map((document) => ({
+    updateOne: {
+      filter: { [key]: document[key] },
+      update: { $setOnInsert: document },
+      upsert: true
+    }
+  })), { ordered: true });
+  console.log(`Đã kiểm tra ${documents.length} bản ghi ${Model.modelName}; dữ liệu đang có được giữ nguyên.`);
+}
+
+async function syncOrderReasonReferences(orders, Model = Order) {
+  const reasonOrders = orders.filter((order) => (
+    order.cancellationReasonId || order.returnReasonId || order.waitingInfo
+  ));
+  if (reasonOrders.length === 0) return [];
+
+  return Model.bulkWrite(reasonOrders.map((order) => {
+    const fields = {};
+    for (const field of [
+      'cancellationReasonId',
+      'cancellationNote',
+      'returnReasonId',
+      'returnNote',
+      'returnEvidence', 'orderType', 'customOrderId', 'statusId', 'waitingInfo', 'cancellationStatusId', 'cancellationRequestedAt', 'cancellationDeadlineAt', 'cancellationResolvedAt', 'returnStatusId', 'returnRequestedAt', 'returnDeadlineAt', 'returnResolvedAt'
+    ]) {
+      if (Object.hasOwn(order, field)) fields[field] = order[field];
+    }
+    return {
+      updateOne: {
+        filter: { id: order.id },
+        update: { $set: fields }
+      }
+    };
+  }), { ordered: true });
+}
+
+function prepareGallery(maps) {
+  return maps.map((map) => ({
+    ...map,
+    slug: map.slug || `map-${String(map.map_id).toLowerCase()}`
+  }));
+}
+
+function saveGeneratedCredentials(credentials) {
+  if (credentials.length === 0) {
+    return null;
+  }
+
+  const credentialsPath = path.join(__dirname, '.seed-user-credentials.json');
+  let previousCredentials = [];
+  if (fs.existsSync(credentialsPath)) {
+    previousCredentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    if (!Array.isArray(previousCredentials)) {
+      throw new TypeError('The private seed credentials file must contain an array.');
+    }
+  }
+
+  const byEmail = new Map(previousCredentials.map((entry) => [entry.email, entry]));
+  for (const credential of credentials) {
+    byEmail.set(credential.email, credential);
+  }
+
+  const temporaryPath = `${credentialsPath}.tmp`;
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(Array.from(byEmail.values()), null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+    mode: 0o600
+  });
+  fs.renameSync(temporaryPath, credentialsPath);
+  return credentialsPath;
+}
+
+async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Không được nạp dữ liệu fixture vào môi trường production.');
+  }
+  if (!process.env.MONGO_URI) {
+    throw new Error('Thiếu MONGO_URI trong cấu hình môi trường.');
+  }
+
+  const credentialsPath = path.join(__dirname, '.seed-user-credentials.json');
+  if (fs.existsSync(`${credentialsPath}.tmp`)) {
+    throw new Error('Tệp thông tin đăng nhập tạm vẫn tồn tại; hãy kiểm tra và xử lý trước khi seed lại.');
+  }
+
+  await mongoose.connect(process.env.MONGO_URI);
+  const userFixtures = readJSON('users.json').users;
+  const existingUsers = await User.find({
+    email: { $in: userFixtures.map((user) => user.email.trim().toLowerCase()) }
+  }).select('email').lean();
+  const { documents: newUsers, credentials } = await prepareNewUsers(
+    userFixtures,
+    existingUsers.map((user) => user.email)
+  );
+  const generatedCredentialsPath = saveGeneratedCredentials(credentials);
+  console.log(`Tài khoản user mới: ${newUsers.length}; tài khoản hiện có được giữ nguyên: ${existingUsers.length}.`);
+
+  await insertMissing(Product, readJSON('products.json').products, 'id');
+  await insertMissing(Category, readJSON('categories.json'), '_id');
+  const orderFixtures = readJSON('orders.json').orders;
+  await insertMissing(Order, orderFixtures, 'id');
+  await syncOrderReasonReferences(orderFixtures);
+  const blogFixtures = readJSON('blogs.json').blogs;
+  await insertMissing(Blog, blogFixtures, 'slug');
+  await Blog.bulkWrite(blogFixtures.map((blog) => ({
+    updateOne: {
+      filter: { slug: blog.slug },
+      update: { $set: { likes: blog.likes, comments: blog.comments, views: blog.views } }
+    }
+  })), { ordered: true });
+  await insertMissing(Comment, readJSON('comments.json').comments, 'id');
+  const gallery = prepareGallery(readJSON('gallery.json'));
+  await Gallery.bulkWrite(gallery.map(({ map_id, slug }) => ({
+    updateOne: {
+      filter: { map_id, slug: null },
+      update: { $set: { slug } }
+    }
+  })), { ordered: true });
+  await insertMissing(Gallery, gallery, 'map_id');
+  await insertMissing(Voucher, readJSON('vouchers.json').vouchers, 'code');
+  await insertMissing(User, newUsers, 'email');
+  const commerceUsers = userFixtures.filter((user) => user.role === 'user');
+  const products = readJSON('products.json').products;
+  const carts = prepareCartFixtures(readJSON('carts.json'), commerceUsers, products);
+  const { orders: reviewOrders, reviews } = prepareReviewFixtures(
+    readJSON('review_orders.json'),
+    commerceUsers,
+    products
+  );
+  await insertMissing(Cart, carts, 'userId');
+  await insertMissing(Order, reviewOrders, 'id');
+  await insertMissing(Review, reviews, 'id');
+  await syncAllProductRatings({ ReviewModel: Review, ProductModel: Product });
+  const savedMapFixtures = readJSON('saved_maps.json');
+  const savedMapUsers = await User.find({
+    _id: { $in: savedMapFixtures.users.map((user) => user.userId) },
+    role: 'user'
+  }).select('_id email role').lean();
+  const savedMapGallery = await Gallery.find().lean();
+  const savedMaps = prepareSavedMaps(savedMapFixtures, savedMapUsers, savedMapGallery);
+  await SavedMap.bulkWrite(savedMaps.map((savedMap) => ({
+    updateOne: {
+      filter: { userId: savedMap.userId, mapId: savedMap.mapId },
+      update: { $set: savedMap },
+      upsert: true
+    }
+  })), { ordered: true });
+  const likedProductFixtures = readJSON('liked_products.json');
+  const likedProducts = prepareLikedProducts(likedProductFixtures, commerceUsers, products);
+  await LikedProduct.bulkWrite(likedProducts.map((likedProduct) => ({
+    updateOne: {
+      filter: { userId: likedProduct.userId, productId: likedProduct.productId },
+      update: { $set: likedProduct },
+      upsert: true
+    }
+  })), { ordered: true });
+  const likedBlogFixtures = readJSON('liked_blogs.json');
+  const likedBlogs = prepareLikedBlogs(likedBlogFixtures, commerceUsers, blogFixtures);
+  await LikedBlog.bulkWrite(likedBlogs.map((likedBlog) => ({
+    updateOne: {
+      filter: { userId: likedBlog.userId, blogId: likedBlog.blogId },
+      update: { $set: likedBlog },
+      upsert: true
+    }
+  })), { ordered: true });
+  await insertMissing(CustomOrder, readJSON('custom_orders.json'), 'id');
+
+  const chatSessions = fs.existsSync(path.join(__dirname, 'data', 'chat_sessions.json'))
+    ? readJSON('chat_sessions.json')
+    : readJSON('chatbot.json')?.sessions;
+  if (chatSessions) {
+    await insertMissing(ChatSession, chatSessions, 'sessionId');
+  }
+  const chatbotFaqs = fs.existsSync(path.join(__dirname, 'data', 'chatbot_faqs.json'))
+    ? readJSON('chatbot_faqs.json')
+    : readJSON('chatbot.json')?.faqs;
+  if (chatbotFaqs) {
+    await insertMissing(ChatbotFaq, chatbotFaqs, 'id');
+  }
+
+  if (generatedCredentialsPath) {
+    console.log(`Đã lưu mật khẩu tạm của user mới vào tệp riêng tư: ${generatedCredentialsPath}`);
+  }
+}
+
+if (require.main === module) {
+  seed()
+    .catch((error) => {
+      console.error('Lỗi nạp dữ liệu seed:', error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+      }
+    });
+}
+
+module.exports = {
+  insertMissing,
+  prepareGallery,
+  prepareNewUsers,
+  syncOrderReasonReferences,
+  saveGeneratedCredentials,
+  seed
+};

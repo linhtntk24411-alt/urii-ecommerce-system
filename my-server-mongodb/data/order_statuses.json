@@ -1,0 +1,290 @@
+{
+  "orderTypes": [
+    {
+      "id": "normal",
+      "label": "Đơn hàng tiêu chuẩn"
+    },
+    {
+      "id": "custom",
+      "label": "Đơn hàng thiết kế riêng (Custom)"
+    }
+  ],
+  "orderStatuses": [
+    {
+      "id": "pending",
+      "label": "Chờ xác nhận",
+      "icon": "package_2",
+      "isWaiting": true,
+      "waitingType": "awaiting_confirmation",
+      "slaHours": 24,
+      "waitingLabel": "Đang chờ Shop xác nhận đơn hàng",
+      "allowCancelRequest": true,
+      "allowReturnRequest": false
+    },
+    {
+      "id": "processing",
+      "label": "Chờ lấy hàng",
+      "icon": "inventory_2",
+      "isWaiting": true,
+      "waitingType": "awaiting_pickup",
+      "slaHours": 48,
+      "waitingLabel": "Shop đang chuẩn bị hàng và chờ đơn vị vận chuyển lấy hàng",
+      "allowCancelRequest": true,
+      "allowReturnRequest": false
+    },
+    {
+      "id": "shipping",
+      "label": "Chờ giao hàng",
+      "icon": "local_shipping",
+      "isWaiting": true,
+      "waitingType": "awaiting_delivery",
+      "slaHours": 120,
+      "waitingLabel": "Đơn hàng đang trên đường giao đến bạn",
+      "allowCancelRequest": false,
+      "allowReturnRequest": false
+    },
+    {
+      "id": "cancel_requested",
+      "label": "Chờ xác nhận hủy",
+      "icon": "hourglass_top",
+      "isWaiting": true,
+      "waitingType": "awaiting_cancel_approval",
+      "slaHours": 24,
+      "waitingLabel": "Đã gửi yêu cầu hủy đơn, đang chờ Shop phản hồi",
+      "allowCancelRequest": false,
+      "allowReturnRequest": false
+    },
+    {
+      "id": "return_requested",
+      "label": "Chờ xác nhận hoàn trả",
+      "icon": "assignment_return",
+      "isWaiting": true,
+      "waitingType": "awaiting_return_approval",
+      "slaHours": 48,
+      "waitingLabel": "Đã gửi yêu cầu trả hàng/hoàn tiền, đang chờ Shop kiểm duyệt",
+      "allowCancelRequest": false,
+      "allowReturnRequest": false
+    },
+    {
+      "id": "completed",
+      "label": "Đã giao",
+      "icon": "task_alt",
+      "isWaiting": false,
+      "waitingType": null,
+      "slaHours": null,
+      "waitingLabel": "Đơn hàng đã giao thành công",
+      "allowCancelRequest": false,
+      "allowReturnRequest": true
+    },
+    {
+      "id": "returned",
+      "label": "Trả hàng",
+      "icon": "undo",
+      "isWaiting": false,
+      "waitingType": null,
+      "slaHours": null,
+      "waitingLabel": "Đã hoàn tất trả hàng và hoàn tiền",
+      "allowCancelRequest": false,
+      "allowReturnRequest": false
+    },
+    {
+      "id": "cancelled",
+      "label": "Đã hủy",
+      "icon": "cancel",
+      "isWaiting": false,
+      "waitingType": null,
+      "slaHours": null,
+      "waitingLabel": "Đơn hàng đã bị hủy",
+      "allowCancelRequest": false,
+      "allowReturnRequest": false
+    }
+  ],
+  "requestStatuses": [
+    {
+      "id": "pending_approval",
+      "label": "Chờ Shop xác nhận"
+    },
+    {
+      "id": "awaiting_return_pickup",
+      "label": "Chờ thu hồi hàng hoàn"
+    },
+    {
+      "id": "inspecting",
+      "label": "Đang kiểm tra hàng hoàn"
+    },
+    {
+      "id": "approved",
+      "label": "Đã chấp nhận"
+    },
+    {
+      "id": "rejected",
+      "label": "Đã từ chối"
+    }
+  ],
+  "paymentStatuses": [
+    {
+      "id": "unpaid",
+      "label": "Chưa thanh toán"
+    },
+    {
+      "id": "awaiting_payment",
+      "label": "Chờ thanh toán"
+    },
+    {
+      "id": "paid",
+      "label": "Đã thanh toán"
+    },
+    {
+      "id": "refund_pending",
+      "label": "Chờ hoàn tiền"
+    },
+    {
+      "id": "refunded",
+      "label": "Đã hoàn tiền"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đã hủy"
+    }
+  ],
+  "timelineStatuses": [
+    {
+      "id": "order_placed",
+      "label": "Đã đặt hàng"
+    },
+    {
+      "id": "awaiting_confirmation",
+      "label": "Chờ xác nhận"
+    },
+    {
+      "id": "confirmed",
+      "label": "Đã xác nhận"
+    },
+    {
+      "id": "awaiting_pickup",
+      "label": "Chờ lấy hàng"
+    },
+    {
+      "id": "shipping",
+      "label": "Đang giao hàng"
+    },
+    {
+      "id": "delivered",
+      "label": "Đã giao hàng"
+    },
+    {
+      "id": "cancel_requested",
+      "label": "Chờ xác nhận hủy"
+    },
+    {
+      "id": "cancel_rejected",
+      "label": "Từ chối yêu cầu hủy"
+    },
+    {
+      "id": "return_requested",
+      "label": "Yêu cầu trả hàng"
+    },
+    {
+      "id": "awaiting_return_confirmation",
+      "label": "Chờ xác nhận hoàn trả"
+    },
+    {
+      "id": "return_approved",
+      "label": "Đã duyệt hoàn trả"
+    },
+    {
+      "id": "awaiting_return_pickup",
+      "label": "Chờ thu hồi hàng hoàn"
+    },
+    {
+      "id": "return_rejected",
+      "label": "Từ chối hoàn trả"
+    },
+    {
+      "id": "refund_pending",
+      "label": "Chờ hoàn tiền"
+    },
+    {
+      "id": "returned",
+      "label": "Đã trả hàng"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đã hủy"
+    }
+  ],
+  "shippingStatuses": [
+    {
+      "id": "received_by_carrier",
+      "label": "Đơn hàng đã tiếp nhận"
+    },
+    {
+      "id": "preparing",
+      "label": "Đang chuẩn bị hàng"
+    },
+    {
+      "id": "awaiting_pickup",
+      "label": "Chờ bưu tá lấy hàng"
+    },
+    {
+      "id": "dispatched",
+      "label": "Đã xuất kho"
+    },
+    {
+      "id": "in_transit",
+      "label": "Đang vận chuyển"
+    },
+    {
+      "id": "delivered",
+      "label": "Đã giao hàng"
+    },
+    {
+      "id": "delivery_error",
+      "label": "Đã giao hàng (sai)"
+    },
+    {
+      "id": "awaiting_return_pickup",
+      "label": "Chờ lấy hàng hoàn trả"
+    },
+    {
+      "id": "returning_to_warehouse",
+      "label": "Đang hoàn trả về kho"
+    },
+    {
+      "id": "returned_to_warehouse",
+      "label": "Hoàn trả hàng"
+    },
+    {
+      "id": "cancelled",
+      "label": "Đơn hàng đã hủy"
+    }
+  ],
+  "paymentMethods": [
+    {
+      "id": "cod",
+      "label": "Thanh toán khi nhận hàng (COD)"
+    },
+    {
+      "id": "bank_transfer",
+      "label": "Chuyển khoản ngân hàng"
+    },
+    {
+      "id": "momo",
+      "label": "Ví điện tử Momo"
+    }
+  ],
+  "shippingMethods": [
+    {
+      "id": "ghtk_standard",
+      "carrier": "Giao hàng tiết kiệm",
+      "label": "Giao hàng tiêu chuẩn",
+      "estimatedDays": { "min": 3, "max": 5 }
+    },
+    {
+      "id": "viettel_fast",
+      "carrier": "Viettel Post",
+      "label": "Giao hàng nhanh",
+      "estimatedDays": { "min": 1, "max": 3 }
+    }
+  ]
+}

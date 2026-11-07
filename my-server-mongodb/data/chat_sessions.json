@@ -1,0 +1,138 @@
+[
+  {
+    "sessionId": "cs_001",
+    "userId": "6ade4310c044b23d6c6a8681",
+    "status": "waiting",
+    "unreadCount": 1,
+    "lastMessageTime": 1716196200000,
+    "messages": [
+      {
+        "text": "Xin chào Urii, mình vừa đặt đơn hàng #UR-82901 nhưng muốn đổi sang mẫu Perler Beads 72 màu có được không?",
+        "sender": "user",
+        "timestamp": 1716195600000
+      },
+      {
+        "text": "Chào bạn Minh Anh! Đơn hàng #UR-82901 của bạn hiện đang ở trạng thái 'Chờ xác nhận'. Bạn hoàn toàn có thể thay đổi sản phẩm trước khi kho đóng gói nhé.",
+        "sender": "bot",
+        "timestamp": 1716195620000
+      },
+      {
+        "text": "Dạ vâng, vậy bạn đổi giúp mình sang Bộ KIT Perler Beads 72 màu với ạ. Mình cần thêm nhân viên tư vấn xác nhận tiền chênh lệch.",
+        "sender": "user",
+        "timestamp": 1716196200000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_002",
+    "userId": "6ade4310c044b23d6c6a8682",
+    "status": "active",
+    "unreadCount": 0,
+    "lastMessageTime": 1716194400000,
+    "messages": [
+      {
+        "text": "Shop ơi, hạt ủi nhiệt 5mm và 2.6mm loại nào phù hợp cho bé 7 tuổi mới tập làm hơn ạ?",
+        "sender": "user",
+        "timestamp": 1716193200000
+      },
+      {
+        "text": "Chào Bảo Ngọc! Với bé 7 tuổi mới tập làm, Urii khuyên bạn nên chọn hạt 5mm (size Midi) vì hạt to, dễ gắp bằng nhíp nhựa và an toàn hơn cho các bé thao tác ạ.",
+        "sender": "bot",
+        "timestamp": 1716193215000
+      },
+      {
+        "text": "Nhân viên tư vấn đã bắt đầu tiếp quản cuộc trò chuyện.",
+        "sender": "admin",
+        "timestamp": 1716193500000,
+        "isSystemLog": true
+      },
+      {
+        "text": "Chào chị Ngọc ạ! Em là tư vấn viên của Urii. Ngoài hạt 5mm, bên em đang có set quà tặng kèm khuôn ép thú cưng rất hợp cho bé, em gửi chị tham khảo nhé!",
+        "sender": "admin",
+        "timestamp": 1716193800000
+      },
+      {
+        "text": "Cảm ơn em nhiều nha, gửi link set đó qua giúp chị với nhé!",
+        "sender": "user",
+        "timestamp": 1716194400000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_003",
+    "userId": "6ade4310c044b23d6c6a8683",
+    "status": "ai",
+    "unreadCount": 0,
+    "lastMessageTime": 1716192000000,
+    "messages": [
+      {
+        "text": "Mã giảm giá WELCOME10 áp dụng cho đơn từ bao nhiêu vậy bot?",
+        "sender": "user",
+        "timestamp": 1716191940000
+      },
+      {
+        "text": "Mã giảm giá WELCOME10 giảm ngay 10% (tối đa 50.000đ) áp dụng cho đơn hàng từ 100.000đ trở lên khi mua sắm tại Urii bạn nhé!",
+        "sender": "bot",
+        "timestamp": 1716191950000
+      },
+      {
+        "text": "Cảm ơn bot, mình áp dụng được rồi nha.",
+        "sender": "user",
+        "timestamp": 1716192000000
+      },
+      {
+        "text": "Dạ Urii rất vui được hỗ trợ bạn. Chúc bạn có trải nghiệm mua sắm tuyệt vời tại Urii!",
+        "sender": "bot",
+        "timestamp": 1716192010000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_004",
+    "userId": "6ade4310c044b23d6c6a8684",
+    "status": "waiting",
+    "unreadCount": 2,
+    "lastMessageTime": 1716188400000,
+    "messages": [
+      {
+        "text": "Shop ơi cho mình hỏi đơn hàng giao hỏa tốc ở TP.HCM trong ngày có kịp nhận trước 5h chiều không?",
+        "sender": "user",
+        "timestamp": 1716187200000
+      },
+      {
+        "text": "Dạ dịch vụ giao hàng hỏa tốc nội thành TP.HCM của Urii thường mất từ 1 - 2 tiếng sau khi xác nhận đơn hàng.",
+        "sender": "bot",
+        "timestamp": 1716187215000
+      },
+      {
+        "text": "Mình vừa đặt đơn #UR-82904 rồi, shop ưu tiên gọi shipper sớm giúp mình với nhé!",
+        "sender": "user",
+        "timestamp": 1716188400000
+      }
+    ]
+  },
+  {
+    "sessionId": "cs_005",
+    "userId": "6ade4310c044b23d6c6a8685",
+    "status": "ai",
+    "unreadCount": 0,
+    "lastMessageTime": 1716181200000,
+    "messages": [
+      {
+        "text": "Cách ủi hạt Perler beads như thế nào để hạt dính đều mà không bị cháy giấy ủi vậy shop?",
+        "sender": "user",
+        "timestamp": 1716181140000
+      },
+      {
+        "text": "Dạ bạn chỉnh bàn ủi ở nhiệt độ trung bình (không dùng hơi nước), đặt giấy ủi chuyên dụng lên trên mặt hạt và di chuyển bàn ủi theo hình vòng tròn đều tay trong 10-15 giây đến khi thấy hạt hơi chảy đều vào nhau là chuẩn bạn nhé!",
+        "sender": "bot",
+        "timestamp": 1716181160000
+      },
+      {
+        "text": "Hay quá, mình làm theo đã thành công rồi. Cảm ơn shop!",
+        "sender": "user",
+        "timestamp": 1716181200000
+      }
+    ]
+  }
+]

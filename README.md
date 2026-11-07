@@ -1,65 +1,54 @@
 # Urii Ecommerce System
 
-This repository is an Angular monorepo with two applications:
+Urii is an ecommerce application with separate Angular storefront and admin applications, plus an Express/MongoDB API.
 
-- `projects/my-user`: customer-facing storefront.
-- `projects/my-admin`: administration application.
+## Project structure
 
-Shared Angular CLI, TypeScript, npm dependencies, and development proxy
-configuration are maintained at the repository root.
+- `projects/my-user/` — customer-facing Angular application.
+- `projects/my-admin/` — admin dashboard, promotions, and user management.
+- `my-server-mongodb/` — Express API, Mongoose models, seed data, and backend tests.
 
-## Prerequisites
-
-- Node.js and npm.
-- The backend API listening at `http://localhost:3002`.
+## Run locally
 
 Install frontend dependencies from the repository root:
 
-```bash
+```sh
 npm install
 ```
 
-## Development
+Start the storefront or admin app in its own terminal:
 
-Start either application from the repository root:
-
-```bash
-npm start
-npm run start:admin
+```sh
+npm start -- --project my-user
+npm start -- --project my-admin
 ```
 
-Both development servers use [proxy.conf.json](./proxy.conf.json), which
-forwards `/api` requests to the local backend. The backend remains a separate
-project under `my-server-mongodb`.
+The Angular dev-server proxy sends `/api` requests to `http://localhost:3002`. Start the backend separately:
 
-## Build and test
+```sh
+cd my-server-mongodb
+npm install
+```
 
-```bash
-npm run build
-npm run build:admin
+Copy `.env.example` to `.env`, set a private MongoDB URI and a random `JWT_SECRET`, then run:
+
+```sh
+npm run dev
+```
+
+Create an admin using the backend's `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and optional `SEED_ADMIN_NAME` environment variables, then run `npm run seed:admin`. Do not commit `.env` or use demo credentials. See [the backend README](./my-server-mongodb/README.md) for seed safety and API details.
+
+## Build and tests
+
+```sh
+npm run build -- --project my-user
+npm run build -- --project my-admin
+npm test -- --project my-admin --watch=false
+```
+
+Backend tests:
+
+```sh
+cd my-server-mongodb
 npm test
 ```
-
-`npm run build` and `npm test` target the customer app by default. The Angular
-projects can also be selected directly with `npx ng build my-user`,
-`npx ng build my-admin`, or `npx ng test my-user`.
-
-## Customer app core
-
-The customer app keeps domain models in `projects/my-user/src/app/models` and
-application-wide services and HTTP interceptors in
-`projects/my-user/src/app/core`.
-
-- `UriUser` is the typed user model; `AuthService` expects login and
-  registration responses shaped as `{ "token": "...", "user": { "id": "...",
-"name": "...", "email": "..." } }`. MongoDB `_id` is also accepted.
-- `StorageService` persists the auth token and user in browser local storage
-  and does not access browser storage during server rendering.
-- The auth interceptor adds a bearer token only to same-origin `/api` requests.
-- `NotificationService` exposes notifications as an Angular read-only signal;
-  callers can add, dismiss, or clear success, error, warning, and info messages.
-
-The API routes used by `AuthService` are `POST /api/auth/login` and
-`POST /api/auth/register`. Update those paths or response model if the backend
-uses a different contract. For production deployments, prefer secure,
-HttpOnly cookies over long-lived tokens in local storage.

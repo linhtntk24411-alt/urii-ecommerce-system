@@ -1,0 +1,904 @@
+<div class="dashboard-container">
+  @if (toast(); as t) {
+    <div
+      class="custom-toast"
+      [style.background]="
+        t.type === 'success'
+          ? '#198754'
+          : t.type === 'danger'
+            ? '#dc3545'
+            : t.type === 'warning'
+              ? '#ffc107'
+              : '#0dcaf0'
+      "
+    >
+      <i
+        class="bi"
+        [ngClass]="{
+          'bi-check-circle-fill': t.type === 'success',
+          'bi-x-circle-fill': t.type === 'danger',
+          'bi-exclamation-triangle-fill': t.type === 'warning',
+          'bi-info-circle-fill': t.type === 'info'
+        }"
+      ></i>
+      <span>{{ t.message }}</span>
+      <button
+        type="button"
+        class="btn-close btn-close-white ms-2"
+        style="font-size: 10px"
+        (click)="toast.set(null)"
+      ></button>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-danger rounded-4 mb-4 d-flex align-items-center justify-content-between">
+      <span><i class="bi bi-exclamation-circle me-2"></i>{{ error() }}</span>
+      <button class="btn btn-sm btn-outline-danger" type="button" (click)="loadAllData()">
+        Thử lại
+      </button>
+    </div>
+  }
+
+  <!-- Stats Cards Row: 5 Cards with Icons & Modern Layout -->
+  <div class="row g-2 mb-3 stats-grid-row">
+    <!-- Card 1: Doanh thu -->
+    <div class="col-12 col-sm-6 col-xl">
+      <div class="card h-100 border-0 shadow-sm rounded-4 stat-card-modern">
+        <div class="card-body py-2 px-3 d-flex flex-column justify-content-between">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="stat-title text-muted fw-semibold">Tổng doanh thu</span>
+            <div class="stat-icon-badge bg-wine">
+              <i class="bi bi-wallet2"></i>
+            </div>
+          </div>
+          <div>
+            <h4 class="stat-value fw-bold text-dark mb-0">
+              {{ totalRevenueFormatted() }}
+            </h4>
+            <span class="stat-badge text-success">
+              <i class="bi bi-arrow-up-right me-1"></i>+12.5%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Tổng đơn hàng -->
+    <div class="col-12 col-sm-6 col-xl">
+      <div class="card h-100 border-0 shadow-sm rounded-4 stat-card-modern">
+        <div class="card-body py-2 px-3 d-flex flex-column justify-content-between">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="stat-title text-muted fw-semibold">Tổng đơn hàng</span>
+            <div class="stat-icon-badge bg-blue">
+              <i class="bi bi-bag-check-fill"></i>
+            </div>
+          </div>
+          <div>
+            <h4 class="stat-value fw-bold text-dark mb-0">
+              {{ stats()?.orders ?? orders().length }}
+            </h4>
+            <span class="stat-badge text-primary">
+              <i class="bi bi-clock-history me-1"></i>{{ stats()?.pendingOrders ?? 6 }} chờ xác nhận
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Người dùng -->
+    <div class="col-12 col-sm-6 col-xl">
+      <div class="card h-100 border-0 shadow-sm rounded-4 stat-card-modern" (click)="navigateTo('/users')">
+        <div class="card-body py-2 px-3 d-flex flex-column justify-content-between">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="stat-title text-muted fw-semibold">Người dùng</span>
+            <div class="stat-icon-badge bg-green">
+              <i class="bi bi-people-fill"></i>
+            </div>
+          </div>
+          <div>
+            <h4 class="stat-value fw-bold text-dark mb-0">
+              {{ stats()?.users ?? users().length }}
+            </h4>
+            <span class="stat-badge text-success">
+              <i class="bi bi-person-check me-1"></i>Thành viên hệ thống
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Tương tác Blog -->
+    <div class="col-12 col-sm-6 col-xl">
+      <div class="card h-100 border-0 shadow-sm rounded-4 stat-card-modern">
+        <div class="card-body py-2 px-3 d-flex flex-column justify-content-between">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="stat-title text-muted fw-semibold">Tương tác Blog</span>
+            <div class="stat-icon-badge bg-purple">
+              <i class="bi bi-chat-square-heart-fill"></i>
+            </div>
+          </div>
+          <div>
+            <h4 class="stat-value fw-bold text-dark mb-0">
+              {{ totalBlogEngagement() }}
+            </h4>
+            <span class="stat-badge text-purple">
+              <i class="bi bi-arrow-up-right me-1"></i>+22.1% ({{ blogs().length }} bài)
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 5: Khuyến mãi -->
+    <div class="col-12 col-sm-6 col-xl">
+      <div class="card h-100 border-0 shadow-sm rounded-4 stat-card-modern" (click)="navigateTo('/promotions')">
+        <div class="card-body py-2 px-3 d-flex flex-column justify-content-between">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="stat-title text-muted fw-semibold">Khuyến mãi</span>
+            <div class="stat-icon-badge bg-amber">
+              <i class="bi bi-ticket-perforated-fill"></i>
+            </div>
+          </div>
+          <div>
+            <h4 class="stat-value fw-bold text-dark mb-0">
+              {{ stats()?.activePromotions ?? promotions().length }} Mã
+            </h4>
+            <span class="stat-badge text-warning">
+              <i class="bi bi-fire me-1"></i>+14.8% tháng này
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thao tác nhanh (Dàn hàng ngang: dưới số liệu, bên trên dashboard) -->
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-4 d-flex">
+      <button
+        type="button"
+        class="btn quick-action-btn w-100 d-flex align-items-center rounded-4 shadow-sm"
+        (click)="openQuickModal('product')"
+      >
+        <span class="quick-action-icon me-3"><i class="bi bi-plus-lg"></i></span>
+        <span class="quick-action-text fw-semibold text-dark">Thêm sản phẩm mới</span>
+        <span class="ms-auto text-muted quick-arrow"><i class="bi bi-chevron-right"></i></span>
+      </button>
+    </div>
+    <div class="col-12 col-md-4 d-flex">
+      <button
+        type="button"
+        class="btn quick-action-btn w-100 d-flex align-items-center rounded-4 shadow-sm"
+        (click)="openQuickModal('blog')"
+      >
+        <span class="quick-action-icon me-3"><i class="bi bi-file-earmark-text"></i></span>
+        <span class="quick-action-text fw-semibold text-dark">Tạo bài viết Blog</span>
+        <span class="ms-auto text-muted quick-arrow"><i class="bi bi-chevron-right"></i></span>
+      </button>
+    </div>
+    <div class="col-12 col-md-4 d-flex">
+      <button
+        type="button"
+        class="btn quick-action-btn w-100 d-flex align-items-center rounded-4 shadow-sm"
+        (click)="openQuickModal('coupon')"
+      >
+        <span class="quick-action-icon me-3"><i class="bi bi-megaphone"></i></span>
+        <span class="quick-action-text fw-semibold text-dark">Đẩy khuyến mãi</span>
+        <span class="ms-auto text-muted quick-arrow"><i class="bi bi-chevron-right"></i></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Charts Row: 2 Sơ đồ (Xu hướng doanh thu + Tỷ lệ trạng thái đơn hàng) -->
+  <div class="row g-3 mb-3">
+    <!-- Chart 1: Xu hướng doanh thu -->
+    <div class="col-12 col-xl-8">
+      <div class="card border-0 shadow-sm rounded-4 bg-white h-100 chart-card">
+        <div class="card-header bg-transparent border-0 pt-3 px-3 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2 fs-6">
+              <i class="bi bi-bar-chart-line-fill text-danger"></i> Xu hướng doanh thu
+            </h5>
+            <small class="text-muted" style="font-size: 11px;">So sánh thực thu và dự kiến theo chu kỳ</small>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="d-none d-sm-flex align-items-center gap-3">
+              <div class="d-flex align-items-center gap-1">
+                <span class="legend-dot bg-danger-custom"></span>
+                <span class="legend-text">Doanh thu</span>
+              </div>
+              <div class="d-flex align-items-center gap-1">
+                <span class="legend-dot bg-warning-custom"></span>
+                <span class="legend-text">Dự kiến</span>
+              </div>
+            </div>
+            <div class="dropdown position-relative">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-pill px-3 py-1" type="button"
+                style="font-size: 12px;" (click)="toggleChartDropdown()">
+                {{ chartDays() === 7 ? '7 ngày qua' : chartDays() === 90 ? '90 ngày qua' : '30 ngày qua' }}
+              </button>
+              @if (chartDropdownOpen()) {
+                <ul class="dropdown-menu show position-absolute end-0 mt-1 shadow-sm border-0 rounded-3" style="z-index: 20">
+                  <li><a class="dropdown-item" [class.active]="chartDays() === 7" href="#" (click)="$event.preventDefault(); selectChartDays(7)">7 ngày qua</a></li>
+                  <li><a class="dropdown-item" [class.active]="chartDays() === 30" href="#" (click)="$event.preventDefault(); selectChartDays(30)">30 ngày qua</a></li>
+                  <li><a class="dropdown-item" [class.active]="chartDays() === 90" href="#" (click)="$event.preventDefault(); selectChartDays(90)">90 ngày qua</a></li>
+                </ul>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-2 p-md-3">
+          <div class="chart-container" style="position: relative; height: 210px; width: 100%;">
+            <canvas #revenueCanvas id="revenueChart" style="display: block; width: 100%; height: 200px;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 2: Cơ cấu trạng thái đơn hàng (Doughnut Chart Mới) -->
+    <div class="col-12 col-xl-4">
+      <div class="card border-0 shadow-sm rounded-4 bg-white h-100 chart-card">
+        <div class="card-header bg-transparent border-0 pt-3 px-3 pb-0">
+          <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2 fs-6">
+            <i class="bi bi-pie-chart-fill text-primary"></i> Trạng thái đơn hàng
+          </h5>
+          <small class="text-muted" style="font-size: 11px;">Tỷ lệ phân bổ đơn hàng theo trạng thái</small>
+        </div>
+        <div class="card-body p-2 p-md-3 d-flex flex-column justify-content-between">
+          <div class="doughnut-container position-relative mx-auto my-1" style="position: relative; width: 150px; height: 150px;">
+            <canvas #orderStatusCanvas id="orderStatusChart" width="150" height="150" style="display: block; width: 150px; height: 150px;"></canvas>
+            <div class="doughnut-center-info text-center position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+              <span class="d-block text-muted fw-semibold" style="font-size: 10px;">Tổng đơn</span>
+              <strong class="fs-5 text-dark">{{ orderStatusStats().total }}</strong>
+            </div>
+          </div>
+
+          <div class="order-status-legend mt-2 px-1">
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+              <span class="legend-label">
+                <span class="legend-dot-sm" style="background-color: #137333;"></span> Hoàn thành
+              </span>
+              <span class="legend-value">{{ orderStatusStats().completed }} đơn ({{ orderStatusStats().completedPct }}%)</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+              <span class="legend-label">
+                <span class="legend-dot-sm" style="background-color: #1a73e8;"></span> Đang xử lý
+              </span>
+              <span class="legend-value">{{ orderStatusStats().processing }} đơn ({{ orderStatusStats().processingPct }}%)</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+              <span class="legend-label">
+                <span class="legend-dot-sm" style="background-color: #f59e0b;"></span> Chờ xác nhận
+              </span>
+              <span class="legend-value">{{ orderStatusStats().pending }} đơn ({{ orderStatusStats().pendingPct }}%)</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center py-1">
+              <span class="legend-label">
+                <span class="legend-dot-sm" style="background-color: #dc2626;"></span> Đã hủy
+              </span>
+              <span class="legend-value">{{ orderStatusStats().cancelled }} đơn ({{ orderStatusStats().cancelledPct }}%)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Orders (Dữ liệu thật từ MongoDB /api/orders) -->
+  <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+    <div
+      class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center"
+    >
+      <h5 class="fw-bold text-dark m-0">Đơn hàng gần đây</h5>
+      <button
+        class="btn btn-export btn-sm fw-bold"
+        type="button"
+        style="font-size: 12px; padding: 4px 16px"
+        (click)="exportOrders()"
+      >
+        <i class="bi bi-download me-1"></i> Xuất danh sách
+      </button>
+    </div>
+    <div class="table-responsive p-0 mt-2">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="text-muted small fw-bold bg-light">
+          <tr>
+            <th class="ps-4 py-3">KHÁCH HÀNG</th>
+            <th class="py-3">MÃ ĐƠN</th>
+            <th class="py-3">SẢN PHẨM</th>
+            <th class="py-3">TRẠNG THÁI</th>
+            <th class="py-3">TỔNG TIỀN</th>
+            <th class="text-center py-3" style="min-width: 120px; white-space: nowrap;">THAO TÁC</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of recentOrders(); track order.id) {
+            <tr>
+              <td class="ps-4 py-3">
+                <div class="d-flex align-items-center gap-2">
+                  @if (getCustomerAvatar(order.userName); as avatarUrl) {
+                    <img
+                      [src]="avatarUrl"
+                      (error)="onImgError($event, avatarUrl, 'assets/avatar-non.jpg')"
+                      class="customer-avatar"
+                      [alt]="order.userName"
+                    />
+                  } @else {
+                    <span class="customer-avatar">{{ getInitials(order.userName) }}</span>
+                  }
+                  <div>
+                    <span class="fw-semibold d-block" style="font-size: 14px; color: #333">
+                      {{ order.userName }}
+                    </span>
+                    <small class="text-muted" style="font-size: 11px">{{ order.date }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="order-id">#{{ order.id }}</span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  @if (order.items && order.items.length > 0) {
+                    <img
+                      [src]="resolveImage(order.items[0].image, 'assets/72color.webp')"
+                      (error)="onImgError($event, order.items[0].image, 'assets/72color.webp')"
+                      class="product-thumb"
+                      [alt]="order.items[0].name"
+                    />
+                    <div>
+                      <span class="d-block" style="font-size: 13px">
+                        {{ order.items[0].name }}
+                      </span>
+                      @if (order.items.length > 1) {
+                        <small class="text-muted">+{{ order.items.length - 1 }} sản phẩm khác</small>
+                      }
+                    </div>
+                  } @else {
+                    <span>Bộ KIT Perler Beads</span>
+                  }
+                </div>
+              </td>
+              <td>
+                <span class="badge-status" [ngClass]="getOrderBadgeClass(order)">
+                  {{ order.status }}
+                </span>
+              </td>
+              <td class="fw-bold" style="color: #840001">{{ order.total }}</td>
+              <td class="text-center" style="white-space: nowrap;">
+                <button
+                  type="button"
+                  class="btn-detail-order"
+                  (click)="openOrderDetail(order)"
+                  title="Xem chi tiết đơn hàng"
+                >
+                  <i class="bi bi-eye"></i>
+                  <span>Chi tiết</span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">
+                {{ loading() ? 'Đang tải đơn hàng từ MongoDB...' : 'Chưa có đơn hàng nào.' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3 Columns: Bài viết cộng đồng + Cảnh báo kho hàng + Lịch sử hoạt động (Dữ liệu thật từ MongoDB) -->
+  <div class="row g-3 mb-4">
+    <!-- Col 1: Bài viết cộng đồng -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
+        <div
+          class="card-header bg-transparent border-0 pt-3 px-3 pb-0 d-flex justify-content-between align-items-center"
+        >
+          <h5 class="fw-bold text-dark m-0 fs-6 text-nowrap">Bài viết cộng đồng</h5>
+          @if (pendingBlogsCount() > 0) {
+            <span class="badge-soft-danger">
+              {{ pendingBlogsCount() }} Mới
+            </span>
+          }
+        </div>
+        <div class="card-body p-3">
+          @for (blog of pendingBlogs(); track blog.id) {
+            <div
+              class="blog-item d-flex align-items-center justify-content-between gap-2 mb-2 p-2 rounded-3"
+              [style.backgroundColor]="blog.approvalStatus === 'approved' ? '#d1e7dd' : ''"
+            >
+              <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0" style="min-width: 0;">
+                <img
+                  [src]="resolveImage(blog.image, 'assets/bohoa.jpg')"
+                  (error)="onImgError($event, blog.image, 'assets/bohoa.jpg')"
+                  class="blog-thumb-sm"
+                  [alt]="blog.title"
+                />
+                <div class="flex-grow-1 min-w-0" style="min-width: 0;">
+                  <p class="fw-semibold mb-0 text-truncate-2" style="font-size: 12.5px; line-height: 1.3;">"{{ blog.title }}"</p>
+                  <small class="text-muted text-truncate d-block" style="font-size: 11px;">bởi {{ blog.author }} • {{ blog.date }}</small>
+                </div>
+              </div>
+              <div class="d-flex gap-1.5 flex-shrink-0 align-items-center">
+                @if (blog.approvalStatus === 'approved') {
+                  <span class="badge-status badge-status-approved" style="font-size: 11px; padding: 3px 8px;">
+                    <i class="bi bi-check-circle-fill me-1"></i> Đã duyệt
+                  </span>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-action-soft btn-action-approve"
+                    title="Duyệt bài"
+                    (click)="approveBlog(blog)"
+                  >
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-action-soft btn-action-reject"
+                    title="Từ chối"
+                    (click)="rejectBlog(blog)"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3">
+          <button
+            type="button"
+            class="btn btn-soft-primary w-100 fw-bold"
+            (click)="openQuickModal('blog')"
+          >
+            <i class="bi bi-plus-circle me-1"></i> Đăng bài viết cộng đồng mới
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 2: Cảnh báo kho hàng -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
+        <div class="card-header bg-transparent border-0 pt-3 px-3 pb-0">
+          <h5 class="fw-bold text-dark m-0 fs-6 text-nowrap">Cảnh báo kho hàng</h5>
+        </div>
+        <div class="card-body p-3">
+          @for (prod of lowStockProducts(); track prod.id) {
+            <div class="mb-2.5">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0" style="min-width: 0;">
+                  <img
+                    [src]="resolveImage(prod.image, 'assets/72color.webp')"
+                    (error)="onImgError($event, prod.image, 'assets/72color.webp')"
+                    class="product-thumb-sm"
+                    [alt]="prod.name"
+                  />
+                  <span class="text-truncate" style="font-size: 12.5px; font-weight: 500;">{{ prod.name }}</span>
+                </div>
+                <span
+                  class="fw-bold flex-shrink-0 ms-2"
+                  [ngClass]="prod.stock <= 15 ? 'text-danger' : 'text-warning'"
+                  style="font-size: 12px; white-space: nowrap"
+                >
+                  {{ prod.stock }} còn lại
+                </span>
+              </div>
+              <div class="progress mt-1" style="height: 5px">
+                <div
+                  class="progress-bar"
+                  [ngClass]="prod.stock <= 15 ? 'bg-danger' : 'bg-warning'"
+                  [style.width.%]="getStockPercent(prod.stock)"
+                ></div>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3">
+          <button
+            type="button"
+            class="btn btn-soft-primary w-100 fw-bold"
+            (click)="orderSupplies()"
+          >
+            <i class="bi bi-cart me-1"></i> Đặt mua vật tư ngay
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 3: Lịch sử hoạt động (Hình vuông background icon) -->
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
+        <div class="card-header bg-transparent border-0 pt-3 px-3 pb-0">
+          <h5 class="fw-bold text-dark m-0 fs-6 text-nowrap">Lịch sử hoạt động</h5>
+        </div>
+        <div class="card-body p-3">
+          <div
+            class="activity-item d-flex align-items-center mb-2.5 p-2 rounded-3"
+            (click)="latestOrder() && openOrderDetail(latestOrder()!)"
+          >
+            <span class="activity-icon-square icon-order me-3">
+              <i class="bi bi-bag"></i>
+            </span>
+            <div class="flex-grow-1 min-w-0" style="min-width: 0;">
+              <p class="mb-0 text-truncate" style="font-size: 12.5px">
+                Đơn hàng mới <strong class="text-danger">#{{ latestOrder()?.id || 'UR-82901' }}</strong> từ <strong>{{ latestOrder()?.userName || 'Nguyễn Minh Anh' }}</strong>
+              </p>
+              <small class="text-muted" style="font-size: 11px">{{ latestOrder()?.date || 'Hôm nay' }}</small>
+            </div>
+          </div>
+
+          <div class="activity-item d-flex align-items-center mb-2.5 p-2 rounded-3" (click)="navigateTo('/users')">
+            <span class="activity-icon-square icon-user me-3">
+              <i class="bi bi-person-plus"></i>
+            </span>
+            <div class="flex-grow-1 min-w-0" style="min-width: 0;">
+              <p class="mb-0 text-truncate" style="font-size: 12.5px">
+                Thành viên: <strong class="text-success">{{ latestUser()?.name || 'Nguyễn Minh Anh' }}</strong>
+              </p>
+              <small class="text-muted" style="font-size: 11px">
+                Tham gia: {{ latestUser()?.joinDate || '15/03/2024' }}
+              </small>
+            </div>
+          </div>
+
+          <div class="activity-item d-flex align-items-center p-2 rounded-3" (click)="navigateTo('/promotions')">
+            <span class="activity-icon-square icon-promo me-3">
+              <i class="bi bi-megaphone"></i>
+            </span>
+            <div class="flex-grow-1 min-w-0" style="min-width: 0;">
+              <p class="mb-0 text-truncate" style="font-size: 12.5px">
+                Khuyến mãi: <strong class="text-purple">"{{ latestPromotion()?.code || 'WELCOME10' }}"</strong>
+              </p>
+              <small class="text-muted" style="font-size: 11px">
+                Đã sử dụng {{ latestPromotion()?.used ?? 456 }} lượt
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CHI TIẾT ĐƠN HÀNG -->
+@if (activeModal() === 'orderDetail' && selectedOrder(); as ord) {
+  <div class="modal-backdrop-custom" (click)="closeModal()">
+    <div class="modal-card-custom" (click)="$event.stopPropagation()">
+      <div class="modal-header-urii">
+        <h5 class="m-0 fw-bold">
+          <i class="bi bi-receipt me-2"></i>Chi tiết đơn hàng #{{ ord.id }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModal()"></button>
+      </div>
+      <div class="p-4">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <p class="mb-1 text-muted small">Khách hàng</p>
+            <p class="fw-bold mb-0">{{ ord.userName }}</p>
+            @if (ord.address) {
+              <small class="text-muted d-block">{{ ord.address.phone }}</small>
+              <small class="text-muted d-block">{{ ord.address.address }}</small>
+            }
+          </div>
+          <div class="col-md-6">
+            <p class="mb-1 text-muted small">Thông tin đơn</p>
+            <p class="mb-1">
+              Ngày đặt: <strong>{{ ord.date }}</strong>
+            </p>
+            <p class="mb-1">
+              Trạng thái:
+              <span class="badge-status" [ngClass]="getOrderBadgeClass(ord)">{{ ord.status }}</span>
+            </p>
+            @if (ord.payment) {
+              <small class="text-muted d-block">
+                {{ ord.payment.method }} ({{ ord.payment.status }})
+              </small>
+            }
+          </div>
+        </div>
+
+        <h6 class="fw-bold border-bottom pb-2 mb-3">Sản phẩm trong đơn</h6>
+        @for (item of ord.items; track item.productId) {
+          <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+              <img
+                [src]="resolveImage(item.image, 'assets/72color.webp')"
+                (error)="onImgError($event, item.image, 'assets/72color.webp')"
+                class="product-thumb"
+                style="width: 48px; height: 48px"
+                [alt]="item.name"
+              />
+              <div>
+                <p class="fw-semibold mb-0">{{ item.name }}</p>
+                <small class="text-muted">Số lượng: x{{ item.quantity }}</small>
+              </div>
+            </div>
+            <span class="fw-bold text-danger">
+              {{ (item.price * item.quantity).toLocaleString('vi-VN') }}đ
+            </span>
+          </div>
+        }
+
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-2">
+          <span class="fw-bold">Tổng thanh toán:</span>
+          <span class="fs-5 fw-bold" style="color: #840001">{{ ord.total }}</span>
+        </div>
+      </div>
+      <div class="px-4 pb-4 text-end">
+        <button type="button" class="btn btn-secondary px-4" (click)="closeModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- MODAL THÊM SẢN PHẨM MỚI (Thao tác nhanh) -->
+@if (activeModal() === 'product') {
+  <div class="modal-backdrop-custom" (click)="closeModal()">
+    <div class="modal-card-custom" (click)="$event.stopPropagation()">
+      <div class="modal-header-urii">
+        <h5 class="m-0 fw-bold"><i class="bi bi-plus-circle me-2"></i>Thêm Sản Phẩm Mới</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModal()"></button>
+      </div>
+      <form class="p-4" (ngSubmit)="saveQuickProduct()">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Tên sản phẩm <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            class="form-control"
+            name="prodName"
+            [(ngModel)]="productForm.name"
+            placeholder="Nhập tên sản phẩm..."
+            required
+          />
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Danh mục</label>
+            <select class="form-select" name="prodCat" [(ngModel)]="productForm.category">
+              <option value="KIT">Bộ KIT</option>
+              <option value="DC">Dụng cụ</option>
+              <option value="TP">Thành phẩm</option>
+              <option value="hat-nhua">Hạt nhựa</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Giá bán (VNĐ)</label>
+            <input
+              type="number"
+              class="form-control"
+              name="prodPrice"
+              [(ngModel)]="productForm.currentPrice"
+              min="0"
+            />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Số lượng kho</label>
+            <input
+              type="number"
+              class="form-control"
+              name="prodStock"
+              [(ngModel)]="productForm.stock"
+              min="0"
+            />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Hình ảnh sản phẩm</label>
+          <div class="d-flex align-items-center gap-3">
+            <img
+              [src]="resolveImage(productForm.image, 'assets/72color.webp')"
+              class="rounded-3 border"
+              style="width: 72px; height: 72px; object-fit: cover"
+              alt="Preview"
+            />
+            <input
+              type="file"
+              class="form-control"
+              accept="image/*"
+              (change)="onProductFileChange($event)"
+            />
+          </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+          <button type="button" class="btn btn-secondary px-4" (click)="closeModal()">Hủy</button>
+          <button
+            type="submit"
+            class="btn text-white fw-bold px-4"
+            style="background: #840001"
+            [disabled]="savingModal()"
+          >
+            <i class="bi bi-save me-1"></i>
+            {{ savingModal() ? 'Đang lưu...' : 'Lưu sản phẩm' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- MODAL TẠO BÀI VIẾT BLOG (Thao tác nhanh) -->
+@if (activeModal() === 'blog') {
+  <div class="modal-backdrop-custom" (click)="closeModal()">
+    <div class="modal-card-custom" (click)="$event.stopPropagation()">
+      <div class="modal-header-urii">
+        <h5 class="m-0 fw-bold"><i class="bi bi-file-earmark-text me-2"></i>Tạo bài viết mới</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModal()"></button>
+      </div>
+      <form class="p-4" (ngSubmit)="saveQuickBlog()">
+        <div class="mb-3">
+          <label class="form-label fw-bold">
+            Tiêu đề bài viết <span class="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            name="blogTitle"
+            [(ngModel)]="blogForm.title"
+            placeholder="Ví dụ: Hướng dẫn làm móc khóa..."
+            required
+          />
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Tác giả</label>
+            <input
+              type="text"
+              class="form-control"
+              name="blogAuthor"
+              [(ngModel)]="blogForm.author"
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Danh mục</label>
+            <select class="form-select" name="blogCat" [(ngModel)]="blogForm.category">
+              <option value="Hướng dẫn DIY">Hướng dẫn DIY</option>
+              <option value="Ý tưởng thiết kế">Ý tưởng thiết kế</option>
+              <option value="Góc nghệ thuật">Góc nghệ thuật</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Ảnh đại diện</label>
+          <div class="d-flex align-items-center gap-3">
+            <img
+              [src]="resolveImage(blogForm.image, 'assets/bohoa.jpg')"
+              class="rounded-3 border"
+              style="width: 72px; height: 72px; object-fit: cover"
+              alt="Blog preview"
+            />
+            <input
+              type="file"
+              class="form-control"
+              accept="image/*"
+              (change)="onBlogFileChange($event)"
+            />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Nội dung</label>
+          <textarea
+            class="form-control"
+            rows="4"
+            name="blogContent"
+            [(ngModel)]="blogForm.content"
+            placeholder="Nhập nội dung bài viết..."
+          ></textarea>
+        </div>
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+          <button type="button" class="btn btn-secondary px-4" (click)="closeModal()">Hủy</button>
+          <button type="submit" class="btn text-white fw-bold px-4" style="background: #840001">
+            <i class="bi bi-save me-1"></i> Lưu bài viết
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- MODAL THÊM MÃ GIẢM GIÁ (Thao tác nhanh -> Lưu vào MongoDB) -->
+@if (activeModal() === 'coupon') {
+  <div class="modal-backdrop-custom" (click)="closeModal()">
+    <div class="modal-card-custom" (click)="$event.stopPropagation()">
+      <div class="modal-header-urii">
+        <h5 class="m-0 fw-bold"><i class="bi bi-ticket me-2"></i>Thêm mã giảm giá</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModal()"></button>
+      </div>
+      <form class="p-4" (ngSubmit)="saveQuickCoupon()">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Mã giảm giá <span class="text-danger">*</span></label>
+            <input
+              type="text"
+              class="form-control"
+              name="couponCode"
+              [(ngModel)]="couponForm.code"
+              placeholder="VD: URII2026"
+              required
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Tên chương trình</label>
+            <input
+              type="text"
+              class="form-control"
+              name="couponName"
+              [(ngModel)]="couponForm.name"
+              placeholder="VD: Ưu đãi mùa hè"
+            />
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Phần trăm giảm (%)</label>
+            <input
+              type="number"
+              class="form-control"
+              name="couponDiscount"
+              [(ngModel)]="couponForm.discountValue"
+              min="1"
+              max="100"
+            />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Đơn tối thiểu (VNĐ)</label>
+            <input
+              type="number"
+              class="form-control"
+              name="couponMin"
+              [(ngModel)]="couponForm.minOrder"
+              min="0"
+            />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Số lượt tối đa</label>
+            <input
+              type="number"
+              class="form-control"
+              name="couponQty"
+              [(ngModel)]="couponForm.quantity"
+              min="1"
+            />
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Ngày bắt đầu</label>
+            <input
+              type="date"
+              class="form-control"
+              name="couponStart"
+              [(ngModel)]="couponForm.startDate"
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Ngày hết hạn</label>
+            <input
+              type="date"
+              class="form-control"
+              name="couponEnd"
+              [(ngModel)]="couponForm.endDate"
+            />
+          </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+          <button type="button" class="btn btn-secondary px-4" (click)="closeModal()">Hủy</button>
+          <button
+            type="submit"
+            class="btn text-white fw-bold px-4"
+            style="background: #840001"
+            [disabled]="savingModal()"
+          >
+            <i class="bi bi-save me-1"></i>
+            {{ savingModal() ? 'Đang lưu...' : 'Lưu mã giảm giá' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

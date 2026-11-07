@@ -1,0 +1,291 @@
+<div class="admin-layout-wrapper">
+    <!-- Main Content Area -->
+    <div class="admin-main-content" style="padding-top: 10px; width: 100%;">
+        <div style="width: 100%; max-width: 1400px; margin: 0 auto;">
+            
+            <!-- Header Title & Create Button -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="fw-bold mb-1" style="font-size: 28px;">Quản lý blog</h1>
+                    <p class="text-muted small m-0">Kiểm duyệt, chỉnh sửa và quản lý các bài viết cộng đồng trên hệ thống Urii.</p>
+                </div>
+                <button class="btn btn-danger fw-bold px-4 py-2 rounded-3 shadow-sm" (click)="openCreateModal()">
+                    <i class="bi bi-plus-circle me-1"></i> Tạo bài viết mới
+                </button>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                        <div class="card-body d-flex align-items-center gap-3 p-3">
+                            <div class="bg-secondary bg-opacity-10 p-3 rounded-3 text-secondary fs-4"><i class="bi bi-file-text"></i></div>
+                            <div><h6 class="text-muted small mb-1 fw-normal">Tổng bài viết</h6><h3 class="fw-bold mb-0">{{ totalBlogs }}</h3></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                        <div class="card-body d-flex align-items-center gap-3 p-3">
+                            <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success fs-4"><i class="bi bi-check-circle"></i></div>
+                            <div><h6 class="text-muted small mb-1 fw-normal">Đã duyệt</h6><h3 class="fw-bold mb-0 text-success">{{ approvedCount }}</h3></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                        <div class="card-body d-flex align-items-center gap-3 p-3">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning fs-4"><i class="bi bi-clock"></i></div>
+                            <div><h6 class="text-muted small mb-1 fw-normal">Chờ duyệt</h6><h3 class="fw-bold mb-0 text-warning">{{ pendingCount }}</h3></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-2">
+                        <div class="card-body d-flex align-items-center gap-3 p-3">
+                            <div class="bg-danger bg-opacity-10 p-3 rounded-3 text-danger fs-4"><i class="bi bi-exclamation-triangle"></i></div>
+                            <div><h6 class="text-muted small mb-1 fw-normal">Bài viết vi phạm</h6><h3 class="fw-bold mb-0 text-danger">{{ violatedCount }}</h3></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="row g-4">
+                
+                <!-- Left Column: Blog List Table -->
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
+                        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex flex-wrap justify-content-between align-items-center">
+                            <h4 class="fw-bold m-0">Danh sách bài viết</h4>
+                            <div class="d-flex gap-2 mt-2 mt-sm-0">
+                                <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="form-select form-select-sm bg-light border-0" style="width: auto; min-width: 150px;">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="approved">Đã duyệt</option>
+                                    <option value="pending">Chờ duyệt</option>
+                                    <option value="violated">Vi phạm</option>
+                                </select>
+                                <select [(ngModel)]="selectedAuthor" (change)="onFilterChange()" class="form-select form-select-sm bg-light border-0" style="width: auto; min-width: 150px;">
+                                    <option value="">Tất cả tác giả</option>
+                                    <option *ngFor="let author of authorsList" [value]="author">{{ author }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive p-0">
+                                <table class="table table-hover align-middle mb-0 table-blogs">
+                                    <thead class="text-muted small fw-bold">
+                                        <tr>
+                                            <th class="ps-4 py-3" style="width: 80px;">Ảnh đại diện</th>
+                                            <th class="py-3">Tiêu đề bài viết</th>
+                                            <th class="py-3">Tác giả</th>
+                                            <th class="py-3">Trạng thái</th>
+                                            <th class="pe-4 text-end py-3" style="width: 180px;">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="fs-6">
+                                        <tr *ngIf="loadingBlogs">
+                                            <td colspan="5" class="text-center text-muted py-4">Đang tải bài viết...</td>
+                                        </tr>
+                                        <tr *ngIf="!loadingBlogs && blogsError">
+                                            <td colspan="5" class="text-center text-danger py-4">{{ blogsError }}</td>
+                                        </tr>
+                                        <tr *ngIf="!loadingBlogs && !blogsError && paginatedBlogs.length === 0">
+                                            <td colspan="5" class="text-center text-muted py-4">Không có bài viết nào phù hợp.</td>
+                                        </tr>
+                                        <tr *ngFor="let b of paginatedBlogs" [ngClass]="{'blog-row-hidden': b.visible === false}">
+                                            <td class="ps-4"><img [src]="formatImagePath(b.thumbnail)" alt="" class="blog-thumb" [ngClass]="{'img-muted': b.visible === false}"></td>
+                                            <td>
+                                                <div class="blog-title" [ngClass]="{'text-muted': b.visible === false}">{{ b.title }}</div>
+                                                <span class="blog-date">Đăng ngày: {{ b.date }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="author-info">
+                                                    <span class="author-name">{{ b.author.name }}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge-status" [ngClass]="{
+                                                    'badge-status-approved': b.status === 'approved',
+                                                    'badge-status-pending': b.status === 'pending',
+                                                    'badge-status-violated': b.status === 'violated'
+                                                }">
+                                                    {{ b.status === 'approved' ? 'Đã duyệt' : (b.status === 'pending' ? 'Chờ duyệt' : 'Vi phạm') }}
+                                                </span>
+                                            </td>
+                                            <td class="pe-4">
+                                                <div class="action-btn-group">
+                                                    <!-- Nút Xem chi tiết bài viết -->
+                                                    <button class="btn-action-icon text-secondary" (click)="viewBlogDetail(b)" title="Xem chi tiết bài viết">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                    
+                                                    <!-- Nút Chỉnh sửa trạng thái (Dropdown) -->
+                                                    <div class="dropdown d-inline-block">
+                                                        <button class="btn-action-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Thay đổi trạng thái">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'pending'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id, 'pending')">Chờ duyệt</a></li>
+                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'approved'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id, 'approved')">Đã duyệt</a></li>
+                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'violated'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id, 'violated')">Vi phạm</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <!-- Nút Xóa vĩnh viễn -->
+                                                    <button class="btn-action-icon text-danger" (click)="deleteBlog(b.id)" title="Xóa bài viết"><i class="bi bi-trash"></i></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+                                <div class="text-muted small">
+                                    Hiển thị {{ filteredBlogs.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ ((currentPage * ITEMS_PER_PAGE) < filteredBlogs.length) ? (currentPage * ITEMS_PER_PAGE) : filteredBlogs.length }} trên tổng số {{ filteredBlogs.length }} bài viết
+                                </div>
+                                <nav *ngIf="totalPages > 1">
+                                    <ul class="pagination pagination-sm m-0">
+                                        <li class="page-item" [ngClass]="{'disabled': currentPage === 1}">
+                                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage - 1)">«</a>
+                                        </li>
+                                        <li class="page-item" *ngFor="let i of paginationRange" [ngClass]="{'active': currentPage === i}">
+                                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(i)">{{ i }}</a>
+                                        </li>
+                                        <li class="page-item" [ngClass]="{'disabled': currentPage === totalPages}">
+                                            <a class="page-link" href="#" (click)="$event.preventDefault(); changePage(currentPage + 1)">»</a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Pending Blogs Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-4 bg-white h-100 position-relative" style="background-color: #fff5f5;">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold m-0 text-dark">Bài viết cần duyệt <span class="badge bg-danger ms-1 rounded-pill">{{ pendingBlogs.length }}</span></h5>
+                            </div>
+                            <p class="text-muted small mb-4">Cần xử lý trong 24h tới để duy trì hoạt động cộng đồng.</p>
+                            
+                            <div *ngIf="pendingBlogs.length === 0">
+                                <p class="text-muted small text-center py-3">Hiện không có bài viết nào chờ duyệt.</p>
+                            </div>
+                            <div *ngFor="let b of pendingBlogs" class="pending-item">
+                                <div class="d-flex align-items-start">
+                                    <img [src]="formatImagePath(b.thumbnail)" class="pending-thumb">
+                                    <div>
+                                        <div class="pending-title">{{ b.title }}</div>
+                                        <div class="pending-author"><i class="bi bi-person"></i> {{ b.author.name }}</div>
+                                    </div>
+                                </div>
+                                <div class="pending-actions">
+                                    <button class="btn-approve-small" (click)="approveBlog(b.id)">Duyệt</button>
+                                    <button class="btn-reject-small" (click)="rejectBlog(b.id)">Từ chối</button>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 text-end border-top pt-3">
+                                <a href="#" (click)="$event.preventDefault(); selectedStatus = 'pending'" class="text-danger fw-bold text-decoration-none">Xem tất cả bài chờ duyệt <i class="bi bi-arrow-right"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tạo Bài Viết Mới -->
+<div class="modal fade" id="createBlogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-plus-circle"></i> Tạo bài viết mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tiêu đề bài viết <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" [(ngModel)]="newTitle" name="newTitle" placeholder="Ví dụ: Hướng dẫn làm móc khóa..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tác giả <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" [(ngModel)]="newAuthor" name="newAuthor" placeholder="Tên tác giả" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ảnh đại diện</label>
+                        <input type="file" class="form-control" (change)="onFileSelected($event)" accept="image/*">
+                        <div class="mt-2">
+                            <img [src]="previewThumbnail" *ngIf="previewThumbnail" class="img-thumbnail" style="max-height: 120px;">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nội dung <span class="text-danger">*</span></label>
+                        <textarea class="form-control" [(ngModel)]="newContent" name="newContent" rows="5" placeholder="Nhập nội dung bài viết..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger px-4 fw-bold" (click)="submitNewBlog()"><i class="bi bi-save"></i> Lưu bài viết</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Xem Chi Tiết Bài Viết (Giao diện chuẩn Blog Detail) -->
+<div class="modal fade" id="blogDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background-color: var(--blog-detail-surface, #fcffff);">
+            <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-file-earmark-text text-danger me-2"></i> Xem chi tiết bài viết</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" *ngIf="selectedBlog">
+                <!-- Nội dung chính được bọc theo style blog-detail-main -->
+                <div class="blog-detail-main" style="max-width: 100%; padding: 24px 32px;">
+                    
+                    <!-- Banner -->
+                    <section class="blog-detail-banner mb-4" [style.background-image]="'url(' + formatImagePath(selectedBlog.thumbnail) + ')'" style="height: 350px; background-size: cover; background-position: center; border-radius: 12px; position: relative; overflow: hidden;">
+                        <div class="blog-detail-banner__overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 50%, transparent 100%); display: flex; align-items: flex-end; padding: 32px 24px;">
+                            <div class="blog-detail-banner__container" style="color: #fff; width: 100%;">
+                                <span class="blog-detail-banner__category" style="display: inline-block; background: #840001; padding: 4px 16px; border-radius: 9999px; font-size: 14px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px;">
+                                    {{ selectedBlog.status === 'approved' ? 'Đã duyệt' : (selectedBlog.status === 'pending' ? 'Chờ duyệt' : 'Vi phạm') }}
+                                </span>
+                                <h1 class="blog-detail-banner__title" style="font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: 16px;">{{ selectedBlog.title }}</h1>
+                                <div class="blog-detail-banner__author" style="display: flex; align-items: center; gap: 12px;">
+                                    <img class="blog-detail-banner__avatar" [src]="formatImagePath(selectedBlog.author?.avatar || 'https://i.pravatar.cc/150')" alt="Avatar" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; object-fit: cover;" />
+                                    <div>
+                                        <div class="blog-detail-banner__name" style="font-weight: 600; font-size: 15px;">{{ selectedBlog.author?.name }}</div>
+                                        <div class="blog-detail-banner__date" style="font-size: 13px; opacity: 0.8;">Ngày đăng: {{ selectedBlog.date }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- Nội dung bài viết -->
+                    <article class="blog-detail-content-wrapper" [innerHTML]="selectedBlog.content || 'Không có nội dung chi tiết cho bài viết này.'">
+                    </article>
+
+                    <!-- Author Bio giả lập nhỏ trong modal -->
+                    <div class="blog-detail-author mt-5 p-4 rounded-4" style="display: flex; gap: 20px; background: #f6f3f2; align-items: center;">
+                        <img class="blog-detail-author__avatar" [src]="formatImagePath(selectedBlog.author?.avatar || 'https://i.pravatar.cc/150')" alt="Author" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;" />
+                        <div>
+                            <h4 class="fw-bold mb-1" style="color: #840001; font-size: 18px;">{{ selectedBlog.author?.name }}</h4>
+                            <p class="text-muted small mb-0">Tác giả bài viết tại hệ thống cộng đồng Urii.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 bg-light py-3 px-4">
+                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>

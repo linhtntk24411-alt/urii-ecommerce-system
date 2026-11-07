@@ -11,6 +11,10 @@
         </button>
     </div>
 
+    @if (mapLoadError) {
+        <div class="alert alert-warning" role="alert">{{ mapLoadError }}</div>
+    }
+
     <!-- BẢNG DANH SÁCH MAP MẪU -->
     <div class="card border-0 shadow-sm rounded-4 bg-white">
         <div class="card-body p-0">
@@ -43,6 +47,9 @@
                         </tr>
                         } @empty {
                         <tr>
+                            <td colspan="6" class="text-center text-muted py-5">
+                                {{ isLoading ? 'Đang tải danh sách mẫu...' : mapLoadError || 'Chưa có mẫu nào trong danh sách.' }}
+                            </td>
                             <td colspan="6" class="text-center text-muted py-5">Chưa có mẫu nào trong danh sách.</td>
                         </tr>
                         }

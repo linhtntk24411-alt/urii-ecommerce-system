@@ -1,3 +1,35 @@
+
+<main class="auth-page">
+  <input
+    class="auth-mode"
+    type="radio"
+    name="auth-mode"
+    id="login-mode"
+    checked
+  >
+  <section class="auth-card" aria-label="Đăng nhập Urii Admin">
+
+    <header class="auth-header auth-heading--login">
+      <h1 class="auth-title">Chào mừng trở lại</h1>
+      <p class="auth-subtitle">
+        Vui lòng đăng nhập để tiếp tục quản trị hệ thống Urii.
+      </p>
+    </header>
+
+    <section class="auth-panel login-panel" aria-label="Đăng nhập Admin">
+
+      <div class="field-group">
+        <label class="field-label" for="login-email">Email</label>
+        <input
+          #emailInput
+          class="field-input"
+          id="login-email"
+          type="email"
+          placeholder="example@gmail.com"
+          autocomplete="username"
+        >
+      </div>
+
 <main class="auth-page">
   <input class="auth-mode" type="radio" name="auth-mode" id="login-mode" checked>
   <input class="auth-mode" type="radio" name="auth-mode" id="register-mode">
@@ -27,6 +59,42 @@
           <label class="field-label" for="login-password">Mật khẩu</label>
           <span class="text-link">Quên mật khẩu?</span>
         </div>
+
+        <div class="password-field">
+          <input
+            #passwordInput
+            class="field-input"
+            id="login-password"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          >
+          <span class="password-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <button
+        class="primary-button"
+        type="button"
+        [disabled]="isLoading"
+        (click)="login(emailInput.value, passwordInput.value)"
+      >
+        {{ isLoading ? 'Đang đăng nhập...' : 'Tiếp tục' }}
+      </button>
+
+      @if (loginError) {
+        <p class="login-error">{{ loginError }}</p>
+      }
+
+      <div class="divider"><span>HOẶC</span></div>
+
+      <div class="social-buttons">
+        <button class="social-button" type="button" [disabled]="isLoading" (click)="loginWithGoogle()">
         <div class="password-field">
           <input class="field-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password">
           <span class="password-icon" aria-hidden="true">
@@ -47,6 +115,7 @@
           </svg>
           Google
         </button>
+
         <button class="social-button" type="button">
           <svg class="facebook-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="currentColor" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.3c0-3 1.8-4.7 4.6-4.7 1.3 0 2.7.3 2.7.3v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.6 3.5h-2.8v8.4A12 12 0 0 0 24 12Z"/>
@@ -54,6 +123,11 @@
           Facebook
         </button>
       </div>
+
+      <p class="auth-help">
+        Bạn gặp khó khăn? <span class="text-link">Trung tâm trợ giúp</span>
+      </p>
+
       <p class="auth-help">Bạn gặp khó khăn? <span class="text-link">Trung tâm trợ giúp</span></p>
     </section>
 
@@ -117,6 +191,8 @@
   <button class="chatbot-button" type="button" aria-label="Trung tâm trợ giúp">
     <svg viewBox="0 0 40 40" aria-hidden="true">
       <path d="M10 15a10 10 0 0 1 20 0v9a3 3 0 0 1-3 3h-2l-5 5-5-5h-2a3 3 0 0 1-3-3v-9Z"/>
+      <circle cx="16" cy="19" r="2"/>
+      <circle cx="24" cy="19" r="2"/>
       <circle cx="16" cy="19" r="2"/><circle cx="24" cy="19" r="2"/>
       <path d="M16 24c2.5 2 5.5 2 8 0"/>
     </svg>

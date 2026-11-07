@@ -1,3 +1,8 @@
+import { ChangeDetectorRef, Component, OnInit, HostListener } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AdminApiService, AdminUser } from '../../core/services/admin-api.service';
+import { combineLatest, Subscription } from 'rxjs';
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +17,10 @@ declare var bootstrap: any;
   styleUrls: ['./orders-admin.css']
 })
 export class OrdersAdmin implements OnInit {
+  constructor(
+    private adminApi: AdminApiService,
+    private changeDetectorRef: ChangeDetectorRef
+  ) {}
   // --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI DROPDOWN ---
   activeDropdownId: string | null = null;
 
@@ -32,6 +41,8 @@ export class OrdersAdmin implements OnInit {
   // --- Data ---
   originalOrders: any[] = [];
   orders: any[] = [];
+  orderLoadError = '';
+  private orderDataSubscription?: Subscription;
   
   // --- Pagination ---
   currentPage = 1;
@@ -59,6 +70,7 @@ export class OrdersAdmin implements OnInit {
   statusMap: { [key: string]: any } = {
     "pending": { text: "Chờ xác nhận", class: "badge-status-pending" },
     "approved": { text: "Đã xác nhận", class: "badge-status-approved" },
+    "quoted": { text: "Đã báo giá", class: "badge-status-approved" },
     "completed": { text: "Hoàn thành", class: "badge-status-completed" },
     "cancelled": { text: "Đã hủy", class: "badge-status-cancelled" },
     "pending_approval": { text: "Chờ duyệt", class: "badge-status-pending_approval" },
@@ -67,6 +79,7 @@ export class OrdersAdmin implements OnInit {
   };
 
   ngOnInit(): void {
+    this.loadCustomerAvatars();
     this.loadOrders();
   }
 
@@ -93,33 +106,236 @@ export class OrdersAdmin implements OnInit {
   get statTotal() { return this.orders.length; }
   get statPending() { return this.orders.filter(o => o.status === 'pending').length; }
   get statApproved() { return this.orders.filter(o => o.status === 'approved').length; }
-  get statCancel() { return this.orders.filter(o => o.status === 'cancelled').length; }
+  get statCancel() { return this.orders.filter(o => o.status === 'pending_approval').length; }
 
   // --- Logic Load Data ---
-  loadOrders() {
-    // FIX SSR: Chỉ truy cập localStorage khi đang chạy trên Browser (client)
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      const localOrdersSaved = localStorage.getItem('orders');
-      if (localOrdersSaved) {
-        this.originalOrders = JSON.parse(localOrdersSaved);
-      } else {
-        this.originalOrders = this.getDefaultOrders();
-        localStorage.setItem('orders', JSON.stringify(this.originalOrders));
+ loadOrders() {
+    this.orderLoadError = '';
+    this.orderDataSubscription?.unsubscribe();
+    this.orderDataSubscription = combineLatest({
+      response: this.adminApi.getOrders(),
+      customResponse: this.adminApi.getCustomOrders(),
+      products: this.adminApi.products$
+    }).subscribe({
+      next: ({ response, customResponse, products }) => {
+        const orderList = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.orders)
+            ? response.orders
+            : null;
+        if (!orderList) {
+          console.error('API đơn hàng trả về dữ liệu không hợp lệ:', response);
+          return;
+        }
+
+        const customOrderList = Array.isArray(customResponse)
+          ? customResponse
+          : Array.isArray(customResponse?.customOrders)
+            ? customResponse.customOrders
+            : null;
+        if (!customOrderList) {
+          this.orderLoadError = 'Máy chủ trả về danh sách đơn hàng custom không hợp lệ.';
+          console.error('API đơn hàng custom trả về dữ liệu không hợp lệ:', customResponse);
+          return;
+        }
+
+        const regularOrders = orderList.map((item: any) => {
+          const orderItems = Array.isArray(item.items)
+            ? item.items.map((orderItem: any) => this.normalizeOrderItem(orderItem, products))
+            : [];
+          const name = item.userName || item.address?.name || 'Khách hàng';
+          const customerImage = item.customerImage
+            || item.userAvatar
+            || this.customerAvatars.get(this.normalizeCustomerName(name))
+            || 'images/avatar-non.jpg';
+
+          const rawStatus = String(item.statusType || item.status || '')
+            .trim()
+            .toLowerCase();
+          const rawCancellationStatus = String(
+            item.cancellationStatusId || item.cancellationStatus || ''
+          ).trim().toLowerCase();
+
+          const statusAliases: { [key: string]: string } = {
+            'pending': 'pending',
+            'chờ xác nhận': 'pending',
+            'approved': 'approved',
+            'đã xác nhận': 'approved',
+            'completed': 'completed',
+            'hoàn thành': 'completed',
+            'cancelled': 'cancelled',
+            'canceled': 'cancelled',
+            'đã hủy': 'cancelled',
+            'quoted': 'approved',
+            'đã báo giá': 'approved',
+            'pending_approval': 'pending_approval',
+            'chờ duyệt': 'pending_approval',
+            'waiting_quote': 'waiting_quote',
+            'chờ báo giá': 'waiting_quote',
+            'processing': 'processing',
+            'đang gia công': 'processing'
+          };
+          const cancellationStatusAliases: { [key: string]: string } = {
+            pending_approval: 'pending_approval',
+            'chờ duyệt': 'pending_approval',
+            'chờ shop xác nhận': 'pending_approval',
+            approved: 'approved',
+            rejected: 'rejected'
+          };
+          const cancellationStatus =
+            cancellationStatusAliases[rawCancellationStatus] || rawCancellationStatus;
+          const cancellationRequestDate = item.cancellationRequestedAt
+            ? new Date(item.cancellationRequestedAt)
+            : null;
+
+          return {
+            ...item,
+            id: String(item.id || item._id || ''),
+            customerName: name,
+            customerImage,
+            customerAvatar: name.length >= 2
+              ? name.substring(0, 2).toUpperCase()
+              : 'KH',
+            phone: item.phone || item.address?.phone || '',
+            address: item.address?.address || item.address || '',
+            total: typeof item.total === 'string'
+              ? Number(item.total.replace(/[^0-9]/g, '')) || 0
+              : Number(item.total) || 0,
+            items: orderItems,
+            product: item.product || orderItems.map((orderItem: any) =>
+              `${orderItem.name}${orderItem.variantName ? ` - ${orderItem.variantName}` : ''} (x${orderItem.quantity ?? 1})`
+            ).join(', ') || '',
+            reason: item.cancellationReason || item.reason || '',
+            cancellationNote: item.cancellationNote || '',
+            cancellationDate: cancellationRequestDate && !Number.isNaN(cancellationRequestDate.getTime())
+              ? cancellationRequestDate.toLocaleDateString('vi-VN')
+              : '',
+            date: item.date || '',
+            status: cancellationStatus === 'pending_approval'
+              ? 'pending_approval'
+              : statusAliases[rawStatus] || 'pending'
+          };
+        });
+
+        this.originalOrders = [
+          ...regularOrders,
+          ...customOrderList.map((item: any) => this.normalizeCustomOrder(item))
+        ];
+        this.orders = [...this.originalOrders];
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err: any) => {
+        console.error('Lỗi tải đơn hàng:', err);
+        this.orderLoadError = err.status === 401 || err.status === 403
+          ? 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại để xem đơn hàng.'
+          : 'Không thể tải đơn hàng. Vui lòng thử lại sau.';
+        this.originalOrders = [];
+        this.orders = [];
+        this.changeDetectorRef.markForCheck();
       }
-    } else {
-      // Khi chạy trên Server Node.js, lấy dữ liệu tĩnh tạm
-      this.originalOrders = this.getDefaultOrders();
-    }
-    
-    this.orders = [...this.originalOrders];
+    });
   }
 
-  getDefaultOrders() {
-    return [
-      { id: "DH001", customerName: "Nguyễn Văn A", customerAvatar: "NV", date: "15/10/2026", product: "Tranh Pixel Art", total: 150000, status: "pending" },
-      { id: "DH002", customerName: "Trần Thị B", customerAvatar: "TT", date: "16/10/2026", product: "Móc khóa DIY", total: 45000, status: "pending_approval", reason: "Đổi ý không mua nữa" },
-      { id: "DH098", customerName: "Lê Văn C", customerAvatar: "LV", date: "20/10/2026", product: "Tranh Custom (50x70)", total: 0, status: "waiting_quote", isCustomOrder: true, customDetails: {"Kích thước": "50x70cm"} }
-    ];
+  private normalizeOrderItem(orderItem: any, products: any[]): any {
+    const product = products.find(
+      (candidate: any) => String(candidate.id) === String(orderItem.productId)
+    );
+    const variant = Number.isInteger(orderItem.variantIndex)
+      ? product?.variants?.[orderItem.variantIndex]
+      : undefined;
+
+    return {
+      ...orderItem,
+      name: orderItem.name || orderItem.productName || product?.name || `Sản phẩm #${orderItem.productId || ''}`,
+      price: orderItem.price ?? orderItem.unitPrice ?? variant?.price ?? 0,
+      image: orderItem.image || variant?.image || product?.image || '',
+      variantName: orderItem.variantName || variant?.name || ''
+    };
+  }
+
+  private normalizeCustomOrder(item: any): any {
+    const rawStatus = String(item.status || '').trim().toLowerCase();
+    const statusAliases: { [key: string]: string } = {
+      pending: 'waiting_quote',
+      quoted: 'quoted',
+      processing: 'processing',
+      completed: 'completed',
+      cancelled: 'cancelled'
+    };
+    const createdAt = item.createdAt ? new Date(item.createdAt) : null;
+    const date = createdAt && !Number.isNaN(createdAt.getTime())
+      ? createdAt.toLocaleDateString('vi-VN')
+      : '';
+
+    return {
+      ...item,
+      id: String(item.id || item._id || ''),
+      isCustomOrder: true,
+      customerName: item.fullName || 'Khách hàng',
+      customerImage: this.customerAvatars.get(
+        this.normalizeCustomerName(item.fullName || '')
+      ) || 'images/avatar-non.jpg',
+      phone: item.phone || '',
+      email: item.email || '',
+      date,
+      product: item.requestName || 'Yêu cầu thiết kế custom',
+      customDetails: Object.fromEntries(Object.entries({
+        'Tên mẫu yêu cầu': item.requestName || '',
+        'Kích thước': item.size || '',
+        'Loại hạt': item.beadType || '',
+        'Mã mẫu tham khảo': item.mapId || ''
+      }).filter(([, value]) => Boolean(value))),
+      customerNote: item.description || '',
+      status: statusAliases[rawStatus] || 'waiting_quote'
+    };
+  }
+
+  private customerAvatars = new Map<string, string>();
+
+  private loadCustomerAvatars(): void {
+    this.setCustomerAvatars(this.adminApi.getInitialUsers());
+    this.adminApi.getUsers()
+      .then(users => this.setCustomerAvatars(users))
+      .catch(error => console.error('Lỗi tải ảnh đại diện khách hàng:', error));
+  }
+
+  private setCustomerAvatars(users: AdminUser[]): void {
+    this.customerAvatars = new Map(
+      users
+        .filter(user => user.avatar)
+        .map(user => [this.normalizeCustomerName(user.name), user.avatar as string])
+    );
+
+    const applyAvatar = (order: any) => ({
+      ...order,
+      customerImage: this.customerAvatars.get(this.normalizeCustomerName(order.customerName))
+        || order.customerImage
+        || 'images/avatar-non.jpg'
+    });
+
+    this.originalOrders = this.originalOrders.map(applyAvatar);
+    this.orders = this.orders.map(applyAvatar);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private normalizeCustomerName(name: string): string {
+    return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  }
+
+  getCustomerAvatarUrl(imagePath?: string): string {
+    const path = imagePath || 'images/avatar-non.jpg';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+      return path;
+    }
+    return this.adminApi.getLibraryMapImageUrl(path);
+  }
+
+  onCustomerAvatarError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    const fallbackUrl = this.getCustomerAvatarUrl('images/avatar-non.jpg');
+    if (image.src !== fallbackUrl) {
+      image.src = fallbackUrl;
+    }
   }
 
   saveOrders() {
@@ -142,7 +358,14 @@ export class OrdersAdmin implements OnInit {
     const search = this.searchQuery.toLowerCase().trim();
     let filteredRegular = this.originalOrders.filter(o => {
       if (o.isCustomOrder || o.status === 'pending_approval') return false;
-      const matchSearch = o.id.toLowerCase().includes(search) || o.customerName.toLowerCase().includes(search);
+      const productNames = Array.isArray(o.items)
+        ? o.items.map((item: any) => item.name || '').join(' ')
+        : '';
+      const matchSearch =
+        String(o.id || '').toLowerCase().includes(search) ||
+        String(o.customerName || '').toLowerCase().includes(search) ||
+        String(o.product || '').toLowerCase().includes(search) ||
+        productNames.toLowerCase().includes(search);
       const matchStatus = this.filterStatus === '' || o.status === this.filterStatus;
       let matchDate = true;
       if (this.filterDate) {
@@ -163,27 +386,76 @@ export class OrdersAdmin implements OnInit {
 
   // --- Actions ---
   updateOrderStatus(id: string, newStatus: string) {
-    const order = this.originalOrders.find(o => o.id === id);
-    if (order) {
-      order.status = newStatus;
-      this.saveOrders();
+  this.adminApi.updateOrder(id, {
+    statusType: newStatus
+  }).subscribe({
+    next: () => {
+      const order = this.originalOrders.find(o => o.id === id);
+      if (order) {
+        order.status = newStatus;
+        this.saveOrders();
+      }
       this.activeDropdownId = null;
+    },
+    error: (err) => {
+      console.error('Lỗi cập nhật trạng thái:', err);
+      alert('Không thể cập nhật trạng thái đơn hàng!');
     }
-  }
+  });
+ }
 
   deleteOrder(id: string) {
-    if (confirm(`Bạn có chắc chắn muốn xóa đơn hàng #${id} không?`)) {
-      this.originalOrders = this.originalOrders.filter(o => o.id !== id);
-      this.saveOrders();
-    }
+  if (confirm(`Bạn có chắc chắn muốn xóa đơn hàng #${id} không?`)) {
+    this.adminApi.deleteOrder(id).subscribe({
+      next: () => {
+        this.originalOrders = this.originalOrders.filter(o => o.id !== id);
+        this.saveOrders();
+        alert('Đã xóa đơn hàng!');
+      },
+      error: (err) => {
+        console.error('Lỗi xóa đơn hàng:', err);
+        alert('Không thể xóa đơn hàng!');
+      }
+    });
   }
+ }
 
-  handleCancelRequest(id: string, isApproved: boolean) {
+  handleCancelRequest(id: string, isApproved: boolean): void {
     const order = this.originalOrders.find(o => o.id === id);
-    if (order) {
-      order.status = isApproved ? 'cancelled' : 'pending';
-      this.saveOrders();
+
+    if (!order) {
+      alert('Không tìm thấy đơn hàng!');
+      return;
     }
+
+    const newStatus = isApproved ? 'cancelled' : 'pending';
+
+    const confirmMessage = isApproved
+      ? `Bạn có chắc chắn muốn duyệt hủy đơn hàng #${id}?`
+      : `Bạn có chắc chắn muốn từ chối yêu cầu hủy đơn #${id}?`;
+
+    if (!confirm(confirmMessage)) return;
+
+    this.adminApi.updateOrder(id, {
+      statusType: newStatus,
+      cancellationStatusId: isApproved ? 'approved' : 'rejected'
+    }).subscribe({
+      next: () => {
+        order.status = newStatus;
+        order.cancellationStatusId = isApproved ? 'approved' : 'rejected';
+        this.saveOrders();
+
+        alert(
+          isApproved
+            ? 'Đã duyệt yêu cầu hủy đơn hàng!'
+            : 'Đã từ chối yêu cầu hủy đơn hàng!'
+        );
+      },
+      error: (err) => {
+        console.error('Lỗi xử lý yêu cầu hủy đơn:', err);
+        alert('Không thể cập nhật yêu cầu hủy đơn. Vui lòng thử lại!');
+      }
+    });
   }
 
   // --- Modals Logic ---

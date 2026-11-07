@@ -1,3 +1,7 @@
+import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AdminApiService } from '../../core/services/admin-api.service';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +16,18 @@ declare var bootstrap: any;
   styleUrls: ['./map-admin.css']
 })
 export class MapAdmin implements OnInit {
+  constructor(
+    private adminApi: AdminApiService,
+    private changeDetectorRef: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private platformId: object
+  ) {}
+
+  Math = Math;
+  maps: any[] = [];
+  isLoading = false;
+  mapLoadError = '';
+  currentPage = 1;
+  ITEMS_PER_PAGE = 8;
   Math = Math;
   maps: any[] = [];
   currentPage = 1;
@@ -34,6 +50,61 @@ export class MapAdmin implements OnInit {
     this.loadMaps();
   }
 
+  loadMaps(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.maps = this.readCachedMaps();
+    this.mapLoadError = '';
+    this.isLoading = true;
+
+    this.adminApi.getLibraryMaps().subscribe({
+      next: (response: any) => {
+        const mapList = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.maps)
+            ? response.maps
+            : null;
+
+        if (!mapList) {
+          this.mapLoadError = 'Máy chủ trả về dữ liệu mẫu không hợp lệ.';
+          console.error('API thư viện map trả về dữ liệu không hợp lệ:', response);
+        } else {
+          this.maps = mapList;
+          this.currentPage = 1;
+          try {
+            localStorage.setItem('library_maps', JSON.stringify(mapList));
+          } catch (error) {
+            console.error('Không thể lưu cache thư viện map:', error);
+          }
+        }
+
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error) => {
+        console.error('Lỗi tải thư viện map:', error);
+        this.mapLoadError = 'Không thể tải danh sách mẫu. Vui lòng thử lại sau.';
+        this.isLoading = false;
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  private readCachedMaps(): any[] {
+    try {
+      const cached = localStorage.getItem('library_maps');
+      if (!cached) return [];
+
+      const maps = JSON.parse(cached);
+      if (Array.isArray(maps)) return maps;
+      console.error('Cache thư viện map không đúng định dạng.');
+    } catch (error) {
+      console.error('Không thể đọc cache thư viện map:', error);
+    }
+
+    return [];
   async loadMaps() {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       const localData = localStorage.getItem('library_maps');
@@ -79,6 +150,7 @@ export class MapAdmin implements OnInit {
   getImagePath(path: string): string {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('data:')) return path;
+    return this.adminApi.getLibraryMapImageUrl(path);
     return '../../user/' + path;
   }
 

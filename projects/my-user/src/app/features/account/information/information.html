@@ -40,6 +40,11 @@
               <p>{{ profile.email }}</p>
             </div>
           </div>
+
+          <button class="profile-change-avatar-btn" type="button" (click)="openAvatarModal()">
+            <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
+            <span>Đổi ảnh đại diện</span>
+          </button>
         </header>
 
         <form class="profile-card profile-card--details" [formGroup]="profileForm" (ngSubmit)="saveProfile()">

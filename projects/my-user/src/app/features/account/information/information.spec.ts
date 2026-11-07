@@ -176,6 +176,19 @@ describe('Information', () => {
     expect(component.isAvatarModalOpen).toBe(false);
     expect(fixture.nativeElement.querySelector('.avatar-modal')).toBeNull();
 
+    // Verify explicit change avatar button also opens the modal
+    const changeBtn = fixture.nativeElement.querySelector('.profile-change-avatar-btn') as HTMLButtonElement;
+    expect(changeBtn).not.toBeNull();
+    changeBtn.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.isAvatarModalOpen).toBe(true);
+
+    component.closeAvatarModal();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.isAvatarModalOpen).toBe(false);
+
     // Click on avatar button
     const avatarButton = fixture.nativeElement.querySelector('.profile-avatar--actionable') as HTMLButtonElement;
     expect(avatarButton).not.toBeNull();

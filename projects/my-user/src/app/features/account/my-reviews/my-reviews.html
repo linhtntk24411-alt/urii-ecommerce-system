@@ -1,0 +1,93 @@
+<section class="account-page">
+  <header class="account-page__header">
+    <div class="account-page__intro">
+      <p class="account-page__eyebrow">TRẢI NGHIỆM MUA SẮM</p>
+      <h1>Đánh giá của tôi</h1>
+      <p>Lưu lại những chia sẻ của bạn về các sản phẩm Urii.</p>
+    </div>
+    @if (!isLoading && !requiresLogin && !errorMessage) {
+      <div class="review-count">
+        <span>{{ reviews.length }}</span>
+        <small>đánh giá</small>
+      </div>
+    }
+  </header>
+
+  @if (isLoading) {
+    <section class="review-state" role="status">
+      <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
+      <p>Đang tải đánh giá...</p>
+    </section>
+  } @else if (requiresLogin) {
+    <section class="review-state">
+      <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+      <h2>Đăng nhập để xem đánh giá</h2>
+      <p>Vui lòng đăng nhập để xem đánh giá của bạn.</p>
+      <a class="review-state__button" routerLink="/login" [queryParams]="{ returnUrl: '/myreview' }">Đăng nhập</a>
+    </section>
+  } @else if (errorMessage) {
+    <section class="review-state review-state--error" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">error</span>
+      <p>{{ errorMessage }}</p>
+    </section>
+  } @else if (reviews.length === 0) {
+    <section class="review-state">
+      <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+      <h2>Chưa có đánh giá nào</h2>
+      <p>Đánh giá sản phẩm bạn đã mua sẽ được lưu và hiển thị tại đây.</p>
+      <a class="review-state__button" routerLink="/orders">Xem đơn hàng</a>
+    </section>
+  } @else {
+    <div class="review-list">
+      @for (review of reviews; track review.id) {
+        <article class="review-card">
+          <div class="review-card__product">
+            @if (review.productImage) {
+              <img class="review-card__image" [src]="review.productImage" [alt]="review.productName">
+            } @else {
+              <span class="review-card__image review-card__image--placeholder material-symbols-outlined" aria-hidden="true">
+                inventory_2
+              </span>
+            }
+            <div class="review-card__product-info">
+              <span class="review-card__eyebrow">SẢN PHẨM ĐÃ ĐÁNH GIÁ</span>
+              <h2>{{ review.productName || 'Sản phẩm' }}</h2>
+              @if (review.variantName) {
+                <p>Phân loại: {{ review.variantName }}</p>
+              }
+            </div>
+            @if (review.createdAt) {
+              <time class="review-card__date" [attr.datetime]="review.createdAt">
+                {{ review.createdAt | date: 'dd/MM/yyyy' }}
+              </time>
+            }
+          </div>
+          <div class="review-card__rating" [attr.aria-label]="review.rating + ' trên 5 sao'">
+            <span class="review-card__stars" aria-hidden="true">
+              @for (star of ratingStars; track star) {
+                <span class="material-symbols-outlined" [class.review-card__star--filled]="star <= review.rating">star</span>
+              }
+            </span>
+            <strong>{{ review.rating }}.0</strong>
+          </div>
+          @if (review.content) {
+            <p class="review-card__content">{{ review.content }}</p>
+          } @else {
+            <p class="review-card__content review-card__content--empty">Khách hàng không để lại nhận xét.</p>
+          }
+          @if (review.media.length) {
+            <div class="review-card__media" aria-label="Ảnh và video đính kèm">
+              @for (item of review.media; track item.url) {
+                @if (item.type === 'image') {
+                  <img [src]="item.url" alt="Ảnh đính kèm trong đánh giá" loading="lazy">
+                } @else {
+                  <video [src]="item.url" controls preload="metadata" aria-label="Video đính kèm trong đánh giá"></video>
+                }
+              }
+            </div>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>

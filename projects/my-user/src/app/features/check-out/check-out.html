@@ -1,0 +1,338 @@
+<main class="checkout-page">
+  <div class="container py-4">
+    <nav aria-label="breadcrumb" class="checkout-breadcrumb">
+      <a routerLink="/">Trang chủ</a>
+      <span>/</span>
+      <a routerLink="/cart">Giỏ hàng</a>
+      <span>/</span>
+      <span aria-current="page">Thanh toán</span>
+    </nav>
+
+    <div class="checkout-wrapper mx-auto">
+      <h1 class="checkout-heading">Thanh toán</h1>
+
+      @if (errorMessage) {
+        <p class="checkout-alert checkout-alert-error" role="alert">{{ errorMessage }}</p>
+      }
+
+      @if (orderSuccess) {
+        <section class="section-card checkout-success" role="status">
+          <h2>Đơn hàng đang chờ duyệt</h2>
+          @if (orderNumber) {
+            <p>Mã đơn hàng: <strong>{{ orderNumber }}</strong></p>
+          }
+          <p>Admin sẽ duyệt đơn trước khi chuyển sang trạng thái xử lý tiếp theo. Giỏ hàng đã được cập nhật.</p>
+          <a class="btn-place-order" routerLink="/products">Tiếp tục mua sắm</a>
+        </section>
+      } @else if (loading) {
+        <div class="section-card checkout-state" aria-live="polite">Đang tải thông tin thanh toán...</div>
+      } @else if (lines.length === 0) {
+        <section class="section-card checkout-state">
+          <h2>Chưa có sản phẩm để thanh toán</h2>
+          <p>Vui lòng thêm sản phẩm vào giỏ hàng trước.</p>
+          <a class="btn-place-order" routerLink="/cart">Quay lại giỏ hàng</a>
+        </section>
+      } @else {
+        <form class="checkout-grid" (ngSubmit)="placeOrder()">
+          <div class="checkout-main">
+            <section class="section-card">
+              <h2 class="section-title"><span aria-hidden="true">⌖</span> Địa chỉ nhận hàng</h2>
+              @if (currentAddress; as address) {
+                <div class="address-default-box">
+                  <div class="address-default-content">
+                    <div class="address-default-info">
+                      <div class="address-default-name">{{ address.name }}</div>
+                      <div class="address-default-phone">☎ {{ address.phone }}</div>
+                      <div class="address-default-detail">⌖ {{ address.fullAddress }}</div>
+                      @if (address.isDefault) {
+                        <span class="address-default-badge">Mặc định</span>
+                      }
+                    </div>
+                    <button class="btn-change-address" type="button" (click)="openAddressManager()">
+                      ✎ Thay đổi
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="address-empty-inline">
+                  <strong>Chưa có địa chỉ nhận hàng</strong>
+                  <span>Thêm địa chỉ để tiếp tục đặt hàng.</span>
+                  <button class="btn-change-address" type="button" (click)="openAddressManager()">Thêm địa chỉ</button>
+                </div>
+              }
+              @if (addressError) {
+                <p class="checkout-alert checkout-alert-error" role="alert">{{ addressError }}</p>
+              }
+              <div class="address-note">
+                <span aria-hidden="true">ⓘ</span>
+                <span>Địa chỉ được chọn sẽ dùng để giao đơn hàng. Bạn có thể chọn hoặc thêm địa chỉ khác.</span>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h2 class="section-title">Ghi chú đơn hàng</h2>
+              <textarea
+                class="form-control"
+                name="orderNote"
+                [(ngModel)]="orderNote"
+                rows="2"
+                placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi đến..."
+              ></textarea>
+            </section>
+
+            <section class="section-card">
+              <h2 class="section-title">Phương thức thanh toán</h2>
+              <label class="payment-option" [class.active]="paymentMethod === 'cod'">
+                <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod">
+                <span>Thanh toán khi nhận hàng (COD)</span>
+              </label>
+              <label class="payment-option payment-option-disabled">
+                <input type="radio" name="paymentMethod" value="momo" disabled>
+                <span>Ví điện tử MoMo <small>Đang được hoàn thiện</small></span>
+              </label>
+              <label class="payment-option payment-option-disabled">
+                <input type="radio" name="paymentMethod" value="vnpay" disabled>
+                <span>Thanh toán qua ngân hàng <small>Đang được hoàn thiện</small></span>
+              </label>
+            </section>
+          </div>
+
+          <aside class="section-card checkout-order">
+            <h2 class="section-title">Đơn hàng của bạn</h2>
+            <div class="checkout-lines">
+              @for (line of lines; track line.item.productId + ':' + (line.item.variant ?? '')) {
+                <div class="checkout-line">
+                  <div>
+                    <strong>{{ line.product?.name ?? 'Sản phẩm không khả dụng' }}</strong>
+                    @if (line.item.variant) {
+                      <span class="checkout-variant">{{ line.item.variant }}</span>
+                    }
+                    <span class="checkout-quantity">Số lượng: {{ line.item.quantity }}</span>
+                  </div>
+                  <span>{{ lineTotal(line) | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</span>
+                </div>
+              }
+            </div>
+
+            <div class="voucher-box">
+              <label class="form-label" for="voucherCode">Mã voucher</label>
+              <div class="voucher-picker">
+                <div class="voucher-input">
+                  <input
+                    id="voucherCode"
+                    class="form-control"
+                    name="voucherCode"
+                    [(ngModel)]="voucherCode"
+                    placeholder="Nhập hoặc chọn voucher"
+                    [disabled]="!!appliedVoucher"
+                    [attr.aria-expanded]="voucherDropdownOpen"
+                    aria-controls="available-vouchers"
+                    aria-haspopup="listbox"
+                    (click)="toggleVoucherDropdown()"
+                  >
+                  @if (appliedVoucher) {
+                    <button class="voucher-button" type="button" (click)="clearVoucher()">Bỏ</button>
+                  } @else {
+                    <button
+                      class="voucher-button"
+                      type="button"
+                      [disabled]="loadingVouchers"
+                      (click)="applyVoucher()"
+                    >
+                      Áp dụng
+                    </button>
+                  }
+                </div>
+                @if (voucherDropdownOpen && !appliedVoucher) {
+                  <div class="voucher-dropdown" id="available-vouchers" role="listbox" aria-label="Voucher khả dụng">
+                    @if (loadingVouchers) {
+                      <p class="voucher-dropdown-state">Đang tải voucher khả dụng...</p>
+                    } @else if (voucherLoadError) {
+                      <p class="voucher-dropdown-state voucher-dropdown-error">{{ voucherLoadError }}</p>
+                    } @else if (vouchers.length === 0) {
+                      <p class="voucher-dropdown-state">Hiện chưa có voucher khả dụng.</p>
+                    } @else {
+                      @for (voucher of vouchers; track voucher.id) {
+                        <button
+                          class="voucher-option"
+                          type="button"
+                          role="option"
+                          [disabled]="!isVoucherApplicable(voucher)"
+                          [attr.aria-selected]="voucherCode === voucher.code"
+                          (click)="selectVoucher(voucher)"
+                        >
+                          <span class="voucher-option-info">
+                            <strong>{{ voucher.name }}</strong>
+                            <span>{{ voucher.code }} · {{ voucherRestriction(voucher) }}</span>
+                          </span>
+                          <span class="voucher-option-choose">
+                            {{ isVoucherApplicable(voucher) ? 'Dùng' : 'Chưa đủ điều kiện' }}
+                          </span>
+                        </button>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+              @if (voucherError) {
+                <p class="checkout-alert checkout-alert-error" role="alert">{{ voucherError }}</p>
+              } @else if (voucherMessage) {
+                <p class="checkout-alert checkout-alert-success" role="status">{{ voucherMessage }}</p>
+              } @else if (loadingVouchers) {
+                <p class="checkout-hint">Đang tải voucher khả dụng...</p>
+              } @else if (voucherLoadError) {
+                <p class="checkout-alert checkout-alert-error" role="alert">{{ voucherLoadError }}</p>
+              }
+            </div>
+
+            <div class="total-row"><span>Tạm tính</span><span>{{ subtotal | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</span></div>
+            <div class="total-row"><span>Phí vận chuyển</span><span>{{ shippingFee === 0 ? 'Miễn phí' : (shippingFee | currency:'VND':'symbol':'1.0-0':'vi-VN') }}</span></div>
+            @if (totalDiscount > 0) {
+              <div class="total-row discount-row">
+                <span>Giảm giá</span>
+                <span>-{{ totalDiscount | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</span>
+              </div>
+            }
+            <div class="total-row final">
+              <span>Tổng cộng</span>
+              <strong>{{ total | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</strong>
+            </div>
+
+            <button
+              class="btn-place-order"
+              type="submit"
+              [disabled]="submitting || hasUnavailableItems"
+            >{{ submitting ? 'Đang gửi đơn...' : 'Đặt hàng' }}</button>
+            <p class="checkout-hint">Đơn hàng chỉ được xác nhận khi backend phản hồi thành công.</p>
+            <a class="back-to-cart" routerLink="/cart">Quay lại giỏ hàng</a>
+          </aside>
+        </form>
+      }
+    </div>
+  </div>
+
+  @if (addressManagerOpen) {
+    <div class="address-modal-backdrop" (click)="closeAddressManager()"></div>
+    <section
+      class="address-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="address-modal-title"
+    >
+      <header class="address-modal-header">
+        <h2 id="address-modal-title">⌖ Địa chỉ nhận hàng</h2>
+        <button type="button" class="address-modal-close" aria-label="Đóng" (click)="closeAddressManager()">×</button>
+      </header>
+
+      <div class="address-modal-body">
+        @if (addressFormError) {
+          <p class="checkout-alert checkout-alert-error" role="alert">{{ addressFormError }}</p>
+        }
+
+        @if (addresses.length === 0) {
+          <div class="address-empty-inline">
+            <strong>Chưa có địa chỉ nào</strong>
+            <span>Thêm địa chỉ nhận hàng để tiện cho việc mua sắm.</span>
+          </div>
+        } @else {
+          <div class="address-list">
+            @for (address of addresses; track address.id) {
+              <article
+                class="address-item"
+                [class.selected]="address.id === selectedAddressId"
+                (click)="selectAddress(address.id)"
+              >
+                <input
+                  type="radio"
+                  name="selectedAddress"
+                  [checked]="address.id === selectedAddressId"
+                  [attr.aria-label]="'Chọn địa chỉ của ' + address.name"
+                  (click)="$event.stopPropagation()"
+                  (change)="selectAddress(address.id)"
+                >
+                <div class="address-info">
+                  <div class="address-name">
+                    {{ address.name }}
+                    @if (address.isDefault) {
+                      <span class="address-badge">MẶC ĐỊNH</span>
+                    }
+                  </div>
+                  <div class="address-phone">☎ {{ address.phone }}</div>
+                  <div class="address-detail">⌖ {{ address.fullAddress }}</div>
+                </div>
+                <div class="address-actions">
+                  @if (!address.isDefault) {
+                    <button type="button" class="address-action-default" (click)="setDefaultAddress(address.id, $event)">
+                      Đặt mặc định
+                    </button>
+                  }
+                  <button type="button" class="address-action-delete" (click)="deleteAddress(address.id, $event)">
+                    Xóa
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+
+        <button class="btn-add-address" type="button" (click)="toggleAddAddressForm()">
+          {{ addAddressFormOpen ? 'Hủy thêm địa chỉ' : '+ Thêm địa chỉ mới' }}
+        </button>
+
+        @if (addAddressFormOpen) {
+          <div class="add-address-form">
+            <div class="form-divider">✧ THÊM ĐỊA CHỈ MỚI ✧</div>
+            <label class="form-label" for="newFullName">Họ và tên <span>*</span></label>
+            <input id="newFullName" class="form-control" name="newAddressName" [(ngModel)]="newAddress.name" placeholder="Nhập họ và tên">
+
+            <label class="form-label" for="newPhone">Số điện thoại <span>*</span></label>
+            <input id="newPhone" class="form-control" name="newAddressPhone" [(ngModel)]="newAddress.phone" type="tel" placeholder="Nhập số điện thoại">
+
+            <label class="form-label" for="newAddressDetail">Địa chỉ chi tiết <span>*</span></label>
+            <input id="newAddressDetail" class="form-control" name="newAddressDetail" [(ngModel)]="newAddress.detail" placeholder="Số nhà, tên đường, khu phố...">
+
+            <label class="form-label" for="newProvince">Tỉnh/Thành phố <span>*</span></label>
+            <select
+              id="newProvince"
+              class="form-control"
+              name="newProvince"
+              [value]="selectedProvinceCode ?? ''"
+              [disabled]="loadingProvinces || provinces.length === 0"
+              (change)="onProvinceSelect($event)"
+            >
+              <option value="">{{ loadingProvinces ? '-- Đang tải... --' : '-- Chọn Tỉnh/Thành phố --' }}</option>
+              @for (province of provinces; track province.code) {
+                <option [value]="province.code">{{ province.name }}</option>
+              }
+            </select>
+
+            <label class="form-label" for="newWard">Phường/Xã <span>*</span></label>
+            <select
+              id="newWard"
+              class="form-control"
+              name="newWard"
+              [value]="selectedWardCode ?? ''"
+              [disabled]="!selectedProvinceCode || loadingWards || wards.length === 0"
+              (change)="onWardSelect($event)"
+            >
+              <option value="">{{ loadingWards ? '-- Đang tải... --' : '-- Chọn Phường/Xã --' }}</option>
+              @for (ward of wards; track ward.code) {
+                <option [value]="ward.code">{{ ward.name }}</option>
+              }
+            </select>
+
+            <label class="address-default-checkbox">
+              <input type="checkbox" name="setAddressDefault" [(ngModel)]="newAddress.isDefault">
+              <span>Đặt làm địa chỉ mặc định</span>
+            </label>
+            <button type="button" class="btn-save-address" (click)="saveNewAddress()">Lưu địa chỉ</button>
+          </div>
+        }
+      </div>
+
+      <footer class="address-modal-footer">
+        <button type="button" class="btn-modal-confirm" (click)="confirmAddressSelection()">Xác nhận địa chỉ</button>
+      </footer>
+    </section>
+  }
+</main>

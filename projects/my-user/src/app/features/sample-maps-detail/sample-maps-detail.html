@@ -1,0 +1,114 @@
+<ng-container *ngIf="mapDetail as map; else detailState">
+    <div class="detail-wrapper">
+        <nav class="breadcrumb-nav">
+            <a routerLink="/" class="breadcrumb-link">Trang chủ</a>
+            <span class="icon-arrow-nav">/</span>
+            <a routerLink="/sample-maps" class="breadcrumb-link">Thư viện map mẫu</a>
+            <span class="icon-arrow-nav">/</span>
+            <span class="breadcrumb-current">Hướng dẫn: {{ map.title }}</span>
+        </nav>
+
+        <div class="top-section">
+            <div class="image-col">
+                <div class="image-box">
+                    <img [src]="map.image" [alt]="map.title" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+                </div>
+                <button class="btn-guide" (click)="scrollToGuide()">
+                    <span class="material-symbols-outlined">menu_book</span> Hướng dẫn thực hiện
+                </button>
+            </div>
+
+            <div class="info-col">
+                <h1 class="map-title">{{ map.title }}</h1>
+
+                <div class="tags-row">
+                    <span class="difficulty-badge" [ngClass]="map.difficultyClass">{{ map.difficulty }}</span>
+                    <span class="meta-tag"><span class="material-symbols-outlined">schedule</span> {{ map.time || 'Đang cập nhật' }}</span>
+                    <span class="meta-tag"><span class="material-symbols-outlined">apps</span> {{ map.gridSize }}</span>
+                </div>
+
+                <div class="requirements-box">
+                    <h3><span class="material-symbols-outlined">assignment</span> Yêu cầu chuẩn bị (Requirements)</h3>
+                    <div class="req-row">
+                        <span>Bàn ủi hạt (Pegboard):</span>
+                        <strong>Cần cập nhật</strong>
+                    </div>
+                    <div class="req-row">
+                        <span>Ước lượng thời gian:</span>
+                        <strong>{{ map.time || 'Đang cập nhật' }}</strong>
+                    </div>
+                    <div class="req-row">
+                        <span>Chi tiết màu & số lượng:</span>
+                        <strong>Tổng cộng {{ map.totalBeads }} hạt</strong>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-primary" (click)="saveMap()">
+                        <span class="material-symbols-outlined">bookmark_add</span> Lưu mẫu vào kho map
+                    </button>
+                    <a class="btn-outline" routerLink="/blog-create">
+                        <span class="material-symbols-outlined">share</span> Chia sẻ với cộng đồng
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-section" id="guideSection">
+            <div class="steps-col">
+                <h2><span class="material-symbols-outlined">build</span> Các bước tạo tác phẩm (Steps to Create)</h2>
+                <div class="steps-list">
+                    <div class="step-item">
+                        <span class="step-num">1</span>
+                        <div class="step-content">
+                            <h4>Chuẩn bị nguyên liệu</h4>
+                            <p>Chuẩn bị đủ số lượng hạt theo bảng màu, bàn ủi và giấy nến.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">2</span>
+                        <div class="step-content">
+                            <h4>Xếp hạt theo mẫu</h4>
+                            <p>Đặt giấy nến lên mẫu và xếp hạt theo đúng vị trí trên lưới.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">3</span>
+                        <div class="step-content">
+                            <h4>Ủi và hoàn thiện</h4>
+                            <p>Dùng bàn ủi ở nhiệt độ vừa phải, ủi đều tay cho đến khi hạt chảy dính vào nhau.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="benefits-col">
+                <h3>Lợi ích khi dùng Map Urii</h3>
+                <div class="benefit-item">
+                    <span class="material-symbols-outlined">verified</span>
+                    <p>Tỷ lệ hạt 1:1 chuẩn xác tuyệt đối với kích thước thực tế.</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="material-symbols-outlined">palette</span>
+                    <p>Mã màu đồng nhất với hệ màu hạt Perler/Artkal phổ biến.</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="material-symbols-outlined">smart_display</span>
+                    <p>Video hướng dẫn chi tiết đi kèm trong file PDF.</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="material-symbols-outlined">groups</span>
+                    <p>Cộng đồng đã làm: Hơn 1000+ người dùng đã hoàn thiện.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</ng-container>
+
+<ng-template #detailState>
+    <div class="detail-wrapper text-center py-5" role="status">
+        <p *ngIf="isLoading">Đang tải map...</p>
+        <p *ngIf="!isLoading && errorMessage" role="alert">{{ errorMessage }}</p>
+        <a routerLink="/sample-maps">Quay lại thư viện map</a>
+    </div>
+</ng-template>

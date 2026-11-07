@@ -1,0 +1,134 @@
+<main class="cart-page">
+  <div class="cart-shell">
+    <nav class="cart-breadcrumb" aria-label="Điều hướng">
+      <a routerLink="/">Trang chủ</a>
+      <span>/</span>
+      <span>Giỏ hàng</span>
+    </nav>
+
+    <header class="cart-heading">
+      <div>
+        <p class="cart-eyebrow">Mua sắm cùng Urii</p>
+        <h1>Giỏ hàng của bạn</h1>
+      </div>
+      <a class="continue-shopping" routerLink="/products">Tiếp tục mua sắm</a>
+    </header>
+
+    @if (errorMessage) {
+      <div class="cart-alert" role="status">
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="retry-cart-button" (click)="loadCart()">Thử tải lại</button>
+      </div>
+    }
+
+    @if (loading) {
+      <div class="cart-state" aria-live="polite">Đang tải giỏ hàng...</div>
+    } @else if (lines.length === 0) {
+      <section class="cart-state cart-empty">
+        <span class="empty-cart-icon" aria-hidden="true">🛒</span>
+        <h2>Giỏ hàng đang trống</h2>
+        <p>Hãy chọn sản phẩm bạn yêu thích để bắt đầu mua sắm.</p>
+        <a class="primary-button" routerLink="/products">Khám phá sản phẩm</a>
+      </section>
+    } @else {
+      <div class="cart-layout">
+        <section class="cart-items" aria-label="Sản phẩm trong giỏ hàng">
+          @for (line of lines; track trackLine($index, line)) {
+            <article class="cart-item">
+              <input
+                class="item-checkbox"
+                type="checkbox"
+                [checked]="line.selected"
+                [disabled]="!line.product"
+                [attr.aria-label]="'Chọn ' + (line.product?.name ?? 'sản phẩm không khả dụng')"
+                (change)="toggleSelection(line)"
+              >
+              @if (line.product?.image) {
+                <img class="item-image" [src]="line.product?.image" [alt]="line.product?.name">
+              } @else {
+                <div class="item-image item-image-placeholder" aria-hidden="true">Urii</div>
+              }
+
+              <div class="item-details">
+                @if (line.product) {
+                  <h2>{{ line.product.name }}</h2>
+                  @if (line.product.variants.length > 0) {
+                    <label class="item-variant">
+                      Phân loại:
+                      <select
+                        class="variant-selector"
+                        [value]="line.item.variant ?? ''"
+                        [attr.aria-label]="'Chọn phân loại cho ' + line.product.name"
+                        (change)="changeVariant(line, $event)"
+                      >
+                        <option value="">Mặc định</option>
+                        @for (variant of line.product.variants; track variant.name) {
+                          <option [value]="variant.name" [disabled]="variant.stock === 0">
+                            {{ variant.name }}{{ variant.stock === 0 ? ' (Hết hàng)' : '' }}
+                          </option>
+                        }
+                      </select>
+                    </label>
+                  } @else if (line.item.variant) {
+                    <p class="item-variant">Phân loại: {{ line.item.variant }}</p>
+                  }
+                  <p class="item-price">{{ unitPrice(line) | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</p>
+                } @else {
+                  <h2>{{ errorMessage ? 'Chưa tải được thông tin sản phẩm' : 'Sản phẩm không còn trong danh mục' }}</h2>
+                  <p class="item-variant">Mã sản phẩm: {{ line.item.productId }}</p>
+                  <p class="item-price">
+                    {{ errorMessage ? 'Kết nối máy chủ để cập nhật thông tin sản phẩm.' : 'Vui lòng xóa sản phẩm này khỏi giỏ.' }}
+                  </p>
+                }
+
+                <div class="item-actions">
+                  <div class="quantity-control" aria-label="Điều chỉnh số lượng">
+                    <button
+                      type="button"
+                      [disabled]="line.item.quantity <= 1"
+                      [attr.aria-label]="'Giảm số lượng ' + (line.product?.name ?? '')"
+                      (click)="updateQuantity(line, -1)"
+                    >−</button>
+                    <span>{{ line.item.quantity }}</span>
+                    <button
+                      type="button"
+                      [disabled]="stockFor(line) !== undefined && line.item.quantity >= (stockFor(line) ?? 0)"
+                      [attr.aria-label]="'Tăng số lượng ' + (line.product?.name ?? '')"
+                      (click)="updateQuantity(line, 1)"
+                    >+</button>
+                  </div>
+                  @if (stockFor(line) !== undefined) {
+                    <span class="stock-note">Còn {{ stockFor(line) }} sản phẩm</span>
+                  }
+                  <button class="remove-button" type="button" (click)="remove(line)">Xóa</button>
+                </div>
+              </div>
+              <strong class="item-total">
+                {{ line.product ? (lineTotal(line) | currency:'VND':'symbol':'1.0-0':'vi-VN') : '—' }}
+              </strong>
+            </article>
+          }
+        </section>
+
+        <aside class="cart-summary">
+          <h2>Tóm tắt đơn hàng</h2>
+          <div class="summary-row">
+            <span>Đã chọn</span>
+            <span>{{ selectedCount }} sản phẩm</span>
+          </div>
+          <div class="summary-row summary-total">
+            <span>Tạm tính</span>
+            <strong>{{ selectedTotal | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</strong>
+          </div>
+          <p class="summary-note">Phí vận chuyển và ưu đãi sẽ được tính tại bước thanh toán.</p>
+          <button
+            class="primary-button checkout-button"
+            type="button"
+            [disabled]="selectedLines.length === 0"
+            (click)="checkout()"
+          >Tiến hành thanh toán</button>
+        </aside>
+      </div>
+    }
+  </div>
+</main>

@@ -1,0 +1,147 @@
+<main class="sample-maps-wrapper">       
+    <nav class="breadcrumb-nav">
+        <a class="breadcrumb-link" routerLink="/">Trang chủ</a>
+        <span class="icon-arrow-nav">/</span>
+        <span class="breadcrumb-current">Thư viện map mẫu</span>
+    </nav>
+
+    <div class="page-title-block">
+        <div class="title-left">
+            <h1 class="page-main-title">Thư viện Map mẫu đa dạng từ Urii</h1>
+            <p class="page-subtitle">Khám phá hàng ngàn mẫu thiết kế sáng tạo từ cộng đồng Urii. Từ đơn giản đến phức tạp, bắt đầu hành trình sáng tạo của bạn ngay hôm nay.</p>
+        </div>
+        <div class="title-right">
+            <select class="sort-select-dropdown" (change)="onSortChange($event)">
+                <option value="default">Sắp xếp mặc định</option>
+                <option value="name-az">Sắp xếp theo tên</option>
+                <option value="beads-asc">Sắp xếp theo số lượng hạt</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="layout-sidebar-grid">
+        
+        <aside class="filter-sidebar">
+            <div class="sticky-wrapper">
+                <section class="filter-section">
+                    <h3 class="filter-section-title">DANH MỤC</h3>
+                    <ul class="filter-menu-list">
+                        <li *ngFor="let cat of categories">
+                            <button class="menu-btn" 
+                                    [class.menu-btn-active]="selectedCategory === cat.name"
+                                    (click)="selectCategory(cat.name)">
+                                {{ cat.name }} <span class="count-badge">{{ cat.count }}</span>
+                            </button>
+                        </li>
+                    </ul>
+                </section>
+
+                <section class="filter-section">
+                    <h3 class="filter-section-title">ĐỘ KHÓ</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="custom-checkbox" (change)="onDifficultyChange('Dễ', $event)">
+                            <span>Dễ</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="custom-checkbox" (change)="onDifficultyChange('Trung bình', $event)">
+                            <span>Trung bình</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="custom-checkbox" (change)="onDifficultyChange('Khó', $event)">
+                            <span>Khó</span>
+                        </label>
+                    </div>
+                </section>
+
+                <div class="designer-promo-card">
+                    <h3 class="promo-title">Bạn đã tìm được map mẫu?</h3>
+                    <p class="promo-text">Bắt đầu mua sắm dụng cụ và hiện thực hóa thôi nào!</p>
+                    <a class="btn-promo-action" routerLink="/products">Mua sắm ngay</a>
+                </div>
+            </div>
+        </aside>
+
+        <div class="products-container">
+            <div *ngIf="isLoading" class="text-center py-5" role="status">
+                Đang tải thư viện map...
+            </div>
+
+            <div *ngIf="errorMessage" class="text-center py-5" role="alert">
+                <p>{{ errorMessage }}</p>
+                <button class="btn-promo-action" type="button" (click)="loadMaps()">Thử lại</button>
+            </div>
+
+            <div *ngIf="!isLoading && !errorMessage && paginatedMaps.length === 0" style="text-align: center; padding: 60px 20px; background-color: #fbf9f8; border-radius: 12px; border: 1px dashed #e5bdb7;">
+                <p style="font-size: 16px; color: #5c403b; margin-bottom: 20px; font-weight: 500;">
+                    Không tìm thấy mẫu Perler Beads nào phù hợp với bộ lọc.
+                </p>
+            </div>
+
+            <div class="products-items-grid" *ngIf="!isLoading && !errorMessage && paginatedMaps.length > 0">
+                <article class="pattern-card elevation-1" *ngFor="let map of paginatedMaps">
+                    <div class="card-image-area" [routerLink]="['/sample-maps-detail', map.slug]">
+                        <img class="card-img" [src]="map.image" [alt]="map.title" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'">
+                        <div class="card-floating-badges">
+                            <span class="badge-tag tag-popular" *ngIf="map.isPopular">
+                                <span class="material-symbols-outlined" style="font-size: 14px; font-variation-settings: 'FILL' 1;">star</span> Phổ biến
+                            </span>
+                            <span class="badge-tag tag-new" *ngIf="map.isNew">Mẫu mới</span>
+                        </div>
+                    </div>
+                    <div class="card-body-content">
+                        <div class="card-header-row">
+                            <h3 class="card-item-title" [routerLink]="['/sample-maps-detail', map.slug]">
+                                {{ map.title }}
+                            </h3>
+                            <span class="difficulty-badge" [ngClass]="map.difficultyClass || 'badge-medium'">{{ map.difficulty }}</span>
+                        </div>
+                        <p class="card-spec-text">Kích thước: {{ map.gridSize }}</p>
+                        <div class="card-footer-action-row">
+                            <div class="card-meta-info">
+                                <span>Thời gian: {{ map.time || 'Đang cập nhật' }}</span>
+                                <span>Tổng: {{ map.totalBeads }} hạt</span>
+                            </div>
+                            <div class="card-action-buttons">
+                                <button class="btn-map-action btn-map-action--view" type="button" [routerLink]="['/sample-maps-detail', map.slug]">
+                                    <span class="material-symbols-outlined">visibility</span>
+                                    <span>Chi tiết</span>
+                                </button>
+                                <button
+                                    class="btn-map-action btn-map-action--save"
+                                    [class.is-saved]="isMapSaved(map.id)"
+                                    type="button"
+                                    [attr.aria-pressed]="isMapSaved(map.id)"
+                                    (click)="saveMap(map)">
+                                    <span class="material-symbols-outlined">{{ isMapSaved(map.id) ? 'bookmark' : 'bookmark_add' }}</span>
+                                    <span>{{ isMapSaved(map.id) ? 'Đã lưu' : 'Lưu mẫu' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <p *ngIf="saveMessage" class="save-map-message" role="status">{{ saveMessage }}</p>
+
+            <nav class="pagination-row" *ngIf="totalPages > 1" aria-label="Phân trang thư viện map">
+                <button class="page-nav-btn" type="button" aria-label="Trang trước" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                
+                <button class="page-number-btn"
+                        type="button"
+                        *ngFor="let page of pageNumbers; trackBy: trackPage"
+                        [class.page-number-active]="currentPage === page"
+                        [attr.aria-current]="currentPage === page ? 'page' : null"
+                        (click)="changePage(page)">
+                    {{ page }}
+                </button>
+
+                <button class="page-nav-btn" type="button" aria-label="Trang sau" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+</main>

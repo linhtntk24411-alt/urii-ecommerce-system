@@ -1,0 +1,79 @@
+<section class="account-page">
+  <header class="account-page__header">
+    <div>
+      <p class="account-page__eyebrow">BỘ SƯU TẬP CỦA BẠN</p>
+      <h1>Kho map đã lưu</h1>
+      <p>Map được lưu vào tài khoản sẽ xuất hiện tại đây.</p>
+    </div>
+  </header>
+
+  @if (isLoading) {
+    <p class="account-state" role="status">Đang tải map đã lưu...</p>
+  } @else if (requiresLogin) {
+    <div class="account-state">
+      <p>Vui lòng đăng nhập để xem kho map đã lưu.</p>
+      <a routerLink="/login" [queryParams]="{ returnUrl: '/saved-maps' }">Đăng nhập</a>
+    </div>
+  } @else if (errorMessage) {
+    <p class="account-state account-state--error" role="alert">{{ errorMessage }}</p>
+  } @else if (maps.length === 0) {
+    <div class="account-state account-state--empty">
+      <span class="material-symbols-outlined" aria-hidden="true">bookmark_border</span>
+      <h2>Kho map đang trống</h2>
+      <p>Chọn “Lưu mẫu” trong thư viện map để lưu các thiết kế bạn yêu thích.</p>
+      <a routerLink="/sample-maps">Khám phá thư viện map</a>
+    </div>
+  } @else {
+    @if (actionMessage) {
+      <p class="account-action-message" role="status">{{ actionMessage }}</p>
+    }
+    <div class="saved-map-grid">
+      @for (map of maps; track map.id) {
+        <article class="saved-map-card">
+          @if (map.image) {
+            <img class="saved-map-card__image" [src]="map.image" [alt]="map.title">
+          }
+          <div class="saved-map-card__content">
+            @if (editingMapId === map.id) {
+              <form class="saved-map-editor" (ngSubmit)="saveTitle(map)">
+                <label [for]="'map-title-' + map.id">Tên hiển thị</label>
+                <input
+                  [id]="'map-title-' + map.id"
+                  name="mapTitle"
+                  type="text"
+                  maxlength="120"
+                  required
+                  [(ngModel)]="editedTitle">
+                <div class="saved-map-card__actions">
+                  <button class="saved-map-button saved-map-button--primary" type="submit" [disabled]="isPending(map.id)">
+                    Lưu tên
+                  </button>
+                  <button class="saved-map-button" type="button" (click)="cancelEdit()">Hủy</button>
+                </div>
+              </form>
+            } @else {
+              <h2>{{ map.title }}</h2>
+              @if (map.author) {
+                <p>{{ map.author }}</p>
+              }
+              <div class="saved-map-card__actions">
+                <a class="saved-map-button saved-map-button--primary" routerLink="/sample-maps-detail" [queryParams]="{ id: map.mapId }">
+                  <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                  Xem map
+                </a>
+                <button class="saved-map-button" type="button" (click)="beginEdit(map)" [disabled]="isPending(map.id)">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                  Sửa tên
+                </button>
+                <button class="saved-map-button saved-map-button--danger" type="button" (click)="removeMap(map)" [disabled]="isPending(map.id)">
+                  <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                  Bỏ lưu
+                </button>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

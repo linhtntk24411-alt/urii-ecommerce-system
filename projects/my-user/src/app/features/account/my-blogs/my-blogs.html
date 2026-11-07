@@ -1,0 +1,77 @@
+<main class="my-blogs-page">
+  <header class="my-blogs-header">
+    <div>
+      <p class="my-blogs-eyebrow">Blog cộng đồng</p>
+      <h1>Bài viết của tôi</h1>
+      <p class="my-blogs-description">Quản lý bản nháp và bài viết bạn đã chia sẻ với cộng đồng Urii.</p>
+    </div>
+    <a class="my-blogs-create" routerLink="/blog-create">Viết bài mới</a>
+  </header>
+
+  @if (authRequired) {
+    <section class="my-blogs-message">
+      <h2>Vui lòng đăng nhập</h2>
+      <p>Đăng nhập để xem bài viết đã đăng và bản nháp trên thiết bị này.</p>
+      <a routerLink="/login" [queryParams]="{returnUrl: '/my-blogs'}">Đăng nhập</a>
+    </section>
+  } @else if (isLoading) {
+    <p class="my-blogs-message" role="status">Đang tải bài viết...</p>
+  } @else if (errorMessage) {
+    <section class="my-blogs-message" role="alert">
+      <p>{{ errorMessage }}</p>
+      <button type="button" (click)="loadMyBlogs()">Thử lại</button>
+    </section>
+  } @else {
+    <section class="my-blogs-section">
+      <div class="my-blogs-section-heading">
+        <h2>Bản nháp</h2>
+        <span>{{ draft ? 1 : 0 }}</span>
+      </div>
+      @if (draft) {
+        <a class="my-blog-card my-blog-card--draft" routerLink="/blog-create">
+          @if (draft.imagePreviewUrls[0]) {
+            <img class="my-blog-image" [src]="draft.imagePreviewUrls[0]" alt="" />
+          } @else {
+            <div class="my-blog-image my-blog-image--placeholder">
+              <span class="material-symbols-outlined">edit_note</span>
+            </div>
+          }
+          <div class="my-blog-content">
+            <span class="my-blog-status">Bản nháp · Lưu trên thiết bị này</span>
+            <h3>{{ draft.title || 'Bản nháp chưa có tiêu đề' }}</h3>
+            <p>{{ getDraftExcerpt() }}</p>
+            <span class="my-blog-category">{{ getDraftCategory() }}</span>
+          </div>
+          <span class="material-symbols-outlined my-blog-arrow" aria-hidden="true">chevron_right</span>
+        </a>
+      } @else {
+        <p class="my-blogs-empty">Bạn chưa lưu bản nháp nào trên thiết bị này.</p>
+      }
+    </section>
+
+    <section class="my-blogs-section">
+      <div class="my-blogs-section-heading">
+        <h2>Đã đăng</h2>
+        <span>{{ publishedBlogs.length }}</span>
+      </div>
+      @if (publishedBlogs.length > 0) {
+        <div class="my-blogs-list">
+          @for (blog of publishedBlogs; track blog.id) {
+            <a class="my-blog-card" [routerLink]="['/blog-detail', blog.slug]">
+              <img class="my-blog-image" [src]="blog.image" [alt]="blog.title" />
+              <div class="my-blog-content">
+                <span class="my-blog-status my-blog-status--published">Đã đăng</span>
+                <h3>{{ blog.title }}</h3>
+                <p>{{ blog.excerpt || blog.summary }}</p>
+                <span class="my-blog-category">{{ blog.category }} · {{ blog.date }}</span>
+              </div>
+              <span class="material-symbols-outlined my-blog-arrow" aria-hidden="true">chevron_right</span>
+            </a>
+          }
+        </div>
+      } @else {
+        <p class="my-blogs-empty">Bạn chưa đăng bài viết nào trong Blog cộng đồng.</p>
+      }
+    </section>
+  }
+</main>

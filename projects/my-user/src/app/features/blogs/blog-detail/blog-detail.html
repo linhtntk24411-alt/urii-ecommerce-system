@@ -1,0 +1,119 @@
+<ng-container *ngIf="blogData as blog; else detailState">
+  <div class="blog-detail-wrapper">
+    <section class="blog-detail-banner" [style.background-image]="'url(' + blog.image + ')'">
+      <div class="blog-detail-banner__overlay">
+        <div class="blog-detail-banner__container">
+          <span class="blog-detail-banner__category">{{ blog.category }}</span>
+          <h1 class="blog-detail-banner__title">{{ blog.title }}</h1>
+          <div class="blog-detail-banner__author">
+            <img class="blog-detail-banner__avatar" [src]="blog.avatar" [alt]="blog.author" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'" />
+            <div>
+              <div class="blog-detail-banner__name">{{ blog.author }}</div>
+              <div class="blog-detail-banner__date">{{ blog.date }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <article class="blog-detail-content" [innerHTML]="blog.content"></article>
+
+    <div class="blog-detail-actions">
+      <button
+        class="blog-detail-actions__btn"
+        [class.active]="isLiked"
+        type="button"
+        [attr.aria-pressed]="isLiked"
+        [attr.aria-label]="isLiked ? 'Bỏ thích bài viết' : 'Thích bài viết'"
+        (click)="toggleLike()">
+        <span class="material-symbols-outlined">favorite</span>
+        <span>{{ displayedLikeCount }}</span>
+      </button>
+      <button
+        class="blog-detail-actions__btn"
+        [class.active]="isBookmarked"
+        type="button"
+        [attr.aria-pressed]="isBookmarked"
+        [attr.aria-label]="isBookmarked ? 'Bỏ lưu bài viết' : 'Lưu bài viết'"
+        (click)="toggleBookmark()">
+        <span class="material-symbols-outlined">bookmark</span>
+        <span>{{ isBookmarked ? 'Đã lưu' : 'Lưu' }}</span>
+      </button>
+    </div>
+
+    <div class="blog-detail-tags" *ngIf="blog.tags.length">
+      <span class="blog-detail-tags__label">Tags:</span>
+      <span *ngFor="let tag of blog.tags">#{{ tag }}</span>
+    </div>
+
+    <div class="blog-detail-author">
+      <img class="blog-detail-author__avatar" [src]="blog.avatar" [alt]="blog.author" onerror="this.src='assets/gallery_assets/mau-ca-heo.webp'" />
+      <div class="blog-detail-author__info">
+        <h3 class="blog-detail-author__name">{{ blog.author }}</h3>
+        <p class="blog-detail-author__desc">Thành viên yêu thích handmade và sáng tạo không ngừng.</p>
+        <div class="blog-detail-author__social">
+          <a href="#"><span class="material-symbols-outlined">language</span></a>
+          <a href="#"><span class="material-symbols-outlined">mail</span></a>
+        </div>
+      </div>
+    </div>
+
+    <section class="blog-detail-comments">
+      <h2 class="blog-detail-comments__title">Bình luận ({{ blogComments.length }})</h2>
+      <form class="blog-detail-comments__form" [formGroup]="commentForm" (ngSubmit)="submitComment()">
+        <div class="blog-detail-comments__avatar-placeholder" aria-hidden="true"></div>
+        <div class="blog-detail-comments__composer">
+          <textarea
+            class="blog-detail-comments__textarea"
+            formControlName="content"
+            rows="3"
+            maxlength="2000"
+            placeholder="Chia sẻ cảm nghĩ của bạn..."
+            aria-label="Nội dung bình luận"></textarea>
+          <p *ngIf="commentForm.controls.content.touched && commentForm.controls.content.hasError('required')" class="blog-detail-comments__error">
+            Vui lòng nhập nội dung bình luận.
+          </p>
+          <p *ngIf="commentForm.controls.content.hasError('maxlength')" class="blog-detail-comments__error">
+            Bình luận không được vượt quá 2000 ký tự.
+          </p>
+          <p *ngIf="commentErrorMessage" class="blog-detail-comments__error" role="alert">{{ commentErrorMessage }}</p>
+          <p *ngIf="commentSuccessMessage" class="blog-detail-comments__success" role="status">{{ commentSuccessMessage }}</p>
+          <button class="blog-detail-comments__submit" type="submit" [disabled]="isSubmittingComment">
+            {{ isSubmittingComment ? 'Đang gửi...' : 'Gửi bình luận' }}
+          </button>
+        </div>
+      </form>
+      <p *ngIf="isCommentsLoading" role="status">Đang tải bình luận...</p>
+      <p *ngIf="!isCommentsLoading && commentsErrorMessage" role="alert">{{ commentsErrorMessage }}</p>
+      <p *ngIf="!isCommentsLoading && !commentsErrorMessage && blogComments.length === 0">
+        Bài viết chưa có bình luận nào.
+      </p>
+      <div class="blog-detail-comments__list" *ngIf="!isCommentsLoading && !commentsErrorMessage && blogComments.length > 0">
+        <article class="blog-detail-comments__item" *ngFor="let comment of blogComments">
+          <div class="comment-main">
+            <div class="blog-detail-comments__avatar">
+              <img [src]="comment.avatar" [alt]="comment.author" onerror="this.src='/assets/avatar-non.jpg'">
+            </div>
+            <div>
+              <div class="blog-detail-comments__header">
+                <span class="blog-detail-comments__username">{{ comment.author }}</span>
+                <time class="blog-detail-comments__time" *ngIf="comment.time || comment.createdAt">
+                  {{ comment.time || formatCommentDate(comment.createdAt) }}
+                </time>
+              </div>
+              <p class="blog-detail-comments__text">{{ comment.content }}</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</ng-container>
+
+<ng-template #detailState>
+  <div class="blog-detail-wrapper text-center py-5" role="status">
+    <p *ngIf="isLoading">Đang tải bài viết...</p>
+    <p *ngIf="!isLoading && errorMessage" role="alert">{{ errorMessage }}</p>
+    <a routerLink="/blog-list">Quay lại danh sách bài viết</a>
+  </div>
+</ng-template>

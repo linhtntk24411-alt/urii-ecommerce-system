@@ -1,0 +1,231 @@
+<div class="support-wrapper">
+  <div class="support-container">
+    <aside class="support-sidebar">
+      <nav class="support-nav">
+        <a class="support-nav-item" 
+           [class.active]="activeTab === 'support-center'" 
+           routerLink="/support/support-center">
+          <span class="material-symbols-outlined">help</span>
+          Trung tâm hỗ trợ
+        </a>
+        <a class="support-nav-item" 
+           [class.active]="activeTab === 'faq'" 
+           routerLink="/support/faq">
+          <span class="material-symbols-outlined">quiz</span>
+          Câu hỏi thường gặp
+        </a>
+        <a class="support-nav-item" 
+           [class.active]="activeTab === 'privacy-policy'" 
+           routerLink="/support/privacy-policy">
+          <span class="material-symbols-outlined">shield</span>
+          Chính sách bảo mật
+        </a>
+        <a class="support-nav-item" 
+           [class.active]="activeTab === 'terms-of-service'" 
+           routerLink="/support/terms-of-service">
+          <span class="material-symbols-outlined">description</span>
+          Điều khoản sử dụng
+        </a>
+        <div class="support-nav-divider"></div>
+        <a class="support-nav-item" routerLink="/">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Quay lại trang chủ
+        </a>
+      </nav>
+    </aside>
+
+    <div class="support-content">
+      
+      <ng-container *ngIf="activeTab === 'support-center'">
+        <div class="support-header">
+          <h1 class="support-title">
+            <span class="material-symbols-outlined title-icon">headset_mic</span>
+            Trung tâm hỗ trợ
+          </h1>
+        </div>
+        <div class="support-body">
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">campaign</span>
+            <span>Chào mừng bạn đến với Trung tâm hỗ trợ của Urii!</span>
+          </h2>
+          <p>Chúng tôi luôn sẵn sàng giúp đỡ bạn trong mọi vấn đề liên quan đến sản phẩm, đơn hàng và trải nghiệm mua sắm tại Urii.</p>
+          
+          <div class="highlight-box">
+            <p><span class="material-symbols-outlined">call</span> <strong>Hotline:</strong> 1900 1234 (8:00 - 21:00 hàng ngày)</p>
+            <p><span class="material-symbols-outlined">mail</span> <strong>Email:</strong> support@urii.vn</p>
+            <p><span class="material-symbols-outlined">location_on</span> <strong>Địa chỉ:</strong> 669 Đỗ Mười, KP3, Thủ Đức, TP. Hồ Chí Minh</p>
+          </div>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">help</span>
+            <span>Chúng tôi có thể giúp gì cho bạn?</span>
+          </h2>
+          <ul>
+            <li><strong>Hướng dẫn đặt hàng:</strong> Các bước đặt hàng đơn giản và nhanh chóng.</li>
+            <li><strong>Vận chuyển & giao hàng:</strong> Thông tin về phí ship, thời gian giao hàng.</li>
+            <li><strong>Thanh toán:</strong> Các phương thức thanh toán an toàn và tiện lợi.</li>
+            <li><strong>Đổi trả & bảo hành:</strong> Chính sách đổi trả và bảo hành sản phẩm.</li>
+            <li><strong>Hướng dẫn sử dụng:</strong> Cách sử dụng và bảo quản sản phẩm Perler Beads.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">forum</span>
+            <span>Liên hệ với chúng tôi</span>
+          </h2>
+          <p>Nếu bạn không tìm thấy câu trả lời trong các mục bên dưới, vui lòng liên hệ trực tiếp với chúng tôi qua hotline hoặc email. Chúng tôi sẽ phản hồi trong vòng 24 giờ làm việc.</p>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'faq'">
+        <div class="support-header">
+          <h1 class="support-title">
+            <span class="material-symbols-outlined title-icon">quiz</span>
+            Câu hỏi thường gặp
+          </h1>
+        </div>
+        <div class="support-body">
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">quiz</span> 
+            <span>Những câu hỏi thường gặp</span>
+          </h2>
+          <p class="faq-sub-desc">Tổng hợp các câu hỏi phổ biến nhất từ khách hàng của Urii.</p>
+          
+          <div class="faq-list">
+            <div class="faq-item" *ngFor="let faq of faqs; let i = index" [class.active]="activeFaqIndex === i">
+              <button type="button" class="faq-question" [attr.aria-expanded]="activeFaqIndex === i" (click)="toggleFaq(i)">
+                <span>{{ faq.question }}</span>
+                <span class="material-symbols-outlined">expand_more</span>
+              </button>
+              <div class="faq-answer" *ngIf="activeFaqIndex === i">
+                {{ faq.answer }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'privacy-policy'">
+        <div class="support-header">
+          <h1 class="support-title">
+            <span class="material-symbols-outlined title-icon">shield</span>
+            Chính sách bảo mật
+          </h1>
+        </div>
+        <div class="support-body">
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">lock</span>
+            <span>Chính sách bảo mật thông tin</span>
+          </h2>
+          <p>Tại Urii, chúng tôi cam kết bảo vệ quyền riêng tư của khách hàng. Chính sách này giải thích cách chúng tôi thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn.</p>
+          
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">database</span>
+            <span>Thông tin chúng tôi thu thập</span>
+          </h2>
+          <ul>
+            <li><strong>Thông tin cá nhân:</strong> Họ tên, địa chỉ email, số điện thoại, địa chỉ giao hàng.</li>
+            <li><strong>Thông tin thanh toán:</strong> Thông tin thẻ tín dụng, mã giảm giá (được mã hóa và bảo mật).</li>
+            <li><strong>Lịch sử mua hàng:</strong> Các sản phẩm bạn đã mua và đánh giá.</li>
+            <li><strong>Dữ liệu truy cập:</strong> Địa chỉ IP, loại trình duyệt, thời gian truy cập.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">settings</span>
+            <span>Cách chúng tôi sử dụng thông tin</span>
+          </h2>
+          <ul>
+            <li>Xử lý đơn hàng và giao hàng.</li>
+            <li>Gửi thông báo về trạng thái đơn hàng.</li>
+            <li>Cải thiện trải nghiệm mua sắm và dịch vụ.</li>
+            <li>Gửi thông tin khuyến mãi (nếu bạn đồng ý nhận).</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">verified_user</span>
+            <span>Bảo mật thông tin</span>
+          </h2>
+          <p>Chúng tôi áp dụng các biện pháp bảo mật tiên tiến để bảo vệ dữ liệu của bạn, bao gồm mã hóa SSL và lưu trữ trên máy chủ an toàn. Chúng tôi không chia sẻ thông tin cá nhân với bên thứ ba trừ khi được yêu cầu bởi pháp luật.</p>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">person</span>
+            <span>Quyền của bạn</span>
+          </h2>
+          <ul>
+            <li>Yêu cầu truy cập, chỉnh sửa hoặc xóa thông tin cá nhân.</li>
+            <li>Từ chối nhận email tiếp thị.</li>
+            <li>Yêu cầu xuất dữ liệu cá nhân.</li>
+          </ul>
+
+          <div class="highlight-box-green">
+            <p><span class="material-symbols-outlined">mail</span> <strong>Liên hệ:</strong> Nếu bạn có bất kỳ thắc mắc nào về chính sách bảo mật, vui lòng liên hệ privacy@urii.vn</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'terms-of-service'">
+        <div class="support-header">
+          <h1 class="support-title">
+            <span class="material-symbols-outlined title-icon">description</span>
+            Điều khoản sử dụng
+          </h1>
+        </div>
+        <div class="support-body">
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">assignment</span>
+            <span>Điều khoản sử dụng</span>
+          </h2>
+          <p>Khi sử dụng website của Urii, bạn đồng ý tuân thủ các điều khoản và điều kiện sau đây. Vui lòng đọc kỹ trước khi sử dụng dịch vụ.</p>
+          
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>Chấp nhận điều khoản</span>
+          </h2>
+          <p>Bằng việc truy cập và sử dụng website, bạn chấp nhận bị ràng buộc bởi các điều khoản và điều kiện này. Nếu bạn không đồng ý, vui lòng không sử dụng website của chúng tôi.</p>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">person</span>
+            <span>Tài khoản người dùng</span>
+          </h2>
+          <ul>
+            <li>Bạn phải đăng ký tài khoản để mua hàng và sử dụng các dịch vụ của chúng tôi.</li>
+            <li>Bạn chịu trách nhiệm bảo mật thông tin tài khoản và mật khẩu.</li>
+            <li>Bạn phải cung cấp thông tin chính xác và cập nhật khi đăng ký tài khoản.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            <span>Đặt hàng và thanh toán</span>
+          </h2>
+          <ul>
+            <li>Khi đặt hàng, bạn cam kết mua sản phẩm với giá và điều kiện đã được hiển thị.</li>
+            <li>Chúng tôi có quyền từ chối hoặc hủy đơn hàng nếu phát hiện thông tin không chính xác.</li>
+            <li>Giá sản phẩm có thể thay đổi mà không cần thông báo trước.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">copyright</span>
+            <span>Sở hữu trí tuệ</span>
+          </h2>
+          <p>Tất cả nội dung trên website bao gồm văn bản, hình ảnh, logo, biểu tượng là tài sản của Urii và được bảo vệ bởi luật bản quyền. Không được sao chép, phân phối hoặc sử dụng trái phép.</p>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">warning</span>
+            <span>Giới hạn trách nhiệm</span>
+          </h2>
+          <p>Urii không chịu trách nhiệm đối với bất kỳ thiệt hại nào phát sinh từ việc sử dụng hoặc không thể sử dụng website, bao gồm thiệt hại trực tiếp, gián tiếp, ngẫu nhiên hoặc hậu quả.</p>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">update</span>
+            <span>Thay đổi điều khoản</span>
+          </h2>
+          <p>Chúng tôi có quyền thay đổi các điều khoản này bất kỳ lúc nào. Bạn nên kiểm tra lại định kỳ để cập nhật các thay đổi. Việc tiếp tục sử dụng website đồng nghĩa với việc bạn chấp nhận các điều khoản mới.</p>
+
+          <div class="highlight-box-orange">
+            <p><span class="material-symbols-outlined">calendar_today</span> <strong>Ngày hiệu lực:</strong> Điều khoản này có hiệu lực từ ngày 01/01/2024</p>
+          </div>
+        </div>
+      </ng-container>
+
+    </div>
+  </div>
+</div>

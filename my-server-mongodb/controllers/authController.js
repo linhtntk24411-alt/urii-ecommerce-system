@@ -146,7 +146,7 @@ exports.verifyOtp = async (req, res) => {
       return res.status(409).json({ message: 'Email này đã được đăng ký tài khoản.' });
     }
 
-    await User.create({
+    const user = await User.create({
       name: record.name,
       email: normalizedEmail,
       password: record.hashedPassword,
@@ -159,7 +159,8 @@ exports.verifyOtp = async (req, res) => {
     await Otp.deleteMany({ email: normalizedEmail });
 
     return res.status(201).json({
-      message: 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.'
+      message: 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.',
+      userId: user._id.toString()
     });
   } catch (error) {
     if (error.code === 11000) {

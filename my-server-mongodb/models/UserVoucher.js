@@ -18,6 +18,11 @@ const userVoucherSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  source: {
+    type: String,
+    enum: ['promotion', 'birthday'],
+    default: 'promotion'
+  },
   claimedAt: {
     type: Date,
     default: Date.now

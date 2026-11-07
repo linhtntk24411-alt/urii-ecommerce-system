@@ -7,6 +7,10 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     return next(request);
   }
 
+  if (request.headers.has('Authorization')) {
+    return next(request);
+  }
+
   const token = inject(StorageService).getToken();
   if (!token) {
     return next(request);

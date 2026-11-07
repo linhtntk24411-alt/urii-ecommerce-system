@@ -227,10 +227,21 @@ exports.createOrder = async (req, res) => {
   }
 
   try {
+    const isCustomerOrder = req.auth?.role === 'user'
+      || (req.auth?.role === 'admin' && !req.body.userId);
+    const orderData = isCustomerOrder
+      ? {
+          ...req.body,
+          userId: req.auth.id,
+          status: 'Đang chờ duyệt',
+          statusId: 'pending',
+          statusType: 'pending'
+        }
+      : req.body;
     const nowIso = new Date().toISOString().slice(0, 19);
-    const statusId = req.body.statusId || 'pending';
+    const statusId = isCustomerOrder ? 'pending' : (orderData.statusId || 'pending');
     const waitingPolicy = orderReasons.waitingPolicies?.awaiting_confirmation;
-    const defaultWaitingInfo = statusId === 'pending' && !req.body.waitingInfo
+    const defaultWaitingInfo = statusId === 'pending' && !orderData.waitingInfo
       ? {
           type: 'awaiting_confirmation',
           startedAt: nowIso,
@@ -239,11 +250,11 @@ exports.createOrder = async (req, res) => {
           actor: 'admin',
           note: waitingPolicy?.description || 'Chờ cửa hàng xác nhận đơn hàng trong vòng 24 giờ.'
         }
-      : req.body.waitingInfo;
+      : orderData.waitingInfo;
 
     const order = await Order.create({
-      ...req.body,
-      id: req.body.id || `order-${randomUUID()}`,
+      ...orderData,
+      id: orderData.id || `order-${randomUUID()}`,
       statusId,
       waitingInfo: defaultWaitingInfo
     });

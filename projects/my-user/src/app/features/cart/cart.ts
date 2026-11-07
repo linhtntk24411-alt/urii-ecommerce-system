@@ -1,4 +1,5 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CartItem, CartService } from '../../core/services/cart.service';
@@ -29,6 +30,7 @@ export class Cart implements OnInit {
   lines: CartLine[] = [];
   loading = true;
   errorMessage = '';
+  requiresLogin = false;
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -50,42 +52,30 @@ export class Cart implements OnInit {
   loadCart(): void {
     this.loading = true;
     this.errorMessage = '';
-    let items: CartItem[];
-    try {
-      items = this.cart.getItems();
-    } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Không thể đọc giỏ hàng.';
-      this.loading = false;
-      return;
-    }
-
-    if (items.length === 0) {
-      this.lines = [];
-      this.loading = false;
-      return;
-    }
-
-    this.catalog.getProducts().subscribe({
-      next: (products) => {
-        this.lines = this.mapLines(items, products);
-        this.loading = false;
-        this.changeDetectorRef.markForCheck();
-      },
+    this.cart.loadItems().subscribe({
+      next: (items) => this.loadProductDetails(items),
       error: (error: unknown) => {
-        console.error('Không thể tải thông tin sản phẩm trong giỏ hàng:', error);
-        const cachedProducts = this.catalog.getCachedProducts();
-        this.lines = this.mapLines(items, cachedProducts);
-        this.errorMessage = cachedProducts.length
-          ? 'Máy chủ đang gián đoạn. Giỏ hàng đang hiển thị thông tin đã lưu; thử tải lại để cập nhật.'
-          : 'Không thể kết nối máy chủ để tải thông tin sản phẩm. Giỏ hàng vẫn được giữ lại; vui lòng thử tải lại.';
-        this.loading = false;
-        this.changeDetectorRef.markForCheck();
+        console.error('Không thể tải giỏ hàng từ máy chủ:', error);
+        const cachedItems = this.cart.getItems();
+        this.requiresLogin = error instanceof HttpErrorResponse && error.status === 401;
+        this.errorMessage = this.getCartLoadErrorMessage(error);
+        this.loadProductDetails(cachedItems);
       },
     });
   }
 
+  loginAgain(): void {
+    void this.router.navigate(['/login'], { queryParams: { returnUrl: '/cart' } });
+  }
+
   toggleSelection(line: CartLine): void {
-    line.selected = !line.selected;
+    try {
+      this.cart.updateSelected(line.item.productId, line.item.variant, !line.selected);
+      line.selected = !line.selected;
+    } catch (error) {
+      console.error('Không thể cập nhật lựa chọn giỏ hàng:', error);
+      this.errorMessage = error instanceof Error ? error.message : 'Không thể cập nhật lựa chọn.';
+    }
   }
 
   updateQuantity(line: CartLine, change: number): void {
@@ -190,7 +180,71 @@ export class Cart implements OnInit {
     return items.map((item) => ({
       item,
       product: products.find((product) => product.id === item.productId) ?? null,
-      selected: true,
+      selected: item.selected ?? true,
     }));
+  }
+
+  private loadProductDetails(items: CartItem[]): void {
+    if (items.length === 0) {
+      this.lines = [];
+      this.loading = false;
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.catalog.getProducts().subscribe({
+      next: (products) => {
+        this.lines = this.mapLines(items, products);
+        this.loading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể tải thông tin sản phẩm trong giỏ hàng:', error);
+        const cachedProducts = this.catalog.getCachedProducts();
+        this.lines = this.mapLines(items, cachedProducts);
+        this.errorMessage = cachedProducts.length
+          ? 'Máy chủ đang gián đoạn. Giỏ hàng đang hiển thị thông tin đã lưu; thử tải lại để cập nhật.'
+          : 'Không thể kết nối máy chủ để tải thông tin sản phẩm. Giỏ hàng vẫn được giữ lại; vui lòng thử tải lại.';
+        this.loading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private getCartLoadErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) {
+        const serverMessage = this.readServerMessage(error);
+        if (serverMessage && /token|đăng nhập|phiên/i.test(serverMessage)) {
+          return `${serverMessage} Giỏ hàng đã lưu vẫn được giữ lại; hãy đăng nhập lại để đồng bộ.`;
+        }
+        if (serverMessage) {
+          return `Máy chủ từ chối truy cập giỏ hàng: ${serverMessage} Giỏ hàng đã lưu vẫn được giữ lại.`;
+        }
+        return 'Máy chủ từ chối truy cập giỏ hàng (HTTP 401). Giỏ hàng đã lưu vẫn được giữ lại; vui lòng kiểm tra tài khoản và phiên đăng nhập.';
+      }
+      if (error.status === 403) {
+        return 'Tài khoản hiện tại không có quyền truy cập giỏ hàng. Giỏ hàng đã lưu vẫn được giữ lại.';
+      }
+      if (error.status === 0) {
+        return 'Không kết nối được máy chủ. Giỏ hàng đã lưu vẫn được giữ lại; hãy kiểm tra backend/MongoDB rồi thử tải lại.';
+      }
+      const serverMessage = this.readServerMessage(error);
+      return serverMessage
+        ? `Máy chủ không thể tải giỏ hàng: ${serverMessage} Giỏ hàng đã lưu vẫn được giữ lại.`
+        : `Không thể đồng bộ giỏ hàng (HTTP ${error.status}). Giỏ hàng đã lưu vẫn được giữ lại.`;
+    }
+
+    return 'Không thể đọc dữ liệu giỏ hàng từ máy chủ. Giỏ hàng đã lưu vẫn được giữ lại; vui lòng thử tải lại.';
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private readServerMessage(error: HttpErrorResponse): string {
+    return this.isRecord(error.error) && typeof error.error['message'] === 'string'
+      ? error.error['message'].trim()
+      : '';
   }
 }

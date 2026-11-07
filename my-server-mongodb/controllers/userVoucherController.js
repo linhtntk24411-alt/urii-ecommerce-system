@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 const Voucher = require('../models/Voucher');
 const UserVoucher = require('../models/UserVoucher');
+const User = require('../models/User');
+const { isVoucherAvailable } = require('./voucherController');
+
+function isBirthdayVoucher(voucher) {
+  return String(voucher?.id || '') === 'voucher-bd50'
+    || String(voucher?.code || '').toUpperCase() === 'URIIBD50';
+}
 
 // Lấy danh sách voucher mà người dùng CHƯA CÓ
 exports.getUnclaimedVouchers = async (req, res) => {
@@ -8,7 +15,8 @@ exports.getUnclaimedVouchers = async (req, res) => {
     const userId = req.auth?.id;
 
     // Lấy tất cả voucher đang kích hoạt
-    const allActiveVouchers = await Voucher.find({ isActive: true }).lean();
+    const allActiveVouchers = (await Voucher.find({ isActive: true }).lean())
+      .filter((voucher) => !isBirthdayVoucher(voucher));
 
     if (!userId) {
       // Chưa đăng nhập -> hiển thị toàn bộ voucher
@@ -64,6 +72,9 @@ exports.claimVoucher = async (req, res) => {
     if (!voucher) {
       return res.status(404).json({ message: 'Không tìm thấy thông tin khuyến mãi.' });
     }
+    if (isBirthdayVoucher(voucher)) {
+      return res.status(403).json({ message: 'Voucher sinh nhật chỉ được nhận qua biểu mẫu sinh nhật.' });
+    }
 
     const standardVoucherId = String(voucher.id || voucher._id);
 
@@ -82,6 +93,7 @@ exports.claimVoucher = async (req, res) => {
       userId,
       voucherId: standardVoucherId,
       code: voucher.code,
+      source: 'promotion',
       claimedAt: new Date()
     });
 
@@ -106,7 +118,8 @@ exports.claimAllVouchers = async (req, res) => {
   }
 
   try {
-    const allActiveVouchers = await Voucher.find({ isActive: true }).lean();
+    const allActiveVouchers = (await Voucher.find({ isActive: true }).lean())
+      .filter((voucher) => !isBirthdayVoucher(voucher));
     if (!allActiveVouchers.length) {
       return res.status(400).json({ message: 'Hiện tại chưa có voucher nào khả dụng.' });
     }
@@ -127,6 +140,7 @@ exports.claimAllVouchers = async (req, res) => {
       userId,
       voucherId: String(v.id || v._id),
       code: v.code,
+      source: 'promotion',
       claimedAt: new Date()
     }));
 
@@ -178,6 +192,51 @@ exports.getMyVouchers = async (req, res) => {
   }
 };
 
+exports.getMyAvailableVouchers = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!userId || !mongoose.isValidObjectId(userId)) {
+    return res.status(401).json({ message: 'Vui lòng đăng nhập.' });
+  }
+
+  try {
+    const user = await User.findById(userId).select('birth').lean();
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản người dùng.' });
+    }
+
+    const userVouchers = await UserVoucher.find({ userId, isUsed: false })
+      .sort({ claimedAt: -1 })
+      .lean();
+    const voucherIds = userVouchers.map((userVoucher) => userVoucher.voucherId);
+    if (voucherIds.length === 0) return res.json([]);
+
+    const voucherDetails = await Voucher.find({
+      $or: [
+        { id: { $in: voucherIds } },
+        { _id: { $in: voucherIds.filter((id) => mongoose.isValidObjectId(id)) } },
+      ],
+    }).lean();
+    const voucherMap = new Map();
+    for (const voucher of voucherDetails) {
+      voucherMap.set(String(voucher.id), voucher);
+      voucherMap.set(String(voucher._id), voucher);
+    }
+
+    return res.json(userVouchers.flatMap((userVoucher) => {
+      const voucher = voucherMap.get(String(userVoucher.voucherId));
+      if (!voucher || !isVoucherAvailable(voucher)) return [];
+      if (isBirthdayVoucher(voucher)
+        && (!user.birth || (userVoucher.source && userVoucher.source !== 'birthday'))) {
+        return [];
+      }
+      return [{ ...userVoucher, voucher }];
+    }));
+  } catch (error) {
+    console.error('Lỗi tải voucher khả dụng của tài khoản:', error);
+    return res.status(500).json({ message: 'Không thể tải voucher khả dụng của bạn.' });
+  }
+};
+
 // Nhận voucher sinh nhật 50% kèm cập nhật ngày sinh (chỉ cho phép nhập 1 lần)
 exports.claimBirthdayVoucher = async (req, res) => {
   const userId = req.auth?.id;
@@ -189,8 +248,6 @@ exports.claimBirthdayVoucher = async (req, res) => {
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ message: 'Vui lòng nhập họ và tên.' });
   }
-
-  const User = require('../models/User');
 
   try {
     const user = await User.findById(userId);
@@ -210,12 +267,11 @@ exports.claimBirthdayVoucher = async (req, res) => {
 
     await user.save();
 
-    // Tìm voucher giảm 50% sinh nhật
+    // Only the dedicated birthday voucher can be issued by this form.
     let voucher = await Voucher.findOne({
       $or: [
         { code: 'URIIBD50' },
-        { id: 'voucher-bd50' },
-        { type: 'percent', discountValue: 50 }
+        { id: 'voucher-bd50' }
       ]
     });
 
@@ -256,6 +312,7 @@ exports.claimBirthdayVoucher = async (req, res) => {
       userId,
       voucherId: standardVoucherId,
       code: voucher.code,
+      source: 'birthday',
       claimedAt: new Date()
     });
 

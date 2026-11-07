@@ -68,6 +68,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (isPlatformBrowser(this.platformId)) {
       this.checkAuthStatus();
       this.updateCartBadge();
+      this.refreshCartBadgeFromServer();
       this.loadCurrentUser();
       this.loadNotifications();
 
@@ -75,6 +76,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
         if (!e.key || e.key.startsWith('cartItems') || e.key === 'cart_count' || e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'authToken') {
           this.checkAuthStatus();
           this.updateCartBadge();
+          if (e.key === 'isLoggedIn' || e.key === 'userId' || e.key === 'authToken') {
+            this.refreshCartBadgeFromServer();
+          }
           this.loadCurrentUser();
           this.loadNotifications();
           this.changeDetectorRef.detectChanges();
@@ -82,6 +86,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
       };
       this.authChangeListener = () => {
         this.checkAuthStatus();
+        this.updateCartBadge();
+        this.refreshCartBadgeFromServer();
         this.loadCurrentUser();
         this.loadNotifications();
         this.changeDetectorRef.detectChanges();
@@ -329,6 +335,19 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  private refreshCartBadgeFromServer(): void {
+    if (localStorage.getItem('isLoggedIn') !== 'true' || !localStorage.getItem('authToken')) return;
+    this.cart.loadItems().subscribe({
+      next: (items) => {
+        this.cartCount = items.reduce((total, item) => total + item.quantity, 0);
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể đồng bộ số lượng giỏ hàng với máy chủ:', error);
+      },
+    });
+  }
+
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
   }
@@ -373,6 +392,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     localStorage.removeItem('userAvatar');
     localStorage.removeItem('userRole');
     localStorage.removeItem('authToken');
+    localStorage.removeItem('userId');
     this.profileRequest?.unsubscribe();
     this.isLoggedIn = false;
     this.userName = '';

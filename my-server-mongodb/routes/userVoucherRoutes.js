@@ -7,6 +7,7 @@ router.get('/available', optionalAuthenticate, userVoucherController.getUnclaime
 router.post('/claim', authenticate, userVoucherController.claimVoucher);
 router.post('/claim-all', authenticate, userVoucherController.claimAllVouchers);
 router.post('/claim-birthday', authenticate, userVoucherController.claimBirthdayVoucher);
+router.get('/available-to-use', authenticate, userVoucherController.getMyAvailableVouchers);
 router.get('/mine', authenticate, userVoucherController.getMyVouchers);
 
 module.exports = router;

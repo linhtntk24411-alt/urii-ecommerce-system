@@ -174,6 +174,150 @@
   font-size: 12px;
 }
 
+.checkout-login-backdrop {
+  position: fixed;
+  z-index: 12000;
+  inset: 0;
+  background: rgba(31, 18, 16, 0.58);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: checkoutLoginFade 0.2s ease-out;
+}
+
+.checkout-login-dialog {
+  position: fixed;
+  z-index: 12001;
+  top: 50%;
+  left: 50%;
+  width: min(540px, calc(100vw - 24px));
+  padding: 34px clamp(12px, 5vw, 32px) 28px;
+  transform: translate(-50%, -50%);
+  border: 1px solid #f1e2dd;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(132, 0, 1, 0.08), transparent 58%),
+    #fff;
+  box-shadow: 0 28px 90px rgba(32, 13, 12, 0.28);
+  text-align: center;
+  animation: checkoutLoginEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.checkout-login-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #766b68;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.checkout-login-close:hover {
+  background: #f5eeeb;
+  color: #840001;
+}
+
+.checkout-login-icon {
+  --logo-canvas-size: min(280px, 72vw);
+  position: relative;
+  display: flex;
+  width: var(--logo-canvas-size);
+  height: calc(var(--logo-canvas-size) * 0.4);
+  margin: 0 auto 15px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.checkout-login-icon img {
+  position: absolute;
+  top: calc(var(--logo-canvas-size) * -0.3);
+  left: 50%;
+  width: var(--logo-canvas-size);
+  height: var(--logo-canvas-size);
+  max-width: none;
+  transform: translateX(-50%);
+  object-fit: cover;
+}
+
+.checkout-login-eyebrow {
+  margin: 0 0 7px;
+  color: #9c5d54;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.checkout-login-dialog h2 {
+  margin: 0;
+  color: #302321;
+  font-size: clamp(13px, 4vw, 23px);
+  font-weight: 750;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.checkout-login-description {
+  margin: 12px 0 22px;
+  color: #766b68;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.checkout-login-primary {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(110deg, #840001, #a9211d);
+  box-shadow: 0 8px 18px rgba(132, 0, 1, 0.2);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.18s ease, transform 0.18s ease;
+}
+
+.checkout-login-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.checkout-login-register {
+  margin: 17px 0 0;
+  color: #766b68;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.checkout-login-register a {
+  color: #840001;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.checkout-login-register a:hover {
+  text-decoration: underline;
+}
+
+@keyframes checkoutLoginFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes checkoutLoginEnter {
+  from { opacity: 0; transform: translate(-50%, -47%) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
 .address-modal-backdrop {
   position: fixed;
   z-index: 11000;
@@ -510,8 +654,11 @@ textarea.form-control {
 }
 
 .voucher-option:disabled {
-  color: #8a817e;
+  background: #f3f3f3;
+  color: #999;
   cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.72;
 }
 
 .voucher-option-info {
@@ -538,7 +685,11 @@ textarea.form-control {
 }
 
 .voucher-option:disabled .voucher-option-choose {
-  color: #766b68;
+  color: #999;
+}
+
+.voucher-option:disabled .voucher-option-info strong {
+  color: #888;
 }
 
 .voucher-button {

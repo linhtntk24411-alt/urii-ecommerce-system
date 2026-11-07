@@ -4,6 +4,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, TimeoutError, timeout } from 'rxjs';
+import { CartService } from '../../core/services/cart.service';
 
 declare const google: any;
 
@@ -30,6 +31,7 @@ export class LoginUser implements OnInit, OnDestroy {
   private readonly googleClientId = '914516820403-sqm3ft1o05tc6i4q92lk0fu6058b1n8b.apps.googleusercontent.com';
   private tokenClient: any;
   private readonly http = inject(HttpClient);
+  private readonly cart = inject(CartService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
@@ -287,7 +289,7 @@ export class LoginUser implements OnInit, OnDestroy {
     this.isVerifyingRegisterOtp = true;
     this.registerOtpErrorMessage = '';
 
-    this.http.post<{ message?: string }>('/api/auth/verify-otp', {
+    this.http.post<{ message?: string; userId?: string }>('/api/auth/verify-otp', {
       email: this.pendingRegisterEmail,
       otp: trimmedCode
     }).pipe(
@@ -298,6 +300,13 @@ export class LoginUser implements OnInit, OnDestroy {
     ).subscribe({
       next: (response) => {
         this.stopRegisterOtpCountdown();
+        if (typeof response?.userId === 'string' && response.userId.trim()) {
+          try {
+            this.cart.moveGuestCartToUser(response.userId);
+          } catch (error) {
+            console.error('Không thể đồng bộ giỏ hàng khách vào tài khoản vừa đăng ký:', error);
+          }
+        }
         this.isRegisterOtpModalOpen = false;
         this.loginForm.controls.email.setValue(this.pendingRegisterEmail);
         this.loginForm.controls.password.reset('');
@@ -717,15 +726,27 @@ export class LoginUser implements OnInit, OnDestroy {
   private completeLogin(response: LoginResponse): void {
     const role = response.user.role || 'user';
     const avatar = response.user.avatar || '/images/avatar-non.jpg';
+    const userId = response.user.id?.trim();
+
+    if (!userId) {
+      this.errorMessage = 'Máy chủ trả về tài khoản không có mã người dùng hợp lệ.';
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
 
     if (isPlatformBrowser(this.platformId)) {
+      try {
+        this.cart.moveGuestCartToUser(userId);
+      } catch (error) {
+        console.error('Không thể đồng bộ giỏ hàng khách vào tài khoản:', error);
+      }
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('userName', response.user.name || '');
       localStorage.setItem('userEmail', response.user.email || '');
       localStorage.setItem('userAvatar', avatar);
       localStorage.setItem('userRole', role);
       localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userId', response.user.id || '');
+      localStorage.setItem('userId', userId);
       window.dispatchEvent(new Event('auth:changed'));
     }
 

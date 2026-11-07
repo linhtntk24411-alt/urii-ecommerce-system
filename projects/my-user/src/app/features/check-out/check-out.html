@@ -152,7 +152,7 @@
                     } @else if (vouchers.length === 0) {
                       <p class="voucher-dropdown-state">Hiện chưa có voucher khả dụng.</p>
                     } @else {
-                      @for (voucher of vouchers; track voucher.id) {
+                      @for (voucher of sortedVouchers; track voucher.id) {
                         <button
                           class="voucher-option"
                           type="button"
@@ -201,15 +201,49 @@
             <button
               class="btn-place-order"
               type="submit"
-              [disabled]="submitting || hasUnavailableItems"
-            >{{ submitting ? 'Đang gửi đơn...' : 'Đặt hàng' }}</button>
-            <p class="checkout-hint">Đơn hàng chỉ được xác nhận khi backend phản hồi thành công.</p>
+              [disabled]="submitting || profileLoading || hasUnavailableItems"
+            >{{ submitting ? 'Đang gửi đơn...' : profileLoading ? 'Đang tải hồ sơ...' : 'Đặt hàng' }}</button>
+            <p class="checkout-hint">Đơn hàng chỉ được xác nhận khi admin phản hồi thành công.</p>
             <a class="back-to-cart" routerLink="/cart">Quay lại giỏ hàng</a>
           </aside>
         </form>
       }
     </div>
   </div>
+
+  @if (loginRequired) {
+    <div class="checkout-login-backdrop"></div>
+    <section
+      class="checkout-login-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkout-login-title"
+      aria-describedby="checkout-login-description"
+    >
+      <button
+        class="checkout-login-close"
+        type="button"
+        aria-label="Quay lại giỏ hàng"
+        title="Quay lại giỏ hàng"
+        (click)="goBackToCart()"
+      >×</button>
+      <div class="checkout-login-icon" aria-hidden="true">
+        <img src="assets/Urii-Logo.png" alt="">
+      </div>
+      <p class="checkout-login-eyebrow">Chỉ còn một bước nữa</p>
+      <h2 id="checkout-login-title">Đăng nhập để tiếp tục thanh toán</h2>
+      <p id="checkout-login-description" class="checkout-login-description">
+        Vui lòng đăng nhập để xác nhận đơn hàng và theo dõi quá trình giao hàng.
+      </p>
+      <button class="checkout-login-primary" type="button" (click)="goToLogin()">
+        Đăng nhập
+      </button>
+      <p class="checkout-login-register">
+        Chưa có tài khoản?
+        <a routerLink="/register" [queryParams]="{ returnUrl: '/checkout' }">Đăng ký ngay</a>
+      </p>
+    </section>
+  }
 
   @if (addressManagerOpen) {
     <div class="address-modal-backdrop" (click)="closeAddressManager()"></div>
@@ -220,7 +254,7 @@
       aria-labelledby="address-modal-title"
     >
       <header class="address-modal-header">
-        <h2 id="address-modal-title">⌖ Địa chỉ nhận hàng</h2>
+        <h2 id="address-modal-title"> Địa chỉ nhận hàng</h2>
         <button type="button" class="address-modal-close" aria-label="Đóng" (click)="closeAddressManager()">×</button>
       </header>
 

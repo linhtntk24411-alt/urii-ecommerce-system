@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
@@ -20,6 +20,11 @@ export interface CreateOrderPayload {
   status: string;
   statusType: string;
   total: string;
+  note?: string;
+  voucher?: {
+    voucherId: string;
+    discountAmount: number;
+  };
   items: Array<{
     productId: string;
     name: string;
@@ -46,14 +51,24 @@ export interface CreateOrderPayload {
 export class CheckoutService {
   private readonly http = inject(HttpClient);
 
-  getActiveVouchers(): Observable<CheckoutVoucher[]> {
-    return this.http.get<unknown>('/api/vouchers?limit=100').pipe(
-      map((response) => this.parseVouchers(response)),
+  getCurrentUser(token: string): Observable<unknown> {
+    return this.http.get<unknown>('/api/auth/me', {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    });
+  }
+
+  getMyAvailableVouchers(token: string): Observable<CheckoutVoucher[]> {
+    return this.http.get<unknown>('/api/user-vouchers/available-to-use', {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    }).pipe(
+      map((response) => this.parseOwnedVouchers(response)),
     );
   }
 
-  createOrder(payload: CreateOrderPayload): Observable<unknown> {
-    return this.http.post<unknown>('/api/orders', payload);
+  createOrder(payload: CreateOrderPayload, token: string): Observable<unknown> {
+    return this.http.post<unknown>('/api/orders', payload, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    });
   }
 
   private parseVouchers(response: unknown): CheckoutVoucher[] {
@@ -97,6 +112,19 @@ export class CheckoutService {
         minOrder,
         maxDiscount,
       }];
+    });
+  }
+
+  private parseOwnedVouchers(response: unknown): CheckoutVoucher[] {
+    if (!Array.isArray(response)) {
+      throw new Error('Máy chủ trả về kho voucher của tài khoản không hợp lệ.');
+    }
+
+    return response.flatMap((entry: unknown): CheckoutVoucher[] => {
+      if (!this.isRecord(entry) || entry['isUsed'] === true || !this.isRecord(entry['voucher'])) {
+        return [];
+      }
+      return this.parseVouchers([entry['voucher']]);
     });
   }
 

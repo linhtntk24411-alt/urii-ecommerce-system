@@ -2,7 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AddressArea, AddressLookupService } from '../../core/services/address-lookup.service';
 import { CartItem, CartService } from '../../core/services/cart.service';
 import { CheckoutService, CheckoutVoucher, CreateOrderPayload } from '../../core/services/checkout.service';
@@ -38,6 +38,7 @@ export class CheckOut implements OnInit {
   private readonly cart = inject(CartService);
   private readonly catalog = inject(ProductCatalogService);
   private readonly checkout = inject(CheckoutService);
+  private readonly router = inject(Router);
   private readonly selection = inject(CheckoutSelectionService);
   private readonly addressLookup = inject(AddressLookupService);
   private readonly toast = inject(ToastService);
@@ -45,10 +46,13 @@ export class CheckOut implements OnInit {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private currentUserId: string | null = null;
 
   lines: CheckoutLine[] = [];
   vouchers: CheckoutVoucher[] = [];
   loading = true;
+  loginRequired = false;
+  profileLoading = false;
   loadingVouchers = false;
   submitting = false;
   errorMessage = '';
@@ -81,10 +85,63 @@ export class CheckOut implements OnInit {
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
-    this.loadAddresses();
+    const token = window.localStorage.getItem('authToken')?.trim();
+    const userId = window.localStorage.getItem('userId')?.trim();
+    if (window.localStorage.getItem('isLoggedIn') !== 'true' || !token || !userId) {
+      this.loginRequired = true;
+      this.loadCheckout();
+      return;
+    }
+
+    this.currentUserId = userId;
+    this.loadCurrentUser(token);
     this.loadProvinces();
     this.loadCheckout();
-    this.loadVouchers();
+    this.loadVouchers(token);
+  }
+
+  private loadCurrentUser(token: string): void {
+    this.profileLoading = true;
+    this.checkout.getCurrentUser(token).subscribe({
+      next: (response: unknown) => {
+        if (!this.isRecord(response)
+          || (typeof response['id'] === 'string' ? response['id'] : response['_id']) !== this.currentUserId
+          || typeof response['name'] !== 'string'
+          || typeof response['email'] !== 'string') {
+          console.error('API hồ sơ cá nhân trả về dữ liệu không hợp lệ hoặc không khớp tài khoản đang đăng nhập.');
+          this.addressError = 'Không thể xác thực thông tin hồ sơ. Vui lòng tải lại trang.';
+          this.profileLoading = false;
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+
+        const name = response['name'].trim();
+        const email = response['email'].trim();
+        const phone = typeof response['phone'] === 'string' ? response['phone'].trim() : '';
+        const address = typeof response['address'] === 'string' ? response['address'].trim() : '';
+        window.localStorage.setItem('userName', name);
+        window.localStorage.setItem('userEmail', email);
+        window.localStorage.setItem('userPhone', phone);
+        window.localStorage.setItem('userAddress', address);
+        this.customerName = name;
+        this.phone = phone;
+        this.loadAddresses();
+        this.profileLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể tải hồ sơ khách hàng cho checkout:', error);
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 404)) {
+          this.profileLoading = false;
+          this.loginRequired = true;
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+        this.addressError = 'Không thể tải hồ sơ. Vui lòng thử lại trước khi đặt hàng.';
+        this.profileLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
   }
 
   get currentAddress(): DeliveryAddress | null {
@@ -92,6 +149,18 @@ export class CheckOut implements OnInit {
       ?? this.addresses.find((address) => address.isDefault)
       ?? this.addresses[0]
       ?? null;
+  }
+
+  goToLogin(): void {
+    void this.router.navigate(['/login'], { queryParams: { returnUrl: '/checkout' } });
+  }
+
+  goToRegister(): void {
+    void this.router.navigate(['/register'], { queryParams: { returnUrl: '/checkout' } });
+  }
+
+  goBackToCart(): void {
+    void this.router.navigate(['/cart']);
   }
 
   get subtotal(): number {
@@ -129,18 +198,35 @@ export class CheckOut implements OnInit {
     return this.lines.some((line) => !line.product);
   }
 
+  get sortedVouchers(): CheckoutVoucher[] {
+    return this.vouchers
+      .map((voucher, index) => ({ voucher, index }))
+      .sort((a, b) => Number(this.isVoucherApplicable(b.voucher)) - Number(this.isVoucherApplicable(a.voucher))
+        || a.index - b.index)
+      .map(({ voucher }) => voucher);
+  }
+
   loadCheckout(): void {
     this.loading = true;
     this.errorMessage = '';
-    let items: CartItem[];
-    try {
-      items = this.selection.get() ?? this.cart.getItems();
-    } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Không thể đọc giỏ hàng.';
-      this.loading = false;
+    const selected = this.selection.get();
+    if (selected !== null) {
+      this.loadProductsForCheckout(selected);
       return;
     }
 
+    this.cart.loadItems().subscribe({
+      next: (items) => this.loadProductsForCheckout(items),
+      error: (error: unknown) => {
+        console.error('Không thể tải giỏ hàng cho checkout:', error);
+        this.errorMessage = 'Không thể đồng bộ giỏ hàng. Vui lòng thử lại.';
+        this.loading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private loadProductsForCheckout(items: CartItem[]): void {
     if (items.length === 0) {
       this.lines = [];
       this.loading = false;
@@ -165,10 +251,10 @@ export class CheckOut implements OnInit {
     });
   }
 
-  loadVouchers(): void {
+  loadVouchers(token: string): void {
     this.loadingVouchers = true;
     this.voucherLoadError = '';
-    this.checkout.getActiveVouchers().subscribe({
+    this.checkout.getMyAvailableVouchers(token).subscribe({
       next: (vouchers) => {
         this.vouchers = vouchers;
         this.loadingVouchers = false;
@@ -185,8 +271,10 @@ export class CheckOut implements OnInit {
 
   loadAddresses(): void {
     this.addressError = '';
-    const email = window.localStorage.getItem('userEmail')?.trim() || 'anonymous';
-    const storageKey = `addresses_${email}`;
+    this.addresses = [];
+    this.selectedAddressId = null;
+    this.shippingAddress = '';
+    const storageKey = this.addressStorageKey();
     const profileAddress = window.localStorage.getItem('userAddress')?.trim() ?? '';
     try {
       const saved = window.localStorage.getItem(storageKey);
@@ -220,6 +308,9 @@ export class CheckOut implements OnInit {
             isDefault: entry['isDefault'] === true,
           }];
         });
+        if (window.localStorage.getItem(storageKey) === null) {
+          window.localStorage.setItem(storageKey, JSON.stringify(this.addresses));
+        }
       }
 
       if (profileAddress) {
@@ -228,7 +319,7 @@ export class CheckOut implements OnInit {
           (address) => address.fullAddress.toLocaleLowerCase() === profileAddress.toLocaleLowerCase(),
         );
         const profile: DeliveryAddress = {
-          id: existingProfileAddress?.id ?? `profile-${email}`,
+          id: existingProfileAddress?.id ?? `profile-${this.currentUserId}`,
           name: window.localStorage.getItem('userName')?.trim() || existingProfileAddress?.name || '',
           phone: window.localStorage.getItem('userPhone')?.trim() || existingProfileAddress?.phone || '',
           detail: existingProfileAddress?.detail || parts[0] || profileAddress,
@@ -572,6 +663,10 @@ export class CheckOut implements OnInit {
       })),
       payment: { method: this.paymentMethod, status: 'pending' },
       shipping: { method: 'standard', fee: this.shippingFee },
+      ...(this.orderNote.trim() ? { note: this.orderNote.trim() } : {}),
+      ...(this.appliedVoucher
+        ? { voucher: { voucherId: this.appliedVoucher.id, discountAmount: this.totalDiscount } }
+        : {}),
       address: {
         name: address.name,
         phone: address.phone,
@@ -580,7 +675,13 @@ export class CheckOut implements OnInit {
     };
 
     this.submitting = true;
-    this.checkout.createOrder(payload).subscribe({
+    const token = window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.submitting = false;
+      this.loginRequired = true;
+      return;
+    }
+    this.checkout.createOrder(payload, token).subscribe({
       next: (response: unknown) => {
         this.submitting = false;
         this.orderNumber = this.readOrderNumber(response);
@@ -596,7 +697,7 @@ export class CheckOut implements OnInit {
         this.submitting = false;
         console.error('Không thể tạo đơn hàng:', error);
         if (error instanceof HttpErrorResponse && error.status === 403) {
-          this.errorMessage = 'Backend hiện chỉ cho phép quản trị viên tạo đơn hàng. Đơn chưa được ghi nhận; cần backend mở API cho khách hàng.';
+          this.errorMessage = 'Bạn không có quyền tạo đơn hàng. Đơn chưa được ghi nhận.';
         } else if (error instanceof HttpErrorResponse && error.status === 401) {
           this.errorMessage = 'Máy chủ yêu cầu đăng nhập để tạo đơn. Đơn chưa được ghi nhận.';
         } else if (error instanceof HttpErrorResponse && error.status === 0) {
@@ -621,13 +722,19 @@ export class CheckOut implements OnInit {
   }
 
   private persistAddresses(): void {
-    const email = window.localStorage.getItem('userEmail')?.trim() || 'anonymous';
     try {
-      window.localStorage.setItem(`addresses_${email}`, JSON.stringify(this.addresses));
+      window.localStorage.setItem(this.addressStorageKey(), JSON.stringify(this.addresses));
     } catch (error) {
       console.error('Không thể lưu địa chỉ nhận hàng:', error);
       this.addressError = 'Không thể lưu địa chỉ. Vui lòng kiểm tra bộ nhớ trình duyệt.';
     }
+  }
+
+  private addressStorageKey(): string {
+    if (!this.currentUserId) {
+      throw new Error('Không thể tải địa chỉ nếu chưa xác định tài khoản hiện tại.');
+    }
+    return `addresses:v2:user:${this.currentUserId}`;
   }
 
   private applyCurrentAddress(): void {

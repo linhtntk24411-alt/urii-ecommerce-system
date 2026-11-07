@@ -6,7 +6,12 @@ const { io: connectSocket } = require('socket.io-client');
 const app = require('../app');
 const { emitCrudChange, initializeRealtime } = require('../realtime');
 const oauthProviders = require('../services/oauthProviders');
+const Cart = require('../models/Cart');
+const Product = require('../models/Product');
+const Order = require('../models/Order');
 const User = require('../models/User');
+const Voucher = require('../models/Voucher');
+const UserVoucher = require('../models/UserVoucher');
 
 let server;
 let io;
@@ -426,7 +431,6 @@ test('rejects admin tokens on customer-only APIs and validates malformed custome
     process.env.JWT_SECRET
   );
   const forbiddenResponses = await Promise.all([
-    fetch(`${baseUrl}/api/cart`, { headers: { Authorization: `Bearer ${adminToken}` } }),
     fetch(`${baseUrl}/api/reviews/mine`, { headers: { Authorization: `Bearer ${adminToken}` } }),
     fetch(`${baseUrl}/api/reviews/eligible-orders`, { headers: { Authorization: `Bearer ${adminToken}` } })
   ]);
@@ -469,6 +473,302 @@ test('rejects admin tokens on customer-only APIs and validates malformed custome
   assert.equal(invalidCart.status, 400);
   assert.equal(invalidReview.status, 400);
   assert.equal(invalidMediaReview.status, 400);
+});
+
+test('allows an existing admin account to access its own cart', async () => {
+  const userId = '507f1f77bcf86cd799439011';
+  const token = jwt.sign({ id: userId, role: 'admin' }, process.env.JWT_SECRET);
+  const exists = mock.method(User, 'exists', async (query) => {
+    assert.deepEqual(query, { _id: userId, role: { $in: ['user', 'admin'] } });
+    return true;
+  });
+  const findCart = mock.method(Cart, 'findOne', () => ({
+    lean: async () => ({ userId, items: [] }),
+  }));
+
+  try {
+    const response = await fetch(`${baseUrl}/api/cart`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).items, []);
+  } finally {
+    findCart.mock.restore();
+    exists.mock.restore();
+  }
+});
+
+test('returns only available vouchers claimed by the authenticated account', async () => {
+  const userId = '507f1f77bcf86cd799439011';
+  const token = jwt.sign({ id: userId, role: 'user' }, process.env.JWT_SECRET);
+  const claims = [
+    { userId, voucherId: 'voucher-owned', isUsed: false },
+    { userId, voucherId: 'voucher-bd50', code: 'URIIBD50', isUsed: false },
+  ];
+  const voucher = {
+    id: 'voucher-owned',
+    code: 'OWNED10',
+    name: 'Voucher của tài khoản',
+    type: 'percent',
+    discountValue: 10,
+    minOrder: 0,
+    isActive: true,
+    quantity: 10,
+    used: 0,
+  };
+  const birthdayVoucher = {
+    id: 'voucher-bd50',
+    code: 'URIIBD50',
+    name: 'Giảm 50% Tháng Sinh Nhật',
+    type: 'percent',
+    discountValue: 50,
+    minOrder: 150000,
+    isActive: true,
+    quantity: 10,
+    used: 0,
+  };
+  const findUser = mock.method(User, 'findById', () => ({
+    select: () => ({ lean: async () => ({ _id: userId, birth: '' }) }),
+  }));
+  const findClaims = mock.method(UserVoucher, 'find', (query) => {
+    assert.deepEqual(query, { userId, isUsed: false });
+    return { sort: () => ({ lean: async () => claims }) };
+  });
+  const findVouchers = mock.method(Voucher, 'find', () => ({
+    lean: async () => [voucher, birthdayVoucher],
+  }));
+
+  try {
+    const response = await fetch(`${baseUrl}/api/user-vouchers/available-to-use`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.length, 1);
+    assert.equal(payload[0].userId, userId);
+    assert.equal(payload[0].voucher.code, 'OWNED10');
+    assert.ok(payload.every((entry) => entry.voucher.code !== 'URIIBD50'));
+  } finally {
+    findVouchers.mock.restore();
+    findClaims.mock.restore();
+    findUser.mock.restore();
+  }
+});
+
+test('keeps the birthday voucher out of generic voucher lists and claims', async () => {
+  const birthdayVoucher = {
+    id: 'voucher-bd50',
+    code: 'URIIBD50',
+    name: 'Giảm 50% Tháng Sinh Nhật',
+    type: 'percent',
+    discountValue: 50,
+    isActive: true,
+  };
+  const regularVoucher = {
+    id: 'voucher-regular',
+    code: 'WELCOME10',
+    name: 'Voucher phổ thông',
+    type: 'fixed',
+    discountValue: 10000,
+    isActive: true,
+  };
+  const findVouchers = mock.method(Voucher, 'find', () => ({
+    lean: async () => [birthdayVoucher, regularVoucher],
+  }));
+
+  try {
+    const listResponse = await fetch(`${baseUrl}/api/user-vouchers/available`);
+    const list = await listResponse.json();
+    assert.equal(listResponse.status, 200);
+    assert.deepEqual(list.vouchers.map((voucher) => voucher.code), ['WELCOME10']);
+  } finally {
+    findVouchers.mock.restore();
+  }
+
+  const userId = '507f1f77bcf86cd799439011';
+  const token = jwt.sign({ id: userId, role: 'user' }, process.env.JWT_SECRET);
+  const findBirthday = mock.method(Voucher, 'findOne', () => ({
+    lean: async () => birthdayVoucher,
+  }));
+  try {
+    const claimResponse = await fetch(`${baseUrl}/api/user-vouchers/claim`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ voucherId: 'voucher-bd50' }),
+    });
+    assert.equal(claimResponse.status, 403);
+  } finally {
+    findBirthday.mock.restore();
+  }
+});
+
+test('adds authenticated customer cart items using the product variant name', async () => {
+  const userId = '507f1f77bcf86cd799439011';
+  const token = jwt.sign({ id: userId, role: 'user' }, process.env.JWT_SECRET);
+  const product = {
+    id: 'cart-product',
+    name: 'Sản phẩm giỏ hàng',
+    currentPrice: 100000,
+    stock: 5,
+    variants: [{ name: 'Blue', price: 120000, stock: 4 }]
+  };
+  const cart = {
+    userId,
+    items: [],
+    async save() {},
+  };
+  const exists = mock.method(User, 'exists', async () => true);
+  const findOneProduct = mock.method(Product, 'findOne', () => ({ lean: async () => product }));
+  const findOrCreateCart = mock.method(Cart, 'findOneAndUpdate', async () => cart);
+  const findProducts = mock.method(Product, 'find', () => ({ lean: async () => [product] }));
+
+  try {
+    const response = await fetch(`${baseUrl}/api/cart/items`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ productId: 'cart-product', variantName: 'Blue', quantity: 2 })
+    });
+
+    assert.equal(response.status, 201);
+    assert.equal(cart.items[0].variantIndex, 0);
+    assert.equal(cart.items[0].quantity, 2);
+    const payload = await response.json();
+    assert.equal(payload.items[0].variantName, 'Blue');
+    assert.equal(payload.items[0].quantity, 2);
+  } finally {
+    findProducts.mock.restore();
+    findOrCreateCart.mock.restore();
+    findOneProduct.mock.restore();
+    exists.mock.restore();
+  }
+});
+
+test('removing an already absent cart item succeeds without changing the cart', async () => {
+  const userId = '507f1f77bcf86cd799439011';
+  const token = jwt.sign({ id: userId, role: 'user' }, process.env.JWT_SECRET);
+  const cart = { userId, items: [], save: mock.fn() };
+  const exists = mock.method(User, 'exists', async () => true);
+  const findOrCreateCart = mock.method(Cart, 'findOneAndUpdate', async () => cart);
+  const findProducts = mock.method(Product, 'find', () => ({ lean: async () => [] }));
+
+  try {
+    const response = await fetch(`${baseUrl}/api/cart/items/previously-removed-item`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).items, []);
+    assert.equal(cart.save.mock.callCount(), 0);
+  } finally {
+    findProducts.mock.restore();
+    findOrCreateCart.mock.restore();
+    exists.mock.restore();
+  }
+});
+
+test('creates customer checkout orders as pending and associates them with the authenticated user', async () => {
+  const userId = '507f1f77bcf86cd799439011';
+  const token = jwt.sign({ id: userId, role: 'user' }, process.env.JWT_SECRET);
+  let createdOrder;
+  const createOrder = mock.method(Order, 'create', async (data) => {
+    createdOrder = data;
+    return {
+      ...data,
+      _id: '507f1f77bcf86cd799439012',
+      toObject() {
+        return { ...data, _id: this._id };
+      }
+    };
+  });
+  const findUsers = mock.method(User, 'find', () => ({
+    select: () => ({ lean: async () => [] })
+  }));
+
+  try {
+    const response = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: '507f1f77bcf86cd799439099',
+        status: 'Đã duyệt',
+        statusId: 'approved',
+        statusType: 'approved',
+        total: '100000',
+        items: [],
+        address: { name: 'Nguyễn An', phone: '0900000000', address: 'Địa chỉ' }
+      })
+    });
+
+    assert.equal(response.status, 201);
+    assert.equal(createdOrder.userId, userId);
+    assert.equal(createdOrder.statusId, 'pending');
+    assert.equal(createdOrder.status, 'Đang chờ duyệt');
+    assert.equal(createdOrder.statusType, 'pending');
+    const payload = await response.json();
+    assert.equal(payload.userId, userId);
+    assert.equal(payload.statusId, 'pending');
+  } finally {
+    findUsers.mock.restore();
+    createOrder.mock.restore();
+  }
+});
+
+test('associates an admin checkout without a customer ID with the authenticated account', async () => {
+  const userId = '507f1f77bcf86cd799439021';
+  const token = jwt.sign({ id: userId, role: 'admin' }, process.env.JWT_SECRET);
+  let createdOrder;
+  const createOrder = mock.method(Order, 'create', async (data) => {
+    createdOrder = data;
+    return {
+      ...data,
+      _id: '507f1f77bcf86cd799439022',
+      toObject() {
+        return { ...data, _id: this._id };
+      }
+    };
+  });
+  const findUsers = mock.method(User, 'find', () => ({
+    select: () => ({ lean: async () => [] })
+  }));
+
+  try {
+    const response = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        status: 'Đã duyệt',
+        statusType: 'approved',
+        total: '100000',
+        items: [],
+        address: { name: 'Nguyễn An', phone: '0900000000', address: 'Địa chỉ' }
+      })
+    });
+
+    assert.equal(response.status, 201);
+    assert.equal(createdOrder.userId, userId);
+    assert.equal(createdOrder.statusId, 'pending');
+    const payload = await response.json();
+    assert.equal(payload.userId, userId);
+    assert.equal(payload.statusId, 'pending');
+  } finally {
+    findUsers.mock.restore();
+    createOrder.mock.restore();
+  }
 });
 
 test('rejects browser requests from origins outside the allow list', async () => {

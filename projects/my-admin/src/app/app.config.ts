@@ -1,14 +1,18 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { adminAuthInterceptor } from './core/interceptors/admin-auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
-    provideHttpClient(withFetch()),
-    provideClientHydration(),
-  ],
+  provideBrowserGlobalErrorListeners(),
+  provideRouter(routes),
+  provideHttpClient(),
+  provideClientHydration(),
+  provideHttpClient(
+      withInterceptors([adminAuthInterceptor])
+    ),
+],
 };

@@ -1,0 +1,239 @@
+/* =============================================================== */
+/* CSS RIÊNG CHO TRANG QUẢN LÝ BLOG (blogs-admin.component.css)    */
+/* =============================================================== */
+
+:host {
+    display: block;
+    background-color: #f4f5f8;
+    font-family: 'Nunito Sans', sans-serif;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.admin-layout-wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    background-color: #f4f5f8;
+}
+
+/* --- NỘI DUNG --- */
+.admin-main-content {
+    flex: 1;  
+    padding: 30px 40px 40px 40px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0px; 
+}
+
+/* --- BADGE TRẠNG THÁI --- */
+.badge-status {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;      
+    white-space: nowrap;       
+}
+.badge-status-pending {
+    background-color: #fff3cd; color: #856404;
+}
+.badge-status-approved {
+    background-color: #d1e7dd; color: #0f5132;
+}
+.badge-status-violated {
+    background-color: #f8d7da; color: #842029;
+}
+
+/* --- BẢNG DANH SÁCH BLOG --- */
+.table-blogs th, .table-blogs td {
+    padding: 16px 12px;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.table-blogs thead th {
+    background-color: #f8f9fa;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #6c757d;
+    letter-spacing: 0.5px;
+    border-bottom: none;
+}
+.table-blogs tbody tr:hover {
+    background-color: #f8f9ff;
+}
+
+.blog-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+.blog-title {
+    font-weight: 600;
+    color: #333;
+}
+.blog-date {
+    font-size: 12px;
+    color: #6c757d;
+    display: block;
+    margin-top: 2px;
+}
+.author-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.author-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* --- ACTION BUTTONS --- */
+.action-btn-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.btn-action-icon {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: 0.2s;
+    color: #6c757d;
+}
+.btn-action-icon:hover {
+    background-color: #f1f1f1;
+}
+.btn-action-icon.text-danger:hover {
+    background-color: #ffe6e6;
+    color: #c00000 !important;
+}
+
+/* --- CỘT PHẢI (BÀI VIẾT CẦN DUYỆT) --- */
+.pending-item {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid #f0f0f0;
+    transition: 0.2s;
+}
+.pending-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.pending-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 12px;
+}
+.pending-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.pending-author {
+    font-size: 12px;
+    color: #6c757d;
+}
+.pending-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+.btn-approve-small {
+    background-color: #fff;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    padding: 4px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.btn-approve-small:hover {
+    background-color: #dc3545;
+    color: #fff;
+}
+.btn-reject-small {
+    background-color: #f1f1f1;
+    border: 1px solid #f1f1f1;
+    color: #333;
+    padding: 4px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.btn-reject-small:hover {
+    background-color: #e0e0e0;
+}
+
+/* --- PAGINATION --- */
+.pagination .page-item.active .page-link {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.pagination .page-link {
+    color: #333;
+}
+.pagination .page-link:hover {
+    color: #dc3545;
+}
+
+/* --- BỐ CỤC MỚI: ẢNH MỘT BÊN, CHỮ MỘT BÊN --- */
+.blog-detail-content-wrapper {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #4a4a4a;
+}
+
+/* Biến mỗi cặp nội dung hoặc cấu trúc trong bài thành dạng hàng ngang (Flexbox) */
+.blog-detail-content-wrapper p {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Định dạng cố định hình ảnh nằm gọn bên trái/phải */
+.blog-detail-content-wrapper img {
+    width: 300px !important;    /* Cố định chiều rộng vừa vặn */
+    height: 200px !important;   /* Cố định chiều cao để ảnh không bị bóp méo */
+    object-fit: cover;
+    border-radius: 12px;        /* Bo góc mềm mại */
+    flex-shrink: 0;             /* Không bị co ép kích thước */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin: 0 !important;       /* Xóa margin mặc định */
+}
+
+/* Phần chữ tự động giãn đều phần không gian còn lại */
+.blog-detail-content-wrapper p:has(img) {
+    background: #fdfbfb;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #f0f0f0;
+}
+/* Đảm bảo hình ảnh phụ trong nội dung chữ không bị vỡ khung cột phải */
+.blog-detail-content img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 8px;
+    margin: 12px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    display: block;
+}
+
+/* Responsive cho màn hình nhỏ (Mobile) */
+@media (max-width: 768px) {
+    .blog-detail-content-wrapper p {
+        flex-direction: column;
+    }
+    .blog-detail-content-wrapper img {
+        width: 100% !important;
+        height: auto !important;
+    }
+}

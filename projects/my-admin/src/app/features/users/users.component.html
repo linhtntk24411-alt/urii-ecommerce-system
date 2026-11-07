@@ -1,0 +1,378 @@
+<div class="container-fluid py-2">
+  <!-- Toast Alert -->
+  <div *ngIf="toastMessage" class="alert alert-dismissible fade show shadow-sm mb-3"
+    [ngClass]="toastType === 'danger' ? 'alert-danger' : 'alert-success'" role="alert">
+    <i class="bi me-2" [ngClass]="toastType === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = ''"></button>
+  </div>
+
+  <!-- 1. Page Header matching admin-users.html -->
+  <div class="page-header flex-wrap gap-2">
+    <div>
+      <h1 class="page-title">Quản lý người dùng</h1>
+      <p class="page-subtitle">Theo dõi và quản lý thông tin tài khoản người dùng trong hệ thống</p>
+    </div>
+    <button type="button" class="btn btn-primary-green d-flex align-items-center gap-2" (click)="openCreateModal()">
+      <i class="bi bi-plus-lg"></i> Thêm người dùng
+    </button>
+  </div>
+
+  <!-- 2. Stats Cards (4 Columns) matching admin-users.html -->
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: #f4f7ee; color: var(--primary-green, #6B8E23);">
+          <i class="bi bi-people-fill"></i>
+        </div>
+        <div class="stat-info">
+          <h6>Tổng người dùng</h6>
+          <h3>{{ totalUsersCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">
+          <i class="bi bi-person-plus-fill"></i>
+        </div>
+        <div class="stat-info">
+          <h6>Thành viên mới</h6>
+          <h3>{{ newMembersCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
+          <i class="bi bi-person-check-fill"></i>
+        </div>
+        <div class="stat-info">
+          <h6>Đang hoạt động</h6>
+          <h3>{{ activeUsersCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3 d-flex">
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+          <i class="bi bi-person-x-fill"></i>
+        </div>
+        <div class="stat-info">
+          <h6>Bị khóa</h6>
+          <h3>{{ lockedUsersCount }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Filter Bar -->
+  <div class="filter-bar">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <!-- Left Filters -->
+      <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+        <div class="search-input-box">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Tìm tên, email, SĐT..."
+              [(ngModel)]="searchQuery" (input)="applyFilters()">
+          </div>
+        </div>
+
+        <div class="select-role-box">
+          <select class="form-select custom-select-arrow" [(ngModel)]="roleFilter" (change)="applyFilters()">
+            <option value="">Tất cả vai trò</option>
+            <option value="admin">Quản trị viên</option>
+            <option value="staff">Nhân viên</option>
+            <option value="customer">Khách hàng</option>
+          </select>
+        </div>
+
+        <div class="select-status-box">
+          <select class="form-select custom-select-arrow" [(ngModel)]="statusFilter" (change)="applyFilters()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="pending">Chờ xác minh</option>
+            <option value="locked">Bị khóa</option>
+          </select>
+        </div>
+
+        <div class="reset-filter-box">
+          <button class="btn btn-light border btn-reset-custom" (click)="resetFilters()">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Sort -->
+      <div class="sort-box ms-auto d-flex align-items-center gap-2">
+        <span class="text-muted small fw-semibold text-nowrap">Sắp xếp:</span>
+        <select class="form-select custom-select-arrow w-auto" [(ngModel)]="sortBy" (change)="applyFilters()">
+          <option value="newest">Mới nhất</option>
+          <option value="oldest">Cũ nhất</option>
+          <option value="name-asc">Tên (A-Z)</option>
+          <option value="name-desc">Tên (Z-A)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. User Table matching admin-users.html -->
+  <div class="table-card">
+    <div class="table-responsive">
+      <table class="table table-users">
+        <thead>
+          <tr>
+            <th width="40">
+              <input class="form-check-input" type="checkbox">
+            </th>
+            <th>Người dùng</th>
+            <th>Số điện thoại</th>
+            <th>Vai trò</th>
+            <th>Ngày đăng ký</th>
+            <th>Trạng thái</th>
+            <th class="text-end">Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="isLoading">
+            <td colspan="7" class="text-center py-4 text-muted">
+              <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+              Đang tải dữ liệu người dùng từ MongoDB...
+            </td>
+          </tr>
+
+          <tr *ngIf="!isLoading && pagedUsers.length === 0">
+            <td colspan="7" class="text-center py-4 text-muted">
+              Không tìm thấy người dùng phù hợp.
+            </td>
+          </tr>
+
+          <tr *ngFor="let u of pagedUsers">
+            <td><input class="form-check-input" type="checkbox"></td>
+            <td>
+              <div class="user-cell">
+                <img [src]="u.avatarUrl" alt="" (error)="onImgError($event)">
+                <div>
+                  <div class="user-name">{{ u.name }}</div>
+                  <div class="user-email">{{ u.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ u.phone || '0901 234 567' }}</td>
+            <td>
+              <span class="badge-role" [class.admin]="u.roleKey === 'admin'">
+                {{ u.roleLabel }}
+              </span>
+            </td>
+            <td>{{ u.displayJoinDate }}</td>
+            <td>
+              <span class="badge-custom"
+                [ngClass]="{
+                  'badge-active': u.statusKey === 'active',
+                  'badge-pending': u.statusKey === 'pending',
+                  'badge-locked': u.statusKey === 'locked'
+                }">
+                {{ u.statusLabel }}
+              </span>
+            </td>
+            <td class="text-end">
+              <button class="btn-action" title="Xem chi tiết" (click)="openDetailModal(u)">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button class="btn-action" title="Chỉnh sửa" (click)="openEditModal(u)">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button class="btn-action" [title]="u.statusKey === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'"
+                (click)="toggleLockStatus(u)">
+                <i class="bi" [ngClass]="u.statusKey === 'locked' ? 'bi-unlock text-success' : 'bi-lock'"></i>
+              </button>
+              <button class="btn-action delete" title="Xóa" (click)="confirmDelete(u)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 5. Pagination matching admin-users.html -->
+    <div class="d-flex justify-content-between align-items-center p-3 border-top" *ngIf="filteredUsers.length > 0">
+      <div class="text-muted" style="font-size: 0.85rem;">
+        Hiển thị <strong>{{ showingFrom }} - {{ showingTo }}</strong> trong số <strong>{{ filteredUsers.length }}</strong> người dùng
+      </div>
+      <nav aria-label="Page navigation">
+        <ul class="pagination mb-0">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" href="javascript:void(0)" (click)="changePage(currentPage - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          <li class="page-item" *ngFor="let page of pageNumbers" [class.active]="page === currentPage">
+            <a class="page-link" href="javascript:void(0)" (click)="changePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" href="javascript:void(0)" (click)="changePage(currentPage + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add / Edit User -->
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);" *ngIf="showUserModal">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 440px; margin: 1.5rem auto;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+      <div class="modal-header border-bottom-0 px-3 pt-3 pb-1">
+        <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-2 m-0 fs-6">
+          <i class="bi bi-person-badge text-success"></i>
+          {{ isEditing ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới' }}
+        </h6>
+        <button type="button" class="btn-close" (click)="closeUserModal()"></button>
+      </div>
+      <div class="modal-body px-3 py-2">
+        <form (ngSubmit)="saveUser()">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label fw-semibold small mb-1">Họ và tên <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" placeholder="Nhập họ và tên..."
+                [(ngModel)]="form.name" name="name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small mb-1">Email <span class="text-danger">*</span></label>
+              <input type="email" class="form-control form-control-sm" placeholder="example@gmail.com"
+                [(ngModel)]="form.email" name="email" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small mb-1">Số điện thoại</label>
+              <input type="text" class="form-control form-control-sm" placeholder="0901 234 567"
+                [(ngModel)]="form.phone" name="phone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small mb-1">Vai trò</label>
+              <select class="form-select form-select-sm" [(ngModel)]="form.roleKey" name="roleKey">
+                <option value="customer">Khách hàng</option>
+                <option value="staff">Nhân viên</option>
+                <option value="admin">Quản trị viên</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small mb-1">Trạng thái</label>
+              <select class="form-select form-select-sm" [(ngModel)]="form.statusKey" name="statusKey">
+                <option value="active">Đang hoạt động</option>
+                <option value="pending">Chờ xác minh</option>
+                <option value="locked">Bị khóa</option>
+              </select>
+            </div>
+            <div class="col-md-6" *ngIf="!isEditing">
+              <label class="form-label fw-semibold small mb-1">Mật khẩu</label>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="form.password" name="password">
+            </div>
+            <div [class]="isEditing ? 'col-12' : 'col-md-6'">
+              <label class="form-label fw-semibold small mb-1">Ảnh đại diện</label>
+              <div class="d-flex align-items-center gap-2">
+                <img [src]="form.avatar || 'images/avatar_user.jpeg'" (error)="onImgError($event)"
+                  style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; flex-shrink: 0;" />
+                <input type="file" accept="image/*" class="form-control form-control-sm" (change)="onAvatarFileChange($event)">
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+            <button type="button" class="btn btn-sm btn-light px-3" (click)="closeUserModal()">Hủy</button>
+            <button type="submit" class="btn btn-sm btn-primary-green px-3">
+              <i class="bi bi-check2-circle me-1"></i> {{ isEditing ? 'Lưu thay đổi' : 'Thêm người dùng' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: View User Detail -->
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="showDetailModal && selectedUser">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-header border-bottom-0 px-4 pt-4">
+        <h5 class="modal-title fw-bold">Hồ sơ người dùng</h5>
+        <button type="button" class="btn-close" (click)="closeDetailModal()"></button>
+      </div>
+      <div class="modal-body px-4 pb-4">
+        <div class="d-flex align-items-center gap-3 p-3 rounded-3 mb-3" style="background: #F4F7F0;">
+          <img [src]="selectedUser.avatarUrl" [alt]="selectedUser.name" (error)="onImgError($event)"
+            style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #fff;">
+          <div class="flex-grow-1">
+            <h6 class="fw-bold mb-1">{{ selectedUser.name }}</h6>
+            <div class="text-muted small">{{ selectedUser.email }}</div>
+          </div>
+          <span class="badge-custom"
+            [ngClass]="{
+              'badge-active': selectedUser.statusKey === 'active',
+              'badge-pending': selectedUser.statusKey === 'pending',
+              'badge-locked': selectedUser.statusKey === 'locked'
+            }">
+            {{ selectedUser.statusLabel }}
+          </span>
+        </div>
+
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Số điện thoại:</span>
+            <span class="fw-semibold">{{ selectedUser.phone || '0901 234 567' }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Vai trò:</span>
+            <span class="badge-role" [class.admin]="selectedUser.roleKey === 'admin'">{{ selectedUser.roleLabel }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Ngày tham gia:</span>
+            <span class="fw-semibold">{{ selectedUser.displayJoinDate }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Số đơn đã đặt:</span>
+            <span class="fw-semibold">{{ selectedUser.orders || 0 }} đơn hàng</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted">Địa chỉ:</span>
+            <span class="fw-semibold text-end">{{ selectedUser.addressDisplay }}</span>
+          </li>
+        </ul>
+
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <button type="button" class="btn btn-light" (click)="closeDetailModal()">Đóng</button>
+          <button type="button" class="btn btn-primary-green" (click)="closeDetailModal(); openEditModal(selectedUser)">
+            <i class="bi bi-pencil-square me-1"></i> Chỉnh sửa
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Delete User Confirmation -->
+<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="showDeleteModal && deletingUser">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-body text-center p-4">
+        <div class="text-danger mb-3">
+          <i class="bi bi-exclamation-circle" style="font-size: 3rem;"></i>
+        </div>
+        <h5 class="fw-bold mb-2">Xác nhận xóa</h5>
+        <p class="text-muted small mb-4">
+          Bạn có chắc chắn muốn xóa tài khoản <strong class="text-dark">{{ deletingUser.name }}</strong> không?
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <button type="button" class="btn btn-light px-4" (click)="closeDeleteModal()">Hủy</button>
+          <button type="button" class="btn btn-danger px-4" style="border-radius: 8px;" (click)="deleteUser()">Xóa bỏ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

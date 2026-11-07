@@ -1,0 +1,35 @@
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.table img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+.table td {
+    vertical-align: middle;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+}
+.pagination .page-link { color: #333; }
+.pagination .page-link:hover { color: #dc3545; }
+
+.btn-action-edit, .btn-action-delete {
+    border: none;
+    background: transparent;
+    padding: 5px 8px;
+    cursor: pointer;
+}
+.btn-action-edit { color: #999; }
+.btn-action-delete { color: #dc3545; }
+.btn-action-edit:hover { color: #333; background: #eee; border-radius: 6px; }
+.btn-action-delete:hover { color: #a71d2a; background: #f8d7da; border-radius: 6px; }

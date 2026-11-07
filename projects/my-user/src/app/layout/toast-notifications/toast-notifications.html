@@ -1,0 +1,20 @@
+<div class="toast-stack" aria-live="polite" aria-relevant="additions">
+  @for (message of toast.messages(); track message.id) {
+    <div class="toast-card" [ngClass]="'toast-' + message.kind" role="status">
+      <span class="toast-icon" aria-hidden="true">
+        @switch (message.kind) {
+          @case ('success') { ✓ }
+          @case ('error') { ! }
+          @default { i }
+        }
+      </span>
+      <span class="toast-message">{{ message.message }}</span>
+      <button
+        type="button"
+        class="toast-close"
+        aria-label="Đóng thông báo"
+        (click)="toast.dismiss(message.id)"
+      >×</button>
+    </div>
+  }
+</div>

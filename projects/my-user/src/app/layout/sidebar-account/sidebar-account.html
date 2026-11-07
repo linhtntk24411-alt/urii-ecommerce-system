@@ -1,0 +1,45 @@
+<main class="account-shell">
+  <aside class="account-sidebar" aria-label="Điều hướng tài khoản">
+    <nav class="account-nav">
+      <a class="account-nav__link" routerLink="/profile" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">person</span>
+        <span class="account-nav__label">Hồ sơ của tôi</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="account-nav__link" routerLink="/orders" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+        <span class="account-nav__label">Đơn hàng của tôi</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="account-nav__link" routerLink="/custom-order-list" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">edit_square</span>
+        <span class="account-nav__label">Yêu cầu thiết kế</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="account-nav__link" routerLink="/saved-maps" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">bookmark</span>
+        <span class="account-nav__label">Kho map đã lưu</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="account-nav__link" routerLink="/favorites" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">favorite</span>
+        <span class="account-nav__label">Sản phẩm yêu thích</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="account-nav__link" routerLink="/myreview" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">star</span>
+        <span class="account-nav__label">Đánh giá của tôi</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+      <a class="account-nav__link" routerLink="/my-blogs" routerLinkActive="account-nav__link--active" ariaCurrentWhenActive="page">
+        <span class="account-nav__icon material-symbols-outlined" aria-hidden="true">edit</span>
+        <span class="account-nav__label">Bài viết của tôi</span>
+        <span class="account-nav__arrow material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </a>
+    </nav>
+  </aside>
+
+  <section class="account-shell__content">
+    <router-outlet></router-outlet>
+  </section>
+</main>

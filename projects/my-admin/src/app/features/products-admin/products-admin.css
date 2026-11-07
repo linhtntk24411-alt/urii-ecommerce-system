@@ -1,0 +1,193 @@
+/* =========================================================
+   Quản lý sản phẩm - Styling tổng quan
+========================================================= */
+
+/* Container bọc ngoài cùng */
+.product-admin-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: 50px;
+}
+
+/* Tiêu đề trang */
+.page-title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+/* Utils: Shadow */
+.shadow-sm {
+  box-shadow: 0 .125rem .25rem rgba(0,0,0,.04) !important;
+}
+
+/* =========================================================
+   Bảng sản phẩm (Table)
+========================================================= */
+.table th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.table td {
+  vertical-align: middle;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+/* Custom header bảng */
+.thead-custom {
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #f8f9fa; /* bg-light */
+  color: #6c757d; /* text-muted */
+}
+.col-image { width: 60px; }
+.col-actions { width: 120px; }
+
+/* Hình ảnh trong bảng */
+.product-thumb {
+  width: 45px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.img-thumbnail {
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.sku-text {
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+/* =========================================================
+   Badge Trạng thái
+========================================================= */
+.table .badge {
+    font-size: 12px !important;
+    padding: 6px 14px !important;
+    border-radius: 20px !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+}
+
+/* .table .badge.bg-danger {
+    background-color: #e73f4d !important;
+    color: #840001 !important;
+}
+
+.table .badge.bg-success {
+    background-color: #39ec29 !important;
+    color: #0f5132 !important;
+}
+
+.table .badge.bg-warning {
+    background-color: #f7dc83 !important;
+    color: #664d03 !important;
+}
+
+.table .badge.bg-light {
+    background-color: #75df8c !important;
+    color: #49574e !important;
+} */
+
+/* Nút bấm (Button) */
+.btn-primary {
+  background-color: #0d6efd;
+  border: none;
+  box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
+}
+
+.btn-primary:hover {
+  background-color: #0b5ed7;
+}
+
+/* Custom form input focus */
+.form-control:focus, .form-select:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+/* Định hình kích thước ảnh trong bảng sản phẩm cho gọn gàng */
+.table img, td img {
+    width: 45px !important;
+    height: 45px !important;
+    object-fit: cover !important;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+
+/* Căn giữa các nội dung trong bảng theo chiều dọc */
+.table td, .table th {
+    vertical-align: middle !important;
+    padding: 12px 16px !important;
+}
+
+/* Kiểu dáng cho Badge trạng thái (Bán chạy, Mới, Sắp hết hàng) */
+.badge.bg-success, .badge.bg-danger, .badge.bg-warning, .badge.bg-info {
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+/* Nút hành động chỉnh sửa / xóa */
+.btn-action-edit, .btn-action-delete {
+    border: none;
+    background: transparent;
+    padding: 6px 8px;
+    color: #888;
+    transition: 0.2s;
+}
+.btn-action-edit:hover { color: #0d6efd; background: #e7f1ff; border-radius: 6px; }
+.btn-action-delete:hover { color: #dc3545; background: #f8d7da; border-radius: 6px; }
+/* Định dạng chung cho các badge trạng thái trong bảng sản phẩm */
+.table .badge {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* Trạng thái Bán chạy (Màu đỏ/hồng nhạt dễ nhìn) */
+.table .badge.bg-danger, 
+.table .badge.text-bg-danger,
+.table span:has-text("Bán chạy") {
+    background-color: #f8d7da !important;
+    color: #840001 !important;
+}
+
+/* Trạng thái Mới */
+.table .badge.bg-success, 
+.table .badge.text-bg-success {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+}
+
+/* Trạng thái Sắp hết hàng / Chờ xác nhận */
+.table .badge.bg-warning, 
+.table .badge.text-bg-warning {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+}
+/* --- Tùy chỉnh đồng bộ 2 nút cạnh nhau --- */
+.btn-custom-file {
+    background-color: #ffffff !important;  /* Luôn giữ nền trắng */
+    color: #dc3545 !important;             /* Chữ màu đỏ */
+    border: 1px solid #dc3545 !important;    /* Viền đỏ */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Khi rê chuột vào (hover): Giữ nguyên màu trắng hoặc đổi nhẹ sang nền trắng tinh khôi, không bị đổi màu nền khác */
+.btn-custom-file:hover {
+    background-color: #fff5f5 !important;  /* Nền hồng nhạt rất nhẹ hoặc giữ nguyên #ffffff nếu muốn trắng hoàn toàn */
+    color: #b02a37 !important;
+    border-color: #b02a37 !important;
+}

@@ -1,0 +1,108 @@
+/* =============================================================== */
+/* CSS RIÊNG CHO TRANG QUẢN LÝ BÌNH LUẬN (comments-admin.component.css) */
+/* =============================================================== */
+
+:host {
+    display: block;
+    background-color: #f4f5f8;
+    font-family: 'Nunito Sans', sans-serif;
+    width: 100%;
+}
+
+/* --- CỘT HÀNH ĐỘNG --- */
+.action-btn-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    align-items: center;
+}
+.btn-action-icon {
+    border: none;
+    background: transparent;
+    padding: 4px 6px;
+    font-size: 18px;
+    color: #6c757d;
+    border-radius: 4px;
+    transition: 0.2s;
+    cursor: pointer;
+}
+.btn-action-icon:hover {
+    background-color: #f1f1f1;
+}
+.btn-action-icon.text-danger:hover {
+    background-color: #ffe6e6;
+    color: #dc3545 !important;
+}
+
+/* --- BADGE TRẠNG THÁI --- */
+.badge-status {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.badge-status-approved {
+    background-color: #d1e7dd; color: #0f5132;
+}
+.badge-status-pending {
+    background-color: #fff3cd; color: #856404;
+}
+.badge-status-flagged {
+    background-color: #f8d7da; color: #842029;
+}
+
+/* --- BẢNG --- */
+.table-comments th, .table-comments td {
+    padding: 16px 12px;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.table-comments thead th {
+    background-color: #f8f9fa;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #6c757d;
+    letter-spacing: 0.5px;
+    border-bottom: none;
+}
+.table-comments tbody tr:hover {
+    background-color: #f8f9ff;
+}
+
+.comment-content {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    color: #333;
+}
+.author-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.author-avatar {
+    display: block;
+    flex: 0 0 auto;
+    object-fit: cover;
+}
+.author-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* --- PAGINATION --- */
+.pagination .page-item.active .page-link {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+}
+.pagination .page-link {
+    color: #333;
+    cursor: pointer;
+}
+.pagination .page-link:hover {
+    color: #dc3545;
+}

@@ -1,0 +1,181 @@
+<main class="orders-page">
+  @if (requiresLogin) {
+    <section class="orders-message">
+      <span class="material-symbols-outlined" aria-hidden="true">account_circle</span>
+      <h1>Đăng nhập để xem đơn hàng</h1>
+      <p>Đơn hàng được tải riêng từ tài khoản của bạn.</p>
+      <button class="orders-button orders-button--primary" type="button" (click)="signIn()">Đăng nhập</button>
+    </section>
+  } @else if (orderSlug) {
+    <header class="orders-heading orders-heading--detail">
+      <button class="orders-back" type="button" (click)="backToOrders()">
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+        Đơn hàng của tôi
+      </button>
+      <h1>Chi tiết đơn hàng</h1>
+    </header>
+
+    @if (isLoading) {
+      <section class="orders-message" role="status">Đang tải chi tiết đơn hàng...</section>
+    } @else if (errorMessage) {
+      <section class="orders-message" role="alert">
+        <p>{{ errorMessage }}</p>
+        <button class="orders-button orders-button--secondary" type="button" (click)="loadOrder()">Thử lại</button>
+      </section>
+    } @else if (activeOrder) {
+      <article class="order-detail-card">
+        <header class="order-detail-card__heading">
+          <div class="order-code">
+            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+            <div>
+              <h2>{{ activeOrder.slug }}</h2>
+              @if (activeOrder.date) {
+                <p>{{ activeOrder.date }}</p>
+              }
+            </div>
+          </div>
+          @if (statusLabel(activeOrder)) {
+            <span class="order-status" [attr.data-status]="activeOrder.statusId">{{ statusLabel(activeOrder) }}</span>
+          }
+        </header>
+
+        @if (activeOrder.items.length) {
+          <section class="order-detail-section">
+            <h3>Sản phẩm</h3>
+            <div class="order-items">
+              @for (item of activeOrder.items; track $index) {
+                <div class="order-item">
+                  @if (item.image) {
+                    <img [src]="item.image" alt="" />
+                  } @else {
+                    <span class="material-symbols-outlined order-item__placeholder" aria-hidden="true">inventory_2</span>
+                  }
+                  <div class="order-item__info">
+                    @if (item.name) {
+                      <strong>{{ item.name }}</strong>
+                    }
+                    <div class="order-item__meta">
+                      @if (item.quantity !== null) {
+                        <span>Số lượng: {{ item.quantity }}</span>
+                      }
+                      @if (item.unitPrice !== null) {
+                        <span>{{ item.unitPrice | number }}đ</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        <section class="order-detail-section order-detail-section--summary">
+          <h3>Thông tin đơn hàng</h3>
+          <dl class="order-detail-list">
+            @if (formatTotal(activeOrder)) {
+              <div><dt>Tổng thanh toán</dt><dd>{{ formatTotal(activeOrder) }}</dd></div>
+            }
+            @if (activeOrder.paymentMethod) {
+              <div><dt>Phương thức thanh toán</dt><dd>{{ activeOrder.paymentMethod }}</dd></div>
+            }
+            @if (activeOrder.paymentStatus) {
+              <div><dt>Trạng thái thanh toán</dt><dd>{{ activeOrder.paymentStatus }}</dd></div>
+            }
+            @if (activeOrder.shippingMethod) {
+              <div><dt>Vận chuyển</dt><dd>{{ activeOrder.shippingMethod }}</dd></div>
+            }
+            @if (activeOrder.trackingNumber) {
+              <div><dt>Mã vận đơn</dt><dd>{{ activeOrder.trackingNumber }}</dd></div>
+            }
+            @if (activeOrder.addressName) {
+              <div><dt>Người nhận</dt><dd>{{ activeOrder.addressName }}</dd></div>
+            }
+            @if (activeOrder.addressPhone) {
+              <div><dt>Số điện thoại</dt><dd>{{ activeOrder.addressPhone }}</dd></div>
+            }
+            @if (activeOrder.addressText) {
+              <div><dt>Địa chỉ nhận hàng</dt><dd>{{ activeOrder.addressText }}</dd></div>
+            }
+          </dl>
+        </section>
+      </article>
+    }
+  } @else {
+    <header class="orders-heading">
+      <h1>Đơn hàng của tôi</h1>
+    </header>
+
+    <nav class="order-tabs" aria-label="Lọc đơn hàng">
+      @for (status of statuses; track status.id) {
+        <button
+          type="button"
+          class="order-tabs__item"
+          [class.order-tabs__item--active]="selectedStatus === status.id"
+          [attr.aria-pressed]="selectedStatus === status.id"
+          (click)="selectStatus(status.id)">
+          {{ status.label }}
+        </button>
+      }
+    </nav>
+
+    @if (isLoading) {
+      <section class="orders-message" role="status">Đang tải đơn hàng...</section>
+    } @else if (errorMessage) {
+      <section class="orders-message" role="alert">
+        <p>{{ errorMessage }}</p>
+        <button class="orders-button orders-button--secondary" type="button" (click)="loadOrders(currentPage)">Thử lại</button>
+      </section>
+    } @else if (!orders.length) {
+      <section class="orders-message orders-message--empty">
+        <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+        <h2>Chưa có đơn hàng</h2>
+      </section>
+    } @else {
+      <section class="orders-list" aria-label="Danh sách đơn hàng">
+        @for (order of orders; track order.slug) {
+          <article class="order-card">
+            <div class="order-card__main">
+              <div class="order-code">
+                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+                <div>
+                  <h2>{{ order.slug }}</h2>
+                  @if (order.date) {
+                    <p>{{ order.date }}</p>
+                  }
+                </div>
+              </div>
+              @if (statusLabel(order)) {
+                <span class="order-status" [attr.data-status]="order.statusId">{{ statusLabel(order) }}</span>
+              }
+            </div>
+            <div class="order-card__footer">
+              <div class="order-total">
+                <span>Tổng thanh toán</span>
+                @if (formatTotal(order)) {
+                  <strong>{{ formatTotal(order) }}</strong>
+                }
+              </div>
+              <a class="orders-button orders-button--secondary" [routerLink]="['/orders', order.slug]">Xem chi tiết</a>
+            </div>
+          </article>
+        }
+      </section>
+
+      @if (totalPages > 1) {
+        <nav class="orders-pagination" aria-label="Phân trang đơn hàng">
+          <button type="button" aria-label="Trang trước" [disabled]="currentPage <= 1" (click)="goToPage(currentPage - 1)">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+          </button>
+          @for (page of pageNumbers; track page) {
+            <button type="button" [class.orders-pagination__active]="currentPage === page" [attr.aria-current]="currentPage === page ? 'page' : null" (click)="goToPage(page)">
+              {{ page }}
+            </button>
+          }
+          <button type="button" aria-label="Trang sau" [disabled]="currentPage >= totalPages" (click)="goToPage(currentPage + 1)">
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+          </button>
+        </nav>
+      }
+    }
+  }
+</main>

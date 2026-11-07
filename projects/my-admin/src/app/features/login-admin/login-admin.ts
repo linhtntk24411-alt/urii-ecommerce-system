@@ -14,6 +14,7 @@ interface LoginResponse {
     role: string;
   };
 }
+import { Component } from '@angular/core';
 
 @Component({
   imports: [],
@@ -152,3 +153,4 @@ private handleGoogleLogin(accessToken: string): void {
 }
 
 }
+export class LoginAdmin {}

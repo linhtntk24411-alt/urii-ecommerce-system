@@ -10,6 +10,11 @@
       </div>
       
 
+      <a routerLink="/" class="btn-view-store">
+          <i class="bi bi-shop"></i>
+          <span>Quay lại Cửa hàng</span>
+      </a>
+
       <nav class="sidebar-nav">
           <a class="nav-item" routerLink="/dashboard" routerLinkActive="active">
               <span class="material-symbols-outlined icon-md">dashboard</span>
@@ -182,6 +187,75 @@
 </div>
 <!-- ==================== FOOTER ==================== -->
       <footer class="urii-footer">
+          <div class="footer-main">
+              <!-- CỘT LOGO -->
+              <div class="footer-brand">
+                  <a routerLink="/" class="footer-logo">
+                      <img src="assets/Urii-Logo.png" alt="Urii Logo">
+                  </a>
+                  <p class="footer-desc">
+                      Nơi khơi nguồn đam mê sáng tạo Pixel Art với những hạt ủi nhiệt Perler Beads chất lượng nhất.
+                  </p>
+                  <div class="footer-socials">
+                      <a href="https://www.facebook.com/UriiUicathegioi" class="social-link" target="_blank">
+                          <i class="bi bi-facebook social-icon-bi"></i>
+                      </a>
+                      <a href="https://www.tiktok.com/@urii.uicathegioii" class="social-link" target="_blank">
+                          <i class="bi bi-tiktok social-icon-bi"></i>
+                      </a>
+                      <a href="https://www.instagram.com/urii.uicathegioii/" class="social-link" target="_blank">
+                          <i class="bi bi-instagram social-icon-bi"></i>
+                      </a>
+                  </div>
+              </div>
+
+              <!-- CỘT KHÁM PHÁ -->
+              <div class="footer-col">
+                  <h4>Khám phá <i class="bi bi-chevron-down accordion-icon"></i></h4>
+                  <div class="footer-content">
+                      <ul>
+                          <li><a routerLink="/about">Về Urii</a></li>
+                          <li><a routerLink="/product">Sản phẩm mới</a></li>
+                          <li><a routerLink="/gallery">Thư viện map</a></li>
+                          <li><a routerLink="/blog-list">Blog cộng đồng</a></li>
+                      </ul>
+                  </div>
+              </div>
+
+              <!-- CỘT HỖ TRỢ -->
+              <div class="footer-col">
+                  <h4>Hỗ trợ khách hàng <i class="bi bi-chevron-down accordion-icon"></i></h4>
+                  <div class="footer-content">
+                      <ul>
+                          <li><a routerLink="/support" [queryParams]="{tab: 'support-center'}">Trung tâm hỗ trợ</a></li>
+                          <li><a routerLink="/support" [queryParams]="{tab: 'faq'}">Câu hỏi thường gặp</a></li>
+                          <li><a routerLink="/support" [queryParams]="{tab: 'privacy-policy'}">Chính sách bảo mật</a></li>
+                          <li><a routerLink="/support" [queryParams]="{tab: 'terms-of-service'}">Điều khoản sử dụng</a></li>
+                      </ul>
+                  </div>
+              </div>
+
+              <!-- CỘT LIÊN HỆ -->
+              <div class="footer-col">
+                  <h4>Liên hệ <i class="bi bi-chevron-down accordion-icon"></i></h4>
+                  <div class="footer-content">
+                      <div class="footer-contact">
+                          <div class="contact-item">
+                              <i class="bi bi-geo-alt-fill contact-icon-bi"></i>
+                              <span>Địa chỉ: 669 Đỗ Mười, KP3, Thủ Đức, TP. HCM</span>
+                          </div>
+                          <div class="contact-item">
+                              <i class="bi bi-telephone-fill contact-icon-bi"></i>
+                              <span>Hotline: 0123 456 789</span>
+                          </div>
+                          <div class="contact-item">
+                              <i class="bi bi-envelope-fill contact-icon-bi"></i>
+                              <span>Email: uriiuicathegioi@gmail.com</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
 
           <div class="footer-bottom">
               <div class="footer-bottom-inner">

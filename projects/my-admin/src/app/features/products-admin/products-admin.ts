@@ -41,6 +41,10 @@ export class ProductsAdmin implements OnInit {
 
   categoriesMap: { [key: string]: string } = { 
     "HN": "Hạt nhựa", "DC": "Dụng cụ", "BST": "Bộ sưu tập", "KIT": "Bộ Kit", "TP": "Thành phần"
+  editData: any = { id: null, name: '', category: 'hat-nhua', status: 'normal', price: 0, stock: 0, image: '' };
+
+  categoriesMap: { [key: string]: string } = { 
+    "hat-nhua": "Hạt nhựa", "dung-cu": "Dụng cụ", "handmade": "Handmade", "kit": "Bộ Kit"
   };
 
   statusMap: { [key: string]: { text: string, class: string } } = { 
@@ -100,6 +104,23 @@ ngOnInit() {
 
     // Đếm Sản phẩm hot
     this.statHot = this.products.filter(p => this.getDisplayStatus(p) === 'hot').length;
+
+  constructor(private adminApi: AdminApiService) {}
+
+  ngOnInit() {
+    this.adminApi.products$.subscribe(data => {
+      this.products = data;
+      this.updateStats();
+      this.renderProducts();
+    });
+  }
+
+  updateStats() {
+    this.statTotal = this.products.length;
+    this.statWarning = this.products.filter(p => p.status === 'sap-het').length;
+    this.statDanger = this.products.filter(p => p.status === 'het-hang').length;
+    this.statNew = this.products.filter(p => p.status === 'new').length;
+    this.statHot = this.products.filter(p => p.status === 'hot').length;
   }
 
   onFilter() {

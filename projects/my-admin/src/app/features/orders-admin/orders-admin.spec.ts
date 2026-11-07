@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { OrdersAdmin } from './orders-admin';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { OrdersAdmin } from './orders-admin';
 
 describe('OrdersAdmin', () => {
   let component: OrdersAdmin;

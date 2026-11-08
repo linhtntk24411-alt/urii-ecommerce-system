@@ -150,13 +150,13 @@ function buildViolationResponse() {
  */
 function searchGallery(query) {
   if (!galleryData || galleryData.length === 0) return [];
+  const rawLower = String(query || '').toLowerCase();
   const normQuery = normalizeText(query);
 
-  // Thêm stop words hạt, ủi, số lượng để tránh nhầm sang M49 (Sóc ăn hạt)
   const stopWords = new Set([
     'co', 'khong', 'ko', 'map', 'mau', 'hinh', 'chart', 'cho', 'minh', 'xem',
     'tim', 'hoi', 've', 'shop', 'ban', 'la', 'nhung', 'nao', 'o', 'dau', 'can',
-    'muon', 'cai', 'gi', 'nay', 'do', 'dang', 'voi', 'duoc', 'di',
+    'muon', 'cai', 'gi', 'nay', 'do', 'dang', 'voi', 'duoc', 'di', 'con',
     'hat', 'ui', 'cuom', 'perler', 'beads', 'bead', 'nhua', 'so', 'luong', 'cua', 't', 'toi'
   ]);
   const tokens = normQuery.split(' ').filter(w => !stopWords.has(w) && w.length > 1);
@@ -166,29 +166,40 @@ function searchGallery(query) {
   const results = [];
 
   for (const item of galleryData) {
+    const rawName = (item.map_name || '').toLowerCase();
+    const rawWords = new Set(rawName.split(/[\s,.:;!?]+/));
     const normName = normalizeText(item.map_name || '');
+    const normWords = new Set(normName.split(' '));
     const normDesc = normalizeText(item.description || '');
     const normCats = (item.categories || []).map(c => normalizeText(c)).join(' ');
 
     let score = 0;
-    if (normName.includes(fullKey)) score += 25;
-    else if (normDesc.includes(fullKey) || normCats.includes(fullKey)) score += 10;
 
+    // So khớp cụm từ chính xác
+    if (normName.includes(fullKey)) score += 30;
+
+    // So khớp từ nguyên vẹn (word boundary, tránh 'ca' khớp 'cam', 'cáo')
     for (const token of tokens) {
-      if (normName.includes(token)) score += 5;
-      else if (normDesc.includes(token) || normCats.includes(token)) score += 2;
+      if (normWords.has(token)) score += 15;
+      else if (normCats.includes(token)) score += 5;
+      else if (normDesc.includes(token)) score += 2;
+    }
+
+    // Đặc biệt với tiếng Việt có dấu: nếu tìm 'cá' thì ưu tiên từ có 'cá'
+    if (rawLower.includes('cá') && rawWords.has('cá')) {
+      score += 25;
     }
 
     if ((fullKey.includes('doremon') || tokens.includes('doremon')) && normName.includes('doraemon')) score += 20;
     if ((fullKey.includes('kitty') || tokens.includes('kitty')) && normName.includes('kitty')) score += 20;
 
-    if (score >= 5) {
+    if (score >= 10) {
       results.push({ item, score });
     }
   }
 
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, 3).map(r => r.item);
+  return results.slice(0, 4).map(r => r.item);
 }
 
 /**
@@ -247,15 +258,15 @@ function getFallbackReply(userMessage, context = {}) {
 
   // 2. Nhận diện tìm kiếm theo MÀU SẮC CỤ THỂ (Color Filter Search)
   const colorKeywords = [
-    { key: 'hong', label: 'hồng', regex: /(?:^|\s)(hồng|mau hong|hong)(?:\s|$|[.,!?])/i },
-    { key: 'do', label: 'đỏ', regex: /(?:^|\s)(đỏ|mau do|do)(?:\s|$|[.,!?])/i },
-    { key: 'xanh', label: 'xanh', regex: /(?:^|\s)(xanh|mau xanh)(?:\s|$|[.,!?])/i },
-    { key: 'vang', label: 'vàng', regex: /(?:^|\s)(vàng|mau vang|vang)(?:\s|$|[.,!?])/i },
-    { key: 'tim', label: 'tím', regex: /(?:^|\s)(tím|mau tim|tim)(?:\s|$|[.,!?])/i },
-    { key: 'cam', label: 'cam', regex: /(?:^|\s)(cam|mau cam)(?:\s|$|[.,!?])/i },
-    { key: 'den', label: 'đen', regex: /(?:^|\s)(đen|mau den|den)(?:\s|$|[.,!?])/i },
-    { key: 'trang', label: 'trắng', regex: /(?:^|\s)(trắng|mau trang|trang)(?:\s|$|[.,!?])/i },
-    { key: 'pastel', label: 'pastel', regex: /(?:^|\s)(pastel|mau pastel)(?:\s|$|[.,!?])/i }
+    { key: 'hong', label: 'hồng', regex: /(?:^|\s)(màu hồng|sắc hồng|mau hong)(?:\s|$|[.,!?])/i },
+    { key: 'do', label: 'đỏ', regex: /(?:^|\s)(màu đỏ|sắc đỏ|mau do)(?:\s|$|[.,!?])/i },
+    { key: 'xanh', label: 'xanh', regex: /(?:^|\s)(màu xanh|sắc xanh|mau xanh|xanh lá|xanh dương|xanh biển)(?:\s|$|[.,!?])/i },
+    { key: 'vang', label: 'vàng', regex: /(?:^|\s)(màu vàng|sắc vàng|mau vang)(?:\s|$|[.,!?])/i },
+    { key: 'tim', label: 'tím', regex: /(?:^|\s)(màu tím|sắc tím|mau tim)(?:\s|$|[.,!?])/i },
+    { key: 'cam', label: 'cam', regex: /(?:^|\s)(màu cam|sắc cam|mau cam)(?:\s|$|[.,!?])/i },
+    { key: 'den', label: 'đen', regex: /(?:^|\s)(màu đen|mau den)(?:\s|$|[.,!?])/i },
+    { key: 'trang', label: 'trắng', regex: /(?:^|\s)(màu trắng|mau trang)(?:\s|$|[.,!?])/i },
+    { key: 'pastel', label: 'pastel', regex: /(?:^|\s)(màu pastel|mau pastel|pastel)(?:\s|$|[.,!?])/i }
   ];
 
   let detectedColor = null;

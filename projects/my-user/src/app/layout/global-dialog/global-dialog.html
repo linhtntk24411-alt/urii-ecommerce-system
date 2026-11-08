@@ -1,3 +1,38 @@
+@if (dialogService.currentLoginPrompt(); as prompt) {
+  <div class="checkout-login-backdrop" (click)="dialogService.closeLoginPrompt()">
+    <section
+      class="checkout-login-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="global-login-title"
+      aria-describedby="global-login-description"
+      (click)="$event.stopPropagation()"
+    >
+      <button
+        type="button"
+        class="checkout-login-close"
+        aria-label="Đóng popup"
+        (click)="dialogService.closeLoginPrompt()"
+      >×</button>
+      <div class="checkout-login-icon" aria-hidden="true">
+        <img src="assets/Urii-Logo.png" alt="Urii Logo">
+      </div>
+      <p class="checkout-login-eyebrow">{{ prompt.eyebrow }}</p>
+      <h2 id="global-login-title">{{ prompt.title }}</h2>
+      <p id="global-login-description" class="checkout-login-description">
+        {{ prompt.description }}
+      </p>
+      <button class="checkout-login-primary" type="button" (click)="goToLogin(prompt)">
+        Đăng nhập
+      </button>
+      <p class="checkout-login-register">
+        Chưa có tài khoản?
+        <a (click)="goToRegister(prompt)" role="button" tabindex="0">Đăng ký ngay</a>
+      </p>
+    </section>
+  </div>
+}
+
 @if (dialogService.currentDialog(); as dialog) {
   <div class="global-dialog-backdrop" (click)="dialogService.onCancel()">
     <div

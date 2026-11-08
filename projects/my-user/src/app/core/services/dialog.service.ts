@@ -11,9 +11,18 @@ export interface DialogOptions {
   cancelText?: string;
 }
 
+export interface LoginPromptOptions {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  returnUrl?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DialogService {
   readonly currentDialog = signal<DialogOptions | null>(null);
+  readonly currentLoginPrompt = signal<LoginPromptOptions | null>(null);
+
   private currentResolver: ((value: boolean) => void) | null = null;
 
   alert(
@@ -52,6 +61,19 @@ export class DialogService {
         cancelText,
       });
     });
+  }
+
+  promptLogin(options?: Partial<LoginPromptOptions>): void {
+    this.currentLoginPrompt.set({
+      eyebrow: options?.eyebrow ?? 'Chỉ còn một bước nữa',
+      title: options?.title ?? 'Đăng nhập để tiếp tục',
+      description: options?.description ?? 'Vui lòng đăng nhập để lưu trữ dữ liệu và trải nghiệm đầy đủ các tính năng của Urii.',
+      returnUrl: options?.returnUrl
+    });
+  }
+
+  closeLoginPrompt(): void {
+    this.currentLoginPrompt.set(null);
   }
 
   onConfirm(): void {

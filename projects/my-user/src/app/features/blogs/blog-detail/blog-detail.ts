@@ -305,22 +305,16 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
   }
 
   private requireLoginToComment(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      this.dialogService.alert('Hãy đăng nhập để bình luận vào bài viết.', 'Yêu cầu đăng nhập', 'warning').then(() => {
-        void this.router.navigate(['/login'], {
-          queryParams: { returnUrl: this.router.url },
-        });
-      });
-      return;
-    }
-    void this.router.navigate(['/login'], {
-      queryParams: { returnUrl: this.router.url },
+    this.dialogService.promptLogin({
+      title: 'Đăng nhập để bình luận',
+      description: 'Vui lòng đăng nhập để gửi bình luận và thảo luận cùng cộng đồng Urii.',
+      returnUrl: this.router.url
     });
   }
 
   toggleLike(): void {
     const blog = this.blogData;
-    const email = this.requireSignedInUser();
+    const email = this.requireSignedInUser('Đăng nhập để thích bài viết', 'Vui lòng đăng nhập để thả cảm xúc và tương tác với bài viết này.');
     if (!blog || !email) return;
 
     const storageKey = this.likesStorageKey(email);
@@ -338,7 +332,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   toggleBookmark(): void {
     const blog = this.blogData;
-    if (!blog || !this.requireSignedInUser()) return;
+    if (!blog || !this.requireSignedInUser('Đăng nhập để lưu bài viết', 'Vui lòng đăng nhập để lưu bài viết vào danh sách quan tâm của bạn.')) return;
 
     const bookmarks = this.readBookmarks();
     const blogId = String(blog.id);
@@ -378,14 +372,16 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     this.isBookmarked = this.readBookmarks()[String(this.blogData.id)] === true;
   }
 
-  private requireSignedInUser(): string | null {
+  private requireSignedInUser(title = 'Đăng nhập để tiếp tục', description = 'Vui lòng đăng nhập để sử dụng tính năng này.'): string | null {
     if (!isPlatformBrowser(this.platformId)) return null;
 
     const email = localStorage.getItem('userEmail')?.trim().toLowerCase() ?? '';
     if (localStorage.getItem('isLoggedIn') === 'true' && email) return email;
 
-    void this.router.navigate(['/login'], {
-      queryParams: { returnUrl: this.router.url },
+    this.dialogService.promptLogin({
+      title,
+      description,
+      returnUrl: this.router.url
     });
     return null;
   }

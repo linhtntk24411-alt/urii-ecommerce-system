@@ -219,7 +219,11 @@ export class ProductDetail implements OnInit {
   toggleFavorite(): void {
     if (!this.product) return;
     if (!this.isBrowser || window.localStorage.getItem('isLoggedIn') !== 'true') {
-      this.dialogService.alert('Bạn cần đăng nhập để sử dụng chức năng này.', 'Yêu cầu đăng nhập', 'warning');
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để lưu sản phẩm yêu thích',
+        description: 'Vui lòng đăng nhập để lưu sản phẩm này vào danh sách yêu thích của bạn.',
+        returnUrl: this.router.url
+      });
       return;
     }
 

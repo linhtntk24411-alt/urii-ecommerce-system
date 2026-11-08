@@ -62,6 +62,16 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      const token = localStorage.getItem('authToken');
+      if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
+        this.dialogService.promptLogin({
+          title: 'Đăng nhập để tạo bài viết mới',
+          description: 'Vui lòng đăng nhập tài khoản Urii để viết và chia sẻ bài viết mới cùng cộng đồng.',
+          returnUrl: '/blog-create'
+        });
+      }
+    }
     this.restoreDraft();
     this.formChanges = this.blogForm.valueChanges.subscribe(() => this.scheduleAutoSave());
   }
@@ -158,9 +168,10 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!isPlatformBrowser(this.platformId)) return;
     const token = localStorage.getItem('authToken');
     if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
-      this.showDialog('Hãy đăng nhập để đăng tải Blogs');
-      void this.router.navigate(['/login'], {
-        queryParams: { returnUrl: this.router.url },
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để đăng tải bài viết',
+        description: 'Vui lòng đăng nhập tài khoản Urii để đăng bài viết lên Góc Cộng Đồng.',
+        returnUrl: this.router.url
       });
       return;
     }
@@ -238,8 +249,10 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
         this.errorMessage = 'Máy chủ phản hồi quá lâu. Bài viết chưa được đăng, vui lòng thử lại.';
       } else if (error instanceof HttpErrorResponse && error.status === 401) {
         this.showDialog('Hãy đăng nhập để đăng tải Blogs');
-        void this.router.navigate(['/login'], {
-          queryParams: { returnUrl: this.router.url },
+        this.dialogService.promptLogin({
+          title: 'Đăng nhập để đăng tải bài viết',
+          description: 'Vui lòng đăng nhập tài khoản Urii để đăng bài viết lên Góc Cộng Đồng.',
+          returnUrl: this.router.url
         });
       } else if (error instanceof HttpErrorResponse && error.error?.message) {
         this.errorMessage = error.error.message;

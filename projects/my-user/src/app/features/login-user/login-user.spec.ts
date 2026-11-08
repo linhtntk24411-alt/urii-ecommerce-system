@@ -336,17 +336,7 @@ describe('LoginUser', () => {
 
     component.openPasswordReset();
 
-    expect(component.isPasswordResetOpen).toBe(true);
-    expect(component.passwordResetForm.controls.email.value).toBe('person@example.com');
-  });
-
-  it('shows a demo email notice without calling an API or changing password data', () => {
-    component.passwordResetForm.controls.email.setValue('person@example.com');
-
-    component.sendPasswordResetNotice();
-
-    expect(component.passwordResetMessage).toBe('Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu qua email. Vui lòng kiểm tra hộp thư của bạn.');
-    expect(localStorage.getItem('isLoggedIn')).toBeNull();
-    httpTestingController.expectNone('/api/auth/change-password');
+    expect(component.isForgotPasswordModalOpen).toBe(true);
+    expect(component.forgotPasswordEmail).toBe('person@example.com');
   });
 });

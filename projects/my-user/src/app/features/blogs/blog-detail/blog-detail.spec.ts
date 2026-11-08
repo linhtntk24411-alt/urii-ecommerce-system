@@ -1,3 +1,4 @@
+import { DialogService } from '../../../core/services/dialog.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -100,29 +101,27 @@ describe('BlogDetailComponent', () => {
     expect(component.isBookmarked).toBe(false);
   });
 
-  it('redirects signed-out users to login and includes the blog detail return URL', () => {
-    const router = TestBed.inject(Router);
-    const navigateSpy = vi.spyOn(router, 'navigate');
+  it('shows login prompt for signed-out users when toggling like', () => {
+    const dialogService = TestBed.inject(DialogService);
+    const promptSpy = vi.spyOn(dialogService, 'promptLogin');
 
     component.toggleLike();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
-      queryParams: { returnUrl: router.url },
-    });
+    expect(promptSpy).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringContaining('Đăng nhập'),
+    }));
   });
 
   it('requires login before submitting a comment', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    const router = TestBed.inject(Router);
-    const navigateSpy = vi.spyOn(router, 'navigate');
+    const dialogService = TestBed.inject(DialogService);
+    const promptSpy = vi.spyOn(dialogService, 'promptLogin');
 
     component.commentForm.controls.content.setValue('Bình luận thử');
     component.submitComment();
 
-    expect(alertSpy).toHaveBeenCalledWith('Hãy đăng nhập để bình luận vào bài viết');
-    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
-      queryParams: { returnUrl: router.url },
-    });
+    expect(promptSpy).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringContaining('Đăng nhập'),
+    }));
     expect(blogService.createComment).not.toHaveBeenCalled();
   });
 

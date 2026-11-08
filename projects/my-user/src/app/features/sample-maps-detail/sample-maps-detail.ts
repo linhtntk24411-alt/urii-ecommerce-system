@@ -226,8 +226,10 @@ export class SampleMapsDetailComponent implements OnInit {
     if (!map) return;
     const token = this.getToken();
     if (!token) {
-      void this.router.navigate(['/login'], {
-        queryParams: { returnUrl: `/sample-maps-detail/${encodeURIComponent(map.slug)}` },
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để lưu map mẫu',
+        description: 'Vui lòng đăng nhập để lưu trữ mẫu map này vào kho cá nhân của bạn.',
+        returnUrl: `/sample-maps-detail/${encodeURIComponent(map.slug)}`
       });
       return;
     }

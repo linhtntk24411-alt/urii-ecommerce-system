@@ -1,3 +1,4 @@
+import { DialogService } from '../../core/services/dialog.service';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -228,7 +229,9 @@ describe('Product', () => {
   });
 
   it('should require login before saving a favorite product', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const dialogService = TestBed.inject(DialogService);
+    const promptSpy = vi.spyOn(dialogService, 'promptLogin');
+    const alertSpy = vi.spyOn(dialogService, 'alert').mockResolvedValue(undefined);
     const product = {
       id: 'favorite-product',
       name: 'Sản phẩm yêu thích',
@@ -245,16 +248,17 @@ describe('Product', () => {
     };
 
     component.toggleFavorite(product);
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('đăng nhập'));
+    expect(promptSpy).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringContaining('Đăng nhập'),
+    }));
     expect(window.localStorage.getItem('favoriteProducts')).toBeNull();
 
     window.localStorage.setItem('isLoggedIn', 'true');
     component.toggleFavorite(product);
     expect(window.localStorage.getItem('favoriteProducts')).toBe('["favorite-product"]');
-    expect(alertSpy).toHaveBeenLastCalledWith(expect.stringContaining('Đã lưu'));
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Đã lưu'), expect.any(String), 'success');
 
     window.localStorage.removeItem('isLoggedIn');
     window.localStorage.removeItem('favoriteProducts');
-    alertSpy.mockRestore();
   });
 });

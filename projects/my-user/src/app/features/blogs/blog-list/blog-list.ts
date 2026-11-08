@@ -5,6 +5,7 @@ import { DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { BlogPost, BlogService } from '../../../core/services/blog.service';
+import { DialogService } from '../../../core/services/dialog.service';
 
 @Component({
   selector: 'app-blog-list',
@@ -18,6 +19,7 @@ export class BlogListComponent implements OnInit {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialogService = inject(DialogService);
 
   allBlogs: BlogPost[] = [];
 
@@ -141,12 +143,32 @@ export class BlogListComponent implements OnInit {
     return this.allBlogs.filter(b => b.id !== featured?.id).slice(0, 3);
   }
 
+  private isLoggedIn(): boolean {
+    return isPlatformBrowser(this.platformId) && localStorage.getItem('isLoggedIn') === 'true';
+  }
+
   goToCreateBlog(): void {
+    if (!this.isLoggedIn()) {
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để tạo bài viết blog',
+        description: 'Vui lòng đăng nhập tài khoản Urii để chia sẻ bài viết, kỹ thuật và cảm hứng sáng tạo cùng cộng đồng.',
+        returnUrl: '/blog-create'
+      });
+      return;
+    }
     this.router.navigate(['/blog-create']);
   }
 
   toggleBookmark(blogId: string | number, event: Event): void {
     event.stopPropagation();
+    if (!this.isLoggedIn()) {
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để lưu bài viết',
+        description: 'Vui lòng đăng nhập để lưu bài viết vào danh sách quan tâm của bạn.',
+        returnUrl: this.router.url
+      });
+      return;
+    }
     if (this.bookmarks[blogId]) {
       delete this.bookmarks[blogId];
     } else {

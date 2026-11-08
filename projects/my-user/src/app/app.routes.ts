@@ -42,6 +42,7 @@ export const routes: Routes = [
   { path: 'support/faq', component: SupportComponent },
   { path: 'support/privacy-policy', component: SupportComponent },
   { path: 'support/terms-of-service', component: SupportComponent },
+  { path: 'support/community-standards', component: SupportComponent },
   { path: 'about', component: About },
   { path: 'account/orders', redirectTo: 'orders', pathMatch: 'full' },
   { path: 'account/profile', redirectTo: 'profile', pathMatch: 'full' },

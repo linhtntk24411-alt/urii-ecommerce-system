@@ -59,11 +59,12 @@ export class SupportComponent implements OnInit, OnDestroy {
     this.activeFaqIndex = this.activeFaqIndex === index ? null : index;
   }
 
-  private isSupportTab(tab: string | null): tab is 'support-center' | 'faq' | 'privacy-policy' | 'terms-of-service' {
+  private isSupportTab(tab: string | null): tab is 'support-center' | 'faq' | 'privacy-policy' | 'terms-of-service' | 'community-standards' {
     return tab === 'support-center'
       || tab === 'faq'
       || tab === 'privacy-policy'
-      || tab === 'terms-of-service';
+      || tab === 'terms-of-service'
+      || tab === 'community-standards';
   }
 
   private updateActiveTab(url: string): void {

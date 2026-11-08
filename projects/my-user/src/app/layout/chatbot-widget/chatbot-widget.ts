@@ -9,6 +9,7 @@ import { catchError, delay, finalize, map, Observable, of } from 'rxjs';
 interface ChatMessage {
   targetUrl?: string;
   targetLabel?: string;
+  isWarning?: boolean;
   text: string;
   sender: 'user' | 'bot' | 'admin';
   timestamp: number;
@@ -28,6 +29,7 @@ interface ChatSession {
 interface ChatbotReply {
   targetUrl?: string;
   targetLabel?: string;
+  isWarning?: boolean;
   text: string;
   chips?: { label: string; action: string }[];
 }
@@ -108,6 +110,20 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     if (!isPlatformBrowser(this.platformId)) return false;
     const email = localStorage.getItem('userEmail')?.trim();
     return localStorage.getItem('isLoggedIn') === 'true' && Boolean(email);
+  }
+
+  getCurrentUserAvatar(): string {
+    if (!isPlatformBrowser(this.platformId)) return '';
+    const avatar = localStorage.getItem('userAvatar')?.trim();
+    if (!avatar) return '';
+    if (avatar.startsWith('/images/')) return `/api${avatar}`;
+    if (avatar.startsWith('images/')) return `/api/${avatar}`;
+    return avatar;
+  }
+
+  getCurrentUserName(): string {
+    if (!isPlatformBrowser(this.platformId)) return '';
+    return localStorage.getItem('userName')?.trim() || '';
   }
 
   getCurrentUserEmail(): string {
@@ -475,6 +491,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       chips: reply.chips,
       targetUrl: reply.targetUrl,
       targetLabel: reply.targetLabel,
+      isWarning: reply.isWarning,
     });
     freshSession.lastMessageTime = Date.now();
     currentSessions[sessionId] = freshSession;
@@ -504,6 +521,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       reply: string;
       targetUrl?: string;
       targetLabel?: string;
+      isWarning?: boolean;
       chips?: { label: string; action: string }[];
     }>('/api/chat/ai', {
       message: userMessage,
@@ -515,6 +533,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
         text: res.reply,
         targetUrl: res.targetUrl || undefined,
         targetLabel: res.targetLabel || undefined,
+        isWarning: res.isWarning,
         chips: res.chips && res.chips.length > 0 ? res.chips : undefined,
       })),
       catchError((err) => {
@@ -688,7 +707,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     if (action === 'Yêu cầu đặt hàng' || action === 'Đặt hàng yêu cầu') {
-      this.router.navigate(['/custom-order-request']);
+      this.router.navigate(['/custom-order']);
       return;
     }
 

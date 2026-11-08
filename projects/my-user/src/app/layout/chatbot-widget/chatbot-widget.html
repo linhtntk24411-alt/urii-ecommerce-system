@@ -3,12 +3,22 @@
 
         <header class="chat-header">
             <div class="avatar-container">
-                <img alt="Urii Mascot" class="bot-avatar-main" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKCfogwmg9DqaHtDqBGDh2EszSFoIZZh0_VFx8XTmsJvJQ6DvK6lTFpYUUQs4gkh03sU5B-CdJyukuKQI3rhRuKYPk2pen2JL5L9V5UXot14qDw1uz15BgBW1Jh-_7sxS2iwTvcE1_UVMGC7Wu4F-C4-vvBpA-xS01AIjeDjyDacX277JxX4u6OEYYqLtZWfvfEzFCFrgr5UPRDjkM8VL5YkMrne_f-MHbFHDpbTcGg_2j3mJ9MsLj1Od2yBZT76XH2Av_mLj0vLZu">
-                <span class="status-dot" [style.background-color]="statusDotColor ? '#22c55e' : '#f59e0b'"></span>
+                @if (isHistoryViewOpen) {
+                    @if (getCurrentUserAvatar()) {
+                        <img [src]="getCurrentUserAvatar()" alt="User Avatar" class="bot-avatar-main user-avatar-main">
+                    } @else {
+                        <div class="bot-avatar-main user-avatar-placeholder">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                    }
+                } @else {
+                    <img alt="Urii Mascot" class="bot-avatar-main" src="/assets/chatbotai.png">
+                    <span class="status-dot" [style.background-color]="statusDotColor ? '#22c55e' : '#f59e0b'"></span>
+                }
             </div>
             <div class="header-info">
                 <h2 class="bot-name">{{ isHistoryViewOpen ? 'Lịch sử trò chuyện' : botName }}</h2>
-                <p class="bot-status">{{ isHistoryViewOpen ? (getCurrentUserEmail() || 'Thành viên Urii') : botStatus }}</p>
+                <p class="bot-status">{{ isHistoryViewOpen ? (getCurrentUserName() || getCurrentUserEmail() || 'Thành viên Urii') : botStatus }}</p>
             </div>
             <nav class="header-actions">
                 @if (isHistoryViewOpen) {
@@ -38,7 +48,11 @@
                     @for (s of getUserSessions(); track s.sessionId) {
                         <div class="history-item" [class.active-session]="s.sessionId === currentSessionId" (click)="switchSession(s.sessionId)">
                             <div class="history-item-icon">
-                                <span class="material-symbols-outlined">forum</span>
+                                @if (s.status === 'ai') {
+                                    <img src="/assets/chatbotai.png" alt="Trợ lý AI" class="history-item-avatar-img">
+                                } @else {
+                                    <span class="material-symbols-outlined">support_agent</span>
+                                }
                             </div>
                             <div class="history-item-body">
                                 <div class="history-item-top">
@@ -71,9 +85,9 @@
                 @for (msg of messages; track msg.timestamp) {
                     @if (msg.sender === 'bot' || msg.sender === 'admin') {
                         <article class="message bot-message">
-                            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKCfogwmg9DqaHtDqBGDh2EszSFoIZZh0_VFx8XTmsJvJQ6DvK6lTFpYUUQs4gkh03sU5B-CdJyukuKQI3rhRuKYPk2pen2JL5L9V5UXot14qDw1uz15BgBW1Jh-_7sxS2iwTvcE1_UVMGC7Wu4F-C4-vvBpA-xS01AIjeDjyDacX277JxX4u6OEYYqLtZWfvfEzFCFrgr5UPRDjkM8VL5YkMrne_f-MHbFHDpbTcGg_2j3mJ9MsLj1Od2yBZT76XH2Av_mLj0vLZu" class="bot-avatar-chat" alt="Bot">
+                            <img src="/assets/chatbotai.png" class="bot-avatar-chat" alt="Bot">
                             <div class="message-content-wrapper">
-                                <div class="message-bubble">
+                                <div class="message-bubble" [class.message-bubble--warning]="msg.isWarning">
                                     <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
                                     @if (msg.targetUrl && msg.targetLabel) {
                                         <button class="chat-navigation-action" (click)="navigateToAction(msg.targetUrl)">

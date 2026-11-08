@@ -26,6 +26,12 @@
           <span class="material-symbols-outlined">description</span>
           Điều khoản sử dụng
         </a>
+        <a class="support-nav-item" 
+           [class.active]="activeTab === 'community-standards'" 
+           routerLink="/support/community-standards">
+          <span class="material-symbols-outlined">gavel</span>
+          Tiêu chuẩn cộng đồng
+        </a>
         <div class="support-nav-divider"></div>
         <a class="support-nav-item" routerLink="/">
           <span class="material-symbols-outlined">arrow_back</span>
@@ -222,6 +228,56 @@
 
           <div class="highlight-box-orange">
             <p><span class="material-symbols-outlined">calendar_today</span> <strong>Ngày hiệu lực:</strong> Điều khoản này có hiệu lực từ ngày 01/01/2024</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'community-standards'">
+        <div class="support-header">
+          <h1 class="support-title">
+            <span class="material-symbols-outlined title-icon">gavel</span>
+            Tiêu chuẩn cộng đồng & Quy chuẩn ứng xử
+          </h1>
+        </div>
+        <div class="support-body">
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">handshake</span>
+            <span>Tôn chỉ cộng đồng Urii</span>
+          </h2>
+          <p>Urii hướng tới xây dựng một không gian sáng tạo thủ công lành mạnh, tôn trọng, văn minh và truyền cảm hứng cho tất cả mọi người yêu thích nghệ thuật handmade, hạt cườm và đồ thủ công DIY.</p>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">forum</span>
+            <span>Quy chuẩn giao tiếp & Ngôn từ</span>
+          </h2>
+          <ul>
+            <li><strong>Lịch sự và tôn trọng:</strong> Luôn sử dụng ngôn từ văn minh khi trò chuyện với Trợ lý ảo, nhân viên tư vấn cũng như trong các bình luận bài viết cộng đồng.</li>
+            <li><strong>Nghiêm cấm lăng mạ, quấy rối:</strong> Tuyệt đối không sử dụng từ ngữ thô tục, xúc phạm danh dự, đe dọa, phân biệt đối xử hoặc quấy rối dưới bất kỳ hình thức nào.</li>
+            <li><strong>Không spam, gian lận:</strong> Không gửi tin nhắn rác, quảng cáo trái phép, phát tán liên kết độc hại hoặc lừa đảo.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">image</span>
+            <span>Quy định chia sẻ hình ảnh & Nội dung</span>
+          </h2>
+          <ul>
+            <li>Hình ảnh tải lên tại phần Đặt thiết kế riêng (Custom Order), đánh giá sản phẩm và bài viết Blog phải phù hợp thuần phong mỹ tục, không chứa nội dung khiêu dâm, bạo lực hay vi phạm pháp luật.</li>
+            <li>Tôn trọng quyền sở hữu trí tuệ: Không mạo danh tác phẩm của người khác hoặc phát tán nội dung vi phạm bản quyền mà không có sự đồng ý.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">warning</span>
+            <span>Biện pháp xử lý vi phạm</span>
+          </h2>
+          <p>Khi phát hiện hành vi vi phạm tiêu chuẩn cộng đồng, Urii sẽ áp dụng các biện pháp sau tùy theo mức độ:</p>
+          <ul>
+            <li><strong>Mức 1 (Nhắc nhở / Cảnh cáo):</strong> Hệ thống tự động gửi cảnh báo và từ chối xử lý các tin nhắn có chứa ngôn từ không phù hợp.</li>
+            <li><strong>Mức 2 (Hạn chế tính năng):</strong> Tạm khóa quyền gửi tin nhắn chat, bình luận hoặc đăng tải bài viết trong 24 giờ đến 7 ngày.</li>
+            <li><strong>Mức 3 (Khóa tài khoản vĩnh viễn):</strong> Đối với các hành vi cố tình vi phạm nhiều lần, lăng mạ nghiêm trọng hoặc lừa đảo, tài khoản sẽ bị đóng băng vĩnh viễn.</li>
+          </ul>
+
+          <div class="highlight-box-orange">
+            <p><span class="material-symbols-outlined">verified</span> <strong>Cùng nhau xây dựng cộng đồng:</strong> Nếu bạn phát hiện nội dung hoặc hành vi vi phạm, vui lòng báo cáo ngay cho chúng tôi qua email <strong>support@urii.vn</strong> hoặc Hotline <strong>1900 1234</strong>.</p>
           </div>
         </div>
       </ng-container>

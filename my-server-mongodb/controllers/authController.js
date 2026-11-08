@@ -591,12 +591,13 @@ function sendOAuthCallbackResult(req, res, statusCode, provider, payload) {
       var targetOrigin = ${serializedOrigin};
       try {
         if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, targetOrigin);
+          try { window.opener.postMessage(payload, targetOrigin); } catch (e) {}
+          try { window.opener.postMessage(payload, '*'); } catch (e) {}
         }
       } catch (e) {}
-      try {
-        window.close();
-      } catch (e) {}
+      setTimeout(function () {
+        try { window.close(); } catch (e) {}
+      }, 500);
     })();
   </script>
 </body>
@@ -787,19 +788,81 @@ exports.oauthCallback = async (req, res) => {
         await currentUser.save();
         user = currentUser;
       } else {
-        if (!linkedByProviderId) {
-          sendOAuthCallbackResult(req, res, 403, provider, {
-            message: 'Tài khoản Facebook này chưa được liên kết với tài khoản Urii. Vui lòng đăng nhập và liên kết Facebook trước.'
-          });
-          return;
+        // 1. Trường hợp người dùng đã từng đăng nhập Facebook trước đó
+        if (linkedByProviderId) {
+          if (linkedByProviderId.role !== 'user') {
+            sendOAuthCallbackResult(req, res, 403, provider, {
+              message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
+            });
+            return;
+          }
+          user = linkedByProviderId;
+        } else {
+          // 2. Trường hợp chưa từng liên kết Facebook ID:
+          // Kiểm tra xem email (nếu Facebook có trả về) đã tồn tại trong database chưa
+          let existingByEmail = null;
+          if (email && EMAIL_PATTERN.test(email)) {
+            existingByEmail = await User.findOne({ email }).select('+password');
+          }
+
+          if (existingByEmail) {
+            if (existingByEmail.role !== 'user') {
+              sendOAuthCallbackResult(req, res, 403, provider, {
+                message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
+              });
+              return;
+            }
+
+            const existingFbLink = existingByEmail.oauthAccounts?.find((account) => account.provider === 'facebook');
+            if (existingFbLink && existingFbLink.providerUserId !== providerUserId) {
+              sendOAuthCallbackResult(req, res, 409, provider, {
+                message: 'Email này đã liên kết với một tài khoản Facebook khác.'
+              });
+              return;
+            }
+
+            let changed = false;
+            if (!Array.isArray(existingByEmail.authProviders)) {
+              existingByEmail.authProviders = [];
+            }
+            if (!existingByEmail.authProviders.includes('facebook')) {
+              existingByEmail.authProviders.push('facebook');
+              changed = true;
+            }
+            if (!Array.isArray(existingByEmail.oauthAccounts)) {
+              existingByEmail.oauthAccounts = [];
+            }
+            if (!existingFbLink) {
+              existingByEmail.oauthAccounts.push({ provider: 'facebook', providerUserId });
+              changed = true;
+            }
+            if (!existingByEmail.avatar && identity.picture) {
+              existingByEmail.avatar = identity.picture;
+              changed = true;
+            }
+            if (changed) {
+              await existingByEmail.save();
+            }
+            user = existingByEmail;
+          } else {
+            // 3. Người dùng mới chưa có tài khoản -> TỰ ĐỘNG TẠO USER MỚI
+            const fallbackEmail = (email && EMAIL_PATTERN.test(email))
+              ? email
+              : ('fb_' + providerUserId + '@facebook.urii.local');
+            const displayName = identity.name?.trim() || 'Người dùng Facebook';
+            const todayFormatted = new Date().toLocaleDateString('vi-VN');
+
+            user = await User.create({
+              name: displayName,
+              email: fallbackEmail,
+              avatar: identity.picture || '/images/avatar-non.jpg',
+              role: 'user',
+              joinDate: todayFormatted,
+              authProviders: ['facebook'],
+              oauthAccounts: [{ provider: 'facebook', providerUserId }]
+            });
+          }
         }
-        if (linkedByProviderId.role !== 'user') {
-          sendOAuthCallbackResult(req, res, 403, provider, {
-            message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
-          });
-          return;
-        }
-        user = linkedByProviderId;
       }
     }
 

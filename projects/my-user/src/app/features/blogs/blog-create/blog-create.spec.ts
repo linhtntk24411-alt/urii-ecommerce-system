@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
+import { DialogService } from '../../../core/services/dialog.service';
 import { BlogCreateComponent } from './blog-create';
 
 describe('BlogCreateComponent', () => {
@@ -34,17 +35,15 @@ describe('BlogCreateComponent', () => {
   });
 
   it('requires login before publishing a blog', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const dialogService = TestBed.inject(DialogService);
+    const promptSpy = vi.spyOn(dialogService, 'promptLogin');
 
     component.publish();
 
-    expect(alertSpy).toHaveBeenCalledWith('Hãy đăng nhập để đăng tải Blogs');
-    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {
-      queryParams: { returnUrl: '/' },
-    });
+    expect(promptSpy).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringContaining('Đăng nhập'),
+    }));
     httpTestingController.expectNone('/api/blogs');
-    alertSpy.mockRestore();
   });
 
   it('posts the blog to the API with the signed-in token', async () => {
@@ -97,13 +96,13 @@ describe('BlogCreateComponent', () => {
   });
 
   it('should show a confirmation after saving a draft', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const dialogService = TestBed.inject(DialogService);
+    const alertSpy = vi.spyOn(dialogService, 'alert').mockResolvedValue();
     component.blogForm.patchValue({ title: 'Bản nháp của tôi' });
 
     component.saveDraft();
 
     expect(localStorage.getItem('blogDraft')).toContain('Bản nháp của tôi');
-    expect(alertSpy).toHaveBeenCalledWith('Đã lưu bản nháp thành công!');
-    alertSpy.mockRestore();
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Đã lưu bản nháp'), expect.any(String), 'info');
   });
 });

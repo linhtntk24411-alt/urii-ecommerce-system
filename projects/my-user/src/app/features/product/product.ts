@@ -81,8 +81,12 @@ export class Product implements OnInit {
       });
     this.favoritesOnly = this.route.snapshot.data['favoritesOnly'] === true;
     if (this.favoritesOnly && this.isBrowser && !this.isLoggedIn()) {
-      this.dialogService.alert('Bạn cần đăng nhập để sử dụng chức năng sản phẩm yêu thích.', 'Yêu cầu đăng nhập', 'warning');
-      void this.router.navigate(['/login']);
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để xem sản phẩm yêu thích',
+        description: 'Vui lòng đăng nhập để xem danh sách các sản phẩm yêu thích của bạn.',
+        returnUrl: '/favorites'
+      });
+      void this.router.navigate(['/products']);
       return;
     }
 
@@ -136,7 +140,11 @@ export class Product implements OnInit {
 
   toggleFavorite(product: ProductItem): void {
     if (!this.isLoggedIn()) {
-      this.dialogService.alert('Bạn cần đăng nhập để sử dụng chức năng này.', 'Yêu cầu đăng nhập', 'warning');
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để lưu sản phẩm yêu thích',
+        description: 'Vui lòng đăng nhập để lưu sản phẩm vào danh sách yêu thích của bạn.',
+        returnUrl: this.router.url
+      });
       return;
     }
 

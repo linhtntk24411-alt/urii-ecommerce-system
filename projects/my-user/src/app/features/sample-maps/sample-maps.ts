@@ -5,6 +5,7 @@ import { PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MapService, SampleMap } from '../../core/services/map.service';
+import { DialogService } from '../../core/services/dialog.service';
 
 @Component({
   selector: 'app-sample-maps',
@@ -20,6 +21,7 @@ export class SampleMapsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly dialogService = inject(DialogService);
 
   allMaps: SampleMap[] = [];
 
@@ -165,7 +167,11 @@ export class SampleMapsComponent implements OnInit {
     const token = this.getToken();
     if (!token) {
       this.saveMessage = 'Vui lòng đăng nhập để lưu map.';
-      void this.router.navigate(['/login'], { queryParams: { returnUrl: '/sample-maps' } });
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để lưu map mẫu',
+        description: 'Vui lòng đăng nhập để lưu trữ các mẫu map yêu thích vào kho cá nhân của bạn.',
+        returnUrl: this.router.url || '/sample-maps'
+      });
       return;
     }
     if (this.pendingSaveIds.has(map.id)) return;

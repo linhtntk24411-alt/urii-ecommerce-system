@@ -116,6 +116,7 @@ export class LoginUser implements OnInit, OnDestroy {
   private socialAuthTimer?: number;
   private socialAuthTimeout?: number;
   private socialAuthPopup: Window | null = null;
+  private oauthMessageListener?: (event: MessageEvent) => void;
 
   get passwordRequirementStatus(): { length: boolean; uppercase: boolean; lowercase: boolean; number: boolean } {
     const password = this.registerForm.controls.password.value ?? '';
@@ -579,18 +580,21 @@ export class LoginUser implements OnInit, OnDestroy {
     if (this.isSocialAuthInProgress) return;
 
     this.socialAuthMessage = 'Đang kết nối Facebook...';
-    const popup = window.open(
-      `/api/auth/oauth/${provider}`,
-      `urii-${provider}-oauth`,
-      'popup,width=520,height=680',
-    );
-    if (!popup) {
-      this.socialAuthMessage = 'Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép popup rồi thử lại.';
-      return;
-    }
+
+  const popup = window.open(
+  `https://foe-outweigh-justness.ngrok-free.dev/api/auth/oauth/${provider}`,
+  `urii-${provider}-oauth`,
+  'popup,width=520,height=680',
+);
+
+if (!popup) {
+  this.socialAuthMessage = 'Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép popup rồi thử lại.';
+  return;
+}
 
     this.isSocialAuthInProgress = true;
     this.socialAuthPopup = popup;
+    this.setupOAuthMessageListener(provider);
     this.socialAuthTimer = window.setInterval(() => this.checkSocialLoginPopup(provider), 400);
     this.socialAuthTimeout = window.setTimeout(() => {
       if (this.isSocialAuthInProgress) {
@@ -821,7 +825,49 @@ export class LoginUser implements OnInit, OnDestroy {
     this.changeDetectorRef.markForCheck();
   }
 
+  private setupOAuthMessageListener(provider: 'google' | 'facebook'): void {
+    this.removeOAuthMessageListener();
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    this.oauthMessageListener = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type !== 'urii-oauth' || data.provider !== provider) return;
+
+      this.ngZone.run(() => {
+        this.clearSocialAuthMonitor();
+        try {
+          this.socialAuthPopup?.close();
+        } catch {}
+        this.socialAuthPopup = null;
+        this.isSocialAuthInProgress = false;
+
+        if (!data.ok || !data.token || !data.user) {
+          this.socialAuthMessage = data.message || ('Đăng nhập ' + provider + ' không thành công.');
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+
+        this.socialAuthMessage = '';
+        this.completeLogin({
+          token: data.token,
+          user: data.user,
+        });
+      });
+    };
+
+    window.addEventListener('message', this.oauthMessageListener);
+  }
+
+  private removeOAuthMessageListener(): void {
+    if (this.oauthMessageListener && isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('message', this.oauthMessageListener);
+      this.oauthMessageListener = undefined;
+    }
+  }
+
   private clearSocialAuthMonitor(): void {
+    this.removeOAuthMessageListener();
     if (this.socialAuthTimer !== undefined) {
       window.clearInterval(this.socialAuthTimer);
       this.socialAuthTimer = undefined;

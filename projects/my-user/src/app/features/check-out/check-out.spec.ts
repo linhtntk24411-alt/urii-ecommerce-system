@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { registerLocaleData } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Location } from '@angular/common';
 import localeVi from '@angular/common/locales/vi';
 import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
@@ -120,10 +121,13 @@ describe('CheckOut', () => {
       { queryParams: { returnUrl: '/checkout' } },
     );
 
+    const location = TestBed.inject(Location);
+    const backSpy = vi.spyOn(location, 'back');
     const closeButton = fixture.nativeElement.querySelector('.checkout-login-close') as HTMLButtonElement;
-    expect(closeButton.getAttribute('aria-label')).toBe('Quay lại giỏ hàng');
+    expect(closeButton.getAttribute('aria-label')).toBe('Quay lại trang trước');
     closeButton.click();
-    expect(navigateSpy).toHaveBeenCalledWith(['/cart']);
+    expect(backSpy).toHaveBeenCalledOnce();
+    expect(navigateSpy).toHaveBeenCalledOnce();
 
     http.expectNone('/api/auth/me');
     http.expectNone('/api/products');
@@ -152,10 +156,10 @@ describe('CheckOut', () => {
       { productId: 'guest-product', variant: null, quantity: 2 },
     ]);
 
-    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const backSpy = vi.spyOn(TestBed.inject(Location), 'back');
     const closeButton = fixture.nativeElement.querySelector('.checkout-login-close') as HTMLButtonElement;
     closeButton.click();
-    expect(navigateSpy).toHaveBeenCalledWith(['/cart']);
+    expect(backSpy).toHaveBeenCalledOnce();
     expect(cart.getItems()).toEqual([
       { productId: 'guest-product', variant: null, quantity: 2 },
     ]);

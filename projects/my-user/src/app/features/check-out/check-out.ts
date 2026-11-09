@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser, Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -39,6 +39,7 @@ export class CheckOut implements OnInit {
   private readonly catalog = inject(ProductCatalogService);
   private readonly checkout = inject(CheckoutService);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly selection = inject(CheckoutSelectionService);
   private readonly addressLookup = inject(AddressLookupService);
   private readonly toast = inject(ToastService);
@@ -159,8 +160,8 @@ export class CheckOut implements OnInit {
     void this.router.navigate(['/register'], { queryParams: { returnUrl: '/checkout' } });
   }
 
-  goBackToCart(): void {
-    void this.router.navigate(['/cart']);
+  goBackToPreviousPage(): void {
+    this.location.back();
   }
 
   get subtotal(): number {

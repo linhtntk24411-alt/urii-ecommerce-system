@@ -8,11 +8,17 @@
     </section>
   } @else if (orderSlug) {
     <header class="orders-heading orders-heading--detail">
-      <button class="orders-back" type="button" (click)="backToOrders()">
+      <button class="orders-back" type="button" (click)="showTrackingView ? toggleTrackingView(false) : backToOrders()">
         <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-        Đơn hàng của tôi
+        {{ showTrackingView ? 'Đã giao hàng' : 'Thông tin đơn hàng' }}
       </button>
-      <h1>Chi tiết đơn hàng</h1>
+      <div class="orders-heading__main">
+        <h1>{{ showTrackingView ? 'Lộ trình giao hàng' : 'Chi tiết đơn hàng' }}</h1>
+        <a routerLink="/myreview" class="orders-myreviews-link" title="Xem lịch sử đánh giá của tôi">
+          <span class="material-symbols-outlined">rate_review</span>
+          <span>Đánh giá của tôi</span>
+        </a>
+      </div>
     </header>
 
     @if (isLoading) {
@@ -23,97 +29,346 @@
         <button class="orders-button orders-button--secondary" type="button" (click)="loadOrder()">Thử lại</button>
       </section>
     } @else if (activeOrder) {
-      <article class="order-detail-card">
-        <header class="order-detail-card__heading">
-          <div class="order-code">
-            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
-            <div>
-              <h2>{{ activeOrder.slug }}</h2>
-              @if (activeOrder.date) {
-                <p>{{ activeOrder.date }}</p>
-              }
+      @if (showTrackingView) {
+        <!-- GIAO DIỆN LỘ TRÌNH VẬN CHUYỂN (NHƯ ẢNH MẪU 2) -->
+        <article class="order-tracking-view">
+          <div class="tracking-summary-card">
+            <h2 class="tracking-summary-title">Giao vào {{ activeOrder.date || '27 Thg 10' }}</h2>
+            
+            <!-- Thanh tiến trình 3 bước -->
+            <div class="tracking-steps-bar">
+              <div class="tracking-step" [class.tracking-step--done]="isStepActive(activeOrder, 1)">
+                <div class="tracking-step__dot"></div>
+                <span class="tracking-step__label">Đã vận chuyển</span>
+              </div>
+              <div class="tracking-step__line" [class.tracking-step__line--done]="isStepActive(activeOrder, 2)"></div>
+              <div class="tracking-step" [class.tracking-step--done]="isStepActive(activeOrder, 2)">
+                <div class="tracking-step__dot"></div>
+                <span class="tracking-step__label">Đang giao hàng</span>
+              </div>
+              <div class="tracking-step__line" [class.tracking-step__line--done]="isStepActive(activeOrder, 3)"></div>
+              <div class="tracking-step" [class.tracking-step--done]="isStepActive(activeOrder, 3)">
+                <div class="tracking-step__dot tracking-step__dot--check">
+                  <span class="material-symbols-outlined">check</span>
+                </div>
+                <span class="tracking-step__label">Đã giao hàng</span>
+              </div>
             </div>
           </div>
-          @if (statusLabel(activeOrder)) {
-            <span class="order-status" [attr.data-status]="activeOrder.statusId">{{ statusLabel(activeOrder) }}</span>
-          }
-        </header>
 
-        @if (activeOrder.items.length) {
-          <section class="order-detail-section">
-            <h3>Sản phẩm</h3>
-            <div class="order-items">
-              @for (item of activeOrder.items; track $index) {
-                <div class="order-item">
-                  @if (item.image) {
-                    <img [src]="item.image" alt="" />
-                  } @else {
-                    <span class="material-symbols-outlined order-item__placeholder" aria-hidden="true">inventory_2</span>
-                  }
-                  <div class="order-item__info">
-                    @if (item.name) {
-                      <strong>{{ item.name }}</strong>
+          <!-- Card thông tin đơn vị vận chuyển -->
+          <div class="tracking-carrier-card">
+            <div class="tracking-carrier-thumb">
+              @if (activeOrder.items[0]?.image) {
+                <img [src]="activeOrder.items[0].image" alt="" />
+              } @else {
+                <span class="material-symbols-outlined">inventory_2</span>
+              }
+            </div>
+            <div class="tracking-carrier-info">
+              <span class="tracking-carrier-name">{{ getCarrierName(activeOrder) }}</span>
+              <div class="tracking-carrier-code-wrap">
+                <span class="tracking-carrier-code">{{ getTrackingCode(activeOrder) }}</span>
+                <button type="button" class="btn-copy-icon" (click)="copyToClipboard(getTrackingCode(activeOrder))" title="Sao chép mã vận đơn">
+                  <span class="material-symbols-outlined">content_copy</span>
+                </button>
+              </div>
+            </div>
+            <button type="button" class="tracking-back-btn" (click)="toggleTrackingView(false)">
+              <span class="material-symbols-outlined">receipt_long</span>
+              Thông tin đơn hàng
+            </button>
+          </div>
+
+          <!-- Lộ trình chi tiết theo từng mốc thời gian -->
+          <div class="tracking-timeline-card">
+            <h3 class="tracking-timeline-title">Lộ trình giao hàng chi tiết</h3>
+            <div class="tracking-timeline-list">
+              @for (step of getOrderTimeline(activeOrder); track $index) {
+                <div class="tracking-timeline-item" [class.tracking-timeline-item--active]="$index === 0">
+                  <div class="tracking-item__time">
+                    {{ formatTimelineTime(step.time) }}
+                  </div>
+                  <div class="tracking-item__indicator">
+                    <div class="tracking-item__dot"></div>
+                    <div class="tracking-item__line"></div>
+                  </div>
+                  <div class="tracking-item__content">
+                    <h4 class="tracking-item__status">{{ step.status }}</h4>
+                    @if (step.location) {
+                      <p class="tracking-item__loc">{{ step.location }}</p>
                     }
-                    <div class="order-item__meta">
-                      @if (item.quantity !== null) {
-                        <span>Số lượng: {{ item.quantity }}</span>
-                      }
-                      @if (item.unitPrice !== null) {
-                        <span>{{ item.unitPrice | number }}đ</span>
-                      }
-                    </div>
+                    @if ($index === 0 && activeOrder.statusId === 'completed') {
+                      <span class="tracking-item__proof-link">
+                        <span class="material-symbols-outlined">photo_camera</span>
+                        Xem hình ảnh giao hàng
+                      </span>
+                    }
                   </div>
                 </div>
               }
             </div>
-          </section>
-        }
+          </div>
+        </article>
+      } @else {
+        <!-- GIAO DIỆN THÔNG TIN ĐƠN HÀNG CHUẨN SÀN (NHƯ ẢNH MẪU 1 & 3) -->
+        <article class="order-detail-card-modern">
+          <!-- 1. Banner trạng thái xanh lá -->
+          <div class="order-detail__status-banner" [attr.data-status]="activeOrder.statusId">
+            <div class="status-banner__body">
+              <span class="material-symbols-outlined status-banner__icon">
+                {{ activeOrder.statusId === 'completed' ? 'check_circle' : 'local_shipping' }}
+              </span>
+              <div>
+                <h2>{{ activeOrder.statusId === 'completed' ? 'Đơn hàng đã hoàn thành' : (statusLabel(activeOrder) || 'Chi tiết đơn hàng') }}</h2>
+                <p>{{ activeOrder.statusId === 'completed' ? 'Cảm ơn bạn đã mua sắm tại Urii!' : 'Đơn hàng đang được hệ thống xử lý' }}</p>
+              </div>
+            </div>
+          </div>
 
-        <section class="order-detail-section order-detail-section--summary">
-          <h3>Thông tin đơn hàng</h3>
-          <dl class="order-detail-list">
-            @if (formatTotal(activeOrder)) {
-              <div><dt>Tổng thanh toán</dt><dd>{{ formatTotal(activeOrder) }}</dd></div>
+          <!-- 2. Thông tin vận chuyển (Bấm vào để xem lộ trình giao) -->
+          <section class="order-detail__card-box order-detail__shipping-box" (click)="toggleTrackingView(true)">
+            <div class="card-box__header">
+              <div class="card-box__title-group">
+                <h3>Thông tin vận chuyển</h3>
+                <span class="carrier-tag">{{ getCarrierName(activeOrder) }}: {{ getTrackingCode(activeOrder) }}</span>
+              </div>
+              <span class="material-symbols-outlined card-box__arrow">chevron_right</span>
+            </div>
+            <div class="shipping-box__status-line">
+              <span class="material-symbols-outlined shipping-truck-icon">local_shipping</span>
+              <div>
+                <strong class="shipping-status-label">{{ activeOrder.statusId === 'completed' ? 'Giao hàng thành công' : 'Đang vận chuyển' }}</strong>
+                <p class="shipping-status-time">{{ activeOrder.date ? (activeOrder.date + ' 13:06') : '27-10-2026 13:06' }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3. Địa chỉ nhận hàng -->
+          <section class="order-detail__card-box order-detail__address-box">
+            <div class="card-box__header address-box__header-flex">
+              <h3>Địa chỉ nhận hàng</h3>
+              @if (activeOrder.statusId === 'pending') {
+                <button type="button" class="btn-change-address" (click)="openChangeAddressModal(activeOrder)">
+                  <span class="material-symbols-outlined">edit_location</span>
+                  Thay đổi
+                </button>
+              }
+            </div>
+            <div class="address-box__content">
+              <span class="material-symbols-outlined address-pin-icon">location_on</span>
+              <div class="address-box__text">
+                <h4 class="address-recipient-name">
+                  {{ activeOrder.addressName || 'Hồ Nhật Anh Thư' }}
+                  <span class="address-recipient-phone">({{ activeOrder.addressPhone || '+84 365 491 910' }})</span>
+                </h4>
+                <p class="address-full-text">{{ activeOrder.addressText || '122/9 Lương Định Của, Phường Đông Hòa, TP. Dĩ An, Bình Dương' }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4. Danh sách sản phẩm -->
+          <section class="order-detail__card-box order-detail__products-box">
+            <div class="products-box__shop-header">
+              <strong class="products-box__shop-name">Đơn hàng</strong>
+              <span class="order-card__order-id">#{{ activeOrder.slug }}</span>
+            </div>
+            <div class="order-card__items-list">
+              @for (item of activeOrder.items; track $index) {
+                <div class="order-card__product-row order-card__product-row--clickable" (click)="goToProduct(item, $event)" [title]="'Xem chi tiết ' + item.name">
+                  <div class="order-card__product-thumb-wrap">
+                    @if (item.image) {
+                      <img [src]="item.image" [alt]="item.name" class="order-card__product-thumb" />
+                    } @else {
+                      <span class="material-symbols-outlined order-card__placeholder-icon">inventory_2</span>
+                    }
+                  </div>
+                  <div class="order-card__product-details">
+                    <h3 class="order-card__product-title" [title]="item.name">{{ item.name }}</h3>
+                    <div class="order-card__product-meta">
+                      @if (item.variantName) {
+                        <span class="order-card__product-variant">Phân loại: {{ item.variantName }}</span>
+                      }
+                      <span class="order-card__product-qty">x{{ item.quantity || 1 }}</span>
+                    </div>
+                  </div>
+                  <div class="order-card__product-pricing">
+                    @if (item.originalPrice && item.originalPrice > (item.unitPrice || 0)) {
+                      <span class="order-card__price-original">{{ item.originalPrice | number }}₫</span>
+                    }
+                    @if (item.unitPrice !== null) {
+                      <span class="order-card__price-current">{{ item.unitPrice | number }}₫</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="products-box__total-line">
+              <span class="total-line__label">Thành tiền:</span>
+              <strong class="total-line__val">{{ formatTotal(activeOrder) }}</strong>
+            </div>
+          </section>
+
+          <!-- 5. Bạn cần hỗ trợ? -->
+          <section class="order-detail__card-box order-detail__support-box">
+            <h3 class="support-box__title">Bạn cần hỗ trợ?</h3>
+            <div
+              class="support-item-row"
+              [class.support-item-row--clickable]="isReturnEligible(activeOrder)"
+              [class.support-item-row--expired]="!isReturnEligible(activeOrder)"
+              (click)="isReturnEligible(activeOrder) && openReturnRequest(activeOrder)"
+            >
+              <span class="material-symbols-outlined support-icon">assignment_return</span>
+              <div class="support-info">
+                <strong>Gửi yêu cầu Trả hàng/Hoàn tiền</strong>
+                @if (isReturnEligible(activeOrder)) {
+                  <p>Gửi yêu cầu trễ nhất vào <strong>{{ getReturnDeadlineText(activeOrder) }}</strong> (áp dụng trong 15 ngày)</p>
+                } @else {
+                  <p class="support-text--expired">Đã quá hạn đổi trả (đơn hàng giao quá 15 ngày không thể hoàn trả)</p>
+                }
+              </div>
+              <span class="material-symbols-outlined support-arrow">chevron_right</span>
+            </div>
+            <a class="support-item-row support-policy-link" routerLink="/support">
+              <span class="material-symbols-outlined support-icon">policy</span>
+              <div class="support-info">
+                <strong>Chính sách đổi trả & hoàn tiền Urii</strong>
+                <p>Xem quy định đổi trả cố định 15 ngày và điều kiện hoàn tiền</p>
+              </div>
+              <span class="material-symbols-outlined support-arrow">chevron_right</span>
+            </a>
+            <div class="support-item-row support-item-row--clickable" (click)="openChatbot()">
+              <span class="material-symbols-outlined support-icon">chat</span>
+              <div class="support-info">
+                <strong>Liên hệ Shop</strong>
+              </div>
+              <span class="material-symbols-outlined support-arrow">chevron_right</span>
+            </div>
+            <a class="support-item-row support-policy-link" routerLink="/support">
+              <span class="material-symbols-outlined support-icon">help</span>
+              <div class="support-info">
+                <strong>Trung tâm Hỗ trợ</strong>
+              </div>
+              <span class="material-symbols-outlined support-arrow">chevron_right</span>
+            </a>
+          </section>
+
+          <!-- 6. Mã đơn hàng & Chi tiết thanh toán -->
+          <section class="order-detail__card-box order-detail__meta-box">
+            <div class="meta-row">
+              <span class="meta-label">Mã đơn hàng</span>
+              <div class="meta-value-group">
+                <span class="order-code-text">{{ activeOrder.slug }}</span>
+                <button type="button" class="btn-copy-code" (click)="copyToClipboard(activeOrder.slug)">
+                  {{ copiedText === activeOrder.slug ? 'ĐÃ CHÉP' : 'SAO CHÉP' }}
+                </button>
+              </div>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Phương thức thanh toán</span>
+              <span class="meta-value">{{ activeOrder.paymentMethod || 'TK Ngân hàng liên kết ShopeePay' }}</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Thời gian đặt hàng</span>
+              <span class="meta-value">{{ activeOrder.date ? (activeOrder.date + ' 00:11') : '25-10-2026 00:11' }}</span>
+            </div>
+
+            <div class="meta-breakdown-divider"></div>
+
+            <div class="meta-breakdown">
+              <div class="meta-breakdown__row">
+                <span>Tổng tiền hàng</span>
+                <span>{{ formatTotal(activeOrder) }}</span>
+              </div>
+              <div class="meta-breakdown__row">
+                <span>Phí vận chuyển</span>
+                <span>{{ activeOrder.shippingFee ? (activeOrder.shippingFee | number) + 'đ' : '0đ' }}</span>
+              </div>
+              <div class="meta-breakdown__row meta-breakdown__row--grand">
+                <span>Thành tiền</span>
+                <strong class="grand-total-highlight">{{ formatTotal(activeOrder) }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <!-- 7. Thanh thao tác dưới cùng (Yêu cầu trả hàng & Đánh giá) -->
+          <div class="order-detail__bottom-bar">
+            @if (isReturnEligible(activeOrder)) {
+              <button type="button" class="orders-button orders-button--secondary" title="Gửi yêu cầu hoàn trả trong vòng 15 ngày">
+                Yêu cầu Trả hàng/Hoàn tiền
+              </button>
+            } @else {
+              <button type="button" class="orders-button orders-button--secondary orders-button--disabled" disabled title="Đơn hàng đã giao quá 15 ngày, không còn áp dụng đổi trả">
+                Đã quá hạn đổi trả (15 ngày)
+              </button>
             }
-            @if (activeOrder.paymentMethod) {
-              <div><dt>Phương thức thanh toán</dt><dd>{{ activeOrder.paymentMethod }}</dd></div>
+            @if (isOrderUnreviewed(activeOrder)) {
+              <button type="button" class="orders-button orders-button--shopee-review" (click)="openReviewModal(activeOrder)">
+                Đánh giá
+              </button>
+            } @else if (activeOrder.statusId === 'completed') {
+              <a routerLink="/myreview" class="orders-button orders-button--shopee-reviewed">
+                Xem đánh giá
+              </a>
             }
-            @if (activeOrder.paymentStatus) {
-              <div><dt>Trạng thái thanh toán</dt><dd>{{ activeOrder.paymentStatus }}</dd></div>
-            }
-            @if (activeOrder.shippingMethod) {
-              <div><dt>Vận chuyển</dt><dd>{{ activeOrder.shippingMethod }}</dd></div>
-            }
-            @if (activeOrder.trackingNumber) {
-              <div><dt>Mã vận đơn</dt><dd>{{ activeOrder.trackingNumber }}</dd></div>
-            }
-            @if (activeOrder.addressName) {
-              <div><dt>Người nhận</dt><dd>{{ activeOrder.addressName }}</dd></div>
-            }
-            @if (activeOrder.addressPhone) {
-              <div><dt>Số điện thoại</dt><dd>{{ activeOrder.addressPhone }}</dd></div>
-            }
-            @if (activeOrder.addressText) {
-              <div><dt>Địa chỉ nhận hàng</dt><dd>{{ activeOrder.addressText }}</dd></div>
-            }
-          </dl>
-        </section>
-      </article>
+          </div>
+        </article>
+      }
     }
   } @else {
     <header class="orders-heading">
-      <h1>Đơn hàng của tôi</h1>
+      <div class="orders-heading__main">
+        <h1>Đơn hàng của tôi</h1>
+        <a routerLink="/myreview" class="orders-myreviews-link" title="Xem lịch sử đánh giá của tôi">
+          <span class="material-symbols-outlined">rate_review</span>
+          <span>Đánh giá của tôi</span>
+        </a>
+      </div>
     </header>
+
+    <!-- Khối nổi bật nhắc nhở đơn hàng chưa đánh giá -->
+    @if (unreviewedOrderIds.size > 0) {
+      <section class="unreviewed-banner" aria-label="Đơn hàng chưa đánh giá">
+        <div class="unreviewed-banner__glow" aria-hidden="true"></div>
+        <div class="unreviewed-banner__icon-wrap">
+          <span class="material-symbols-outlined">reviews</span>
+        </div>
+        <div class="unreviewed-banner__body">
+          <div class="unreviewed-banner__headline">
+            <span class="unreviewed-banner__tag">Chờ đánh giá</span>
+            <h3>Bạn có {{ unreviewedOrderIds.size }} đơn hàng chưa đánh giá</h3>
+          </div>
+          <p class="unreviewed-banner__desc">
+            Chia sẻ cảm nhận về sản phẩm đã mua để nhận ưu đãi và giúp cộng đồng người mua Urii chọn sản phẩm dễ dàng hơn!
+          </p>
+        </div>
+        <div class="unreviewed-banner__actions">
+          <button type="button" class="orders-button orders-button--primary unreviewed-banner__cta" (click)="selectStatus('unreviewed')">
+            <span class="material-symbols-outlined">star</span>
+            Đánh giá ngay ({{ unreviewedOrderIds.size }})
+          </button>
+          <a routerLink="/myreview" class="unreviewed-banner__history-link">
+            Lịch sử đánh giá
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </a>
+        </div>
+      </section>
+    }
 
     <nav class="order-tabs" aria-label="Lọc đơn hàng">
       @for (status of statuses; track status.id) {
         <button
           type="button"
           class="order-tabs__item"
+          [attr.data-status]="status.id || 'all'"
           [class.order-tabs__item--active]="selectedStatus === status.id"
+          [class.order-tabs__item--unreviewed]="status.id === 'unreviewed'"
           [attr.aria-pressed]="selectedStatus === status.id"
           (click)="selectStatus(status.id)">
-          {{ status.label }}
+          <span>{{ status.label }}</span>
+          @if (getStatusCount(status.id) > 0) {
+            <span class="order-tab-badge" [attr.data-status]="status.id || 'all'">{{ getStatusCount(status.id) }}</span>
+          }
         </button>
       }
     </nav>
@@ -125,43 +380,134 @@
         <p>{{ errorMessage }}</p>
         <button class="orders-button orders-button--secondary" type="button" (click)="loadOrders(currentPage)">Thử lại</button>
       </section>
-    } @else if (!orders.length) {
+    } @else if (!displayedOrders.length) {
       <section class="orders-message orders-message--empty">
-        <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
-        <h2>Chưa có đơn hàng</h2>
+        <span class="material-symbols-outlined" aria-hidden="true">
+          {{ selectedStatus === 'unreviewed' ? 'verified' : 'receipt_long' }}
+        </span>
+        <h2>{{ selectedStatus === 'unreviewed' ? 'Không có đơn hàng nào chờ đánh giá' : 'Chưa có đơn hàng' }}</h2>
+        @if (selectedStatus === 'unreviewed') {
+          <p>Tất cả sản phẩm đã nhận đều đã được bạn đánh giá. Cảm ơn bạn!</p>
+          <a class="orders-button orders-button--secondary" routerLink="/myreview">Xem lịch sử đánh giá của tôi</a>
+        }
       </section>
     } @else {
       <section class="orders-list" aria-label="Danh sách đơn hàng">
-        @for (order of orders; track order.slug) {
-          <article class="order-card">
-            <div class="order-card__main">
-              <div class="order-code">
-                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
-                <div>
-                  <h2>{{ order.slug }}</h2>
-                  @if (order.date) {
-                    <p>{{ order.date }}</p>
-                  }
-                </div>
-              </div>
-              @if (statusLabel(order)) {
-                <span class="order-status" [attr.data-status]="order.statusId">{{ statusLabel(order) }}</span>
-              }
-            </div>
-            <div class="order-card__footer">
-              <div class="order-total">
-                <span>Tổng thanh toán</span>
-                @if (formatTotal(order)) {
-                  <strong>{{ formatTotal(order) }}</strong>
+        @for (order of displayedOrders; track order.slug) {
+          <article class="order-card" [class.order-card--unreviewed]="isOrderUnreviewed(order)">
+            <!-- Header chuẩn sàn TMĐT: Shop Mall badge, tên shop, mã đơn và trạng thái -->
+            <div class="order-card__header">
+              <div class="order-card__shop-wrap">
+                <span class="order-card__shop-name">Đơn hàng</span>
+                <span class="order-card__order-id">#{{ order.slug }}</span>
+                @if (order.date) {
+                  <span class="order-card__order-date">({{ order.date }})</span>
                 }
               </div>
-              <a class="orders-button orders-button--secondary" [routerLink]="['/orders', order.slug]">Xem chi tiết</a>
+              <div class="order-card__status-wrap">
+                @if (isOrderUnreviewed(order)) {
+                  <span class="order-review-tag order-review-tag--pending">
+                    <span class="material-symbols-outlined">edit_note</span>
+                    Chưa đánh giá
+                  </span>
+                }
+                @if (order.statusId === 'completed' && isReturnEligible(order)) {
+                  <button type="button" class="order-status-action-tag" (click)="openReturnRequest(order, $event)" title="Trong thời hạn đổi trả 15 ngày">
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    Trả hàng/Hoàn tiền
+                  </button>
+                }
+                <span class="order-card__status-tag" [attr.data-status]="order.statusId">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  {{ statusLabel(order) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Danh sách sản phẩm: Ảnh vuông lớn, tên đầy đủ, phân loại, số lượng, giá -->
+            <div class="order-card__items-list">
+              @for (item of order.items; track $index) {
+                <div class="order-card__product-row order-card__product-row--clickable" (click)="goToProduct(item, $event)" [title]="'Xem chi tiết ' + item.name">
+                  <div class="order-card__product-thumb-wrap">
+                    @if (item.image) {
+                      <img [src]="item.image" [alt]="item.name" class="order-card__product-thumb" />
+                    } @else {
+                      <span class="material-symbols-outlined order-card__placeholder-icon">inventory_2</span>
+                    }
+                  </div>
+                  <div class="order-card__product-details">
+                    <h3 class="order-card__product-title" [title]="item.name">{{ item.name }}</h3>
+                    <div class="order-card__product-meta">
+                      @if (item.variantName) {
+                        <span class="order-card__product-variant">Phân loại: {{ item.variantName }}</span>
+                      }
+                      <span class="order-card__product-qty">x{{ item.quantity || 1 }}</span>
+                    </div>
+                  </div>
+                  <div class="order-card__product-pricing">
+                    @if (item.originalPrice && item.originalPrice > (item.unitPrice || 0)) {
+                      <span class="order-card__price-original">{{ item.originalPrice | number }}₫</span>
+                    }
+                    @if (item.unitPrice !== null) {
+                      <span class="order-card__price-current">{{ item.unitPrice | number }}₫</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Thanh tổng tiền như ảnh mẫu: Tổng số tiền (X sản phẩm): Y đ -->
+            <div class="order-card__total-bar">
+              <span class="order-card__total-label">
+                Tổng số tiền ({{ totalItemCount(order) }} sản phẩm):
+              </span>
+              <strong class="order-card__total-value">
+                {{ formatTotal(order) }}
+              </strong>
+            </div>
+
+            <!-- Khối nhắc nhở nhận xu / ưu đãi khi đánh giá -->
+            @if (order.statusId === 'completed' && isOrderUnreviewed(order)) {
+              <div class="order-card__reward-banner" (click)="openReviewModal(order)">
+                <div class="order-card__reward-content">
+                  <span class="material-symbols-outlined order-card__reward-coin">monetization_on</span>
+                  <span>Đánh giá sản phẩm ngay để nhận điểm thưởng và ưu đãi từ Urii</span>
+                </div>
+                <span class="material-symbols-outlined order-card__reward-chevron">chevron_right</span>
+              </div>
+            }
+
+            <!-- Nút thao tác dưới cùng bên phải: Xem chi tiết & Đánh giá -->
+            <div class="order-card__bottom-actions">
+              @if (order.statusId === 'pending') {
+                <button type="button" class="orders-button orders-button--change-address" (click)="openChangeAddressModal(order, $event)">
+                  <span class="material-symbols-outlined">edit_location</span>
+                  Đổi địa chỉ
+                </button>
+              }
+              @if (order.statusId === 'completed' && isReturnEligible(order)) {
+                <button type="button" class="orders-button orders-button--return" (click)="openReturnRequest(order, $event)">
+                  Trả hàng/Hoàn tiền
+                </button>
+              }
+              <a class="orders-button orders-button--secondary" [routerLink]="['/orders', order.slug]">
+                Xem chi tiết
+              </a>
+              @if (isOrderUnreviewed(order)) {
+                <button type="button" class="orders-button orders-button--shopee-review" (click)="openReviewModal(order)">
+                  Đánh giá
+                </button>
+              } @else if (order.statusId === 'completed') {
+                <a routerLink="/myreview" class="orders-button orders-button--shopee-reviewed">
+                  Xem đánh giá
+                </a>
+              }
             </div>
           </article>
         }
       </section>
 
-      @if (totalPages > 1) {
+      @if (totalPages > 1 && selectedStatus !== 'unreviewed') {
         <nav class="orders-pagination" aria-label="Phân trang đơn hàng">
           <button type="button" aria-label="Trang trước" [disabled]="currentPage <= 1" (click)="goToPage(currentPage - 1)">
             <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
@@ -178,4 +524,516 @@
       }
     }
   }
+
+  <!-- Review Modal Overlay -->
+  @if (isReviewModalOpen) {
+    <div class="review-modal-backdrop" (click)="closeReviewModal()">
+      <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-modal-title" (click)="$event.stopPropagation()">
+        <header class="review-modal__header">
+          <div class="review-modal__header-title">
+            <span class="material-symbols-outlined">rate_review</span>
+            <h2 id="review-modal-title">Đánh giá sản phẩm</h2>
+          </div>
+          <button type="button" class="review-modal__close" (click)="closeReviewModal()" aria-label="Đóng">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </header>
+
+        @if (reviewSubmitSuccess) {
+          <div class="review-modal__success">
+            <div class="review-modal__success-icon">
+              <span class="material-symbols-outlined">task_alt</span>
+            </div>
+            <h3>Gửi đánh giá thành công!</h3>
+            <p>Cảm ơn bạn đã đóng góp phản hồi về sản phẩm cho Urii.</p>
+            <div class="review-modal__success-actions">
+              <a routerLink="/myreview" class="orders-button orders-button--primary" (click)="closeReviewModal()">
+                Xem đánh giá của tôi
+              </a>
+              <button type="button" class="orders-button orders-button--secondary" (click)="closeReviewModal()">
+                Đóng
+              </button>
+            </div>
+          </div>
+        } @else {
+          <form class="review-modal__form" (submit)="$event.preventDefault(); submitReview()">
+            @if (selectedReviewOrder && selectedReviewOrder.items.length > 1) {
+              <div class="review-modal__field">
+                <label class="review-modal__label">Chọn sản phẩm cần đánh giá:</label>
+                <div class="review-item-chips">
+                  @for (item of selectedReviewOrder.items; track item.productId || item.name) {
+                    <button
+                      type="button"
+                      class="review-item-chip"
+                      [class.review-item-chip--active]="selectedReviewItem === item"
+                      (click)="selectedReviewItem = item">
+                      @if (item.image) {
+                        <img [src]="item.image" alt="" class="review-item-chip__thumb" />
+                      }
+                      <span class="review-item-chip__name">{{ item.name }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (selectedReviewItem) {
+              <div class="review-product-preview">
+                @if (selectedReviewItem.image) {
+                  <img [src]="selectedReviewItem.image" alt="" class="review-product-preview__thumb" />
+                } @else {
+                  <span class="material-symbols-outlined review-product-preview__icon">inventory_2</span>
+                }
+                <div class="review-product-preview__meta">
+                  <span class="review-product-preview__order">Đơn hàng: #{{ selectedReviewOrder?.slug }}</span>
+                  <strong class="review-product-preview__name">{{ selectedReviewItem.name }}</strong>
+                  @if (selectedReviewItem.unitPrice !== null) {
+                    <span class="review-product-preview__price">{{ selectedReviewItem.unitPrice | number }}đ</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Star rating -->
+            <div class="review-modal__field">
+              <label class="review-modal__label">Chất lượng sản phẩm:</label>
+              <div class="review-stars-wrap">
+                <div class="review-stars-row">
+                  @for (star of [1, 2, 3, 4, 5]; track star) {
+                    <button
+                      type="button"
+                      class="review-star-btn"
+                      [class.review-star-btn--active]="(reviewHoverRating || reviewRating) >= star"
+                      (mouseenter)="setHoverRating(star)"
+                      (mouseleave)="setHoverRating(0)"
+                      (click)="setReviewRating(star)"
+                      [attr.aria-label]="star + ' sao'">
+                      <span class="material-symbols-outlined">
+                        {{ (reviewHoverRating || reviewRating) >= star ? 'star' : 'star_border' }}
+                      </span>
+                    </button>
+                  }
+                </div>
+                <span class="review-stars-label">{{ ratingLabel(reviewHoverRating || reviewRating) }}</span>
+              </div>
+            </div>
+
+            <!-- Content textarea -->
+            <div class="review-modal__field">
+              <label for="review-content-input" class="review-modal__label">Nội dung đánh giá:</label>
+              <textarea
+                id="review-content-input"
+                class="review-textarea"
+                rows="4"
+                [(ngModel)]="reviewContent"
+                name="reviewContent"
+                placeholder="Chia sẻ trải nghiệm của bạn về chất lượng hạt ủi, đóng gói, giao hàng...">
+              </textarea>
+            </div>
+
+            @if (reviewErrorMessage) {
+              <div class="review-error-banner" role="alert">
+                <span class="material-symbols-outlined">error</span>
+                <span>{{ reviewErrorMessage }}</span>
+              </div>
+            }
+
+            <footer class="review-modal__footer">
+              <button type="button" class="orders-button orders-button--secondary" (click)="closeReviewModal()" [disabled]="isSubmittingReview">
+                Hủy
+              </button>
+              <button type="submit" class="orders-button orders-button--primary" [disabled]="isSubmittingReview">
+                @if (isSubmittingReview) {
+                  Đang gửi...
+                } @else {
+                  Gửi đánh giá
+                }
+              </button>
+            </footer>
+          </form>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- MODAL ĐỔI ĐỊA CHỈ NHẬN HÀNG (DÀNH CHO ĐƠN CHƯA XÁC NHẬN - THAM KHẢO CHECKOUT) -->
+  @if (addressModalOpen && addressTargetOrder) {
+    <div class="address-modal-backdrop" (click)="closeAddressModal()"></div>
+    <section
+      class="address-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="change-address-modal-title"
+    >
+      <header class="address-modal-header">
+        <div class="address-modal-title-group">
+          <h2 id="change-address-modal-title">Thay đổi địa chỉ nhận hàng</h2>
+          <span class="address-modal-order-tag">Đơn hàng #{{ addressTargetOrder.slug }}</span>
+        </div>
+        <button type="button" class="address-modal-close" aria-label="Đóng" (click)="closeAddressModal()">×</button>
+      </header>
+
+      <div class="address-modal-body">
+        <div class="address-modal-notice">
+          <span class="material-symbols-outlined">info</span>
+          <span>Đơn hàng đang chờ xác nhận nên bạn có thể đổi địa chỉ nhận hàng bất kỳ lúc nào trước khi cửa hàng đóng gói.</span>
+        </div>
+
+        @if (addressModalError) {
+          <p class="address-modal-alert address-modal-alert--error" role="alert">{{ addressModalError }}</p>
+        }
+        @if (addressSaveSuccess) {
+          <p class="address-modal-alert address-modal-alert--success" role="status">✓ Cập nhật địa chỉ nhận hàng thành công!</p>
+        }
+
+        @if (savedAddresses.length > 0 && !addAddressFormOpen) {
+          <div class="address-list">
+            @for (address of savedAddresses; track address.id) {
+              <article
+                class="address-item"
+                [class.selected]="address.id === selectedAddressId"
+                (click)="selectSavedAddress(address.id)"
+              >
+                <input
+                  type="radio"
+                  name="selectedOrderAddress"
+                  [checked]="address.id === selectedAddressId"
+                  (click)="$event.stopPropagation()"
+                  (change)="selectSavedAddress(address.id)"
+                >
+                <div class="address-info">
+                  <div class="address-name">
+                    <strong>{{ address.name }}</strong>
+                    @if (address.isDefault) {
+                      <span class="address-badge">MẶC ĐỊNH</span>
+                    }
+                  </div>
+                  <div class="address-phone">☎ {{ address.phone }}</div>
+                  <div class="address-detail">⌖ {{ address.fullAddress }}</div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+
+        <button class="btn-toggle-add-address" type="button" (click)="toggleAddAddressForm()">
+          {{ addAddressFormOpen ? '← Chọn từ địa chỉ đã lưu' : '+ Nhập địa chỉ mới khác' }}
+        </button>
+
+        @if (addAddressFormOpen || savedAddresses.length === 0) {
+          <div class="add-address-form">
+            <div class="form-field-group">
+              <label class="form-label" for="orderNewFullName">Họ và tên người nhận <span>*</span></label>
+              <input id="orderNewFullName" class="form-control" name="newAddressName" [(ngModel)]="newAddress.name" placeholder="Ví dụ: Nguyễn Văn A">
+            </div>
+
+            <div class="form-field-group">
+              <label class="form-label" for="orderNewPhone">Số điện thoại <span>*</span></label>
+              <input id="orderNewPhone" class="form-control" name="newAddressPhone" [(ngModel)]="newAddress.phone" type="tel" placeholder="Ví dụ: 0912345678">
+            </div>
+
+            <div class="form-field-group">
+              <label class="form-label" for="orderNewDetail">Địa chỉ chi tiết (số nhà, đường, ngõ...) <span>*</span></label>
+              <input id="orderNewDetail" class="form-control" name="newAddressDetail" [(ngModel)]="newAddress.detail" placeholder="Số nhà, tên đường, khu phố...">
+            </div>
+
+            <div class="form-row-two-col">
+              <div class="form-field-group">
+                <label class="form-label" for="orderNewProvince">Tỉnh / Thành phố</label>
+                <select
+                  id="orderNewProvince"
+                  class="form-control"
+                  name="orderNewProvince"
+                  [value]="selectedProvinceCode ?? ''"
+                  [disabled]="loadingProvinces || provinces.length === 0"
+                  (change)="onProvinceSelect($event)"
+                >
+                  <option value="">{{ loadingProvinces ? '-- Đang tải... --' : '-- Chọn Tỉnh/Thành phố --' }}</option>
+                  @for (province of provinces; track province.code) {
+                    <option [value]="province.code">{{ province.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-field-group">
+                <label class="form-label" for="orderNewWard">Phường / Xã</label>
+                <select
+                  id="orderNewWard"
+                  class="form-control"
+                  name="orderNewWard"
+                  [value]="selectedWardCode ?? ''"
+                  [disabled]="loadingWards || wards.length === 0"
+                  (change)="onWardSelect($event)"
+                >
+                  <option value="">{{ loadingWards ? '-- Đang tải... --' : (selectedProvinceCode ? '-- Chọn Phường/Xã --' : '-- Chọn Tỉnh trước --') }}</option>
+                  @for (ward of wards; track ward.code) {
+                    <option [value]="ward.code">{{ ward.name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <footer class="address-modal-footer">
+        <button type="button" class="btn-modal-cancel" (click)="closeAddressModal()">Đóng</button>
+        <button
+          type="button"
+          class="btn-modal-confirm"
+          [disabled]="isSavingAddress"
+          (click)="confirmChangeAddress()"
+        >
+          {{ isSavingAddress ? 'Đang lưu...' : 'Xác nhận đổi địa chỉ' }}
+        </button>
+      </footer>
+    </section>
+  }
+
+  <!-- ========================================================
+       MODAL TRẢ HÀNG / HOÀN TIỀN (CHUẨN SHOPEE THEO ẢNH MẪU)
+       ======================================================== -->
+  @if (returnModalOpen && returnTargetOrder) {
+    <div class="return-modal-backdrop" (click)="closeReturnModal()">
+      <div class="return-modal-container" (click)="$event.stopPropagation()">
+        <!-- Header có nút back và tiêu đề -->
+        <header class="return-header">
+          @if (returnStep === 'form') {
+            <button type="button" class="return-back-btn" (click)="returnStep = 'situation'" aria-label="Quay lại">
+              <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+          } @else {
+            <button type="button" class="return-back-btn" (click)="closeReturnModal()" aria-label="Đóng">
+              <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+          }
+          <h2 class="return-header__title">
+            {{ returnStep === 'situation' ? 'Tình huống bạn đang gặp...' : 'Yêu cầu Trả hàng/Hoàn tiền' }}
+          </h2>
+          <button type="button" class="return-close-icon-btn" (click)="closeReturnModal()" aria-label="Đóng">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </header>
+
+        <!-- NỘI DUNG BƯỚC 1: TÌNH HUỐNG GẶP PHẢI (ẢNH MẪU 7) -->
+        @if (returnStep === 'situation') {
+          <div class="return-situation-body">
+            <!-- Tình huống 1: Đã nhận hàng nhưng hàng có vấn đề -->
+            <button type="button" class="return-situation-card" (click)="selectSituation('damaged')">
+              <div class="situation-icon-box">
+                <span class="material-symbols-outlined situation-icon-damaged">electric_bolt</span>
+              </div>
+              <div class="situation-card__content">
+                <h3 class="situation-card__title">
+                  Đã nhận hàng nhưng hàng có vấn đề (bể vỡ, sai mẫu, hàng lỗi, khác mô tả...) - Miễn ship hoàn về
+                </h3>
+                <p class="situation-card__notice">
+                  Lưu ý: Trường hợp yêu cầu Trả Hàng Hoàn Tiền của bạn được chấp nhận, Voucher có thể sẽ không được hoàn lại
+                </p>
+              </div>
+              <span class="material-symbols-outlined situation-card__arrow">chevron_right</span>
+            </button>
+
+            <!-- Tình huống 2: Chưa nhận hàng hoặc nhận thiếu hàng -->
+            <button type="button" class="return-situation-card" (click)="selectSituation('not_received')">
+              <div class="situation-icon-box">
+                <span class="material-symbols-outlined situation-icon-missing">inventory_2</span>
+              </div>
+              <div class="situation-card__content">
+                <h3 class="situation-card__title">
+                  Chưa nhận hàng hoặc nhận thiếu hàng
+                </h3>
+                <p class="situation-card__notice">
+                  Lưu ý: Trong trường hợp yêu cầu Trả Hàng Hoàn Tiền của bạn được chấp nhận, Urii Xu, Voucher, Phí vận chuyển có thể không được hoàn lại
+                </p>
+              </div>
+              <span class="material-symbols-outlined situation-card__arrow">chevron_right</span>
+            </button>
+          </div>
+        }
+
+        <!-- NỘI DUNG BƯỚC 2: YÊU CẦU TRẢ HÀNG / HOÀN TIỀN (ẢNH MẪU 9) -->
+        @if (returnStep === 'form') {
+          <div class="return-form-body">
+            <!-- 1. Danh sách sản phẩm của đơn -->
+            <div class="return-products-card">
+              @for (item of returnTargetOrder.items; track $index) {
+                <div class="return-product-row">
+                  <div class="return-product-thumb-wrap">
+                    @if (item.image) {
+                      <img [src]="item.image" [alt]="item.name" class="return-product-thumb" />
+                    } @else {
+                      <span class="material-symbols-outlined return-product-placeholder">inventory_2</span>
+                    }
+                  </div>
+                  <div class="return-product-info">
+                    <h4 class="return-product-name" [title]="item.name">{{ item.name }}</h4>
+                    @if (item.variantName) {
+                      <p class="return-product-variant">{{ item.variantName }}</p>
+                    }
+                  </div>
+                  <span class="return-product-qty">x{{ item.quantity || 1 }}</span>
+                </div>
+              }
+            </div>
+
+            <!-- 2. Chọn lý do -->
+            <div class="return-section-card return-reason-selector" (click)="openReasonSheet()">
+              <div class="return-reason-row">
+                <span class="return-label return-label--required">Lý do *</span>
+                <div class="return-reason-value">
+                  <span class="return-reason-text">{{ selectedReturnReason?.label || 'Chọn lý do' }}</span>
+                  <span class="material-symbols-outlined return-reason-chevron">chevron_right</span>
+                </div>
+              </div>
+              <p class="return-solution-hint">Phương án: Trả hàng và Hoàn tiền</p>
+            </div>
+
+            <!-- 3. Mô tả vấn đề -->
+            <div class="return-section-card return-desc-card">
+              <div class="return-desc-header">
+                <span class="return-label">Mô tả</span>
+                <span class="return-counter">{{ returnDescription.length }}/2000</span>
+              </div>
+              <textarea
+                class="return-textarea"
+                rows="4"
+                maxlength="2000"
+                placeholder="Mô tả vấn đề bạn gặp phải"
+                [(ngModel)]="returnDescription"
+              ></textarea>
+
+              <!-- Upload hình ảnh & video -->
+              <div class="return-upload-grid">
+                <label class="return-upload-box" title="Thêm hình ảnh">
+                  <input type="file" accept="image/*" class="return-file-input" (change)="onEvidenceFilePicked($event, 'image')" />
+                  <span class="material-symbols-outlined upload-box-icon">photo_camera</span>
+                  <span class="upload-box-title">Thêm Hình ảnh</span>
+                  <span class="upload-box-count">{{ returnImageCount }}/6</span>
+                  <span class="upload-box-sub">Tối đa: 20MB</span>
+                </label>
+
+                <label class="return-upload-box" title="Thêm video">
+                  <input type="file" accept="video/*" class="return-file-input" (change)="onEvidenceFilePicked($event, 'video')" />
+                  <span class="material-symbols-outlined upload-box-icon">videocam</span>
+                  <span class="upload-box-title">Thêm Video</span>
+                  <span class="upload-box-count">{{ returnVideoCount }}/1</span>
+                  <span class="upload-box-sub">Tối đa: 200MB</span>
+                </label>
+              </div>
+
+              <!-- Danh sách file đã tải lên -->
+              @if (returnEvidenceList.length > 0) {
+                <div class="return-evidence-previews">
+                  @for (ev of returnEvidenceList; track $index) {
+                    <div class="evidence-preview-chip">
+                      <span class="material-symbols-outlined">{{ ev.type === 'video' ? 'videocam' : 'image' }}</span>
+                      <span class="evidence-chip-name">{{ ev.name || ('File ' + ($index + 1)) }}</span>
+                      <button type="button" class="btn-remove-evidence" (click)="removeEvidence($index)">
+                        <span class="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+
+              <div class="return-upload-guidelines">
+                <p class="guideline-intro">* Đăng tải hình ảnh hoặc video: <span class="guideline-link">Xem ví dụ</span></p>
+                <p class="guideline-item">1. Thấy rõ sản phẩm nhận được không phải sản phẩm người mua đã đặt</p>
+              </div>
+            </div>
+
+            <!-- 4. Hoàn tiền vào -->
+            <div class="return-section-card return-destination-card">
+              <span class="return-label">Hoàn tiền vào</span>
+              <div class="return-destination-value">
+                <div class="destination-brand">
+                  <span class="material-symbols-outlined destination-wallet-icon">account_balance_wallet</span>
+                  <strong class="destination-name">Số dư Ví UriiPay</strong>
+                </div>
+                <span class="destination-fast-tag">Faster Refund</span>
+              </div>
+            </div>
+
+            <!-- 5. Tổng tiền hoàn -->
+            <div class="return-section-card return-refund-total-card">
+              <div class="refund-total-row">
+                <span class="return-label">Tổng tiền hoàn</span>
+                <strong class="refund-total-amount">{{ formatTotal(returnTargetOrder) }}</strong>
+              </div>
+              <div class="refund-sub-row">
+                <span>Giá sản phẩm sau khuyến mãi</span>
+                <span>{{ formatTotal(returnTargetOrder) }}</span>
+              </div>
+            </div>
+
+            @if (returnErrorMessage) {
+              <div class="return-error-alert">
+                <span class="material-symbols-outlined">error</span>
+                <span>{{ returnErrorMessage }}</span>
+              </div>
+            }
+
+            @if (returnSubmitSuccess) {
+              <div class="return-success-alert">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>Gửi yêu cầu Trả hàng/Hoàn tiền thành công! Đang chuyển hướng...</span>
+              </div>
+            }
+
+            <!-- Nút gửi yêu cầu -->
+            <div class="return-footer-action">
+              <button
+                type="button"
+                class="btn-submit-return"
+                [disabled]="isSubmittingReturn || returnSubmitSuccess"
+                (click)="submitReturnRequest()"
+              >
+                {{ isSubmittingReturn ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu' }}
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- BOTTOM SHEET CHỌN LÝ DO (ẢNH MẪU 8) -->
+      @if (returnReasonSheetOpen) {
+        <div class="return-sheet-backdrop" (click)="closeReasonSheet()">
+          <div class="return-sheet-drawer" (click)="$event.stopPropagation()">
+            <header class="return-sheet-header">
+              <h3 class="return-sheet-title">Chọn lý do</h3>
+              <button type="button" class="return-sheet-close" (click)="closeReasonSheet()" aria-label="Đóng">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </header>
+
+            <div class="return-sheet-list">
+              @for (reason of returnReasonsList; track reason.id) {
+                <label class="return-reason-option" (click)="chooseReason(reason)">
+                  <span class="reason-radio" [class.reason-radio--checked]="pendingReturnReason?.id === reason.id">
+                    @if (pendingReturnReason?.id === reason.id) {
+                      <span class="radio-inner-dot"></span>
+                    }
+                  </span>
+                  <span class="reason-option-label">{{ reason.label }}</span>
+                </label>
+              }
+            </div>
+
+            <footer class="return-sheet-footer">
+              <button
+                type="button"
+                class="btn-sheet-continue"
+                [disabled]="!pendingReturnReason"
+                (click)="confirmReason()"
+              >
+                Tiếp tục
+              </button>
+            </footer>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
 </main>

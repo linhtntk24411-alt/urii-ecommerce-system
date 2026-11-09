@@ -13,9 +13,11 @@ import { MyOrders } from './features/account/my-orders/my-orders';
 import { CustomOrders } from './features/account/custom-orders/custom-orders';
 import { SavedMaps } from './features/account/saved-maps/saved-maps';
 import { MyReviews } from './features/account/my-reviews/my-reviews';
+import { MyVouchers } from './features/account/my-vouchers/my-vouchers';
 import { SidebarAccount } from './layout/sidebar-account/sidebar-account';
 import { SupportComponent } from './features/support/support';
 import { About } from './features/about/about';
+import { CreateMapComponent } from './features/create-map/create-map';
 import { PageNotFoundComponent } from './features/page-not-found/page-not-found';
 import { Product } from './features/product/product';
 import { ProductDetail } from './features/product-detail/product-detail';
@@ -35,6 +37,8 @@ export const routes: Routes = [
   { path: 'sample-maps', component: SampleMapsComponent },
   { path: 'sample-maps-detail', component: SampleMapsDetailComponent },
   { path: 'sample-maps-detail/:slug', component: SampleMapsDetailComponent },
+  { path: 'create-map', component: CreateMapComponent },
+  { path: 'create-map-from-image', redirectTo: 'create-map', pathMatch: 'full' },
   { path: 'login', component: LoginUser },
   { path: 'register', component: LoginUser },
   { path: 'support', component: SupportComponent },
@@ -43,9 +47,12 @@ export const routes: Routes = [
   { path: 'support/privacy-policy', component: SupportComponent },
   { path: 'support/terms-of-service', component: SupportComponent },
   { path: 'support/community-standards', component: SupportComponent },
+  { path: 'support/return-policy', component: SupportComponent },
   { path: 'about', component: About },
   { path: 'account/orders', redirectTo: 'orders', pathMatch: 'full' },
   { path: 'account/profile', redirectTo: 'profile', pathMatch: 'full' },
+  { path: 'account/vouchers', redirectTo: 'my-vouchers', pathMatch: 'full' },
+  { path: 'account/my-vouchers', redirectTo: 'my-vouchers', pathMatch: 'full' },
   {
     path: '',
     component: SidebarAccount,
@@ -59,6 +66,8 @@ export const routes: Routes = [
       { path: 'custom-order-list/:slug', component: CustomOrders },
       { path: 'custom-order', component: CustomOrderComponent },
       { path: 'saved-maps', component: SavedMaps },
+      { path: 'my-vouchers', component: MyVouchers },
+      { path: 'vouchers', component: MyVouchers },
       { path: 'myreview', component: MyReviews },
     ],
   },

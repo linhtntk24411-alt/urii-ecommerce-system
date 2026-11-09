@@ -73,6 +73,99 @@ exports.getAllVouchers = async (req, res) => {
   }
 };
 
+exports.checkVoucher = async (req, res) => {
+  try {
+    const rawCode = String(req.params.code || req.body?.code || req.query?.code || '').trim();
+    if (!rawCode) {
+      return res.status(400).json({
+        valid: false,
+        message: 'Vui lòng cung cấp mã voucher cần kiểm tra.'
+      });
+    }
+
+    const upperCode = rawCode.toUpperCase();
+
+    // Đối chiếu trực tiếp với database MongoDB
+    const voucher = await Voucher.findOne({
+      $or: [
+        { code: upperCode },
+        { id: rawCode },
+        ...(mongoose.isValidObjectId(rawCode) ? [{ _id: rawCode }] : [])
+      ]
+    }).lean();
+
+    if (!voucher) {
+      return res.json({
+        valid: false,
+        code: upperCode,
+        reason: 'NOT_FOUND',
+        message: 'Tiếc quá, chúng tớ không tìm thấy, cậu hãy nhập lại nữa nhé'
+      });
+    }
+
+    const code = voucher.code || upperCode;
+
+    if (voucher.isActive === false) {
+      return res.json({
+        valid: false,
+        code,
+        reason: 'INACTIVE',
+        message: `Mã voucher "${code}" hiện đang bị tạm khóa hoặc chưa được kích hoạt.`,
+        voucher
+      });
+    }
+
+    const now = new Date();
+    const startDate = parseVoucherDate(voucher.startDate);
+    if (startDate && startDate > now) {
+      return res.json({
+        valid: false,
+        code,
+        reason: 'NOT_STARTED',
+        message: `Mã voucher "${code}" chưa có hiệu lực (bắt đầu áp dụng từ ngày ${voucher.startDate}).`,
+        voucher
+      });
+    }
+
+    const endDate = parseVoucherDate(voucher.endDate, true);
+    if (endDate && now > endDate) {
+      return res.json({
+        valid: false,
+        code,
+        reason: 'EXPIRED',
+        message: `Mã voucher "${code}" đã hết hạn sử dụng (hạn chót: ${voucher.endDate}).`,
+        voucher
+      });
+    }
+
+    if (voucher.quantity !== undefined && voucher.quantity !== null) {
+      const usedCount = (voucher.used || 0) + (voucher.reservedCount || 0);
+      if (usedCount >= voucher.quantity) {
+        return res.json({
+          valid: false,
+          code,
+          reason: 'OUT_OF_STOCK',
+          message: `Mã voucher "${code}" đã hết lượt sử dụng (${usedCount}/${voucher.quantity}).`,
+          voucher
+        });
+      }
+    }
+
+    return res.json({
+      valid: true,
+      code,
+      message: `Mã voucher "${code}" hoàn toàn hợp lệ và sẵn sàng sử dụng!`,
+      voucher
+    });
+  } catch (error) {
+    console.error('Lỗi kiểm tra voucher:', error);
+    return res.status(500).json({
+      valid: false,
+      message: 'Tiếc quá, chúng tớ không tìm thấy, cậu hãy nhập lại nữa nhé'
+    });
+  }
+};
+
 exports.getVoucherById = async (req, res) => {
   try {
     const voucher = await Voucher.findOne(voucherFilter(req.params.id)).lean();

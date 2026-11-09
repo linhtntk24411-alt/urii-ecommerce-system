@@ -1,0 +1,208 @@
+{
+  "users": [
+    {
+      "userId": "6ade4310c044b23d6c6a8681",
+      "voucherIds": [
+        "FREESHIP",
+        "WELCOME10",
+        "GIAM10K"
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8682",
+      "voucherIds": [
+        "FREESHIP",
+        "WELCOME10",
+        "SALE15"
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8683",
+      "voucherIds": [
+        "WELCOME10",
+        "GIAM10K",
+        "SALE15"
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8684",
+      "voucherIds": [
+        "FREESHIP",
+        "GIAM10K",
+        "HAPPYDAY"
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8685",
+      "voucherIds": [
+        "WELCOME10",
+        "SALE15"
+      ]
+    },
+    {
+      "userId": "6ade4310c044b23d6c6a8686",
+      "voucherIds": [
+        "FREESHIP",
+        "GIAM10K",
+        "SALE15"
+      ]
+    }
+  ],
+  "savedVouchers": [
+    {
+      "id": "saved-6ade4310c044b23d6c6a8681-FREESHIP",
+      "userId": "6ade4310c044b23d6c6a8681",
+      "voucherId": "FREESHIP",
+      "code": "FREESHIP",
+      "source": "promotion",
+      "claimedAt": "2026-05-10T08:30:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8681-WELCOME10",
+      "userId": "6ade4310c044b23d6c6a8681",
+      "voucherId": "WELCOME10",
+      "code": "WELCOME10",
+      "source": "promotion",
+      "claimedAt": "2026-05-10T08:31:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8681-GIAM10K",
+      "userId": "6ade4310c044b23d6c6a8681",
+      "voucherId": "GIAM10K",
+      "code": "GIAM10K",
+      "source": "promotion",
+      "claimedAt": "2026-05-10T08:32:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8682-FREESHIP",
+      "userId": "6ade4310c044b23d6c6a8682",
+      "voucherId": "FREESHIP",
+      "code": "FREESHIP",
+      "source": "promotion",
+      "claimedAt": "2026-05-11T09:00:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8682-WELCOME10",
+      "userId": "6ade4310c044b23d6c6a8682",
+      "voucherId": "WELCOME10",
+      "code": "WELCOME10",
+      "source": "promotion",
+      "claimedAt": "2026-05-11T09:01:00.000Z",
+      "isUsed": true,
+      "usedAt": "2026-05-12T14:20:00.000Z"
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8682-SALE15",
+      "userId": "6ade4310c044b23d6c6a8682",
+      "voucherId": "SALE15",
+      "code": "SALE15",
+      "source": "promotion",
+      "claimedAt": "2026-05-11T09:02:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8683-WELCOME10",
+      "userId": "6ade4310c044b23d6c6a8683",
+      "voucherId": "WELCOME10",
+      "code": "WELCOME10",
+      "source": "promotion",
+      "claimedAt": "2026-05-12T10:15:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8683-GIAM10K",
+      "userId": "6ade4310c044b23d6c6a8683",
+      "voucherId": "GIAM10K",
+      "code": "GIAM10K",
+      "source": "promotion",
+      "claimedAt": "2026-05-12T10:16:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8683-SALE15",
+      "userId": "6ade4310c044b23d6c6a8683",
+      "voucherId": "SALE15",
+      "code": "SALE15",
+      "source": "promotion",
+      "claimedAt": "2026-05-12T10:17:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8684-FREESHIP",
+      "userId": "6ade4310c044b23d6c6a8684",
+      "voucherId": "FREESHIP",
+      "code": "FREESHIP",
+      "source": "promotion",
+      "claimedAt": "2026-05-13T11:00:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8684-GIAM10K",
+      "userId": "6ade4310c044b23d6c6a8684",
+      "voucherId": "GIAM10K",
+      "code": "GIAM10K",
+      "source": "promotion",
+      "claimedAt": "2026-05-13T11:01:00.000Z",
+      "isUsed": true,
+      "usedAt": "2026-05-14T09:45:00.000Z"
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8684-HAPPYDAY",
+      "userId": "6ade4310c044b23d6c6a8684",
+      "voucherId": "HAPPYDAY",
+      "code": "HAPPYDAY",
+      "source": "promotion",
+      "claimedAt": "2026-05-13T11:02:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8685-WELCOME10",
+      "userId": "6ade4310c044b23d6c6a8685",
+      "voucherId": "WELCOME10",
+      "code": "WELCOME10",
+      "source": "promotion",
+      "claimedAt": "2026-05-14T15:20:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8685-SALE15",
+      "userId": "6ade4310c044b23d6c6a8685",
+      "voucherId": "SALE15",
+      "code": "SALE15",
+      "source": "promotion",
+      "claimedAt": "2026-05-14T15:21:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8686-FREESHIP",
+      "userId": "6ade4310c044b23d6c6a8686",
+      "voucherId": "FREESHIP",
+      "code": "FREESHIP",
+      "source": "promotion",
+      "claimedAt": "2026-05-15T08:10:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8686-GIAM10K",
+      "userId": "6ade4310c044b23d6c6a8686",
+      "voucherId": "GIAM10K",
+      "code": "GIAM10K",
+      "source": "promotion",
+      "claimedAt": "2026-05-15T08:11:00.000Z",
+      "isUsed": false
+    },
+    {
+      "id": "saved-6ade4310c044b23d6c6a8686-SALE15",
+      "userId": "6ade4310c044b23d6c6a8686",
+      "voucherId": "SALE15",
+      "code": "SALE15",
+      "source": "promotion",
+      "claimedAt": "2026-05-15T08:12:00.000Z",
+      "isUsed": false
+    }
+  ]
+}

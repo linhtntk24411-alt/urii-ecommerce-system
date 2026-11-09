@@ -32,6 +32,12 @@
           <span class="material-symbols-outlined">gavel</span>
           Tiêu chuẩn cộng đồng
         </a>
+        <a class="support-nav-item" 
+           [class.active]="activeTab === 'return-policy'" 
+           routerLink="/support/return-policy">
+          <span class="material-symbols-outlined">assignment_return</span>
+          Chính sách đổi trả & hoàn tiền
+        </a>
         <div class="support-nav-divider"></div>
         <a class="support-nav-item" routerLink="/">
           <span class="material-symbols-outlined">arrow_back</span>
@@ -279,6 +285,70 @@
           <div class="highlight-box-orange">
             <p><span class="material-symbols-outlined">verified</span> <strong>Cùng nhau xây dựng cộng đồng:</strong> Nếu bạn phát hiện nội dung hoặc hành vi vi phạm, vui lòng báo cáo ngay cho chúng tôi qua email <strong>support@urii.vn</strong> hoặc Hotline <strong>1900 1234</strong>.</p>
           </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'return-policy'">
+        <div class="support-header">
+          <h1 class="support-title">
+            <span class="material-symbols-outlined title-icon">assignment_return</span>
+            Chính sách đổi trả & hoàn tiền Urii Mall
+          </h1>
+        </div>
+        <div class="support-body">
+          <div class="highlight-box">
+            <p><strong><span class="material-symbols-outlined">verified</span> Cam kết Urii Mall:</strong> Khách hàng được quyền gửi yêu cầu đổi hàng / trả hàng hoàn tiền <strong>cố định trong vòng 15 ngày</strong> kể từ khi đơn vị vận chuyển cập nhật trạng thái "Giao hàng thành công". Sau 15 ngày, hệ thống sẽ tự động khóa tính năng và không áp dụng đổi trả.</p>
+          </div>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">schedule</span>
+            <span>1. Thời hạn quy định đổi trả cố định</span>
+          </h2>
+          <p>Nhằm đảm bảo quyền lợi cao nhất cho khách hàng mua sắm hạt nhựa ủi Perler Beads và phụ kiện thủ công:</p>
+          <ul>
+            <li><strong>Thời hạn cố định: 15 ngày</strong> (tính từ ngày giờ nhận hàng ghi nhận trên hệ thống vận chuyển SPX / GHTK).</li>
+            <li><strong>Chính sách đối với đơn hàng mua quá hạn:</strong> Đơn hàng đã giao vượt quá 15 ngày sẽ được chuyển sang trạng thái hết hạn đổi trả. Nút "Yêu cầu Trả hàng / Hoàn tiền" sẽ tự động bị vô hiệu hóa trên hệ thống để đảm bảo tính minh bạch và ổn định của tồn kho cửa hàng.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span>2. Các trường hợp được chấp nhận đổi trả</span>
+          </h2>
+          <ul>
+            <li><strong>Giao sai sản phẩm / sai mẫu mã:</strong> Sai mã màu hạt Perler (ví dụ đặt mã A4 giao nhầm A2), sai kích thước hạt (đặt 2.6mm giao nhầm 5mm), sai dụng cụ kẹp/ủi.</li>
+            <li><strong>Sản phẩm bị lỗi / hư hỏng do vận chuyển:</strong> Hạt bị dập nát, hộp đựng phân loại bị nứt vỡ, bàn ủi mini bị chập cháy hoặc biến dạng trong quá trình vận chuyển.</li>
+            <li><strong>Giao thiếu sản phẩm / phụ kiện:</strong> Thiếu số lượng gói hạt refill, thiếu giấy ủi nhiệt hoặc nhíp gắp đi kèm trong combo.</li>
+            <li><strong>Sản phẩm Custom theo yêu cầu:</strong> Bức tranh hạt hoặc móc khóa custom không đúng với bản thiết kế (pixel map) đã được hai bên thống nhất và xác nhận trước khi gia công.</li>
+            <li><strong>Khách hàng đổi ý (hàng nguyên seal):</strong> Áp dụng cho các gói hạt và combo chưa bóc mở seal niêm phong, còn nguyên tem nhãn và quà tặng đi kèm.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">block</span>
+            <span>3. Các trường hợp từ chối đổi trả</span>
+          </h2>
+          <ul>
+            <li>Đơn hàng đã nhận quá <strong>15 ngày</strong> theo quy định.</li>
+            <li>Sản phẩm đã bị khách hàng tự ý làm nóng chảy / ủi nhiệt sai kỹ thuật gây biến dạng.</li>
+            <li>Các gói hạt đã bị bóc seal, rơi vãi hoặc thiếu hụt số lượng hạt so với ban đầu do quá trình bảo quản của khách hàng.</li>
+            <li>Sản phẩm custom đã được làm đúng theo thiết kế đã được khách hàng phê duyệt trước khi gửi hàng.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">published_with_changes</span>
+            <span>4. Quy trình đổi trả 4 bước nhanh chóng</span>
+          </h2>
+          <ul>
+            <li><strong>Bước 1 - Gửi yêu cầu:</strong> Vào mục <em>Đơn hàng của tôi</em> &rarr; Chọn đơn hàng trong vòng 15 ngày &rarr; Nhấn <em>Yêu cầu Trả hàng / Hoàn tiền</em> &rarr; Chọn lý do và gửi kèm ảnh/video mở hộp.</li>
+            <li><strong>Bước 2 - Duyệt yêu cầu:</strong> Đội ngũ chăm sóc khách hàng của Urii sẽ phản hồi phê duyệt trong vòng <strong>24 giờ làm việc</strong>.</li>
+            <li><strong>Bước 3 - Thu hồi hàng miễn phí:</strong> Bưu tá SPX Express sẽ liên hệ và đến tận địa chỉ của bạn để lấy lại kiện hàng hoàn, bạn không cần phải mang ra bưu cục.</li>
+            <li><strong>Bước 4 - Nhận tiền hoàn lại:</strong> Tiền hoàn sẽ được chuyển trực tiếp vào tài khoản ngân hàng hoặc ví điện tử của bạn trong vòng <strong>24 - 48 giờ</strong> sau khi kiện hàng về tới kho Urii.</li>
+          </ul>
+
+          <h2 class="faq-main-heading">
+            <span class="material-symbols-outlined">local_shipping</span>
+            <span>5. Phí vận chuyển đổi trả</span>
+          </h2>
+          <p><strong>100% MIỄN PHÍ:</strong> Với bất kỳ lỗi nào xuất phát từ Urii hoặc đơn vị vận chuyển (hàng lỗi, hư hỏng, thiếu hàng), Urii sẽ chi trả toàn bộ phí vận chuyển thu hồi hàng hoàn và gửi bù hàng mới cho khách hàng.</p>
         </div>
       </ng-container>
 

@@ -6,7 +6,7 @@
     "returnRequestApprovalSlaHours": 48,
     "returnPickupSlaHours": 72,
     "refundProcessingSlaHours": 24,
-    "returnEligibilityDaysAfterDelivery": 7,
+    "returnEligibilityDaysAfterDelivery": 15,
     "awaiting_payment": { "label": "Chờ khách hàng thanh toán", "slaHours": 24, "actor": "customer" },
     "awaiting_confirmation": { "label": "Chờ cửa hàng xác nhận đơn", "slaHours": 24, "actor": "admin" },
     "awaiting_pickup": { "label": "Chờ chuẩn bị hàng & bàn giao vận chuyển", "slaHours": 48, "actor": "carrier" },

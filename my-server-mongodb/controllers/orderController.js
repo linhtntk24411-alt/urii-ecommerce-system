@@ -1,4 +1,23 @@
 const Order = require('../models/Order');
+const Product = require('../models/Product');
+
+let productsJsonMap = null;
+function getProductsJsonMap() {
+  if (!productsJsonMap) {
+    productsJsonMap = new Map();
+    try {
+      const raw = require('../data/products.json');
+      const list = Array.isArray(raw) ? raw : (raw.products || []);
+      for (const p of list) {
+        if (p.id) productsJsonMap.set(String(p.id), p);
+        if (p._id) productsJsonMap.set(String(p._id), p);
+      }
+    } catch (e) {
+      console.warn('Cannot load products.json fallback', e);
+    }
+  }
+  return productsJsonMap;
+}
 const User = require('../models/User');
 const Payment = require('../models/Payment');
 const orderStatuses = require('../data/order_statuses.json');
@@ -105,7 +124,61 @@ async function enrichOrders(orders) {
     : [];
   const usersById = new Map(users.map((u) => [String(u._id), u]));
 
+  const productIds = [
+    ...new Set(
+      orders
+        .flatMap((o) => (Array.isArray(o.items) ? o.items.map((i) => i.productId) : []))
+        .filter(Boolean)
+        .map(String)
+    )
+  ];
+
+  const productsById = new Map();
+  if (productIds.length > 0) {
+    try {
+      const validObjectIds = productIds.filter((id) => mongoose.isValidObjectId(id));
+      const dbProducts = await Product.find({
+        $or: [
+          { id: { $in: productIds } },
+          ...(validObjectIds.length ? [{ _id: { $in: validObjectIds } }] : [])
+        ]
+      }).select('id name slug image originalPrice currentPrice variants').lean();
+      for (const p of dbProducts) {
+        if (p.id) productsById.set(String(p.id), p);
+        if (p._id) productsById.set(String(p._id), p);
+      }
+    } catch (err) {
+      console.warn('Lỗi query Product trong enrichOrders:', err);
+    }
+  }
+  const fallbackMap = getProductsJsonMap();
+
   return orders.map((order) => {
+    const rawItems = Array.isArray(order.items) ? order.items : [];
+    const enrichedItems = rawItems.map((item) => {
+      const pId = String(item.productId || '');
+      const prod = productsById.get(pId) || fallbackMap.get(pId);
+      const variant = (prod?.variants && typeof item.variantIndex === 'number' ? prod.variants[item.variantIndex] : null)
+        || prod?.variants?.[0];
+      const itemImage = item.image || variant?.image || prod?.image || '';
+      const itemName = item.name || prod?.name || 'Sản phẩm Urii';
+      const itemSlug = prod?.slug || item.slug || item.productSlug || '';
+      const itemUnitPrice = Number(item.unitPrice ?? item.price ?? prod?.currentPrice ?? 0);
+      const itemOriginalPrice = Number(item.originalPrice ?? prod?.originalPrice ?? 0);
+      const variantName = item.variantName || variant?.name || '';
+
+      return {
+        ...item,
+        productId: pId,
+        slug: itemSlug,
+        name: itemName,
+        image: itemImage,
+        unitPrice: itemUnitPrice,
+        originalPrice: itemOriginalPrice > itemUnitPrice ? itemOriginalPrice : null,
+        variantName: variantName,
+        quantity: item.quantity || 1
+      };
+    });
     const user = order.userId ? usersById.get(String(order.userId)) : null;
     const rawStatusType = typeof order.statusType === 'string' ? order.statusType.trim().toLowerCase() : '';
     const mappedLegacyStatus = (!order.statusId || order.statusId === 'pending') && rawStatusType && rawStatusType !== 'pending'
@@ -134,6 +207,7 @@ async function enrichOrders(orders) {
 
     return {
       ...order,
+      items: enrichedItems,
       statusId: effectiveStatusId,
       orderType: order.orderType || 'normal',
       orderTypeLabel: orderTypesById.get(order.orderType || 'normal')?.label || '',
@@ -258,6 +332,62 @@ exports.getMyOrders = async (req, res) => {
   }
 };
 
+exports.getMyOrdersSummary = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    return;
+  }
+
+  try {
+    const counts = {
+      '': 0,
+      all: 0,
+      pending: 0,
+      processing: 0,
+      shipping: 0,
+      completed: 0,
+      returned: 0,
+      cancelled: 0,
+    };
+
+    let total = 0;
+    try {
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      const statusAgg = await Order.aggregate([
+        {
+          $match: {
+            userId: { $in: [userObjectId, String(userId)] }
+          }
+        },
+        {
+          $group: {
+            _id: '$statusId',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      for (const item of statusAgg) {
+        if (item._id && Object.hasOwn(counts, item._id)) {
+          counts[item._id] = item.count;
+        }
+        total += item.count;
+      }
+    } catch {
+      total = await Order.countDocuments({ userId });
+    }
+
+    counts[''] = total;
+    counts.all = total;
+
+    res.json({ counts });
+  } catch (error) {
+    console.error('Lỗi tải thống kê đơn hàng:', error);
+    res.status(500).json({ message: 'Không thể tải thống kê đơn hàng.' });
+  }
+};
+
 exports.getMyOrderBySlug = async (req, res) => {
   const userId = req.auth?.id;
   if (!mongoose.isValidObjectId(userId)) {
@@ -353,7 +483,7 @@ exports.createOrder = async (req, res) => {
         throw createError;
       }
     }
-    emitCrudChange('orders', 'created', order._id);
+    emitCrudChange('orders', 'created', order._id, { userId: order.userId, status: order.status });
     const [enriched] = await enrichOrders([order.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {
@@ -425,7 +555,7 @@ exports.requestCancelOrder = async (req, res) => {
     ];
 
     await order.save();
-    emitCrudChange('orders', 'updated', order._id);
+    emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
     const [enriched] = await enrichOrders([order.toObject()]);
     res.json(enriched);
   } catch (error) {
@@ -503,7 +633,7 @@ exports.requestReturnOrder = async (req, res) => {
     ];
 
     await order.save();
-    emitCrudChange('orders', 'updated', order._id);
+    emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
     const [enriched] = await enrichOrders([order.toObject()]);
     res.json(enriched);
   } catch (error) {
@@ -554,7 +684,7 @@ exports.updateOrder = async (req, res) => {
           res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
           return;
         }
-        emitCrudChange('orders', 'updated', order._id);
+        emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
         const [enriched] = await enrichOrders([order.toObject()]);
         res.json(enriched);
         return;
@@ -623,7 +753,7 @@ exports.updateOrder = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
     }
-    emitCrudChange('orders', 'updated', order._id);
+    emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
     const [enriched] = await enrichOrders([order.toObject()]);
     res.json(enriched);
   } catch (error) {
@@ -701,5 +831,80 @@ exports.deleteOrder = async (req, res) => {
     }
     console.error('Lỗi xóa đơn hàng:', error);
     res.status(500).json({ message: 'Không thể xóa đơn hàng.' });
+  }
+};
+
+
+exports.updateMyOrderAddress = async (req, res) => {
+  const userId = req.auth?.id;
+  if (!mongoose.isValidObjectId(userId)) {
+    res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
+    return;
+  }
+
+  const { name, phone, address } = req.body || {};
+  if (!name || !phone || !address) {
+    res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ họ tên, số điện thoại và địa chỉ giao hàng.' });
+    return;
+  }
+
+  const orderId = req.params.slug || req.params.id;
+  try {
+    const filter = mongoose.isValidObjectId(orderId)
+      ? { _id: orderId, userId }
+      : { id: orderId, userId };
+
+    const order = await Order.findOne(filter);
+    if (!order) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng của bạn.' });
+      return;
+    }
+
+    const currentStatus = order.statusId || order.statusType || 'pending';
+    if (currentStatus !== 'pending') {
+      res.status(400).json({ message: 'Chỉ đơn hàng ở trạng thái Chờ xác nhận mới có thể thay đổi địa chỉ.' });
+      return;
+    }
+
+    const trimmedAddress = {
+      name: String(name).trim(),
+      phone: String(phone).trim(),
+      address: String(address).trim()
+    };
+
+    order.address = trimmedAddress;
+    if (trimmedAddress.name) {
+      order.userName = trimmedAddress.name;
+    }
+
+    await order.save();
+
+    try {
+      const ordersJsonPath = path.resolve(__dirname, '../data/orders.json');
+      if (fs.existsSync(ordersJsonPath)) {
+        const rawJson = JSON.parse(fs.readFileSync(ordersJsonPath, 'utf8'));
+        const orderList = Array.isArray(rawJson) ? rawJson : (rawJson.orders || []);
+        const found = orderList.find(o => String(o.id) === String(order.id) || String(o._id) === String(order._id));
+        if (found) {
+          found.address = trimmedAddress;
+          if (trimmedAddress.name) found.userName = trimmedAddress.name;
+          fs.writeFileSync(ordersJsonPath, JSON.stringify(rawJson, null, 2), 'utf8');
+        }
+      }
+    } catch (syncErr) {
+      console.warn('Lỗi đồng bộ orders.json khi cập nhật địa chỉ:', syncErr);
+    }
+
+    emitCrudChange('orders', 'updated', order._id, { userId: order.userId, address: order.address });
+    const [enriched] = await enrichOrders([order.toObject()]);
+    res.json({
+      success: true,
+      message: 'Cập nhật địa chỉ nhận hàng thành công.',
+      address: trimmedAddress,
+      order: enriched
+    });
+  } catch (error) {
+    console.error('Lỗi cập nhật địa chỉ đơn hàng:', error);
+    res.status(500).json({ message: 'Không thể cập nhật địa chỉ đơn hàng.' });
   }
 };

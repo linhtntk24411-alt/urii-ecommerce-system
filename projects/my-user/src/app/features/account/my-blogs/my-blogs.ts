@@ -4,6 +4,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { BlogPost, BlogService } from '../../../core/services/blog.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 interface CurrentUserProfile {
   id?: string;
@@ -27,16 +28,19 @@ interface SavedBlogDraft {
 export class MyBlogsComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly blogService = inject(BlogService);
+  private readonly toast = inject(ToastService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private profileRequest?: Subscription;
   private blogsRequest?: Subscription;
+  private deleteRequest?: Subscription;
 
   publishedBlogs: BlogPost[] = [];
   draft: SavedBlogDraft | null = null;
   isLoading = false;
   authRequired = false;
   errorMessage = '';
+  deletingBlogId: string | number | null = null;
 
   ngOnInit(): void {
     if (this.isBrowser) this.loadMyBlogs();
@@ -45,6 +49,7 @@ export class MyBlogsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.profileRequest?.unsubscribe();
     this.blogsRequest?.unsubscribe();
+    this.deleteRequest?.unsubscribe();
   }
 
   loadMyBlogs(): void {
@@ -97,6 +102,59 @@ export class MyBlogsComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       },
     });
+  }
+
+  deleteBlog(blog: BlogPost, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (!confirm(`Bạn có chắc chắn muốn xóa bài viết "${blog.title}"?`)) {
+      return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      this.toast.show('Vui lòng đăng nhập lại để thực hiện.', 'error');
+      return;
+    }
+
+    this.deletingBlogId = blog.id;
+    this.changeDetectorRef.markForCheck();
+
+    this.deleteRequest?.unsubscribe();
+    this.deleteRequest = this.blogService.deleteBlog(blog.id, token).subscribe({
+      next: () => {
+        this.publishedBlogs = this.publishedBlogs.filter((b) => b.id !== blog.id);
+        this.deletingBlogId = null;
+        this.toast.show(`Đã xóa bài viết "${blog.title}".`, 'success');
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Lỗi xóa bài viết:', error);
+        this.deletingBlogId = null;
+        this.toast.show('Không thể xóa bài viết. Vui lòng thử lại.', 'error');
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  deleteDraft(event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (!confirm('Bạn có chắc chắn muốn xóa bản nháp này?')) {
+      return;
+    }
+
+    try {
+      localStorage.removeItem('blogDraft');
+      this.draft = null;
+      this.toast.show('Đã xóa bản nháp thành công.', 'success');
+      this.changeDetectorRef.markForCheck();
+    } catch (error) {
+      console.error('Lỗi khi xóa bản nháp:', error);
+      this.toast.show('Không thể xóa bản nháp.', 'error');
+    }
   }
 
   getDraftExcerpt(): string {

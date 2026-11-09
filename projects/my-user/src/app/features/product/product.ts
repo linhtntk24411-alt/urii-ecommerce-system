@@ -160,7 +160,11 @@ export class Product implements OnInit {
   }
 
   private isLoggedIn(): boolean {
-    return this.isBrowser && window.localStorage.getItem('isLoggedIn') === 'true';
+    return this.isBrowser && (
+      window.localStorage.getItem('isLoggedIn') === 'true' ||
+      Boolean(window.localStorage.getItem('authToken')) ||
+      Boolean(window.localStorage.getItem('urii.auth.token'))
+    );
   }
 
   getCategoryLabel(category: string): string {
@@ -268,6 +272,14 @@ export class Product implements OnInit {
     this.refreshFailed = false;
 
     try {
+      if (this.isBrowser && this.isLoggedIn()) {
+        try {
+          await this.favorites.syncWithServer();
+        } catch (error) {
+          console.error('Không thể tải danh sách sản phẩm yêu thích từ server:', error);
+        }
+      }
+
       const response = await window.fetch('/api/products');
       if (!response.ok) {
         throw new Error(`Không thể tải sản phẩm từ server (HTTP ${response.status})`);

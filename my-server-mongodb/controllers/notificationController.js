@@ -293,7 +293,7 @@ exports.markAsRead = async (req, res) => {
       notif.isRead = true;
       notif.readAt = notif.readAt || new Date();
       await notif.save();
-      emitCrudChange('notifications', 'updated', notif._id);
+      emitCrudChange('notifications', 'updated', notif._id, { userId: notif.userId });
       const [enriched] = await enrichNotifications([notif.toObject ? notif.toObject() : notif]);
       res.json(enriched);
       return;
@@ -314,7 +314,7 @@ exports.markAsRead = async (req, res) => {
           await userNotifsColl.updateOne({ _id: rawNotif._id }, { $set: { isRead: true, readAt: now } });
           rawNotif.isRead = true;
           rawNotif.readAt = now;
-          emitCrudChange('notifications', 'updated', rawNotif._id);
+          emitCrudChange('notifications', 'updated', rawNotif._id, { userId: rawNotif.userId });
           const [enriched] = await enrichNotifications([rawNotif]);
           res.json(enriched);
           return;
@@ -398,7 +398,7 @@ exports.markAllAsRead = async (req, res) => {
       }
     }
 
-    emitCrudChange('notifications', 'updated', req.auth.id);
+    emitCrudChange('notifications', 'updated', req.auth.id, { userId: req.auth.id });
     res.json({
       message: 'Đã đánh dấu đọc tất cả thông báo.',
       modifiedCount
@@ -420,7 +420,7 @@ exports.createNotification = async (req, res) => {
       ...req.body,
       id: req.body.id || `NOTIF-${randomUUID()}`
     });
-    emitCrudChange('notifications', 'created', notif._id);
+    emitCrudChange('notifications', 'created', notif._id, { userId: notif.userId });
     const [enriched] = await enrichNotifications([notif.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {

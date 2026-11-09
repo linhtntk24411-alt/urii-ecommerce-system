@@ -23,6 +23,8 @@ const Review = require('./models/Review');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareLikedProducts } = require('./utils/likedProducts');
 const { prepareLikedBlogs } = require('./utils/likedBlogs');
+const UserVoucher = require('./models/UserVoucher');
+const { prepareSavedVouchers } = require('./utils/savedVouchers');
 const { prepareCartFixtures, prepareReviewFixtures, syncAllProductRatings } = require('./utils/commerceFixtures');
 const { prepareUserPassword } = require('./utils/userPassword');
 
@@ -178,6 +180,20 @@ const MODULES = [
         preparedUsers.push({ ...user, email, password, authProviders, oauthAccounts });
       }
       return preparedUsers;
+    }
+  },
+  {
+    name: 'Saved Vouchers (Voucher đã lưu)',
+    aliases: ['saved_voucher', 'saved_vouchers', 'savedvoucher', 'savedvouchers', 'user_vouchers', 'uservouchers'],
+    model: UserVoucher,
+    key: 'id',
+    filter: (item) => ({ userId: item.userId, voucherId: item.voucherId }),
+    getData: async () => {
+      const data = readJSON('saved_voucher.json') || readJSON('saved_vouchers.json');
+      if (!data) return null;
+      const users = await User.find({ role: 'user' }).select('_id email role').lean();
+      const vouchers = await Voucher.find().lean();
+      return prepareSavedVouchers(data, users, vouchers);
     }
   },
   {

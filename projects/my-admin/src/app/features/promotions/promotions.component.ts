@@ -3,6 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AdminApiService, Promotion, PromotionPayload } from '../../core/services/admin-api.service';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 export type CouponComputedStatus = 'active' | 'expiring' | 'expired' | 'inactive';
 
@@ -25,6 +26,7 @@ export interface CouponView extends Promotion {
 })
 export class PromotionsComponent implements OnInit {
   private readonly api = inject(AdminApiService);
+  private readonly socket = inject(AdminSocketService);
   private readonly route = inject(ActivatedRoute);
   private pendingSearchId: string | null = null;
 

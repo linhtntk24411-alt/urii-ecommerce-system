@@ -213,7 +213,7 @@ exports.createCustomOrder = async (req, res) => {
     }
 
     const customOrder = await CustomOrder.create(payload);
-    emitCrudChange('customOrders', 'created', customOrder.id);
+    emitCrudChange('customOrders', 'created', customOrder.id, { userId: customOrder.userId, status: customOrder.status });
     const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {
@@ -361,7 +361,7 @@ exports.updateCustomOrder = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }
-    emitCrudChange('customOrders', 'updated', customOrder.id);
+    emitCrudChange('customOrders', 'updated', customOrder.id, { userId: customOrder.userId, status: customOrder.status, quotedPrice: customOrder.quotedPrice });
     const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
     res.json(enriched);
   } catch (error) {

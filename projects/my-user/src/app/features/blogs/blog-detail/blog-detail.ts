@@ -62,7 +62,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
       if (!slug) {
         this.blogData = null;
         this.isLoading = false;
-        this.errorMessage = 'Không tìm thấy mã bài viết.';
+        this.errorMessage = 'KhĂ´ng tĂ¬m tháº¥y mĂ£ bĂ i viáº¿t.';
         this.changeDetectorRef.markForCheck();
         return;
       }
@@ -87,15 +87,15 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     this.blogService.getBlogBySlug(slug).subscribe({
       next: (blog) => {
         this.blogData = blog ?? null;
-        this.errorMessage = blog ? '' : 'Không tìm thấy bài viết này.';
+        this.errorMessage = blog ? '' : 'KhĂ´ng tĂ¬m tháº¥y bĂ i viáº¿t nĂ y.';
         this.syncAuthAndActions();
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
         if (blog) this.loadComments(blog.id);
       },
       error: (error: unknown) => {
-        console.error('Lỗi tải chi tiết bài viết:', error);
-        this.errorMessage = 'Không thể tải bài viết. Vui lòng thử lại.';
+        console.error('Lá»—i táº£i chi tiáº¿t bĂ i viáº¿t:', error);
+        this.errorMessage = 'KhĂ´ng thá»ƒ táº£i bĂ i viáº¿t. Vui lĂ²ng thá»­ láº¡i.';
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       },
@@ -113,10 +113,10 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
-        console.error('Lỗi tải bình luận bài viết:', error);
+        console.error('Lá»—i táº£i bĂ¬nh luáº­n bĂ i viáº¿t:', error);
         this.blogComments = [];
         this.isCommentsLoading = false;
-        this.commentsErrorMessage = 'Không thể tải bình luận. Vui lòng thử lại sau.';
+        this.commentsErrorMessage = 'KhĂ´ng thá»ƒ táº£i bĂ¬nh luáº­n. Vui lĂ²ng thá»­ láº¡i sau.';
         this.changeDetectorRef.markForCheck();
       },
     });
@@ -141,7 +141,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
     const blog = this.blogData;
     if (!blog || !Number.isSafeInteger(Number(blog.id)) || Number(blog.id) < 1) {
-      this.commentErrorMessage = 'Không thể xác định bài viết để gửi bình luận.';
+      this.commentErrorMessage = 'KhĂ´ng thá»ƒ xĂ¡c Ä‘á»‹nh bĂ i viáº¿t Ä‘á»ƒ gá»­i bĂ¬nh luáº­n.';
       return;
     }
     if (this.commentForm.invalid) {
@@ -159,20 +159,20 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
       next: (comment) => {
         this.blogComments = [...this.blogComments, comment];
         this.commentForm.reset();
-        this.commentSuccessMessage = 'Bình luận đã được đăng.';
+        this.commentSuccessMessage = 'BĂ¬nh luáº­n Ä‘Ă£ Ä‘Æ°á»£c Ä‘Äƒng.';
         this.isSubmittingComment = false;
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
-        console.error('Lỗi gửi bình luận:', error);
+        console.error('Lá»—i gá»­i bĂ¬nh luáº­n:', error);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.requireLoginToComment();
         } else if (error instanceof HttpErrorResponse && error.error?.message) {
           this.commentErrorMessage = error.error.message;
         } else if (error instanceof TimeoutError) {
-          this.commentErrorMessage = 'Máy chủ phản hồi quá lâu. Vui lòng thử lại.';
+          this.commentErrorMessage = 'MĂ¡y chá»§ pháº£n há»“i quĂ¡ lĂ¢u. Vui lĂ²ng thá»­ láº¡i.';
         } else {
-          this.commentErrorMessage = 'Không thể gửi bình luận. Vui lòng thử lại.';
+          this.commentErrorMessage = 'KhĂ´ng thá»ƒ gá»­i bĂ¬nh luáº­n. Vui lĂ²ng thá»­ láº¡i.';
         }
         this.isSubmittingComment = false;
         this.changeDetectorRef.markForCheck();
@@ -180,7 +180,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ================= PHẢN HỒI BÌNH LUẬN (REPLY) =================
+  // ================= PHáº¢N Há»’I BĂŒNH LUáº¬N (REPLY) =================
   activeReplyCommentId: string | number | null = null;
   showRepliesMap: Record<string, boolean> = {};
   replyToAuthorMap: Record<string, string> = {};
@@ -190,7 +190,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   isRepliesVisible(commentId: string | number): boolean {
     const key = String(commentId);
-    // Mặc định luôn hiện reply ngay khi vào blog (trừ khi người dùng bấm ẩn)
+    // Máº·c Ä‘á»‹nh luĂ´n hiá»‡n reply ngay khi vĂ o blog (trá»« khi ngÆ°á»i dĂ¹ng báº¥m áº©n)
     return this.showRepliesMap[key] !== false;
   }
 
@@ -248,7 +248,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     const content = (this.replyContentMap[key] || '').trim();
 
     if (!content) {
-      this.replyErrorMessageMap[key] = 'Vui lòng nhập nội dung phản hồi.';
+      this.replyErrorMessageMap[key] = 'Vui lĂ²ng nháº­p ná»™i dung pháº£n há»“i.';
       this.changeDetectorRef.markForCheck();
       return;
     }
@@ -275,14 +275,14 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
         if (res && Array.isArray(res.replies)) {
           comment.replies = res.replies;
         } else {
-          const userName = localStorage.getItem('userName') || 'Bạn';
+          const userName = localStorage.getItem('userName') || 'Báº¡n';
           const userAvatar = localStorage.getItem('userAvatar') || 'assets/avatar-non.jpg';
           comment.replies.push({
             id: 'r-' + Date.now(),
             author: userName,
             avatar: userAvatar,
             content: content,
-            time: 'Vừa xong',
+            time: 'Vá»«a xong',
             role: 'user',
             replyToAuthor: replyToAuthor || undefined
           });
@@ -296,8 +296,8 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       },
       error: (err) => {
-        console.error('Lỗi phản hồi bình luận:', err);
-        this.replyErrorMessageMap[key] = err.error?.message || 'Không thể gửi phản hồi lúc này.';
+        console.error('Lá»—i pháº£n há»“i bĂ¬nh luáº­n:', err);
+        this.replyErrorMessageMap[key] = err.error?.message || 'KhĂ´ng thá»ƒ gá»­i pháº£n há»“i lĂºc nĂ y.';
         this.isSubmittingReplyMap[key] = false;
         this.changeDetectorRef.markForCheck();
       }
@@ -306,15 +306,15 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   private requireLoginToComment(): void {
     this.dialogService.promptLogin({
-      title: 'Đăng nhập để bình luận',
-      description: 'Vui lòng đăng nhập để gửi bình luận và thảo luận cùng cộng đồng Urii.',
+      title: 'ÄÄƒng nháº­p Ä‘á»ƒ bĂ¬nh luáº­n',
+      description: 'Vui lĂ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ gá»­i bĂ¬nh luáº­n vĂ  tháº£o luáº­n cĂ¹ng cá»™ng Ä‘á»“ng Urii.',
       returnUrl: this.router.url
     });
   }
 
   toggleLike(): void {
     const blog = this.blogData;
-    const email = this.requireSignedInUser('Đăng nhập để thích bài viết', 'Vui lòng đăng nhập để thả cảm xúc và tương tác với bài viết này.');
+    const email = this.requireSignedInUser('ÄÄƒng nháº­p Ä‘á»ƒ thĂ­ch bĂ i viáº¿t', 'Vui lĂ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ tháº£ cáº£m xĂºc vĂ  tÆ°Æ¡ng tĂ¡c vá»›i bĂ i viáº¿t nĂ y.');
     if (!blog || !email) return;
 
     const storageKey = this.likesStorageKey(email);
@@ -328,11 +328,20 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
       this.isLiked = true;
     }
     this.writeIdSet(storageKey, likedBlogIds);
+
+    const token = localStorage.getItem('authToken') || '';
+    if (token) {
+      if (this.isLiked) {
+        this.blogService.addLikedBlog(blog.id, token).subscribe({ error: (e) => console.error(e) });
+      } else {
+        this.blogService.removeLikedBlog(blog.id, token).subscribe({ error: (e) => console.error(e) });
+      }
+    }
   }
 
   toggleBookmark(): void {
     const blog = this.blogData;
-    if (!blog || !this.requireSignedInUser('Đăng nhập để lưu bài viết', 'Vui lòng đăng nhập để lưu bài viết vào danh sách quan tâm của bạn.')) return;
+    if (!blog || !this.requireSignedInUser('ÄÄƒng nháº­p Ä‘á»ƒ lÆ°u bĂ i viáº¿t', 'Vui lĂ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ lÆ°u bĂ i viáº¿t vĂ o danh sĂ¡ch quan tĂ¢m cá»§a báº¡n.')) return;
 
     const bookmarks = this.readBookmarks();
     const blogId = String(blog.id);
@@ -346,8 +355,16 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
     try {
       localStorage.setItem(this.bookmarksStorageKey, JSON.stringify(bookmarks));
+      const token = localStorage.getItem('authToken') || '';
+      if (token) {
+        if (this.isBookmarked) {
+          this.blogService.addLikedBlog(blog.id, token).subscribe({ error: (e) => console.error(e) });
+        } else {
+          this.blogService.removeLikedBlog(blog.id, token).subscribe({ error: (e) => console.error(e) });
+        }
+      }
     } catch (error: unknown) {
-      console.error('Không thể lưu danh sách bài viết:', error);
+      console.error('KhĂ´ng thá»ƒ lÆ°u danh sĂ¡ch bĂ i viáº¿t:', error);
       this.showStorageError();
       this.syncAuthAndActions();
     }
@@ -372,7 +389,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     this.isBookmarked = this.readBookmarks()[String(this.blogData.id)] === true;
   }
 
-  private requireSignedInUser(title = 'Đăng nhập để tiếp tục', description = 'Vui lòng đăng nhập để sử dụng tính năng này.'): string | null {
+  private requireSignedInUser(title = 'ÄÄƒng nháº­p Ä‘á»ƒ tiáº¿p tá»¥c', description = 'Vui lĂ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ sá»­ dá»¥ng tĂ­nh nÄƒng nĂ y.'): string | null {
     if (!isPlatformBrowser(this.platformId)) return null;
 
     const email = localStorage.getItem('userEmail')?.trim().toLowerCase() ?? '';
@@ -401,7 +418,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
       }
       throw new Error('Stored blog IDs are not a string array');
     } catch (error: unknown) {
-      console.error(`Không thể đọc dữ liệu bài viết đã lưu (${key}):`, error);
+      console.error(`KhĂ´ng thá»ƒ Ä‘á»c dá»¯ liá»‡u bĂ i viáº¿t Ä‘Ă£ lÆ°u (${key}):`, error);
       return new Set();
     }
   }
@@ -410,7 +427,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     try {
       localStorage.setItem(key, JSON.stringify([...ids]));
     } catch (error: unknown) {
-      console.error('Không thể lưu trạng thái yêu thích bài viết:', error);
+      console.error('KhĂ´ng thá»ƒ lÆ°u tráº¡ng thĂ¡i yĂªu thĂ­ch bĂ i viáº¿t:', error);
       this.showStorageError();
       this.syncAuthAndActions();
     }
@@ -429,14 +446,14 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
       }
       throw new Error('Stored blog bookmarks are not an object');
     } catch (error: unknown) {
-      console.error('Không thể đọc danh sách bài viết đã lưu:', error);
+      console.error('KhĂ´ng thá»ƒ Ä‘á»c danh sĂ¡ch bĂ i viáº¿t Ä‘Ă£ lÆ°u:', error);
       return {};
     }
   }
 
   private showStorageError(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.dialogService.alert('Không thể lưu thay đổi trên thiết bị này. Vui lòng kiểm tra bộ nhớ trình duyệt.', 'Lỗi lưu trữ', 'error');
+      this.dialogService.alert('KhĂ´ng thá»ƒ lÆ°u thay Ä‘á»•i trĂªn thiáº¿t bá»‹ nĂ y. Vui lĂ²ng kiá»ƒm tra bá»™ nhá»› trĂ¬nh duyá»‡t.', 'Lá»—i lÆ°u trá»¯', 'error');
     }
   }
 }

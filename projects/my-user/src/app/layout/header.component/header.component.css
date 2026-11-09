@@ -25,23 +25,40 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 32px;
+    padding: 10px 24px;
     width: 100%;
     height: 80px; 
+    gap: 16px;
+    box-sizing: border-box;
 }
 
-.header-logo { display: flex; align-items: center; flex-shrink: 0; margin-right: 12px; position: relative; }
-.header-logo a { display: block; height: 100%; }
-.logo-img { height: 120px; width: auto; object-fit: contain; flex-shrink: 0; margin-top: -20px; margin-bottom: -20px; }
+.header-logo { display: flex; align-items: center; flex-shrink: 0; margin-right: 8px; position: relative; }
+.header-logo a { display: flex; align-items: center; height: 100%; }
+.logo-img { height: 110px; width: auto; object-fit: contain; flex-shrink: 0; margin-top: -15px; margin-bottom: -15px; }
 
-.header-nav ul.nav-menu-list { list-style: none; display: flex; align-items: center; gap: 24px; }
+.header-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.header-nav ul.nav-menu-list {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 1.2vw, 18px);
+    flex-wrap: nowrap;
+}
 
 .nav-link {
     text-decoration: none; color: var(--text-muted);
-    font-weight: 600; font-size: 16px;
+    font-weight: 600; font-size: 15px;
     transition: all 0.2s ease;
-    padding: 8px 12px; border-radius: 8px;
-    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; border-radius: 8px;
+    display: flex; align-items: center; gap: 4px;
     cursor: pointer;
     white-space: nowrap;
 }
@@ -53,14 +70,24 @@
 
 .nav-dropdown { position: relative; z-index: 1001; }
 
-.nav-product-heading { display: flex; align-items: center; }
-.nav-product-heading .nav-dropdown-toggle { flex: 1; }
+.nav-product-heading {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+.nav-product-heading .nav-dropdown-toggle { flex: 1; padding-right: 2px; }
 .nav-product-expand {
     display: flex; align-items: center; justify-content: center;
-    padding: 8px; border: 0; background: transparent; cursor: pointer;
-    color: var(--text-muted); border-radius: 8px;
+    padding: 8px 8px 8px 2px; border: 0; background: transparent; cursor: pointer;
+    color: var(--text-muted); border-radius: 0 8px 8px 0;
+    transition: color 0.2s ease, transform 0.2s ease;
 }
 .nav-product-expand:hover { background-color: #fdf5f5; color: var(--urii-red); }
+.nav-dropdown:hover .nav-product-heading { background-color: #fdf5f5; }
+.nav-dropdown:hover .nav-link,
+.nav-dropdown:hover .nav-product-expand { color: var(--urii-red); }
+.nav-dropdown:hover .dropdown-arrow-icon { transform: rotate(180deg); }
 
 .dropdown-menu {
     position: absolute; top: 100%; left: 0;
@@ -96,7 +123,18 @@
 }
 .drop-icon svg { width: 16px; height: 16px; }
 
-.header-actions { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.action-item {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
 
 .cart-icon-wrapper {
     position: relative; width: 40px; height: 40px;
@@ -186,6 +224,7 @@
     border: 1.5px solid var(--outline-color);
     display: flex; align-items: center; justify-content: center; 
     overflow: hidden; cursor: pointer; padding: 0;
+    flex-shrink: 0;
     transition: border-color 0.2s;
 }
 .account-circle:hover {
@@ -195,13 +234,183 @@
 .account-svg { width: 20px; height: 20px; color: var(--urii-red); }
 
 .account-dropdown {
-    position: absolute; top: 120%; right: 0;
-    background: #ffffff; border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-    width: 260px; padding: 12px;
-    opacity: 0; visibility: hidden; transform: translateY(10px);
-    transition: all 0.25s ease; z-index: 100;
-    border: 1px solid #f0eded;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 10px 36px rgba(40, 20, 24, 0.16);
+    width: 250px;
+    padding: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: all 0.22s ease;
+    z-index: 100;
+    border: 1px solid #ebdada;
+    overflow: hidden;
+    max-height: calc(100vh - 95px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header thong tin tai khoan */
+.account-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, #fffafd 0%, #fff0f3 100%);
+    border-bottom: 1px solid #f5e2e6;
+    text-decoration: none;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.account-profile-header:hover {
+    background: #ffe9ee;
+}
+
+.profile-header-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #ffdad5;
+    flex-shrink: 0;
+    border: 1.5px solid #f1bfc5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar-fallback {
+    color: #840001;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.profile-header-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.profile-header-name {
+    color: #201a1a;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.profile-header-email {
+    color: #746468;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.profile-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 2px;
+    color: #840001;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+/* Thanh tien ich nhanh: Voucher, Don hang, Yeu thich */
+.account-quick-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 6px 4px;
+    background: #ffffff;
+    border-bottom: 1px solid #f2e6e9;
+    flex-shrink: 0;
+}
+
+.quick-strip-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    flex: 1;
+    text-decoration: none;
+    color: #4a3b3e;
+    transition: transform 0.15s ease;
+    padding: 2px 0;
+}
+
+.quick-strip-item:hover {
+    transform: translateY(-1px);
+}
+
+.quick-strip-item:hover .strip-value,
+.quick-strip-item:hover .strip-icon {
+    color: #840001;
+}
+
+.strip-value {
+    font-size: 13px;
+    font-weight: 800;
+    color: #840001;
+    line-height: 1.2;
+}
+
+.strip-icon {
+    font-size: 13px;
+    color: #705b60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+}
+
+.strip-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #705b60;
+}
+
+.strip-sep {
+    width: 1px;
+    height: 18px;
+    background: #f0e2e5;
+}
+
+.menu-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #840001;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: auto;
+    margin-right: 2px;
+}
+
+.account-menu-icon--voucher {
+    background-color: #fff0f3;
+    color: #be123c;
 }
 .account-icon-wrapper:hover .account-dropdown { 
     opacity: 1; visibility: visible; transform: translateY(0); 
@@ -211,27 +420,50 @@
     opacity: 1; visibility: visible; transform: translateY(0);
 }
 
-.account-menu { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.account-menu {
+    list-style: none;
+    margin: 0;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
 
 .account-menu-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px; color: #1b1c1c;
-    font-size: 14px; font-weight: 600; border-radius: 10px;
-    text-decoration: none; transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 8px;
+    color: #1b1c1c;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s ease;
 }
 
 .account-menu-icon {
-    width: 32px; height: 32px;
-    border-radius: 8px; background-color: #fdf5f5;
-    display: flex; align-items: center; justify-content: center;
-    color: #840001; flex-shrink: 0; transition: all 0.2s ease;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background-color: #fdf5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #840001;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
 }
-.account-menu-icon svg { width: 16px; height: 16px; }
+.account-menu-icon svg { width: 14px; height: 14px; }
+.account-menu-icon i { font-size: 13px; }
 
 .menu-text { flex: 1; }
 
-.menu-arrow { color: #a0a0a0; display: flex; align-items: center; transition: all 0.2s ease; }
-.menu-arrow svg { width: 16px; height: 16px; }
+.menu-arrow { color: #a0a0a0; display: flex; align-items: center; transition: all 0.15s ease; }
+.menu-arrow svg { width: 13px; height: 13px; }
 
 .account-menu-item:hover {
     background-color: #fdf5f5;
@@ -242,23 +474,33 @@
 }
 .account-menu-item:hover .menu-arrow {
     color: #840001;
-    transform: translateX(3px);
+    transform: translateX(2px);
 }
 
 .account-logout {
     border-top: 1px solid #f0eded;
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 2px;
+    padding: 4px 6px 6px;
+    flex-shrink: 0;
 }
 .btn-logout {
-    width: 100%; display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px; background: none; border: none;
-    color: #ba1a1a; font-size: 14px; font-weight: 600;
-    border-radius: 10px; cursor: pointer; transition: background 0.2s;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 8px;
+    background: none;
+    border: none;
+    color: #ba1a1a;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
 }
 .btn-logout:hover { background-color: #ffdad6; }
 .logout-icon { display: flex; align-items: center; justify-content: center; }
-.logout-icon svg { width: 18px; height: 18px; }
+.logout-icon svg { width: 15px; height: 15px; }
 
 .modal-overlay {
     position: fixed;
@@ -314,12 +556,13 @@
 .mobile-menu-toggle { display: none; }
 .mobile-nav-header { display: none !important; }
 
-@media (max-width: 1200px) and (min-width: 1025px) {
-    .header-container { padding: 10px 20px; gap: 12px; }
-    .logo-img { height: 120px; }
-    .header-nav ul.nav-menu-list { gap: 16px; }
-    .nav-link { font-size: 15px; padding: 6px 8px; }
-    .btn-register, .btn-login { padding: 7px 12px; font-size: 13px; }
+@media (max-width: 1280px) and (min-width: 1025px) {
+    .header-container { padding: 10px 16px; gap: 8px; }
+    .logo-img { height: 100px; margin-top: -10px; margin-bottom: -10px; }
+    .header-nav ul.nav-menu-list { gap: 10px; }
+    .nav-link { font-size: 14px; padding: 6px 8px; }
+    .header-actions { gap: 8px; }
+    .btn-register, .btn-login { padding: 6px 10px; font-size: 12px; }
 }
 
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -425,32 +668,14 @@
   position: relative;
 }
 
-.notification-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #374151;
-  position: relative;
-  border-radius: 50%;
-  transition: background-color 0.2s ease;
-}
-
-.notification-btn:hover {
-  background-color: #f3f4f6;
-}
-
-/* duplicate .notification-badge removed */
+/* duplicate .notification-btn and .notification-badge removed */
 
 .notification-dropdown {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 8px);
   right: 0;
-  width: 340px;
-  max-height: 440px;
+  width: 320px;
+  max-height: min(440px, calc(100vh - 95px));
   background-color: #ffffff;
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -618,4 +843,31 @@
 .btn-login-notif:hover {
     background-color: #aa0002;
     color: #ffffff;
+}
+
+/* Hover underline animation for navigation links */
+.nav-link {
+  position: relative; /* ensure pseudo-element positions correctly */
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 2px; /* distance from text baseline */
+  height: 2px;
+  width: 0;
+  background: var(--urii-red);
+  transition: width 0.25s ease;
+}
+.nav-link:hover::after,
+.nav-link:focus::after {
+  width: 100%;
+}
+
+/* Adjust underline thickness on very small screens */
+@media (max-width: 480px) {
+  .nav-link::after {
+    height: 1px;
+    bottom: 1px;
+  }
 }

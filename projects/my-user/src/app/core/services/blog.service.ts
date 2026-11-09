@@ -71,7 +71,7 @@ export class BlogService {
     }).pipe(
       map((response) => {
         const createdPost = this.parseBlogs(response)[0];
-        if (!createdPost) throw new Error('API tạo bài viết trả về dữ liệu không hợp lệ.');
+        if (!createdPost) throw new Error('API táº¡o bĂ i viáº¿t tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡.');
         return createdPost;
       }),
     );
@@ -89,7 +89,7 @@ export class BlogService {
     }).pipe(
       map((response) => {
         const createdComment = this.parseComments(response)[0];
-        if (!createdComment) throw new Error('API tạo bình luận trả về dữ liệu không hợp lệ.');
+        if (!createdComment) throw new Error('API táº¡o bĂ¬nh luáº­n tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡.');
         return createdComment;
       }),
     );
@@ -121,6 +121,12 @@ export class BlogService {
       toArray(),
       map((pages) => pages.flat().filter((blog) => blog.userId === userId)),
     );
+  }
+
+  deleteBlog(id: string | number, token: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`/api/blogs/${encodeURIComponent(id)}`, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    });
   }
 
   getBlogBySlug(slug: string): Observable<BlogPost | undefined> {
@@ -176,8 +182,8 @@ export class BlogService {
         date,
         image: this.normalizeImagePath(rawImage) || 'assets/gallery_assets/mau-ca-heo.webp',
         imageAvailable: typeof rawImage === 'string' && Boolean(rawImage.trim()),
-        category: category || 'Khác',
-        categorySlug: this.toText(record['categorySlug'] ?? record['category_slug']) || this.slugify(category || 'Khác'),
+        category: category || 'KhĂ¡c',
+        categorySlug: this.toText(record['categorySlug'] ?? record['category_slug']) || this.slugify(category || 'KhĂ¡c'),
         likes: this.toNumber(record['likes']),
         comments: this.toNumber(record['comments']),
         views: this.toNumber(record['views']),
@@ -225,11 +231,11 @@ export class BlogService {
         if (!replyContent) return [];
         return [{
           id: this.toText(r['id']) || String(Date.now()),
-          author: this.toText(r['author']) || 'Khách hàng',
+          author: this.toText(r['author']) || 'KhĂ¡ch hĂ ng',
           avatar: this.normalizeImagePath(r['avatar']) || 'assets/avatar-non.jpg',
           content: replyContent,
           createdAt: this.toText(r['createdAt']),
-          time: this.toText(r['time']) || 'Vừa xong',
+          time: this.toText(r['time']) || 'Vá»«a xong',
           role: (r['role'] as any) || 'user',
           replyToAuthor: this.toText(r['replyToAuthor']) || undefined
         }];
@@ -238,7 +244,7 @@ export class BlogService {
       return [{
         id: id || `${blogId}-${createdAt}-${content.slice(0, 20)}`,
         blogId,
-        author: this.toText(record['author']) || 'Khách hàng',
+        author: this.toText(record['author']) || 'KhĂ¡ch hĂ ng',
         avatar: avatar || 'assets/avatar-non.jpg',
         content,
         createdAt,
@@ -246,6 +252,26 @@ export class BlogService {
         replies
       }];
     });
+  }
+
+  getMyLikedBlogs(token: string): Observable<string[]> {
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this.http.get<any>('/api/liked-blogs/mine', { headers }).pipe(
+      map(res => {
+        const list = Array.isArray(res) ? res : res?.likedBlogs || [];
+        return list.map((item: any) => String(item.blogId || item.id || item._id || '')).filter(Boolean);
+      })
+    );
+  }
+
+  addLikedBlog(blogId: string | number, token: string): Observable<any> {
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this.http.post('/api/liked-blogs/mine', { blogId: String(blogId) }, { headers });
+  }
+
+  removeLikedBlog(blogId: string | number, token: string): Observable<any> {
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this.http.delete(`/api/liked-blogs/mine/${encodeURIComponent(String(blogId))}`, { headers });
   }
 
   private loadCommentsPage(page: number): Observable<BlogComment[]> {
@@ -291,7 +317,7 @@ export class BlogService {
     return value
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[đĐ]/g, 'd')
+      .replace(/[Ä‘Ä]/g, 'd')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')

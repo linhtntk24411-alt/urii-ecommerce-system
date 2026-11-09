@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -7,6 +7,7 @@ import {
   AdminBlog,
   apiErrorMessage
 } from '../../core/services/admin-api.service';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 declare var bootstrap: any;
 
@@ -27,6 +28,8 @@ interface BlogAdminItem extends Omit<AdminBlog, 'author'> {
   styleUrls: ['./blogs-admin.css']
 })
 export class BlogsAdmin implements OnInit {
+  private readonly socket = inject(AdminSocketService);
+
   blogs: BlogAdminItem[] = [];
   loadingBlogs = false;
   blogsError = '';
@@ -60,6 +63,7 @@ export class BlogsAdmin implements OnInit {
       this.applySearchTarget();
     });
     this.loadBlogsFromCloud();
+    this.socket.onCrudChange('blogs').subscribe(() => this.loadBlogsFromCloud());
   }
   private pendingSearchId: string | null = null;
   showDeleteConfirm = false;
@@ -175,22 +179,29 @@ export class BlogsAdmin implements OnInit {
 
     this.selectedStatus = '';
     this.selectedAuthor = '';
-    this.currentPage = 1;
-    const index = this.filteredBlogs.findIndex(blog => String(blog.id || blog._id || '') === id);
-    if (index < 0) return;
 
-    this.currentPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
+    const targetIndex = this.blogs.findIndex(
+      blog => String(blog._id || blog.id) === String(id)
+    );
+
+    if (targetIndex === -1) {
+      return;
+    }
+
+    this.currentPage = Math.floor(targetIndex / this.ITEMS_PER_PAGE) + 1;
+    this.cdr.detectChanges();
+
+    const targetElementId = this.searchTargetId(id);
     this.pendingSearchId = null;
-    this.scrollToSearchTarget(this.searchTargetId(id));
-  }
 
-  private scrollToSearchTarget(elementId: string): void {
-    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
-    requestAnimationFrame(() => {
-      const row = document.getElementById(elementId);
-      if (!(row instanceof HTMLTableRowElement)) return;
+    window.setTimeout(() => {
+      const row = document.getElementById(targetElementId);
+      if (!row) {
+        return;
+      }
+
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const cells = Array.from(row.cells);
+      const cells = Array.from(row.querySelectorAll<HTMLElement>('td, th'));
       const originalStyles = cells.map(cell => ({
         backgroundColor: cell.style.getPropertyValue('background-color'),
         backgroundPriority: cell.style.getPropertyPriority('background-color')
@@ -222,7 +233,10 @@ export class BlogsAdmin implements OnInit {
     const blog = this.blogs.find(b => b.id === id || b._id === id);
     if (blog) {
       blog.status = 'approved';
-      // TODO: Gửi API cập nhật trạng thái lên MongoDB Cloud ở đây
+      const targetId = blog._id || blog.id;
+      this.adminApiService.updateBlog(targetId, { status: 'approved' })
+        .then(() => this.loadBlogsFromCloud())
+        .catch(err => console.error('Lỗi duyệt blog qua API:', err));
       this.cdr.detectChanges();
     }
   }
@@ -232,7 +246,10 @@ export class BlogsAdmin implements OnInit {
     const blog = this.blogs.find(b => b.id === id || b._id === id);
     if (blog) {
       blog.status = 'violated';
-      // TODO: Gửi API cập nhật trạng thái lên MongoDB Cloud ở đây
+      const targetId = blog._id || blog.id;
+      this.adminApiService.updateBlog(targetId, { status: 'violated' })
+        .then(() => this.loadBlogsFromCloud())
+        .catch(err => console.error('Lỗi từ chối blog qua API:', err));
       this.cdr.detectChanges();
     }
   }
@@ -255,8 +272,11 @@ export class BlogsAdmin implements OnInit {
     const id = this.deletingBlogId;
     if (id === null) return;
 
+    this.adminApiService.deleteBlog(id)
+      .then(() => this.loadBlogsFromCloud())
+      .catch(err => console.error('Lỗi xóa blog qua API:', err));
+
     this.blogs = this.blogs.filter(blog => blog.id !== id && blog._id !== id);
-    // TODO: Gửi API xóa trên MongoDB Cloud ở đây
     this.closeDeleteConfirm();
     this.cdr.detectChanges();
   }
@@ -266,7 +286,10 @@ export class BlogsAdmin implements OnInit {
     const blog = this.blogs.find(b => b.id === id || b._id === id);
     if (blog) {
       blog.status = newStatus;
-      // TODO: Gửi API cập nhật trạng thái lên MongoDB Cloud ở đây
+      const targetId = blog._id || blog.id;
+      this.adminApiService.updateBlog(targetId, { status: newStatus })
+        .then(() => this.loadBlogsFromCloud())
+        .catch(err => console.error('Lỗi cập nhật trạng thái blog qua API:', err));
       this.cdr.detectChanges();
     }
   }
@@ -282,6 +305,7 @@ export class BlogsAdmin implements OnInit {
       modal.show();
     }
   }
+
   // Mở modal xem chi tiết bài viết
   viewBlogDetail(blog: BlogAdminItem): void {
     this.selectedBlog = blog;
@@ -324,8 +348,18 @@ export class BlogsAdmin implements OnInit {
       content: this.newContent.trim()
     };
 
-    // TODO: Gửi request POST lên MongoDB Cloud qua Service
-    this.blogs.unshift({ id: Date.now(), ...newBlog });
+    this.adminApiService.createBlog(newBlog)
+      .then(() => this.loadBlogsFromCloud())
+      .catch(err => console.error('Lỗi tạo blog qua API:', err));
+
+    this.blogs.unshift({
+      id: Date.now(),
+      category: 'Mẹo vặt',
+      views: 0,
+      comments: 0,
+      likes: 0,
+      ...newBlog
+    });
 
     const modalElement = document.getElementById('createBlogModal');
     if (modalElement) {
@@ -349,5 +383,4 @@ export class BlogsAdmin implements OnInit {
 
     return this.adminApiService.getLibraryMapImageUrl(normalizedPath);
   }
-  
 }

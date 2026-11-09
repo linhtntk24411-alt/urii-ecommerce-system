@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 @Component({
   selector: 'app-support-admin',
@@ -11,6 +12,7 @@ import { AdminApiService } from '../../core/services/admin-api.service';
   styleUrls: ['./support-admin.css']
 })
 export class SupportAdmin implements OnInit, OnDestroy {
+  private readonly socket = inject(AdminSocketService);
   sessions: { [key: string]: any } = {};
   currentFilter: string = 'all'; // 'all', 'waiting', 'active'
   selectedSessionId: string | null = null;
@@ -27,6 +29,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadSessions();
+    this.socket.onChatUpdate().subscribe(() => this.loadSessions());
+    this.socket.onCrudChange('chat').subscribe(() => this.loadSessions());
     this.lastKnownSessionsJSON = typeof localStorage !== 'undefined' ? (localStorage.getItem('urii_chat_sessions') || '{}') : '{}';
     
     // Kiểm tra đồng bộ định kỳ
@@ -159,6 +163,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
   selectSession(sessionId: string) {
     this.selectedSessionId = sessionId;
+    this.socket.joinChat(sessionId);
     const session = this.sessions[sessionId];
     if (!session) return;
 

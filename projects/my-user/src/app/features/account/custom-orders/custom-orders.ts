@@ -1,3 +1,4 @@
+import { UserSocketService } from '../../../core/services/user-socket.service';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
@@ -49,6 +50,7 @@ export class CustomOrders implements OnInit {
   private readonly router = inject(Router);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly socket = inject(UserSocketService);
 
   readonly statuses = REQUEST_STATUSES;
   requests: CustomerDesignRequest[] = [];

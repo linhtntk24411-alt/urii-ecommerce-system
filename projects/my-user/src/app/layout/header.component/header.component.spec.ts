@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -144,5 +144,61 @@ describe('HeaderComponent', () => {
     expect(localStorage.getItem('authToken')).toBeNull();
     expect(localStorage.getItem('isLoggedIn')).toBeNull();
     expect(navigateSpy).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('displays user profile header, quick stats and my-vouchers link in avatar dropdown', () => {
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userName', 'Nguyen Minh Anh');
+    localStorage.setItem('userEmail', 'minhanh@example.com');
+    window.dispatchEvent(new Event('auth:changed'));
+    fixture.detectChanges();
+
+    localStorage.setItem('authToken', 'test-jwt-token');
+    (fixture.nativeElement.querySelector('.account-circle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const voucherReq = httpTestingController.expectOne('/api/user-vouchers/mine');
+    voucherReq.flush([
+      { voucherId: 'FREESHIP', isUsed: false },
+      { voucherId: 'WELCOME10', isUsed: false },
+      { voucherId: 'SALE15', isUsed: true },
+    ]);
+
+    httpTestingController.match(() => true).forEach((req) => {
+      if (req.request.url.includes('/api/orders/mine')) {
+        req.flush({ total: 5, orders: [] });
+      } else if (req.request.url.includes('/api/custom-orders/mine')) {
+        req.flush({ total: 2, orders: [] });
+      } else if (req.request.url.includes('/api/saved-maps/mine')) {
+        req.flush([{ mapId: 'M1' }]);
+      } else if (req.request.url.includes('/api/reviews/mine')) {
+        req.flush([{ id: 'R1' }]);
+      } else if (req.request.url.includes('/api/blogs')) {
+        req.flush([{ id: 'B1', author: 'Nguyen Minh Anh' }]);
+      } else {
+        req.flush([]);
+      }
+    });
+
+    fixture.detectChanges();
+
+    expect(component.voucherCount).toBe(2);
+    expect(component.orderCount).toBe(5);
+    expect(component.customOrderCount).toBe(2);
+    expect(component.savedMapCount).toBe(1);
+    expect(component.reviewCount).toBe(1);
+    expect(component.blogCount).toBe(1);
+
+    expect(fixture.nativeElement.querySelector('.profile-header-name')?.textContent).toContain('Nguyen Minh Anh');
+    expect(fixture.nativeElement.querySelector('.profile-header-email')?.textContent).toContain('minhanh@example.com');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/orders"] .menu-badge')?.textContent).toContain('5');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/my-vouchers"] .menu-badge')?.textContent).toContain('2');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/custom-order-list"] .menu-badge')?.textContent).toContain('2');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/saved-maps"] .menu-badge')?.textContent).toContain('1');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/myreview"] .menu-badge')?.textContent).toContain('1');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/my-blogs"] .menu-badge')?.textContent).toContain('1');
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/profile"] .menu-badge')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.account-menu a[routerLink="/support"] .menu-badge')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.strip-value')?.textContent).toContain('2');
   });
 });

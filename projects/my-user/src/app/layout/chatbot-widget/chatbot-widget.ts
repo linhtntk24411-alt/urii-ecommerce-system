@@ -4,6 +4,7 @@ import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, Chang
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { UserSocketService } from '../../core/services/user-socket.service';
 import { catchError, delay, finalize, map, Observable, of } from 'rxjs';
 
 interface ChatMessage {
@@ -68,6 +69,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   private pendingBotReplies = 0;
   private readonly http = inject(HttpClient);
   private readonly dialogService = inject(DialogService);
+  private readonly socket = inject(UserSocketService);
 
   constructor(
     private router: Router,

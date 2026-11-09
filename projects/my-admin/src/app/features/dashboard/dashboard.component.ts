@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 import {
   AdminApiService,
   AdminBlog,
@@ -35,6 +36,7 @@ declare const Chart: any;
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(AdminApiService);
+  private readonly socket = inject(AdminSocketService);
   private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 

@@ -1,7 +1,8 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, inject, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AdminApiService } from '../core/services/admin-api.service';
+import { AdminSocketService } from '../core/services/admin-socket.service';
 
 type AdminSearchType = 'order' | 'user' | 'product' | 'promotion' | 'blog' | 'comment' | 'map';
 type AdminSearchTab = 'all' | AdminSearchType;
@@ -23,12 +24,16 @@ interface AdminSearchResult {
   styleUrls: ['./admin-layout.component.css']
 })
 export class AdminLayoutComponent implements OnInit {
+  private readonly socket = inject(AdminSocketService);
   constructor(
     private adminApi: AdminApiService,
     private router: Router
   ) {}
   ngOnInit(): void {
     this.loadNotifications();
+    this.socket.onCrudChange().subscribe(() => {
+      this.loadNotifications();
+    });
 
     // Tải đơn hàng
     this.adminApi.getOrders().subscribe({

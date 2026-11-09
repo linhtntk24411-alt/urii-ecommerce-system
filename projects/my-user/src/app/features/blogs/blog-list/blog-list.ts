@@ -51,6 +51,16 @@ export class BlogListComponent implements OnInit {
         this.bookmarks = JSON.parse(savedBookmarks);
       }
       this.loadBlogs();
+    if (isPlatformBrowser(this.platformId)) {
+      const token = localStorage.getItem('authToken') || '';
+      if (token) {
+        this.blogService.getMyLikedBlogs(token).subscribe({
+          next: (ids) => {
+            ids.forEach(id => this.bookmarks[id] = true);
+          }
+        });
+      }
+    }
     }
   }
 

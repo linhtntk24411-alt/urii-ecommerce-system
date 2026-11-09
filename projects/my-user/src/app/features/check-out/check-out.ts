@@ -16,6 +16,7 @@ import {
 import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
 import { CatalogProduct, ProductCatalogService } from '../../core/services/product-catalog.service';
 import { ToastService } from '../../core/services/toast.service';
+import { UserSocketService } from '../../core/services/user-socket.service';
 import { DialogService } from '../../core/services/dialog.service';
 
 interface CheckoutLine {
@@ -63,6 +64,7 @@ export class CheckOut implements OnInit, OnDestroy {
   private readonly selection = inject(CheckoutSelectionService);
   private readonly addressLookup = inject(AddressLookupService);
   private readonly toast = inject(ToastService);
+  private readonly socket = inject(UserSocketService);
   private readonly dialogService = inject(DialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly elementRef = inject(ElementRef<HTMLElement>);

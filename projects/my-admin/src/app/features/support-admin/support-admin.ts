@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 
 @Component({
@@ -19,25 +20,42 @@ export class SupportAdmin implements OnInit, OnDestroy {
   
   adminReplyText: string = '';
   private pollInterval: any;
+  private routeSub: any;
 
   constructor(
     private cdr: ChangeDetectorRef,
-    private adminApi: AdminApiService
+    private adminApi: AdminApiService,
+    private route: ActivatedRoute,
+    @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
   ngOnInit(): void {
     this.loadSessions();
     this.lastKnownSessionsJSON = typeof localStorage !== 'undefined' ? (localStorage.getItem('urii_chat_sessions') || '{}') : '{}';
+
+    // Lắng nghe queryParams để tự động chọn phiên chat khi click từ thông báo
+    this.routeSub = this.route.queryParams.subscribe(params => {
+      const sid = params['sessionId'];
+      if (sid) {
+        this.selectedSessionId = sid;
+        if (this.sessions[sid]) {
+          this.selectSession(sid);
+        }
+      }
+    });
     
-    // Kiểm tra đồng bộ định kỳ
-    if (typeof window !== 'undefined') {
-      this.pollInterval = setInterval(() => this.checkAndSyncStorage(), 3000);
+    // Kiểm tra đồng bộ định kỳ từ server backend
+    if (isPlatformBrowser(this.platformId)) {
+      this.pollInterval = setInterval(() => this.loadSessions(true), 2500);
     }
   }
 
   ngOnDestroy(): void {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
+    }
+    if (this.routeSub) {
+      this.routeSub.unsubscribe();
     }
   }
 
@@ -76,8 +94,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
     return list.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
   }
 
-  loadSessions() {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  loadSessions(silent = false) {
+    if (!silent && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       try {
         const local = JSON.parse(localStorage.getItem('urii_chat_sessions') || '{}');
         if (local && Object.keys(local).length > 0) {
@@ -99,8 +117,13 @@ export class SupportAdmin implements OnInit, OnDestroy {
       .then(r => r.json())
       .then(data => {
         const list = Array.isArray(data) ? data : (data?.sessions || []);
-        if (list.length > 0) {
+        if (list && Array.isArray(list)) {
           const map: { [key: string]: any } = {};
+          let prevSelectedMsgCount = 0;
+          if (this.selectedSessionId && this.sessions[this.selectedSessionId]) {
+            prevSelectedMsgCount = this.sessions[this.selectedSessionId].messages?.length || 0;
+          }
+
           list.forEach((s: any) => {
             const key = s.sessionId || s._id;
             map[key] = {
@@ -109,14 +132,26 @@ export class SupportAdmin implements OnInit, OnDestroy {
               lastMessageTime: s.lastMessageTime || (s.updatedAt ? new Date(s.updatedAt).getTime() : Date.now())
             };
           });
+
           this.sessions = map;
           if (typeof localStorage !== 'undefined') {
             localStorage.setItem('urii_chat_sessions', JSON.stringify(map));
           }
+
+          // Nếu có selectedSessionId từ route mà chưa được focus
+          if (this.selectedSessionId && this.sessions[this.selectedSessionId]) {
+            const newMsgCount = this.sessions[this.selectedSessionId].messages?.length || 0;
+            if (newMsgCount > prevSelectedMsgCount) {
+              this.scrollToBottom();
+            }
+          }
+
           this.cdr.detectChanges();
         }
       })
-      .catch(err => console.error('Lỗi tải chat sessions từ backend:', err));
+      .catch(err => {
+        if (!silent) console.error('Lỗi tải chat sessions từ backend:', err);
+      });
   }
 
   saveSessions() {
@@ -167,6 +202,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
       this.sessions[sessionId] = session;
       this.saveSessions();
     }
+    this.scrollToBottom();
   }
 
   getSelectedSession() {
@@ -212,6 +248,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
     const token = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
@@ -223,7 +261,9 @@ export class SupportAdmin implements OnInit, OnDestroy {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ text, sender: 'admin' })
-    }).catch(err => console.error('Lỗi gửi tin nhắn admin:', err));
+    })
+      .then(() => this.loadSessions(true))
+      .catch(err => console.error('Lỗi gửi tin nhắn admin:', err));
 
     this.adminReplyText = '';
   }
@@ -245,6 +285,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
     const token = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
@@ -256,7 +298,9 @@ export class SupportAdmin implements OnInit, OnDestroy {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ status: 'active', systemLog: 'Nhân viên tư vấn đã bắt đầu tiếp quản cuộc trò chuyện.' })
-    }).catch(err => console.error('Lỗi đổi trạng thái chat:', err));
+    })
+      .then(() => this.loadSessions(true))
+      .catch(err => console.error('Lỗi đổi trạng thái chat:', err));
   }
 
   handbackChat() {
@@ -267,7 +311,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
     session.status = 'ai';
     session.messages.push({
       text: 'Nhân viên đã trả lại phiên chat cho Urii Bot tự động tư vấn.',
-      sender: 'admin',
+      sender: 'bot',
       timestamp: Date.now(),
       isSystemLog: true
     });
@@ -275,6 +319,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
     const token = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
@@ -286,15 +332,18 @@ export class SupportAdmin implements OnInit, OnDestroy {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ status: 'ai', systemLog: 'Nhân viên đã trả lại phiên chat cho Urii Bot tự động tư vấn.' })
-    }).catch(err => console.error('Lỗi trả phiên chat cho bot:', err));
+    })
+      .then(() => this.loadSessions(true))
+      .catch(err => console.error('Lỗi trả phiên chat cho bot:', err));
   }
 
-  checkAndSyncStorage() {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    const currentJSON = localStorage.getItem('urii_chat_sessions') || '{}';
-    if (currentJSON !== this.lastKnownSessionsJSON) {
-      this.lastKnownSessionsJSON = currentJSON;
-      this.loadSessions();
-    }
+  private scrollToBottom(): void {
+    if (typeof document === 'undefined') return;
+    setTimeout(() => {
+      const el = document.getElementById('admin-chat-messages');
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }, 60);
   }
 }

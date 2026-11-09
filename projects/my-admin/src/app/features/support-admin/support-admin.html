@@ -121,8 +121,8 @@
                 </div>
 
                 <!-- Chat Messages Body -->
-                <div class="flex-grow-1 p-3 overflow-y-auto bg-light-subtle d-flex flex-column gap-3 custom-scrollbar" style="background-color: #fcfbfa; position: relative;">
-                    @for (msg of currentSession.messages; track msg.timestamp) {
+                <div class="flex-grow-1 p-3 overflow-y-auto bg-light-subtle d-flex flex-column gap-3 custom-scrollbar" id="admin-chat-messages" style="background-color: #fcfbfa; position: relative;">
+                    @for (msg of currentSession.messages; track $index) {
                         @if (msg.isSystemLog) {
                             <div class="system-log-row">
                                 <div class="system-log-bubble">{{ msg.text }}</div>

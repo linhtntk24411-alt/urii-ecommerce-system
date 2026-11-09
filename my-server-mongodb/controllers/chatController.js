@@ -190,15 +190,24 @@ exports.createOrUpdateSession = async (req, res) => {
 exports.addMessage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { text, sender, isSystemLog } = req.body;
+    const { text, sender, isSystemLog, userName, userEmail } = req.body;
 
     if (!text || !text.trim()) {
       return res.status(400).json({ message: 'Nội dung tin nhắn không được để trống.' });
     }
 
-    const session = await ChatSession.findOne({ sessionId: id });
+    let session = await ChatSession.findOne({ sessionId: id });
     if (!session) {
-      return res.status(404).json({ message: 'Không tìm thấy phiên chat.' });
+      session = new ChatSession({
+        sessionId: id,
+        userName: userName || 'Khách vãng lai',
+        userEmail: userEmail || '',
+        avatar: 'images/avatar_user.jpeg',
+        status: sender === 'admin' ? 'active' : 'waiting',
+        unreadCount: sender === 'admin' ? 0 : 1,
+        lastMessageTime: Date.now(),
+        messages: []
+      });
     }
 
     const msgSender = sender || 'user';
@@ -216,7 +225,7 @@ exports.addMessage = async (req, res) => {
       session.unreadCount = 0;
       session.status = 'active';
     } else if (msgSender === 'user') {
-      session.unreadCount += 1;
+      session.unreadCount = (session.unreadCount || 0) + 1;
     }
 
     await session.save();
@@ -473,7 +482,7 @@ exports.askAi = async (req, res) => {
 // Khách hàng yêu cầu hỗ trợ từ Admin -> cập nhật status 'waiting' và tạo thông báo cho Admin
 exports.requestAgent = async (req, res) => {
   try {
-    const { sessionId, userName, userEmail, message } = req.body;
+    const { sessionId, userName, userEmail, message, messages } = req.body;
     const id = sessionId || req.params.id;
 
     if (!id) {
@@ -500,12 +509,30 @@ exports.requestAgent = async (req, res) => {
       if (userEmail) session.userEmail = userEmail;
     }
 
+    // Nếu client gửi kèm danh sách tin nhắn trước đó (từ localStorage)
+    if (Array.isArray(messages) && messages.length > 0) {
+      const validMsgs = messages
+        .filter(m => m && typeof m.text === 'string' && m.text.trim())
+        .map(m => ({
+          text: m.text.trim(),
+          sender: ['user', 'bot', 'admin'].includes(m.sender) ? m.sender : 'user',
+          timestamp: typeof m.timestamp === 'number' ? m.timestamp : Date.now(),
+          isSystemLog: Boolean(m.isSystemLog)
+        }));
+      if (validMsgs.length > 0) {
+        session.messages = validMsgs;
+      }
+    }
+
     const noteText = message || 'Khách hàng yêu cầu nhân viên tư vấn/admin hỗ trợ trực tiếp.';
-    session.messages.push({
-      text: noteText,
-      sender: 'user',
-      timestamp: Date.now()
-    });
+    const lastMsg = session.messages[session.messages.length - 1];
+    if (!lastMsg || lastMsg.text !== noteText) {
+      session.messages.push({
+        text: noteText,
+        sender: 'user',
+        timestamp: Date.now()
+      });
+    }
 
     await session.save();
 
@@ -513,32 +540,33 @@ exports.requestAgent = async (req, res) => {
     const notifId = `notif-chat-${Date.now()}`;
     const displayName = session.userName || session.userEmail || 'Khách vãng lai';
 
+    const notifDoc = {
+      id: notifId,
+      audience: 'admin',
+      typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
+      reference: { sessionId: session.sessionId },
+      title: `Khách hàng chờ tư vấn #${session.sessionId.slice(-6)}`,
+      message: `Khách hàng ${displayName} đang chờ hỗ trợ tư vấn trực tiếp.`,
+      actionUrl: `/chatbot?sessionId=${session.sessionId}`,
+      isRead: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    try {
+      if (mongoose.connection.db) {
+        await mongoose.connection.db.collection('admin_notifications').insertOne({ ...notifDoc });
+      }
+    } catch (notifColErr) {
+      console.error('Lỗi lưu admin_notifications collection:', notifColErr);
+    }
+
     try {
       if (mongoose.connection.readyState === 1) {
-        await Notification.create({
-          id: notifId,
-          audience: 'admin',
-          typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
-          reference: { sessionId: session.sessionId },
-          isRead: false,
-          createdAt: new Date()
-        });
+        await Notification.create(notifDoc);
       }
     } catch (notifErr) {
-      try {
-        if (mongoose.connection.db) {
-          await mongoose.connection.db.collection('admin_notifications').insertOne({
-            id: notifId,
-            audience: 'admin',
-            typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
-            title: `Khách hàng chờ tư vấn tại phiên #${session.sessionId}`,
-            message: `Khách hàng ${displayName} đang yêu cầu nhân viên tư vấn hỗ trợ trực tiếp.`,
-            actionUrl: `/admin/chat/${session.sessionId}`,
-            isRead: false,
-            createdAt: new Date()
-          });
-        }
-      } catch (_) {}
+      console.warn('Lỗi Notification.create:', notifErr.message);
     }
 
     emitCrudChange('notifications', 'created', notifId);
@@ -554,5 +582,34 @@ exports.requestAgent = async (req, res) => {
   } catch (error) {
     console.error('Lỗi khi gửi yêu cầu hỗ trợ tới admin:', error);
     res.status(500).json({ message: 'Không thể gửi yêu cầu hỗ trợ lúc này.' });
+  }
+};
+
+// Khách hàng hủy yêu cầu hỗ trợ trực tiếp -> chuyển lại về 'ai'
+exports.cancelAgent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = await ChatSession.findOne({ sessionId: id });
+    if (!session) {
+      return res.status(404).json({ message: 'Không tìm thấy phiên chat.' });
+    }
+
+    session.status = 'ai';
+    session.messages.push({
+      text: 'Khách hàng đã hủy yêu cầu hỗ trợ. Phiên chat chuyển lại cho Urii Bot.',
+      sender: 'bot',
+      timestamp: Date.now(),
+      isSystemLog: true
+    });
+    session.lastMessageTime = Date.now();
+    await session.save();
+
+    emitCrudChange('chat', 'status', session.sessionId);
+    emitCrudChange('chat', 'message', session.sessionId);
+
+    res.json({ success: true, message: 'Đã hủy yêu cầu hỗ trợ.', status: 'ai' });
+  } catch (error) {
+    console.error('Lỗi hủy yêu cầu hỗ trợ:', error);
+    res.status(500).json({ message: 'Không thể hủy yêu cầu hỗ trợ.' });
   }
 };

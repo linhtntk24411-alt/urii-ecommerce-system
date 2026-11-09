@@ -1,18 +1,113 @@
 :host {
   display: block;
   color: #252326;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Nunito Sans', Arial, Helvetica, sans-serif;
 }
 
-.auth-page {
-  align-items: center;
-  background: #fff url('/assets/bg.jpg') center / cover no-repeat;
+.admin-login-layout {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   min-height: 100vh;
   min-height: 100svh;
-  overflow: auto;
-  padding: 32px 16px;
+  background: #fff url('/assets/bg.jpg') center / cover no-repeat;
+  position: relative;
+}
+
+/* ================= HEADER TRƯỚC ĐĂNG NHẬP ================= */
+.admin-auth-header {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(220, 200, 200, 0.6);
+  box-shadow: 0 2px 10px rgba(62, 42, 42, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+}
+
+.admin-auth-header-inner {
+  max-width: 1400px;
+  width: 90%;
+  margin: 0 auto;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.brand-logo {
+  height: 75px;
+  max-height: 80px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-divider {
+  width: 1.5px;
+  height: 32px;
+  background-color: #d1c7c7;
+}
+
+.portal-badge {
+  font-size: 19px;
+  font-weight: 700;
+  color: #840001;
+  letter-spacing: 0.3px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5c4d4d;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid #ebd8d4;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.header-link:hover {
+  color: #840001;
+  border-color: #840001;
+  background-color: #fdf5f5;
+}
+
+.icon-sm {
+  font-size: 18px;
+}
+
+/* ================= KHUNG ĐĂNG NHẬP ================= */
+.auth-page {
+  align-items: center;
+  background: transparent;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  padding: 40px 16px;
   position: relative;
 }
 
@@ -151,22 +246,23 @@
 }
 
 .password-icon {
-  align-items: center;
-  background: transparent;
-  border: none;
   color: #765858;
-  cursor: pointer;
-  display: flex;
   height: 20px;
-  justify-content: center;
-  padding: 0;
   position: absolute;
-  right: 13px;
-  top: 10px;
-  width: 20px;
+  right: 10px;
+  top: 8px;
+  width: 24px;
+  padding: 2px;
+  transition: color 0.15s ease;
 }
 
-.password-icon svg {
+.password-icon:hover,
+.password-icon-btn:hover {
+  color: #840001;
+}
+
+.password-icon svg,
+.password-icon-btn svg {
   fill: none;
   height: 100%;
   stroke: currentColor;
@@ -205,6 +301,19 @@
   font-weight: 700;
   height: 42px;
   width: 100%;
+}
+
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.login-error {
+  color: #dc3545;
+  font-size: 13px;
+  margin-top: 10px;
+  margin-bottom: 0;
+  text-align: center;
 }
 
 .divider {
@@ -246,6 +355,11 @@
   justify-content: center;
 }
 
+.social-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .google-icon,
 .facebook-icon {
   height: 20px;
@@ -285,50 +399,58 @@
   width: 13px;
 }
 
-.chatbot-button {
-  align-items: center;
-  background: #b90000;
-  border: 4px solid #fff;
-  border-radius: 50%;
-  bottom: 20px;
-  box-shadow: 0 2px 8px rgba(40, 0, 0, 0.2);
-  color: #fff;
-  display: flex;
-  height: 62px;
-  justify-content: center;
-  padding: 8px;
-  position: fixed;
-  right: 20px;
-  width: 62px;
+/* ================= FOOTER (TỪ ADMIN-LAYOUT) ================= */
+.urii-footer {
+  background-color: #840001;
+  color: #ffffff;
+  width: 100%;
+  margin-top: auto;
 }
 
-.chatbot-button svg {
-  fill: none;
-  height: 100%;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
-  width: 100%;
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.footer-bottom-inner {
+  width: 90%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 18px 0;
+  text-align: center;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 @media (max-width: 480px) {
+  .admin-auth-header-inner {
+    padding: 6px 0;
+  }
+
+  .brand-logo {
+    height: 52px;
+  }
+
+  .portal-badge {
+    font-size: 16px;
+  }
+
+  .header-actions .header-link span:not(.material-symbols-outlined) {
+    display: none;
+  }
+
+  .header-link {
+    padding: 6px 8px;
+  }
+
   .auth-page {
-    padding: 20px 12px 88px;
+    padding: 24px 12px;
   }
 
   .auth-card {
-    padding: 28px 22px 22px;
+    padding: 28px 20px 22px;
   }
 
   .auth-header {
     margin-bottom: 22px;
-  }
-
-  .chatbot-button {
-    bottom: 12px;
-    height: 54px;
-    right: 12px;
-    width: 54px;
   }
 }

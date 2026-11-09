@@ -19,19 +19,32 @@
     <div class="account-content" aria-labelledby="profile-title">
         <header class="profile-summary">
           <div class="profile-summary__identity">
-            <div class="profile-avatar">
+            <button
+              class="profile-avatar profile-avatar--actionable"
+              type="button"
+              (click)="openAvatarModal()"
+              title="Đổi ảnh đại diện"
+              aria-label="Đổi ảnh đại diện">
               @if (profile.avatar) {
-                <img [src]="profile.avatar" alt="" />
+                <img [src]="profile.avatar" alt="Ảnh đại diện" />
               } @else {
                 <span>{{ profile.name.charAt(0).toUpperCase() }}</span>
               }
-            </div>
+              <span class="profile-avatar__overlay" aria-hidden="true">
+                <span class="material-symbols-outlined profile-avatar__camera-icon">photo_camera</span>
+              </span>
+            </button>
             <div class="profile-summary__name">
               <p class="profile-summary__eyebrow">Tài khoản Urii</p>
               <h1 id="profile-title">{{ profile.name }}</h1>
               <p>{{ profile.email }}</p>
             </div>
           </div>
+
+          <button class="profile-change-avatar-btn" type="button" (click)="openAvatarModal()">
+            <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
+            <span>Đổi ảnh đại diện</span>
+          </button>
         </header>
 
         <form class="profile-card profile-card--details" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
@@ -127,6 +140,94 @@
             </div>
           }
         </form>
+    </div>
+  }
+
+  @if (isAvatarModalOpen && profile) {
+    <div class="avatar-modal-backdrop" (click)="closeAvatarModal()">
+      <div
+        class="avatar-modal"
+        (click)="$event.stopPropagation()"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="avatar-modal-title">
+        <header class="avatar-modal__header">
+          <div>
+            <h2 id="avatar-modal-title">Đổi ảnh đại diện</h2>
+            <p>Chọn ảnh mới từ thiết bị hoặc chọn ảnh mẫu có sẵn</p>
+          </div>
+          <button class="avatar-modal__close" type="button" (click)="closeAvatarModal()" aria-label="Đóng popup">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </header>
+
+        <div class="avatar-modal__body">
+          @if (avatarModalError) {
+            <div class="avatar-modal__error" role="alert">
+              <span class="material-symbols-outlined">error</span>
+              <span>{{ avatarModalError }}</span>
+            </div>
+          }
+
+          <div class="avatar-modal__preview-wrapper">
+            <div class="avatar-modal__preview">
+              @if (avatarPreview) {
+                <img [src]="avatarPreview" alt="Xem trước ảnh đại diện" />
+              } @else if (profile.avatar) {
+                <img [src]="profile.avatar" alt="Ảnh đại diện hiện tại" />
+              } @else {
+                <span>{{ profile.name.charAt(0).toUpperCase() }}</span>
+              }
+            </div>
+            <p class="avatar-modal__preview-hint">Xem trước ảnh đại diện</p>
+          </div>
+
+          <div class="avatar-modal__actions-block">
+            <input
+              #avatarFileInput
+              type="file"
+              class="avatar-modal__file-input"
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+              (change)="onAvatarFileSelected($event)" />
+
+            <button
+              class="avatar-modal__upload-btn"
+              type="button"
+              (click)="avatarFileInput.click()">
+              <span class="material-symbols-outlined">upload_file</span>
+              <span>Tải ảnh từ máy tính</span>
+            </button>
+            <small class="avatar-modal__file-hint">Hỗ trợ JPG, PNG, WEBP, GIF (tối đa 5MB)</small>
+          </div>
+
+          <div class="avatar-modal__presets">
+            <span class="avatar-modal__presets-title">Hoặc chọn ảnh đại diện mẫu:</span>
+            <div class="avatar-modal__preset-list">
+              @for (preset of presetAvatars; track preset.url) {
+                <button
+                  type="button"
+                  class="avatar-modal__preset-item"
+                  [class.avatar-modal__preset-item--selected]="avatarPreview === preset.url"
+                  (click)="selectPresetAvatar(preset.url)"
+                  [title]="preset.label">
+                  <img [src]="preset.url" [alt]="preset.label" />
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <footer class="avatar-modal__footer">
+          <button class="profile-button profile-button--secondary" type="button" [disabled]="isSavingAvatar" (click)="closeAvatarModal()">Hủy</button>
+          <button
+            class="profile-button profile-button--primary"
+            type="button"
+            [disabled]="isSavingAvatar || (!avatarFile && !avatarPreview)"
+            (click)="saveAvatar()">
+            {{ isSavingAvatar ? 'Đang lưu...' : 'Lưu ảnh đại diện' }}
+          </button>
+        </footer>
+      </div>
     </div>
   }
 </main>

@@ -54,6 +54,7 @@ describe('HeaderComponent', () => {
   it('loads the signed-in user profile from the API and updates the avatar', () => {
     localStorage.setItem('authToken', 'test-jwt-token');
     localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userId', 'user-id');
     window.dispatchEvent(new Event('auth:changed'));
 
     const request = httpTestingController.expectOne('/api/auth/me');
@@ -64,6 +65,11 @@ describe('HeaderComponent', () => {
       name: 'Updated User',
       email: 'updated@example.com',
       avatar: '/images/avatar-user.jpg',
+    });
+    httpTestingController.expectOne('/api/cart').flush({ items: [] });
+    httpTestingController.expectOne('/api/notifications/mine?page=1&limit=50').flush({
+      notifications: [],
+      unreadCount: 0,
     });
     fixture.detectChanges();
 
@@ -91,15 +97,29 @@ describe('HeaderComponent', () => {
     expect(fixture.nativeElement.querySelector('.auth-buttons')).toBeNull();
   });
 
-  it('removes the saved API token on logout', () => {
+  it('removes the auth token on logout while preserving the cart for the next login', () => {
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     localStorage.setItem('isLoggedIn', 'true');
     localStorage.setItem('authToken', 'test-jwt-token');
+    localStorage.setItem('userId', 'user-45');
+    localStorage.setItem('cartItems:user:user-45', JSON.stringify([
+      { productId: 'p-10', variant: null, quantity: 2 },
+    ]));
+    component.cartCount = 2;
 
     component.confirmLogout();
 
     expect(localStorage.getItem('authToken')).toBeNull();
     expect(localStorage.getItem('isLoggedIn')).toBeNull();
+    expect(localStorage.getItem('userId')).toBeNull();
+    expect(localStorage.getItem('cartItems:user:user-45')).toContain('"productId":"p-10"');
+    expect(component.cartCount).toBe(0);
+
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userId', 'user-45');
+    component.updateCartBadge();
+
+    expect(component.cartCount).toBe(2);
   });
 
   it('opens the account menu and logout confirmation with clicks', () => {

@@ -46,6 +46,7 @@ const orderSchema = new mongoose.Schema({
   status: String,
   statusId: { type: String, enum: orderStatuses.orderStatuses.map(({ id }) => id) },
   statusType: String,
+  note: String,
   waitingInfo: { type: waitingInfoSchema, default: undefined },
   cancellationReasonId: String,
   cancellationNote: String,

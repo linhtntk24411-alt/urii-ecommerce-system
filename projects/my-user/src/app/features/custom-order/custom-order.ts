@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { DialogService } from '../../core/services/dialog.service';
 import { firstValueFrom, TimeoutError } from 'rxjs';
 
 interface ImageUploadResponse {
@@ -21,6 +22,7 @@ export class CustomOrderComponent {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly dialogService = inject(DialogService);
 
   customOrderForm: FormGroup;
   currentStep: number = 1; 
@@ -201,7 +203,12 @@ export class CustomOrderComponent {
   }
 
   private requireLogin(): void {
-    window.alert('Hãy đăng nhập để gửi yêu cầu Custom');
+    this.dialogService.alert('Hãy đăng nhập để gửi yêu cầu Custom.', 'Yêu cầu đăng nhập', 'warning').then(() => {
+      void this.router.navigate(['/login'], {
+        queryParams: { returnUrl: this.router.url },
+      });
+    });
+    return;
     void this.router.navigate(['/login'], {
       queryParams: { returnUrl: this.router.url },
     });

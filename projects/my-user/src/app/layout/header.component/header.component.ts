@@ -29,6 +29,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
   userAvatar: string = '';
   cartCount: number = 0;
   notificationCount: number = 0; 
+
+  // --- THÔNG BÁO CHO USER ---
+  isNotificationOpen = false;
+  notifications: any[] = [];
+  notificationLoadError = '';
+  private isMarkingNotificationsRead = false;
   
   isMobileMenuOpen: boolean = false;
   isMobileProductOpen: boolean = true;
@@ -53,28 +59,42 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.checkAuthStatus();
       this.updateCartBadge();
       this.loadCurrentUser();
+      this.loadNotifications();
       this.changeDetectorRef.markForCheck();
     });
   }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
+      this.checkAuthStatus();
+      this.updateCartBadge();
+      this.refreshCartBadgeFromServer();
+      this.loadCurrentUser();
+      this.loadNotifications();
+
       this.storageListener = (e: StorageEvent) => {
-        if (e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'authToken' || e.key === 'cart_count') {
+        if (!e.key || e.key.startsWith('cartItems') || e.key === 'cart_count' || e.key === 'isLoggedIn' || e.key === 'userName' || e.key === 'userEmail' || e.key === 'userAvatar' || e.key === 'userRole' || e.key === 'authToken') {
           this.checkAuthStatus();
           this.updateCartBadge();
+          if (e.key === 'isLoggedIn' || e.key === 'userId' || e.key === 'authToken') {
+            this.refreshCartBadgeFromServer();
+          }
           this.loadCurrentUser();
-          this.changeDetectorRef.markForCheck();
+          this.loadNotifications();
+          this.changeDetectorRef.detectChanges();
         }
       };
       this.authChangeListener = () => {
         this.checkAuthStatus();
+        this.updateCartBadge();
+        this.refreshCartBadgeFromServer();
         this.loadCurrentUser();
-        this.changeDetectorRef.markForCheck();
+        this.loadNotifications();
+        this.changeDetectorRef.detectChanges();
       };
       this.cartChangeListener = () => {
         this.updateCartBadge();
-        this.changeDetectorRef.markForCheck();
+        this.changeDetectorRef.detectChanges();
       };
       window.addEventListener('storage', this.storageListener);
       window.addEventListener('auth:changed', this.authChangeListener);
@@ -151,7 +171,159 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.userName = '';
       this.userEmail = '';
       this.userAvatar = '';
+      this.notifications = [];
+      this.notificationCount = 0;
+      this.isNotificationOpen = false;
     }
+  }
+
+  // ================= NOTIFICATIONS =================
+  loadNotifications(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const token = localStorage.getItem('authToken');
+    if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
+      this.notifications = [];
+      this.notificationCount = 0;
+      return;
+    }
+
+    this.notificationLoadError = '';
+    this.http.get<any>('/api/notifications/mine?page=1&limit=50', {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
+    }).subscribe({
+      next: (response) => {
+        const list = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.notifications)
+            ? response.notifications
+            : [];
+
+        this.notifications = list.map((notif: any) => ({
+          ...notif,
+          desc: notif.message || notif.desc || '',
+          time: this.formatNotificationTime(notif.createdAt || notif.updatedAt)
+        }));
+
+        this.notificationCount = response?.unreadCount !== undefined
+          ? Number(response.unreadCount)
+          : this.notifications.filter(n => !n.isRead).length;
+
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        console.error('Lỗi tải thông báo người dùng:', err);
+        this.notificationLoadError = 'Không thể tải thông báo.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  toggleNotifications(event: Event): void {
+    event.stopPropagation();
+    this.isAccountMenuOpen = false;
+    this.isNotificationOpen = !this.isNotificationOpen;
+    if (this.isNotificationOpen) {
+      this.loadNotifications();
+    }
+    this.changeDetectorRef.markForCheck();
+  }
+
+  getNotificationUrl(actionUrl?: string): string {
+    if (!actionUrl) return '/';
+    let url = actionUrl.trim();
+    if (url.startsWith('/account/orders/')) {
+      return url.replace('/account/orders/', '/orders/');
+    }
+    if (url === '/account/orders') {
+      return '/orders';
+    }
+    if (url.startsWith('/account/profile')) {
+      return '/profile';
+    }
+    if (url.startsWith('/custom-order/')) {
+      return url.replace('/custom-order/', '/custom-order-list/');
+    }
+    if (url === '/custom-order') {
+      return '/custom-order-list';
+    }
+    if (url.startsWith('/blogs/')) {
+      return url.replace('/blogs/', '/blog-detail/');
+    }
+    if (url.startsWith('/vouchers')) {
+      return '/profile';
+    }
+    if (url.startsWith('/chat')) {
+      return '/support';
+    }
+    return url;
+  }
+
+  onNotificationClick(notif: any): void {
+    this.markOneAsRead(notif);
+    this.isNotificationOpen = false;
+    this.changeDetectorRef.markForCheck();
+    if (notif.actionUrl) {
+      const target = this.getNotificationUrl(notif.actionUrl);
+      void this.router.navigateByUrl(target);
+    }
+  }
+
+  clearAllNotifications(): void {
+    if (this.isMarkingNotificationsRead || this.notificationCount === 0) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    this.isMarkingNotificationsRead = true;
+    this.http.patch<any>('/api/notifications/read-all', {}, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
+    }).subscribe({
+      next: () => {
+        this.notificationCount = 0;
+        this.notifications.forEach(n => n.isRead = true);
+        this.isMarkingNotificationsRead = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        console.error('Lỗi đánh dấu đã đọc tất cả thông báo:', err);
+        this.isMarkingNotificationsRead = false;
+      }
+    });
+  }
+
+  markOneAsRead(notif: any): void {
+    if (notif.isRead) return;
+    const token = localStorage.getItem('authToken');
+    const notifId = notif._id || notif.id;
+    if (!token || !notifId) return;
+
+    this.http.patch<any>(`/api/notifications/${notifId}/read`, {}, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
+    }).subscribe({
+      next: () => {
+        notif.isRead = true;
+        if (this.notificationCount > 0) {
+          this.notificationCount--;
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => console.error('Lỗi đánh dấu đã đọc:', err)
+    });
+  }
+
+  private formatNotificationTime(value?: string): string {
+    if (!value) return 'Vừa xong';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Vừa xong';
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return 'Vừa xong';
+    if (diffMinutes < 60) return `${diffMinutes} phút trước`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
   }
 
   updateCartBadge(): void {
@@ -163,6 +335,19 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  private refreshCartBadgeFromServer(): void {
+    if (localStorage.getItem('isLoggedIn') !== 'true' || !localStorage.getItem('authToken')) return;
+    this.cart.loadItems().subscribe({
+      next: (items) => {
+        this.cartCount = items.reduce((total, item) => total + item.quantity, 0);
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể đồng bộ số lượng giỏ hàng với máy chủ:', error);
+      },
+    });
+  }
+
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
   }
@@ -172,12 +357,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   @HostListener('document:click')
+  onDocumentClick(): void {
+    this.isAccountMenuOpen = false;
+    this.isNotificationOpen = false;
+  }
+
   closeAccountMenu(): void {
     this.isAccountMenuOpen = false;
   }
 
   toggleAccountMenu(event: Event): void {
     event.stopPropagation();
+    this.isNotificationOpen = false;
     this.isAccountMenuOpen = !this.isAccountMenuOpen;
   }
 
@@ -201,6 +392,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     localStorage.removeItem('userAvatar');
     localStorage.removeItem('userRole');
     localStorage.removeItem('authToken');
+    localStorage.removeItem('userId');
     this.profileRequest?.unsubscribe();
     this.isLoggedIn = false;
     this.userName = '';
@@ -208,6 +400,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.userAvatar = '';
     this.isAccountMenuOpen = false;
     this.isLogoutModalOpen = false;
+    this.isNotificationOpen = false;
+    this.notificationCount = 0;
+    this.notifications = [];
     window.dispatchEvent(new Event('auth:changed'));
     void this.router.navigate(['/login']);
   }

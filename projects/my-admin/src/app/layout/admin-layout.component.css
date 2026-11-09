@@ -364,12 +364,27 @@
   display: flex;
   gap: 12px;
   padding: 12px 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   cursor: pointer;
   transition: background-color 0.2s;
   position: relative;
 }
-.notification-item:hover { background-color: rgba(132, 0, 1, 0.02); }
+.notification-item:hover { background-color: rgba(132, 0, 1, 0.04); }
+.notification-item.unread {
+  background-color: rgba(132, 0, 1, 0.025);
+}
+.notification-item.unread:hover {
+  background-color: rgba(132, 0, 1, 0.06);
+}
+.notification-item.loading-item,
+.notification-item.empty-item,
+.notification-item.error-item {
+  cursor: default;
+  color: #7b6f6e;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 20px;
+}
 .notification-icon-circle {
   width: 36px;
   height: 36px;

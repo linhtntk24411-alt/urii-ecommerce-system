@@ -8,7 +8,9 @@ const commentReplySchema = new mongoose.Schema({
   content: { type: String, required: true, trim: true },
   createdAt: { type: Date, default: Date.now },
   time: { type: String, default: 'Vừa xong' },
-  role: { type: String, enum: ['user', 'admin', 'author'], default: 'user' }
+  role: { type: String, enum: ['user', 'admin', 'author'], default: 'user' },
+  replyTo: { type: String, trim: true },
+  replyToAuthor: { type: String, trim: true }
 }, { _id: false });
 
 const commentSchema = new mongoose.Schema({

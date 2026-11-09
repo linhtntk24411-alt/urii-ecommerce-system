@@ -1,14 +1,22 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser, Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AddressArea, AddressLookupService } from '../../core/services/address-lookup.service';
 import { CartItem, CartService } from '../../core/services/cart.service';
-import { CheckoutService, CheckoutVoucher, CreateOrderPayload } from '../../core/services/checkout.service';
+import {
+  CheckoutService,
+  CheckoutVoucher,
+  CreateOrderPayload,
+  OrderPaymentInfo,
+  PaymentStatusId,
+} from '../../core/services/checkout.service';
 import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
 import { CatalogProduct, ProductCatalogService } from '../../core/services/product-catalog.service';
 import { ToastService } from '../../core/services/toast.service';
+import { DialogService } from '../../core/services/dialog.service';
 
 interface CheckoutLine {
   item: CartItem;
@@ -26,6 +34,19 @@ interface DeliveryAddress {
   isDefault: boolean;
 }
 
+interface PersistedQrPaymentSession {
+  orderId: string;
+  orderNumber: string;
+  paymentCode: string;
+  qrCodeUrl: string;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+}
+
+export type CopiedPaymentField = 'accountNumber' | 'amountDue' | 'paymentCode';
+
 @Component({
   selector: 'app-check-out',
   standalone: true,
@@ -33,20 +54,31 @@ interface DeliveryAddress {
   templateUrl: './check-out.html',
   styleUrl: './check-out.css',
 })
-export class CheckOut implements OnInit {
+export class CheckOut implements OnInit, OnDestroy {
   private readonly cart = inject(CartService);
   private readonly catalog = inject(ProductCatalogService);
   private readonly checkout = inject(CheckoutService);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly selection = inject(CheckoutSelectionService);
   private readonly addressLookup = inject(AddressLookupService);
   private readonly toast = inject(ToastService);
+  private readonly dialogService = inject(DialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private currentUserId: string | null = null;
+  private pollingTimer: ReturnType<typeof setInterval> | null = null;
+  private pollingSubscription: Subscription | null = null;
+  private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly pollIntervalMs = 4000;
 
   lines: CheckoutLine[] = [];
   vouchers: CheckoutVoucher[] = [];
   loading = true;
+  loginRequired = false;
+  profileLoading = false;
   loadingVouchers = false;
   submitting = false;
   errorMessage = '';
@@ -63,6 +95,20 @@ export class CheckOut implements OnInit {
   paymentMethod = 'cod';
   orderSuccess = false;
   orderNumber = '';
+
+  qrCheckoutActive = false;
+  creatingPayment = false;
+  restoringPayment = false;
+  qrPaymentCreateFailed = false;
+  qrImageError = false;
+  paymentError = '';
+  pollingError = '';
+  pollingActive = false;
+  pollingInFlight = false;
+  activePaymentOrderId: string | null = null;
+  paymentInfo: OrderPaymentInfo | null = null;
+  copiedField: CopiedPaymentField | null = null;
+
   addresses: DeliveryAddress[] = [];
   selectedAddressId: string | null = null;
   addressManagerOpen = false;
@@ -79,10 +125,72 @@ export class CheckOut implements OnInit {
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
-    this.loadAddresses();
+    const token = window.localStorage.getItem('authToken')?.trim();
+    const userId = window.localStorage.getItem('userId')?.trim();
+    if (window.localStorage.getItem('isLoggedIn') !== 'true' || !token || !userId) {
+      this.loginRequired = true;
+      this.loadCheckout();
+      return;
+    }
+
+    this.currentUserId = userId;
+    this.loadCurrentUser(token);
     this.loadProvinces();
     this.loadCheckout();
-    this.loadVouchers();
+    this.loadVouchers(token);
+    this.tryRestoreActiveQrSession(token);
+  }
+
+  ngOnDestroy(): void {
+    this.stopPaymentPolling();
+    if (this.copyResetTimer !== null) {
+      clearTimeout(this.copyResetTimer);
+      this.copyResetTimer = null;
+    }
+  }
+
+  private loadCurrentUser(token: string): void {
+    this.profileLoading = true;
+    this.checkout.getCurrentUser(token).subscribe({
+      next: (response: unknown) => {
+        if (!this.isRecord(response)
+          || (typeof response['id'] === 'string' ? response['id'] : response['_id']) !== this.currentUserId
+          || typeof response['name'] !== 'string'
+          || typeof response['email'] !== 'string') {
+          console.error('API hồ sơ cá nhân trả về dữ liệu không hợp lệ hoặc không khớp tài khoản đang đăng nhập.');
+          this.addressError = 'Không thể xác thực thông tin hồ sơ. Vui lòng tải lại trang.';
+          this.profileLoading = false;
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+
+        const name = response['name'].trim();
+        const email = response['email'].trim();
+        const phone = typeof response['phone'] === 'string' ? response['phone'].trim() : '';
+        const address = typeof response['address'] === 'string' ? response['address'].trim() : '';
+        window.localStorage.setItem('userName', name);
+        window.localStorage.setItem('userEmail', email);
+        window.localStorage.setItem('userPhone', phone);
+        window.localStorage.setItem('userAddress', address);
+        this.customerName = name;
+        this.phone = phone;
+        this.loadAddresses();
+        this.profileLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.error('Không thể tải hồ sơ khách hàng cho checkout:', error);
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 404)) {
+          this.profileLoading = false;
+          this.loginRequired = true;
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+        this.addressError = 'Không thể tải hồ sơ. Vui lòng thử lại trước khi đặt hàng.';
+        this.profileLoading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
   }
 
   get currentAddress(): DeliveryAddress | null {
@@ -90,6 +198,18 @@ export class CheckOut implements OnInit {
       ?? this.addresses.find((address) => address.isDefault)
       ?? this.addresses[0]
       ?? null;
+  }
+
+  goToLogin(): void {
+    void this.router.navigate(['/login'], { queryParams: { returnUrl: '/checkout' } });
+  }
+
+  goToRegister(): void {
+    void this.router.navigate(['/register'], { queryParams: { returnUrl: '/checkout' } });
+  }
+
+  goBackToPreviousPage(): void {
+    this.location.back();
   }
 
   get subtotal(): number {
@@ -127,18 +247,35 @@ export class CheckOut implements OnInit {
     return this.lines.some((line) => !line.product);
   }
 
+  get sortedVouchers(): CheckoutVoucher[] {
+    return this.vouchers
+      .map((voucher, index) => ({ voucher, index }))
+      .sort((a, b) => Number(this.isVoucherApplicable(b.voucher)) - Number(this.isVoucherApplicable(a.voucher))
+        || a.index - b.index)
+      .map(({ voucher }) => voucher);
+  }
+
   loadCheckout(): void {
     this.loading = true;
     this.errorMessage = '';
-    let items: CartItem[];
-    try {
-      items = this.selection.get() ?? this.cart.getItems();
-    } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Không thể đọc giỏ hàng.';
-      this.loading = false;
+    const selected = this.selection.get();
+    if (selected !== null) {
+      this.loadProductsForCheckout(selected);
       return;
     }
 
+    this.cart.loadItems().subscribe({
+      next: (items) => this.loadProductsForCheckout(items),
+      error: (error: unknown) => {
+        console.error('Không thể tải giỏ hàng cho checkout:', error);
+        this.errorMessage = 'Không thể đồng bộ giỏ hàng. Vui lòng thử lại.';
+        this.loading = false;
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private loadProductsForCheckout(items: CartItem[]): void {
     if (items.length === 0) {
       this.lines = [];
       this.loading = false;
@@ -163,10 +300,10 @@ export class CheckOut implements OnInit {
     });
   }
 
-  loadVouchers(): void {
+  loadVouchers(token: string): void {
     this.loadingVouchers = true;
     this.voucherLoadError = '';
-    this.checkout.getActiveVouchers().subscribe({
+    this.checkout.getMyAvailableVouchers(token).subscribe({
       next: (vouchers) => {
         this.vouchers = vouchers;
         this.loadingVouchers = false;
@@ -183,8 +320,10 @@ export class CheckOut implements OnInit {
 
   loadAddresses(): void {
     this.addressError = '';
-    const email = window.localStorage.getItem('userEmail')?.trim() || 'anonymous';
-    const storageKey = `addresses_${email}`;
+    this.addresses = [];
+    this.selectedAddressId = null;
+    this.shippingAddress = '';
+    const storageKey = this.addressStorageKey();
     const profileAddress = window.localStorage.getItem('userAddress')?.trim() ?? '';
     try {
       const saved = window.localStorage.getItem(storageKey);
@@ -218,6 +357,9 @@ export class CheckOut implements OnInit {
             isDefault: entry['isDefault'] === true,
           }];
         });
+        if (window.localStorage.getItem(storageKey) === null) {
+          window.localStorage.setItem(storageKey, JSON.stringify(this.addresses));
+        }
       }
 
       if (profileAddress) {
@@ -226,7 +368,7 @@ export class CheckOut implements OnInit {
           (address) => address.fullAddress.toLocaleLowerCase() === profileAddress.toLocaleLowerCase(),
         );
         const profile: DeliveryAddress = {
-          id: existingProfileAddress?.id ?? `profile-${email}`,
+          id: existingProfileAddress?.id ?? `profile-${this.currentUserId}`,
           name: window.localStorage.getItem('userName')?.trim() || existingProfileAddress?.name || '',
           phone: window.localStorage.getItem('userPhone')?.trim() || existingProfileAddress?.phone || '',
           detail: existingProfileAddress?.detail || parts[0] || profileAddress,
@@ -304,13 +446,14 @@ export class CheckOut implements OnInit {
     this.selectAddress(id);
   }
 
-  deleteAddress(id: string, event: Event): void {
+  async deleteAddress(id: string, event: Event): Promise<void> {
     event.stopPropagation();
     if (this.addresses.length <= 1) {
       this.addressFormError = 'Bạn cần ít nhất một địa chỉ nhận hàng.';
       return;
     }
-    if (!window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return;
+    const confirmed = await this.dialogService.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?', 'Xác nhận xóa địa chỉ', 'Xóa', 'Hủy');
+    if (!confirmed) return;
 
     const deletingDefault = this.addresses.find((address) => address.id === id)?.isDefault;
     this.addresses = this.addresses.filter((address) => address.id !== id);
@@ -527,9 +670,33 @@ export class CheckOut implements OnInit {
     return this.linePrice(line) * line.item.quantity;
   }
 
+  private resolveLineVariantIndex(line: CheckoutLine): number | null {
+    if (typeof line.item.variantIndex === 'number' && line.item.variantIndex >= 0) {
+      return line.item.variantIndex;
+    }
+    if (!line.item.variant || !line.product?.variants?.length) {
+      return null;
+    }
+    const foundIndex = line.product.variants.findIndex((entry) => entry.name === line.item.variant);
+    return foundIndex >= 0 ? foundIndex : null;
+  }
+
   placeOrder(): void {
     this.errorMessage = '';
-    if (this.submitting) return;
+    this.paymentError = '';
+    if (this.submitting || this.creatingPayment) return;
+
+    const token = window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.loginRequired = true;
+      return;
+    }
+
+    if (this.paymentMethod === 'bank_transfer' && this.activePaymentOrderId && this.qrPaymentCreateFailed) {
+      this.requestQrPayment(this.activePaymentOrderId, token);
+      return;
+    }
+
     if (this.lines.length === 0) {
       this.errorMessage = 'Giỏ hàng chưa có sản phẩm để thanh toán.';
       return;
@@ -554,21 +721,38 @@ export class CheckOut implements OnInit {
       return;
     }
 
+    const isBankTransfer = this.paymentMethod === 'bank_transfer';
     const payload: CreateOrderPayload = {
       userName: this.customerName.trim(),
       date: new Date().toISOString(),
       status: 'Đang chờ duyệt',
       statusType: 'pending',
       total: String(Math.round(this.total)),
-      items: this.lines.map((line) => ({
-        productId: line.item.productId,
-        name: line.product?.name ?? '',
-        price: this.linePrice(line),
-        quantity: line.item.quantity,
-        image: line.product?.image ?? '',
-      })),
-      payment: { method: this.paymentMethod, status: 'pending' },
+      items: this.lines.map((line) => {
+        const variantIndex = this.resolveLineVariantIndex(line);
+        return {
+          productId: line.item.productId,
+          name: line.product?.name ?? '',
+          price: this.linePrice(line),
+          quantity: line.item.quantity,
+          image: line.product?.image ?? '',
+          ...(line.item.variant ? { variantName: line.item.variant } : {}),
+          ...(variantIndex !== null ? { variantIndex } : {}),
+        };
+      }),
+      payment: isBankTransfer
+        ? {
+            method: 'bank_transfer',
+            methodId: 'bank_transfer',
+            status: 'Chờ thanh toán',
+            statusId: 'awaiting_payment',
+          }
+        : { method: this.paymentMethod, status: 'pending' },
       shipping: { method: 'standard', fee: this.shippingFee },
+      ...(this.orderNote.trim() ? { note: this.orderNote.trim() } : {}),
+      ...(this.appliedVoucher
+        ? { voucher: { voucherId: this.appliedVoucher.id, discountAmount: this.totalDiscount } }
+        : {}),
       address: {
         name: address.name,
         phone: address.phone,
@@ -577,23 +761,38 @@ export class CheckOut implements OnInit {
     };
 
     this.submitting = true;
-    this.checkout.createOrder(payload).subscribe({
+    this.checkout.createOrder(payload, token).subscribe({
       next: (response: unknown) => {
         this.submitting = false;
-        this.orderNumber = this.readOrderNumber(response);
-        this.orderSuccess = true;
+        const createdOrderId = this.readOrderNumber(response);
+        this.orderNumber = createdOrderId;
         if (this.selection.shouldRemoveFromCartAfterCheckout()) {
           this.cart.removePurchasedItems(this.lines.map((line) => line.item));
         }
         this.selection.clear();
         this.lines = [];
+
+        if (isBankTransfer) {
+          if (!createdOrderId) {
+            this.errorMessage = 'Đơn hàng đã tạo nhưng máy chủ không trả về mã đơn hàng để khởi tạo QR.';
+            this.changeDetectorRef.markForCheck();
+            return;
+          }
+          this.activePaymentOrderId = createdOrderId;
+          this.qrCheckoutActive = true;
+          this.requestQrPayment(createdOrderId, token);
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+
+        this.orderSuccess = true;
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
         this.submitting = false;
         console.error('Không thể tạo đơn hàng:', error);
         if (error instanceof HttpErrorResponse && error.status === 403) {
-          this.errorMessage = 'Backend hiện chỉ cho phép quản trị viên tạo đơn hàng. Đơn chưa được ghi nhận; cần backend mở API cho khách hàng.';
+          this.errorMessage = 'Bạn không có quyền tạo đơn hàng. Đơn chưa được ghi nhận.';
         } else if (error instanceof HttpErrorResponse && error.status === 401) {
           this.errorMessage = 'Máy chủ yêu cầu đăng nhập để tạo đơn. Đơn chưa được ghi nhận.';
         } else if (error instanceof HttpErrorResponse && error.status === 0) {
@@ -609,6 +808,322 @@ export class CheckOut implements OnInit {
     });
   }
 
+  requestQrPayment(orderId: string, tokenOverride?: string): void {
+    const token = tokenOverride ?? window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.stopPaymentPolling();
+      this.loginRequired = true;
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.creatingPayment = true;
+    this.paymentError = '';
+    this.pollingError = '';
+    this.qrPaymentCreateFailed = false;
+    this.qrImageError = false;
+    this.activePaymentOrderId = orderId;
+    this.qrCheckoutActive = true;
+
+    this.checkout.createOrderPayment(orderId, token).subscribe({
+      next: (payment) => {
+        this.creatingPayment = false;
+        this.qrPaymentCreateFailed = false;
+        this.paymentInfo = payment;
+        this.orderNumber = this.orderNumber || payment.orderId;
+
+        if (payment.statusId === 'awaiting_payment' && !payment.isExpired) {
+          this.persistQrSession(payment);
+          this.startPaymentPolling(payment.orderId);
+        } else {
+          this.stopPaymentPolling();
+          if (payment.statusId === 'paid' || payment.statusId === 'cancelled') {
+            this.clearPersistedQrSession();
+          }
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        this.creatingPayment = false;
+        this.qrPaymentCreateFailed = true;
+        console.error('Không thể khởi tạo thanh toán QR:', error);
+        this.paymentError = this.formatPaymentApiError(error, 'Không thể tạo mã QR thanh toán.');
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  retryCreateQrPayment(): void {
+    const orderId = this.paymentInfo?.orderId ?? this.activePaymentOrderId;
+    if (!orderId || this.creatingPayment) return;
+    this.requestQrPayment(orderId);
+  }
+
+  recreateExpiredQrPayment(): void {
+    const orderId = this.paymentInfo?.orderId ?? this.activePaymentOrderId;
+    if (!orderId || this.creatingPayment) return;
+    this.requestQrPayment(orderId);
+  }
+
+  startPaymentPolling(orderId: string): void {
+    this.stopPaymentPolling();
+    if (!this.isBrowser || !orderId) return;
+
+    this.pollingActive = true;
+    this.pollingTimer = setInterval(() => {
+      this.pollPaymentOnce(orderId, false);
+    }, this.pollIntervalMs);
+  }
+
+  stopPaymentPolling(): void {
+    if (this.pollingTimer !== null) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+    if (this.pollingSubscription !== null) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+    this.pollingInFlight = false;
+    this.pollingActive = false;
+  }
+
+  checkPaymentStatusNow(): void {
+    const orderId = this.paymentInfo?.orderId ?? this.activePaymentOrderId;
+    if (!orderId) return;
+    this.pollPaymentOnce(orderId, true);
+  }
+
+  private pollPaymentOnce(orderId: string, isManual: boolean): void {
+    if (this.pollingInFlight && !isManual) {
+      return;
+    }
+    if (isManual && this.pollingSubscription !== null) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+
+    const token = window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.stopPaymentPolling();
+      this.loginRequired = true;
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.pollingInFlight = true;
+    if (isManual) {
+      this.pollingError = '';
+      this.paymentError = '';
+    }
+
+    this.pollingSubscription = this.checkout.getOrderPaymentStatus(orderId, token).subscribe({
+      next: (latest) => {
+        this.pollingInFlight = false;
+        this.pollingError = '';
+        this.paymentError = '';
+        this.paymentInfo = this.mergePaymentWithCachedQr(latest, this.paymentInfo);
+
+        if (latest.statusId === 'paid') {
+          this.stopPaymentPolling();
+          this.clearPersistedQrSession();
+          this.toast.show('Đã nhận thanh toán thành công!');
+        } else if (latest.statusId === 'expired' || latest.isExpired) {
+          this.stopPaymentPolling();
+        } else if (latest.statusId === 'cancelled') {
+          this.stopPaymentPolling();
+          this.clearPersistedQrSession();
+        } else if (isManual) {
+          this.toast.show('Hệ thống vẫn đang chờ nhận giao dịch chuyển khoản.');
+          if (!this.pollingActive) {
+            this.startPaymentPolling(orderId);
+          }
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        this.pollingInFlight = false;
+        console.error('Lỗi khi kiểm tra trạng thái thanh toán:', error);
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403 || error.status === 404)) {
+          this.stopPaymentPolling();
+          this.pollingError = this.formatPaymentApiError(error, 'Không thể kiểm tra trạng thái thanh toán.');
+        } else if (error instanceof HttpErrorResponse && error.status === 0) {
+          this.pollingError = 'Mất kết nối mạng khi kiểm tra trạng thái thanh toán. Bạn có thể bấm "Kiểm tra lại trạng thái" để thử lại.';
+        } else {
+          this.pollingError = this.formatPaymentApiError(
+            error,
+            'Không thể đồng bộ trạng thái thanh toán tạm thời. Vui lòng thử kiểm tra lại.',
+          );
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private tryRestoreActiveQrSession(token: string): void {
+    const saved = this.readPersistedQrSession();
+    if (!saved || !saved.orderId) return;
+
+    this.paymentMethod = 'bank_transfer';
+    this.activePaymentOrderId = saved.orderId;
+    this.orderNumber = saved.orderNumber || saved.orderId;
+    this.qrCheckoutActive = true;
+    this.restoringPayment = true;
+    this.paymentError = '';
+    this.pollingError = '';
+
+    this.checkout.getOrderPaymentStatus(saved.orderId, token).subscribe({
+      next: (latest) => {
+        this.restoringPayment = false;
+        const merged = this.mergePaymentWithPersistedSession(latest, saved);
+        this.paymentInfo = merged;
+
+        if (merged.statusId === 'awaiting_payment' && !merged.isExpired) {
+          if (merged.qrCodeUrl) {
+            this.persistQrSession(merged);
+            this.startPaymentPolling(merged.orderId);
+          } else {
+            this.requestQrPayment(merged.orderId, token);
+          }
+        } else {
+          this.stopPaymentPolling();
+          if (merged.statusId === 'paid' || merged.statusId === 'cancelled') {
+            this.clearPersistedQrSession();
+          }
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        this.restoringPayment = false;
+        console.error('Không thể khôi phục phiên thanh toán QR:', error);
+        if (error instanceof HttpErrorResponse && (error.status === 404 || error.status === 403)) {
+          this.clearPersistedQrSession();
+          this.qrCheckoutActive = false;
+          this.activePaymentOrderId = null;
+          this.errorMessage = 'Không tìm thấy phiên thanh toán trước đó. Vui lòng kiểm tra mục Đơn hàng của bạn.';
+        } else {
+          this.paymentError = this.formatPaymentApiError(
+            error,
+            'Không thể khôi phục trạng thái thanh toán do lỗi kết nối. Vui lòng bấm "Kiểm tra lại trạng thái".',
+          );
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private mergePaymentWithCachedQr(
+    latest: OrderPaymentInfo,
+    previous: OrderPaymentInfo | null,
+  ): OrderPaymentInfo {
+    if (!previous || previous.paymentCode !== latest.paymentCode) {
+      return latest;
+    }
+    const keepQr = latest.statusId === 'awaiting_payment' && !latest.isExpired;
+    return {
+      ...latest,
+      qrCodeUrl: latest.qrCodeUrl || (keepQr ? previous.qrCodeUrl : ''),
+      bankCode: latest.bankCode || previous.bankCode,
+      bankName: latest.bankName || previous.bankName,
+      accountNumber: latest.accountNumber || previous.accountNumber,
+      accountName: latest.accountName || previous.accountName,
+    };
+  }
+
+  private mergePaymentWithPersistedSession(
+    latest: OrderPaymentInfo,
+    saved: PersistedQrPaymentSession,
+  ): OrderPaymentInfo {
+    if (saved.paymentCode && saved.paymentCode !== latest.paymentCode) {
+      return latest;
+    }
+    const keepQr = latest.statusId === 'awaiting_payment' && !latest.isExpired;
+    return {
+      ...latest,
+      qrCodeUrl: latest.qrCodeUrl || (keepQr ? saved.qrCodeUrl : ''),
+      bankCode: latest.bankCode || saved.bankCode,
+      bankName: latest.bankName || saved.bankName,
+      accountNumber: latest.accountNumber || saved.accountNumber,
+      accountName: latest.accountName || saved.accountName,
+    };
+  }
+
+  onQrImageError(): void {
+    this.qrImageError = true;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  async copyPaymentField(field: CopiedPaymentField, rawValue: string, successMessage: string): Promise<void> {
+    const value = rawValue.trim();
+    if (!value || !this.isBrowser) return;
+
+    let copied = false;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(value);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+
+    if (!copied) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        copied = false;
+      }
+    }
+
+    if (copied) {
+      this.copiedField = field;
+      if (this.copyResetTimer !== null) {
+        clearTimeout(this.copyResetTimer);
+      }
+      this.copyResetTimer = setTimeout(() => {
+        this.copiedField = null;
+        this.changeDetectorRef.markForCheck();
+      }, 2000);
+      this.toast.show(successMessage);
+      this.changeDetectorRef.markForCheck();
+    } else {
+      this.toast.show('Không thể tự động sao chép. Vui lòng sao chép thủ công.');
+    }
+  }
+
+  paymentStatusLabel(statusId: PaymentStatusId | undefined): string {
+    switch (statusId) {
+      case 'awaiting_payment':
+        return 'Đang chờ thanh toán';
+      case 'paid':
+        return 'Đã thanh toán';
+      case 'expired':
+        return 'Đã hết hạn';
+      case 'cancelled':
+        return 'Đã hủy';
+      default:
+        return 'Đang xử lý';
+    }
+  }
+
+  exitQrCheckout(): void {
+    this.stopPaymentPolling();
+    this.clearPersistedQrSession();
+    this.qrCheckoutActive = false;
+    this.paymentInfo = null;
+    this.activePaymentOrderId = null;
+    this.paymentError = '';
+    this.pollingError = '';
+    this.qrPaymentCreateFailed = false;
+  }
+
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -617,14 +1132,105 @@ export class CheckOut implements OnInit {
     }).format(amount);
   }
 
-  private persistAddresses(): void {
-    const email = window.localStorage.getItem('userEmail')?.trim() || 'anonymous';
+  private qrSessionStorageKey(): string | null {
+    if (!this.currentUserId) return null;
+    return `activeQrPayment:v1:user:${this.currentUserId}`;
+  }
+
+  private persistQrSession(payment: OrderPaymentInfo): void {
+    const key = this.qrSessionStorageKey();
+    if (!key || !this.isBrowser) return;
+    const sessionData: PersistedQrPaymentSession = {
+      orderId: payment.orderId,
+      orderNumber: this.orderNumber || payment.orderId,
+      paymentCode: payment.paymentCode,
+      qrCodeUrl: payment.qrCodeUrl,
+      bankCode: payment.bankCode,
+      bankName: payment.bankName,
+      accountNumber: payment.accountNumber,
+      accountName: payment.accountName,
+    };
     try {
-      window.localStorage.setItem(`addresses_${email}`, JSON.stringify(this.addresses));
+      window.localStorage.setItem(key, JSON.stringify(sessionData));
+    } catch (error) {
+      console.error('Không thể lưu thông tin phiên QR:', error);
+    }
+  }
+
+  private readPersistedQrSession(): PersistedQrPaymentSession | null {
+    const key = this.qrSessionStorageKey();
+    if (!key || !this.isBrowser) return null;
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed: unknown = JSON.parse(raw);
+      if (!this.isRecord(parsed) || typeof parsed['orderId'] !== 'string' || !parsed['orderId'].trim()) {
+        return null;
+      }
+      return {
+        orderId: parsed['orderId'].trim(),
+        orderNumber: typeof parsed['orderNumber'] === 'string' ? parsed['orderNumber'].trim() : parsed['orderId'].trim(),
+        paymentCode: typeof parsed['paymentCode'] === 'string' ? parsed['paymentCode'].trim() : '',
+        qrCodeUrl: typeof parsed['qrCodeUrl'] === 'string' ? parsed['qrCodeUrl'].trim() : '',
+        bankCode: typeof parsed['bankCode'] === 'string' ? parsed['bankCode'].trim() : '',
+        bankName: typeof parsed['bankName'] === 'string' ? parsed['bankName'].trim() : '',
+        accountNumber: typeof parsed['accountNumber'] === 'string' ? parsed['accountNumber'].trim() : '',
+        accountName: typeof parsed['accountName'] === 'string' ? parsed['accountName'].trim() : '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private clearPersistedQrSession(): void {
+    const key = this.qrSessionStorageKey();
+    if (!key || !this.isBrowser) return;
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors on cleanup
+    }
+  }
+
+  private formatPaymentApiError(error: unknown, fallback: string): string {
+    const serverMessage = this.readServerMessage(error);
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 0) {
+        return 'Không kết nối được máy chủ thanh toán. Vui lòng kiểm tra kết nối mạng và thử lại.';
+      }
+      if (error.status === 401) {
+        return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.';
+      }
+      if (error.status === 403) {
+        return serverMessage || 'Bạn không có quyền truy cập thông tin thanh toán của đơn hàng này.';
+      }
+      if (error.status === 404) {
+        return serverMessage || 'Không tìm thấy đơn hàng hoặc thông tin thanh toán.';
+      }
+      if (error.status === 409) {
+        return serverMessage || 'Không thể khởi tạo thanh toán cho trạng thái đơn hàng hiện tại.';
+      }
+      if (error.status === 503) {
+        return serverMessage || 'Cổng thanh toán QR đang tạm thời bảo trì. Vui lòng thử lại sau.';
+      }
+    }
+    return serverMessage ? `${fallback} (${serverMessage})` : fallback;
+  }
+
+  private persistAddresses(): void {
+    try {
+      window.localStorage.setItem(this.addressStorageKey(), JSON.stringify(this.addresses));
     } catch (error) {
       console.error('Không thể lưu địa chỉ nhận hàng:', error);
       this.addressError = 'Không thể lưu địa chỉ. Vui lòng kiểm tra bộ nhớ trình duyệt.';
     }
+  }
+
+  private addressStorageKey(): string {
+    if (!this.currentUserId) {
+      throw new Error('Không thể tải địa chỉ nếu chưa xác định tài khoản hiện tại.');
+    }
+    return `addresses:v2:user:${this.currentUserId}`;
   }
 
   private applyCurrentAddress(): void {

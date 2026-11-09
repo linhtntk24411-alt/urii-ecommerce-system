@@ -11,7 +11,7 @@ async function getCustomerId(req, res) {
     res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
     return null;
   }
-  const userExists = await User.exists({ _id: id, role: 'user' });
+  const userExists = await User.exists({ _id: id, role: { $in: ['user', 'admin'] } });
   if (!userExists) {
     res.status(401).json({ message: 'Tài khoản khách hàng không còn tồn tại.' });
     return null;
@@ -60,12 +60,14 @@ exports.getCart = async (req, res) => {
 };
 
 exports.addItem = async (req, res) => {
-  if (!isValidBody(req.body, ['productId', 'variantIndex', 'quantity', 'selected'])
+  if (!isValidBody(req.body, ['productId', 'variantIndex', 'variantName', 'quantity', 'selected'])
     || typeof req.body.productId !== 'string'
     || !Number.isInteger(req.body.quantity)
     || req.body.quantity < 1
     || (req.body.variantIndex !== undefined && req.body.variantIndex !== null
       && !Number.isInteger(req.body.variantIndex))
+    || (req.body.variantName !== undefined && req.body.variantName !== null
+      && typeof req.body.variantName !== 'string')
     || (req.body.selected !== undefined && typeof req.body.selected !== 'boolean')) {
     res.status(400).json({ message: 'Thông tin sản phẩm trong giỏ hàng không hợp lệ.' });
     return;
@@ -80,8 +82,18 @@ exports.addItem = async (req, res) => {
       return;
     }
 
+    const variantIndex = req.body.variantName == null
+      ? req.body.variantIndex
+      : Array.isArray(product.variants)
+        ? product.variants.findIndex((variant) => variant.name === req.body.variantName)
+        : -1;
+    if (variantIndex === -1) {
+      res.status(400).json({ message: 'Không tìm thấy phân loại sản phẩm.' });
+      return;
+    }
     const normalized = normalizeCartItem({
       ...req.body,
+      variantIndex,
       itemId: randomUUID(),
       selected: req.body.selected ?? true
     }, product);
@@ -109,10 +121,14 @@ exports.addItem = async (req, res) => {
 };
 
 exports.updateItem = async (req, res) => {
-  if (!isValidBody(req.body, ['quantity', 'selected'])
+  if (!isValidBody(req.body, ['quantity', 'selected', 'variantIndex', 'variantName'])
     || Object.keys(req.body).length === 0
     || (req.body.quantity !== undefined && !Number.isInteger(req.body.quantity))
-    || (req.body.selected !== undefined && typeof req.body.selected !== 'boolean')) {
+    || (req.body.selected !== undefined && typeof req.body.selected !== 'boolean')
+    || (req.body.variantIndex !== undefined && req.body.variantIndex !== null
+      && !Number.isInteger(req.body.variantIndex))
+    || (req.body.variantName !== undefined && req.body.variantName !== null
+      && typeof req.body.variantName !== 'string')) {
     res.status(400).json({ message: 'Thông tin cập nhật giỏ hàng không hợp lệ.' });
     return;
   }
@@ -131,11 +147,48 @@ exports.updateItem = async (req, res) => {
       res.status(409).json({ message: 'Sản phẩm trong giỏ hàng hiện không còn tồn tại.' });
       return;
     }
-    if (req.body.quantity !== undefined) {
-      normalizeCartItem({ ...item.toObject(), quantity: req.body.quantity }, product);
-      item.quantity = req.body.quantity;
+    if (req.body.variantIndex !== undefined || req.body.variantName !== undefined) {
+      const variantIndex = req.body.variantName == null
+        ? req.body.variantIndex
+        : Array.isArray(product.variants)
+          ? product.variants.findIndex((variant) => variant.name === req.body.variantName)
+          : -1;
+      if (variantIndex === -1) {
+        res.status(400).json({ message: 'Không tìm thấy phân loại sản phẩm.' });
+        return;
+      }
+      const normalized = normalizeCartItem({
+        ...item.toObject(),
+        variantIndex,
+        quantity: req.body.quantity ?? item.quantity
+      }, product);
+      const matching = cart.items.find((entry) => (
+        entry.itemId !== item.itemId
+        && entry.productId === item.productId
+        && entry.variantIndex === normalized.variantIndex
+      ));
+      if (matching) {
+        const mergedQuantity = matching.quantity + normalized.quantity;
+        normalizeCartItem({ ...matching.toObject(), quantity: mergedQuantity }, product);
+        matching.quantity = mergedQuantity;
+        matching.selected = matching.selected || item.selected;
+        cart.items = cart.items.filter((entry) => entry.itemId !== item.itemId);
+      } else {
+        item.variantIndex = normalized.variantIndex;
+        item.quantity = normalized.quantity;
+      }
     }
-    if (req.body.selected !== undefined) item.selected = req.body.selected;
+    if (req.body.quantity !== undefined) {
+      const currentItem = cart.items.find((entry) => entry.itemId === req.params.itemId);
+      if (currentItem) {
+        normalizeCartItem({ ...currentItem.toObject(), quantity: req.body.quantity }, product);
+        currentItem.quantity = req.body.quantity;
+      }
+    }
+    if (req.body.selected !== undefined) {
+      const currentItem = cart.items.find((entry) => entry.itemId === req.params.itemId);
+      if (currentItem) currentItem.selected = req.body.selected;
+    }
     await cart.save();
     const products = await Product.find({ id: { $in: cart.items.map((entry) => entry.productId) } }).lean();
     res.json(buildCartResponse(cart, products));
@@ -148,13 +201,12 @@ exports.removeItem = async (req, res) => {
   try {
     const userId = await getCustomerId(req, res);
     if (!userId) return;
-    const cart = await Cart.findOne({ userId });
-    if (!cart || !cart.items.some((item) => item.itemId === req.params.itemId)) {
-      res.status(404).json({ message: 'Không tìm thấy sản phẩm trong giỏ hàng.' });
-      return;
+    const cart = await getOrCreateCart(userId);
+    const hasItem = cart.items.some((item) => item.itemId === req.params.itemId);
+    if (hasItem) {
+      cart.items = cart.items.filter((item) => item.itemId !== req.params.itemId);
+      await cart.save();
     }
-    cart.items = cart.items.filter((item) => item.itemId !== req.params.itemId);
-    await cart.save();
     const products = await Product.find({ id: { $in: cart.items.map((item) => item.productId) } }).lean();
     res.json(buildCartResponse(cart, products));
   } catch (error) {

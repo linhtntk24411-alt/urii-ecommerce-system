@@ -24,6 +24,18 @@ export interface BlogPost {
   tags: string[];
 }
 
+export interface BlogCommentReply {
+  id: string;
+  author: string;
+  avatar: string;
+  content: string;
+  createdAt?: string;
+  time?: string;
+  role?: 'user' | 'admin' | 'author';
+  replyTo?: string;
+  replyToAuthor?: string;
+}
+
 export interface BlogComment {
   id: string | number;
   blogId: string | number;
@@ -32,6 +44,7 @@ export interface BlogComment {
   content: string;
   createdAt: string;
   time: string;
+  replies?: BlogCommentReply[];
 }
 
 export interface NewBlogPost {
@@ -62,6 +75,12 @@ export class BlogService {
         return createdPost;
       }),
     );
+  }
+
+  replyComment(commentId: string | number, content: string, token: string, replyToAuthor?: string): Observable<any> {
+    return this.http.post<any>(`/api/comments/${commentId}/replies`, { content, replyToAuthor }, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    });
   }
 
   createComment(comment: Pick<BlogComment, 'blogId' | 'content'>, token: string): Observable<BlogComment> {
@@ -199,6 +218,23 @@ export class BlogService {
         : this.toText(createdAtValue);
       const avatar = this.normalizeImagePath(record['avatar']);
 
+      const rawReplies = Array.isArray(record['replies']) ? record['replies'] : [];
+      const replies: BlogCommentReply[] = rawReplies.flatMap((r): BlogCommentReply[] => {
+        if (!this.isRecord(r)) return [];
+        const replyContent = this.toText(r['content']);
+        if (!replyContent) return [];
+        return [{
+          id: this.toText(r['id']) || String(Date.now()),
+          author: this.toText(r['author']) || 'Khách hàng',
+          avatar: this.normalizeImagePath(r['avatar']) || 'assets/avatar-non.jpg',
+          content: replyContent,
+          createdAt: this.toText(r['createdAt']),
+          time: this.toText(r['time']) || 'Vừa xong',
+          role: (r['role'] as any) || 'user',
+          replyToAuthor: this.toText(r['replyToAuthor']) || undefined
+        }];
+      });
+
       return [{
         id: id || `${blogId}-${createdAt}-${content.slice(0, 20)}`,
         blogId,
@@ -207,6 +243,7 @@ export class BlogService {
         content,
         createdAt,
         time: this.toText(record['time']),
+        replies
       }];
     });
   }

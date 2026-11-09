@@ -1,11 +1,24 @@
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Payment = require('../models/Payment');
 const orderStatuses = require('../data/order_statuses.json');
 const orderReasons = require('../data/order_reasons.json');
 const mongoose = require('mongoose');
-const { randomUUID } = require('node:crypto');
+const { randomInt } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const paymentLifecycleService = require('../services/paymentLifecycleService');
+
+function generateOrderId() {
+  return `UR-${randomInt(10000, 100000)}`;
+}
+
+class PaymentOrderConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PaymentOrderConflictError';
+  }
+}
 
 const orderTypesById = new Map((orderStatuses.orderTypes || []).map((t) => [t.id, t]));
 const orderStatusesById = new Map((orderStatuses.orderStatuses || []).map((s) => [s.id, s]));
@@ -18,10 +31,71 @@ const shippingStatusesById = new Map((orderStatuses.shippingStatuses || []).map(
 const cancelReasonsById = new Map((orderReasons.cancelReasons || []).map((r) => [r.id, r]));
 const returnReasonsById = new Map((orderReasons.returnReasons || []).map((r) => [r.id, r]));
 
+const ADMIN_STATUS_TO_ORDER_STATUS = {
+  pending: { statusId: 'pending', status: 'Chờ xác nhận', statusType: 'pending' },
+  approved: { statusId: 'processing', status: 'Đã xác nhận', statusType: 'approved' },
+  processing: { statusId: 'processing', status: 'Chờ lấy hàng', statusType: 'processing' },
+  shipping: { statusId: 'shipping', status: 'Chờ giao hàng', statusType: 'shipping' },
+  completed: { statusId: 'completed', status: 'Đã giao', statusType: 'completed' },
+  returned: { statusId: 'returned', status: 'Trả hàng', statusType: 'returned' },
+  cancelled: { statusId: 'cancelled', status: 'Đã hủy', statusType: 'cancelled' }
+};
+
+function normalizeOrderStatusUpdates(updates) {
+  if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+    return;
+  }
+  const hasExplicitStatusId = typeof updates.statusId === 'string' && updates.statusId.trim().length > 0;
+  const hasExplicitStatusType = typeof updates.statusType === 'string' && updates.statusType.trim().length > 0;
+  if (!hasExplicitStatusId && !hasExplicitStatusType) {
+    return;
+  }
+  const rawKey = hasExplicitStatusType && !hasExplicitStatusId
+    ? updates.statusType.trim().toLowerCase()
+    : updates.statusId.trim().toLowerCase();
+  const mapped = ADMIN_STATUS_TO_ORDER_STATUS[rawKey];
+  if (!mapped) return;
+
+  if (!hasExplicitStatusId || !orderStatusesById.has(updates.statusId)) {
+    updates.statusId = mapped.statusId;
+  }
+  if (!hasExplicitStatusType) {
+    updates.statusType = mapped.statusType;
+  }
+  if (typeof updates.status !== 'string' || !updates.status.trim()) {
+    updates.status = mapped.status;
+  }
+}
+
 function addHoursIso(isoOrDate, hours) {
   const base = isoOrDate ? new Date(isoOrDate) : new Date();
   const validBase = Number.isNaN(base.getTime()) ? new Date() : base;
   return new Date(validBase.getTime() + hours * 3600 * 1000).toISOString().slice(0, 19);
+}
+
+function hasFinancialOrderChanges(order, updates) {
+  if (Object.keys(updates).some((field) => field.startsWith('$'))) return true;
+  const fields = ['total', 'totalAmount', 'subtotal', 'discount', 'discountAmount', 'shippingFee', 'voucher', 'items'];
+  if (fields.some((field) => Object.hasOwn(updates, field)
+    && JSON.stringify(order[field]) !== JSON.stringify(updates[field]))) {
+    return true;
+  }
+  if (Object.hasOwn(updates, 'shipping.fee') && order.shipping?.fee !== updates['shipping.fee']) {
+    return true;
+  }
+  if (Object.keys(updates).some((field) => (
+    field.startsWith('items.') || field.startsWith('voucher.')
+  ))) {
+    return true;
+  }
+  if (Object.hasOwn(updates, 'shipping')
+    && Object.hasOwn(updates.shipping || {}, 'fee')
+    && order.shipping?.fee !== updates.shipping.fee) {
+    return true;
+  }
+  return Object.hasOwn(updates, 'payment')
+    && updates.payment?.methodId !== undefined
+    && updates.payment.methodId !== order.payment?.methodId;
 }
 
 async function enrichOrders(orders) {
@@ -33,7 +107,12 @@ async function enrichOrders(orders) {
 
   return orders.map((order) => {
     const user = order.userId ? usersById.get(String(order.userId)) : null;
-    const statusMeta = order.statusId ? orderStatusesById.get(order.statusId) : null;
+    const rawStatusType = typeof order.statusType === 'string' ? order.statusType.trim().toLowerCase() : '';
+    const mappedLegacyStatus = (!order.statusId || order.statusId === 'pending') && rawStatusType && rawStatusType !== 'pending'
+      ? ADMIN_STATUS_TO_ORDER_STATUS[rawStatusType]
+      : null;
+    const effectiveStatusId = mappedLegacyStatus?.statusId || order.statusId;
+    const statusMeta = effectiveStatusId ? orderStatusesById.get(effectiveStatusId) : null;
     const cancelReasonMeta = order.cancellationReasonId
       ? cancelReasonsById.get(order.cancellationReasonId)
       : null;
@@ -55,9 +134,10 @@ async function enrichOrders(orders) {
 
     return {
       ...order,
+      statusId: effectiveStatusId,
       orderType: order.orderType || 'normal',
       orderTypeLabel: orderTypesById.get(order.orderType || 'normal')?.label || '',
-      status: order.status || statusMeta?.label || '',
+      status: mappedLegacyStatus?.status || order.status || statusMeta?.label || '',
       statusType: order.statusType || statusMeta?.statusType || '',
       icon: order.icon || statusMeta?.icon || '',
       isWaiting: Boolean(statusMeta?.isWaiting),
@@ -227,10 +307,21 @@ exports.createOrder = async (req, res) => {
   }
 
   try {
+    const isCustomerOrder = req.auth?.role === 'user'
+      || (req.auth?.role === 'admin' && !req.body.userId);
+    const orderData = isCustomerOrder
+      ? {
+          ...req.body,
+          userId: req.auth.id,
+          status: 'Đang chờ duyệt',
+          statusId: 'pending',
+          statusType: 'pending'
+        }
+      : req.body;
     const nowIso = new Date().toISOString().slice(0, 19);
-    const statusId = req.body.statusId || 'pending';
+    const statusId = isCustomerOrder ? 'pending' : (orderData.statusId || 'pending');
     const waitingPolicy = orderReasons.waitingPolicies?.awaiting_confirmation;
-    const defaultWaitingInfo = statusId === 'pending' && !req.body.waitingInfo
+    const defaultWaitingInfo = statusId === 'pending' && !orderData.waitingInfo
       ? {
           type: 'awaiting_confirmation',
           startedAt: nowIso,
@@ -239,14 +330,29 @@ exports.createOrder = async (req, res) => {
           actor: 'admin',
           note: waitingPolicy?.description || 'Chờ cửa hàng xác nhận đơn hàng trong vòng 24 giờ.'
         }
-      : req.body.waitingInfo;
+      : orderData.waitingInfo;
 
-    const order = await Order.create({
-      ...req.body,
-      id: req.body.id || `order-${randomUUID()}`,
-      statusId,
-      waitingInfo: defaultWaitingInfo
-    });
+    const customId = typeof orderData.id === 'string' && orderData.id.trim()
+      ? orderData.id.trim()
+      : '';
+    let order = null;
+    const maxAttempts = customId ? 1 : 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        order = await Order.create({
+          ...orderData,
+          id: customId || generateOrderId(),
+          statusId,
+          waitingInfo: defaultWaitingInfo
+        });
+        break;
+      } catch (createError) {
+        if (createError?.code === 11000 && !customId && attempt < maxAttempts) {
+          continue;
+        }
+        throw createError;
+      }
+    }
     emitCrudChange('orders', 'created', order._id);
     const [enriched] = await enrichOrders([order.toObject()]);
     res.status(201).json(enriched);
@@ -422,15 +528,97 @@ exports.updateOrder = async (req, res) => {
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
+  normalizeOrderStatusUpdates(updates);
 
   try {
+    let order;
     const filter = mongoose.isValidObjectId(req.params.id)
       ? { _id: req.params.id }
       : { id: req.params.id };
-    const order = await Order.findOneAndUpdate(filter, updates, {
-      new: true,
-      runValidators: true
-    });
+    const currentOrder = await Order.findOne(filter).select('_id').lean();
+    if (!currentOrder) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+      return;
+    }
+    const currentPayment = await Payment.findOne({ orderId: currentOrder._id })
+      .select('_id')
+      .lean();
+    if (!currentPayment) {
+      const currentDetails = await Order.findById(currentOrder._id).select('payment.methodId').lean();
+      if (currentDetails?.payment?.methodId !== 'bank_transfer') {
+        order = await Order.findOneAndUpdate(filter, updates, {
+          new: true,
+          runValidators: true
+        });
+        if (!order) {
+          res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+          return;
+        }
+        emitCrudChange('orders', 'updated', order._id);
+        const [enriched] = await enrichOrders([order.toObject()]);
+        res.json(enriched);
+        return;
+      }
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        order = await Order.findById(currentOrder._id).session(session);
+        if (!order) return;
+
+        const payment = await Payment.findOne({ orderId: order._id }).session(session);
+        if (!payment) {
+          order = await Order.findOneAndUpdate(filter, updates, {
+            new: true,
+            runValidators: true,
+            session
+          });
+          return;
+        }
+
+        if (Object.hasOwn(updates, 'payment')
+          && updates.payment?.statusId !== undefined
+          && updates.payment.statusId !== order.payment?.statusId) {
+          throw new PaymentOrderConflictError('Không thể thay đổi trạng thái thanh toán trực tiếp qua API Order.');
+        }
+
+        const financialChange = hasFinancialOrderChanges(order, updates);
+        if (payment.statusId === 'paid' && financialChange) {
+          throw new PaymentOrderConflictError('Không thể sửa thông tin tài chính của đơn đã thanh toán.');
+        }
+
+        const now = new Date();
+        if (payment.statusId === 'awaiting_payment' && payment.expiresAt <= now) {
+          await paymentLifecycleService.expirePaymentInSession(payment, now, session);
+        } else if (payment.statusId === 'awaiting_payment'
+          && (financialChange || updates.statusId === 'cancelled')) {
+          await paymentLifecycleService.cancelPaymentInSession(payment, session);
+        }
+
+        const usesMongoOperators = Object.keys(updates).some((field) => field.startsWith('$'));
+        if (usesMongoOperators) {
+          order = await Order.findOneAndUpdate(filter, updates, {
+            new: true,
+            runValidators: true,
+            session
+          });
+          if (!order) return;
+        } else {
+          order.set(updates);
+        }
+        if (payment.statusId === 'cancelled') {
+          order.payment.statusId = 'cancelled';
+          order.payment.status = 'Đã hủy';
+        } else if (payment.statusId === 'expired') {
+          order.payment.statusId = 'unpaid';
+          order.payment.status = 'Chưa thanh toán';
+        }
+        await order.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
     if (!order) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
@@ -439,6 +627,10 @@ exports.updateOrder = async (req, res) => {
     const [enriched] = await enrichOrders([order.toObject()]);
     res.json(enriched);
   } catch (error) {
+    if (error instanceof PaymentOrderConflictError) {
+      res.status(409).json({ message: error.message });
+      return;
+    }
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu đơn hàng không hợp lệ.' });
       return;
@@ -457,14 +649,56 @@ exports.deleteOrder = async (req, res) => {
     const filter = mongoose.isValidObjectId(req.params.id)
       ? { _id: req.params.id }
       : { id: req.params.id };
-    const order = await Order.findOneAndDelete(filter);
-    if (!order) {
+    const currentOrder = await Order.findOne(filter).select('_id payment.methodId').lean();
+    if (!currentOrder) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
     }
-    emitCrudChange('orders', 'deleted', order._id);
+
+    const currentPayment = await Payment.findOne({ orderId: currentOrder._id })
+      .select('_id statusId')
+      .lean();
+    if (!currentPayment && currentOrder.payment?.methodId !== 'bank_transfer') {
+      const order = await Order.findOneAndDelete(filter);
+      if (!order) {
+        res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+        return;
+      }
+      emitCrudChange('orders', 'deleted', order._id);
+      res.json({ message: 'Đã xóa đơn hàng.' });
+      return;
+    }
+
+    let deletedOrder = null;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const payment = await Payment.findOne({ orderId: currentOrder._id }).session(session);
+        if (payment) {
+          if (payment.statusId === 'paid') {
+            throw new PaymentOrderConflictError('Không thể xóa đơn hàng đã được thanh toán.');
+          }
+          if (payment.statusId === 'awaiting_payment') {
+            await paymentLifecycleService.cancelPaymentInSession(payment, session);
+          }
+        }
+        deletedOrder = await Order.findOneAndDelete({ _id: currentOrder._id }, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (!deletedOrder) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+      return;
+    }
+    emitCrudChange('orders', 'deleted', deletedOrder._id);
     res.json({ message: 'Đã xóa đơn hàng.' });
   } catch (error) {
+    if (error instanceof PaymentOrderConflictError) {
+      res.status(409).json({ message: error.message });
+      return;
+    }
     console.error('Lỗi xóa đơn hàng:', error);
     res.status(500).json({ message: 'Không thể xóa đơn hàng.' });
   }

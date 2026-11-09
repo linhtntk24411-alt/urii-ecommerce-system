@@ -113,7 +113,8 @@
                                     type="button"
                                     [attr.aria-pressed]="isMapSaved(map.id)"
                                     (click)="saveMap(map)">
-                                    <span class="material-symbols-outlined">{{ isMapSaved(map.id) ? 'bookmark' : 'bookmark_add' }}</span>
+                                    <i *ngIf="isMapSaved(map.id)" class="bi bi-bookmark-fill" aria-hidden="true"></i>
+                                    <span *ngIf="!isMapSaved(map.id)" class="material-symbols-outlined" aria-hidden="true">bookmark_add</span>
                                     <span>{{ isMapSaved(map.id) ? 'Đã lưu' : 'Lưu mẫu' }}</span>
                                 </button>
                             </div>

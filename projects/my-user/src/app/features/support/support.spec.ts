@@ -46,5 +46,8 @@ describe('SupportComponent', () => {
 
     await router.navigateByUrl('/support/terms-of-service');
     expect(component.activeTab).toBe('terms-of-service');
+
+    await router.navigateByUrl('/support/community-standards');
+    expect(component.activeTab).toBe('community-standards');
   });
 });

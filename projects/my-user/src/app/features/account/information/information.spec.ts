@@ -164,6 +164,125 @@ describe('Information', () => {
     expect(fixture.nativeElement.textContent).toContain('Đăng nhập để xem hồ sơ');
     httpTestingController.expectNone('/api/auth/me');
   });
+
+  it('opens and closes the avatar change modal', async () => {
+    localStorage.setItem('authToken', 'profile-token');
+    localStorage.setItem('isLoggedIn', 'true');
+    fixture.detectChanges();
+    httpTestingController.expectOne('/api/auth/me').flush(profileResponse());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.isAvatarModalOpen).toBe(false);
+    expect(fixture.nativeElement.querySelector('.avatar-modal')).toBeNull();
+
+    // Verify explicit change avatar button also opens the modal
+    const changeBtn = fixture.nativeElement.querySelector('.profile-change-avatar-btn') as HTMLButtonElement;
+    expect(changeBtn).not.toBeNull();
+    changeBtn.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.isAvatarModalOpen).toBe(true);
+
+    component.closeAvatarModal();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.isAvatarModalOpen).toBe(false);
+
+    // Click on avatar button
+    const avatarButton = fixture.nativeElement.querySelector('.profile-avatar--actionable') as HTMLButtonElement;
+    expect(avatarButton).not.toBeNull();
+    avatarButton.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.isAvatarModalOpen).toBe(true);
+    expect(fixture.nativeElement.querySelector('.avatar-modal')).not.toBeNull();
+
+    // Close modal
+    const closeButton = fixture.nativeElement.querySelector('.avatar-modal__close') as HTMLButtonElement;
+    closeButton.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.isAvatarModalOpen).toBe(false);
+    expect(fixture.nativeElement.querySelector('.avatar-modal')).toBeNull();
+  });
+
+  it('updates the avatar via preset selection and saves to the backend', async () => {
+    localStorage.setItem('authToken', 'profile-token');
+    localStorage.setItem('isLoggedIn', 'true');
+    fixture.detectChanges();
+    httpTestingController.expectOne('/api/auth/me').flush(profileResponse());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    component.openAvatarModal();
+    fixture.detectChanges();
+
+    // Select preset
+    component.selectPresetAvatar('/images/avatar_user1.jpeg');
+    expect(component.avatarPreview).toBe('/images/avatar_user1.jpeg');
+
+    component.saveAvatar();
+
+    const patchReq = httpTestingController.expectOne('/api/auth/me');
+    expect(patchReq.request.method).toBe('PATCH');
+    expect(patchReq.request.body).toEqual({ avatar: '/images/avatar_user1.jpeg' });
+
+    patchReq.flush({
+      ...profileResponse(),
+      avatar: '/images/avatar_user1.jpeg',
+    });
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.isAvatarModalOpen).toBe(false);
+    expect(component.profile?.avatar).toBe('/api/images/avatar_user1.jpeg');
+    expect(localStorage.getItem('userAvatar')).toBe('/api/images/avatar_user1.jpeg');
+    expect(component.successMessage).toBe('Đã cập nhật ảnh đại diện thành công.');
+  });
+
+  it('uploads a custom image file and updates the profile avatar', async () => {
+    localStorage.setItem('authToken', 'profile-token');
+    localStorage.setItem('isLoggedIn', 'true');
+    fixture.detectChanges();
+    httpTestingController.expectOne('/api/auth/me').flush(profileResponse());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    component.openAvatarModal();
+    fixture.detectChanges();
+
+    const dummyFile = new File(['dummy-content'], 'avatar.png', { type: 'image/png' });
+    component.avatarFile = dummyFile;
+    component.avatarPreview = 'data:image/png;base64,dummy';
+
+    component.saveAvatar();
+
+    // Expect upload request first
+    const uploadReq = httpTestingController.expectOne('/api/upload');
+    expect(uploadReq.request.method).toBe('POST');
+    expect(uploadReq.request.headers.get('Content-Type')).toBe('image/png');
+    uploadReq.flush({ imageUrl: '/images/uploads/uploaded-avatar.png' });
+
+    // Expect patch request next
+    const patchReq = httpTestingController.expectOne('/api/auth/me');
+    expect(patchReq.request.method).toBe('PATCH');
+    expect(patchReq.request.body).toEqual({ avatar: '/images/uploads/uploaded-avatar.png' });
+    patchReq.flush({
+      ...profileResponse(),
+      avatar: '/images/uploads/uploaded-avatar.png',
+    });
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.isAvatarModalOpen).toBe(false);
+    expect(component.profile?.avatar).toBe('/api/images/uploads/uploaded-avatar.png');
+    expect(localStorage.getItem('userAvatar')).toBe('/api/images/uploads/uploaded-avatar.png');
+  });
 });
 
 function profileResponse() {

@@ -12,6 +12,13 @@ function productFilter(value) {
   return { $or: filters };
 }
 
+function noReservationsFilter() {
+  return {
+    reservedStock: { $in: [null, 0] },
+    variants: { $not: { $elemMatch: { reservedStock: { $gt: 0 } } } }
+  };
+}
+
 exports.getAllProducts = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
@@ -44,9 +51,18 @@ exports.createProduct = async (req, res) => {
   }
 
   try {
+    const variants = Array.isArray(req.body.variants)
+      ? req.body.variants.map((variant) => {
+          const cleanVariant = { ...variant };
+          delete cleanVariant.reservedStock;
+          return cleanVariant;
+        })
+      : req.body.variants;
     const newProduct = new Product({
       ...req.body,
-      id: req.body.id || `product-${randomUUID()}`
+      id: req.body.id || `product-${randomUUID()}`,
+      reservedStock: 0,
+      ...(variants ? { variants } : {})
     });
     await newProduct.save();
     emitCrudChange('products', 'created', newProduct._id);
@@ -77,14 +93,45 @@ exports.updateProduct = async (req, res) => {
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
+  delete updates.reservedStock;
+  if (Array.isArray(updates.variants)) {
+    updates.variants = updates.variants.map((variant) => {
+      const cleanVariant = { ...variant };
+      delete cleanVariant.reservedStock;
+      return cleanVariant;
+    });
+  }
+  for (const [operator, fields] of Object.entries(updates)) {
+    if (!operator.startsWith('$') || !fields || typeof fields !== 'object' || Array.isArray(fields)) continue;
+    for (const field of Object.keys(fields)) {
+      if (field === 'reservedStock' || field.endsWith('.reservedStock')) delete fields[field];
+      if (field === 'variants' && Array.isArray(fields[field])) {
+        fields[field] = fields[field].map((variant) => {
+          const cleanVariant = { ...variant };
+          delete cleanVariant.reservedStock;
+          return cleanVariant;
+        });
+      }
+    }
+  }
 
   try {
     const filter = productFilter(req.params.id);
-    const product = await Product.findOneAndUpdate(filter, updates, {
+    const changesInventoryStructure = Object.keys(updates).some((field) => field.startsWith('$'))
+      || Object.hasOwn(updates, 'stock')
+      || Object.hasOwn(updates, 'variants');
+    const guardedFilter = changesInventoryStructure
+      ? { ...filter, ...noReservationsFilter() }
+      : filter;
+    const product = await Product.findOneAndUpdate(guardedFilter, updates, {
       new: true,
       runValidators: true
     });
     if (!product) {
+      if (changesInventoryStructure && await Product.exists(productFilter(req.params.id))) {
+        res.status(409).json({ message: 'Không thể sửa tồn kho hoặc biến thể khi sản phẩm đang được giữ cho Payment.' });
+        return;
+      }
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
       return;
     }
@@ -106,8 +153,13 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findOneAndDelete(productFilter(req.params.id));
+    const filter = { ...productFilter(req.params.id), ...noReservationsFilter() };
+    const product = await Product.findOneAndDelete(filter);
     if (!product) {
+      if (await Product.exists(productFilter(req.params.id))) {
+        res.status(409).json({ message: 'Không thể xóa sản phẩm đang được giữ cho Payment.' });
+        return;
+      }
       res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
       return;
     }
@@ -122,12 +174,19 @@ exports.deleteProduct = async (req, res) => {
 // Cập nhật số lượng tồn kho của sản phẩm hoặc biến thể
 exports.updateStock = async (req, res) => {
   try {
-    const { stock, delta, variantName } = req.body;
+    const { stock, delta, variantName } = req.body || {};
     const filter = productFilter(req.params.id);
 
     const product = await Product.findOne(filter);
     if (!product) {
       return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
+    }
+
+    if ((product.reservedStock || 0) > 0
+      || (Array.isArray(product.variants) && product.variants.some((v) => (v.reservedStock || 0) > 0))) {
+      return res.status(409).json({
+        message: 'Không thể sửa tồn kho hoặc biến thể khi sản phẩm đang được giữ cho Payment.'
+      });
     }
 
     if (variantName && Array.isArray(product.variants) && product.variants.length > 0) {

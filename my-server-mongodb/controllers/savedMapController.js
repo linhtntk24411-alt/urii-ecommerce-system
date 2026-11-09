@@ -18,14 +18,22 @@ function savedMapFilter(value) {
   return { $or: filters };
 }
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function referencesExistingCustomerAndMap(userId, mapId) {
   if (!mongoose.isValidObjectId(userId)
-    || !await User.exists({ _id: userId, role: 'user' })
-    || typeof mapId !== 'string'
-    || !await Gallery.exists({ map_id: mapId })) {
+    || !await User.exists({ _id: userId, role: { $in: ['user', 'admin'] } })
+    || typeof mapId !== 'string') {
     return false;
   }
-  return true;
+  const mapRegex = new RegExp('^' + escapeRegex(mapId) + '$', 'i');
+  const filters = [{ map_id: mapId }, { map_id: mapRegex }, { slug: mapId }, { slug: mapRegex }];
+  if (mongoose.isValidObjectId(mapId)) {
+    filters.push({ _id: mapId });
+  }
+  return Gallery.exists({ $or: filters });
 }
 
 exports.getAllSavedMaps = async (req, res) => {
@@ -42,8 +50,10 @@ exports.getAllSavedMaps = async (req, res) => {
 exports.getMySavedMaps = async (req, res) => {
   try {
     const userId = req.auth?.id;
-    if (!mongoose.isValidObjectId(userId) || !await User.exists({ _id: userId, role: 'user' })) {
-      res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    const userValid = mongoose.isValidObjectId(userId)
+      && (await User.exists({ _id: userId, role: 'user' }) || await User.exists({ _id: userId, role: 'admin' }));
+    if (!userValid) {
+      res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
       return;
     }
 
@@ -62,7 +72,7 @@ exports.saveMyMap = async (req, res) => {
     ? req.body.mapId.trim()
     : '';
   if (!mongoose.isValidObjectId(userId)) {
-    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
     return;
   }
   if (!mapId) {
@@ -71,23 +81,35 @@ exports.saveMyMap = async (req, res) => {
   }
 
   try {
-    if (!await User.exists({ _id: userId, role: 'user' })) {
-      res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    const userValid = await User.exists({ _id: userId, role: 'user' }) || await User.exists({ _id: userId, role: 'admin' });
+    if (!userValid) {
+      res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
       return;
     }
-    const map = await Gallery.findOne({ map_id: mapId }).select('map_id map_name author main_image').lean();
+
+    let map = await Gallery.findOne({ map_id: mapId }).select('map_id map_name author main_image').lean();
+    if (!map) {
+      const mapRegex = new RegExp('^' + escapeRegex(mapId) + '$', 'i');
+      const filters = [{ map_id: mapRegex }, { slug: mapId }, { slug: mapRegex }];
+      if (mongoose.isValidObjectId(mapId)) {
+        filters.push({ _id: mapId });
+      }
+      map = await Gallery.findOne({ $or: filters }).select('map_id map_name author main_image').lean();
+    }
     if (!map) {
       res.status(404).json({ message: 'Không tìm thấy map cần lưu.' });
       return;
     }
 
+    const actualMapId = map.map_id || map.id || String(map._id);
+
     const savedMap = await SavedMap.create({
       id: `saved-map-${randomUUID()}`,
-      mapId: map.map_id,
+      mapId: actualMapId,
       userId,
-      title: map.map_name,
-      author: map.author,
-      image: map.main_image
+      title: map.map_name || 'Map mẫu',
+      author: map.author || '',
+      image: map.main_image || ''
     });
     emitCrudChange('savedMaps', 'created', savedMap.id);
     res.status(201).json(savedMap);
@@ -111,7 +133,7 @@ exports.updateMySavedMap = async (req, res) => {
     ? req.body.title.trim()
     : '';
   if (!mongoose.isValidObjectId(userId)) {
-    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
     return;
   }
   if (!title || title.length > 120) {
@@ -120,12 +142,13 @@ exports.updateMySavedMap = async (req, res) => {
   }
 
   try {
-    if (!await User.exists({ _id: userId, role: 'user' })) {
-      res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    if (!await User.exists({ _id: userId, role: { $in: ['user', 'admin'] } })) {
+      res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
       return;
     }
+    const mapRegex = new RegExp('^' + escapeRegex(req.params.mapId) + '$', 'i');
     const map = await SavedMap.findOneAndUpdate(
-      { userId, mapId: req.params.mapId },
+      { userId, $or: [{ mapId: req.params.mapId }, { mapId: mapRegex }, { id: req.params.mapId }] },
       { title },
       { new: true, runValidators: true }
     );
@@ -148,16 +171,42 @@ exports.updateMySavedMap = async (req, res) => {
 exports.removeMySavedMap = async (req, res) => {
   const userId = req.auth?.id;
   if (!mongoose.isValidObjectId(userId)) {
-    res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
     return;
   }
 
   try {
-    if (!await User.exists({ _id: userId, role: 'user' })) {
-      res.status(401).json({ message: 'Phiên đăng nhập khách hàng không hợp lệ.' });
+    const userValid = await User.exists({ _id: userId, role: 'user' }) || await User.exists({ _id: userId, role: 'admin' });
+    if (!userValid) {
+      res.status(401).json({ message: 'Phiên đăng nhập không hợp lệ.' });
       return;
     }
-    const map = await SavedMap.findOneAndDelete({ userId, mapId: req.params.mapId });
+
+    let map = await SavedMap.findOneAndDelete({
+      userId,
+      mapId: req.params.mapId
+    });
+    if (!map) {
+      const mapRegex = new RegExp('^' + escapeRegex(req.params.mapId) + '$', 'i');
+      map = await SavedMap.findOneAndDelete({
+        userId,
+        $or: [{ mapId: mapRegex }, { id: req.params.mapId }]
+      });
+    }
+    if (!map) {
+      const galleryItem = await Gallery.findOne({
+        $or: [
+          { slug: req.params.mapId },
+          ...(mongoose.isValidObjectId(req.params.mapId) ? [{ _id: req.params.mapId }] : [])
+        ]
+      }).select('map_id').lean();
+      if (galleryItem && galleryItem.map_id) {
+        map = await SavedMap.findOneAndDelete({
+          userId,
+          mapId: galleryItem.map_id
+        });
+      }
+    }
     if (!map) {
       res.status(404).json({ message: 'Map này chưa được lưu.' });
       return;

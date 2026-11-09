@@ -88,13 +88,16 @@
       <p *ngIf="!isCommentsLoading && !commentsErrorMessage && blogComments.length === 0">
         Bài viết chưa có bình luận nào.
       </p>
+
+      <!-- DANH SÁCH BÌNH LUẬN VÀ REPLY -->
       <div class="blog-detail-comments__list" *ngIf="!isCommentsLoading && !commentsErrorMessage && blogComments.length > 0">
         <article class="blog-detail-comments__item" *ngFor="let comment of blogComments">
+          <!-- Comment chính -->
           <div class="comment-main">
             <div class="blog-detail-comments__avatar">
-              <img [src]="comment.avatar" [alt]="comment.author" onerror="this.src='/assets/avatar-non.jpg'">
+              <img [src]="comment.avatar || '/assets/avatar-non.jpg'" [alt]="comment.author" onerror="this.src='/assets/avatar-non.jpg'">
             </div>
-            <div>
+            <div class="comment-body">
               <div class="blog-detail-comments__header">
                 <span class="blog-detail-comments__username">{{ comment.author }}</span>
                 <time class="blog-detail-comments__time" *ngIf="comment.time || comment.createdAt">
@@ -102,6 +105,98 @@
                 </time>
               </div>
               <p class="blog-detail-comments__text">{{ comment.content }}</p>
+
+              <!-- Hàng hành động: Nút Trả lời và Nút Xem câu trả lời -->
+              <div class="comment-actions-bar">
+                <button
+                  type="button"
+                  class="btn-reply-toggle"
+                  (click)="openReplyForm(comment.id)"
+                >
+                  <i class="bi bi-reply-fill"></i>
+                  {{ (activeReplyCommentId === comment.id && !replyToAuthorMap[comment.id]) ? 'Hủy trả lời' : 'Trả lời' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-toggle-replies"
+                  *ngIf="comment.replies && comment.replies.length > 0"
+                  (click)="toggleReplies(comment.id)"
+                >
+                  <i class="bi" [ngClass]="isRepliesVisible(comment.id) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                  {{ isRepliesVisible(comment.id) ? ('Ẩn ' + comment.replies.length + ' phản hồi') : ('Xem ' + comment.replies.length + ' phản hồi') }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form gửi phản hồi (hiển thị khi click Trả lời) -->
+          <div class="comment-reply-form" *ngIf="activeReplyCommentId === comment.id">
+            <div class="reply-composer">
+              <div class="replying-to-badge" *ngIf="replyToAuthorMap[comment.id]">
+                <span><i class="bi bi-arrow-return-right me-1"></i>Đang trả lời <strong>@{{ replyToAuthorMap[comment.id] }}</strong></span>
+                <button type="button" class="btn-clear-reply-to" (click)="replyToAuthorMap[comment.id] = ''" title="Bỏ tag">×</button>
+              </div>
+              <textarea
+                class="reply-textarea"
+                rows="2"
+                placeholder="Viết phản hồi của bạn..."
+                [(ngModel)]="replyContentMap[comment.id]"
+                [name]="'reply-' + comment.id"
+                maxlength="1000"
+              ></textarea>
+              <p *ngIf="replyErrorMessageMap[comment.id]" class="blog-detail-comments__error">
+                {{ replyErrorMessageMap[comment.id] }}
+              </p>
+              <div class="reply-actions">
+                <button type="button" class="btn-reply-cancel" (click)="cancelReply(comment.id)">Hủy</button>
+                <button
+                  type="button"
+                  class="btn-reply-submit"
+                  [disabled]="isSubmittingReplyMap[comment.id]"
+                  (click)="submitReply(comment)"
+                >
+                  {{ isSubmittingReplyMap[comment.id] ? 'Đang gửi...' : 'Gửi phản hồi' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danh sách replies (chỉ hiện khi click Xem phản hồi hoặc Trả lời) -->
+          <div class="comment-replies" *ngIf="isRepliesVisible(comment.id) && comment.replies && comment.replies.length > 0">
+            <div class="comment-reply-item" *ngFor="let reply of comment.replies">
+              <img
+                class="reply-avatar"
+                [src]="reply.avatar || '/assets/avatar-non.jpg'"
+                [alt]="reply.author"
+                onerror="this.src='/assets/avatar-non.jpg'"
+              />
+              <div class="reply-body">
+                <div class="reply-header">
+                  <span class="reply-author">{{ reply.author }}</span>
+                  <span class="reply-badge reply-badge--admin" *ngIf="reply.role === 'admin'">
+                    <i class="bi bi-shield-check"></i> Quản trị viên
+                  </span>
+                  <span class="reply-badge reply-badge--author" *ngIf="reply.role === 'author'">
+                    <i class="bi bi-pencil-square"></i> Tác giả
+                  </span>
+                  <time class="reply-time" *ngIf="reply.time || reply.createdAt">
+                    {{ reply.time || formatCommentDate(reply.createdAt || '') }}
+                  </time>
+                </div>
+                <p class="reply-content">
+                  <span class="reply-to-tag" *ngIf="reply.replyToAuthor">@{{ reply.replyToAuthor }} </span>{{ reply.content }}
+                </p>
+
+                <!-- Nút Trả lời trong từng reply (Reply có thể tạo trong reply) -->
+                <button
+                  type="button"
+                  class="btn-reply-toggle btn-reply-toggle--sub"
+                  (click)="openReplyToReplyForm(comment, reply)"
+                >
+                  <i class="bi bi-reply-fill"></i> Trả lời
+                </button>
+              </div>
             </div>
           </div>
         </article>

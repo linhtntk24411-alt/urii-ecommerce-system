@@ -2,15 +2,16 @@ import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angula
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Inject, PLATFORM_ID } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BlogComment, BlogPost, BlogService } from '../../../core/services/blog.service';
+import { DialogService } from '../../../core/services/dialog.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { combineLatest, map, TimeoutError } from 'rxjs';
 
 @Component({
   selector: 'app-blog-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './blog-detail.html',
   styleUrl: './blog-detail.css'
 })
@@ -18,6 +19,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly blogService = inject(BlogService);
+  private readonly dialogService = inject(DialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly bookmarksStorageKey = 'bookmarks';
@@ -178,18 +180,141 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private requireLoginToComment(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      window.alert('Hãy đăng nhập để bình luận vào bài viết');
+  // ================= PHẢN HỒI BÌNH LUẬN (REPLY) =================
+  activeReplyCommentId: string | number | null = null;
+  showRepliesMap: Record<string, boolean> = {};
+  replyToAuthorMap: Record<string, string> = {};
+  replyContentMap: Record<string, string> = {};
+  isSubmittingReplyMap: Record<string, boolean> = {};
+  replyErrorMessageMap: Record<string, string> = {};
+
+  isRepliesVisible(commentId: string | number): boolean {
+    const key = String(commentId);
+    // Mặc định luôn hiện reply ngay khi vào blog (trừ khi người dùng bấm ẩn)
+    return this.showRepliesMap[key] !== false;
+  }
+
+  toggleReplies(commentId: string | number): void {
+    const key = String(commentId);
+    this.showRepliesMap[key] = !this.isRepliesVisible(commentId);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  openReplyForm(commentId: string | number): void {
+    if (!this.isLoggedIn) {
+      this.requireLoginToComment();
+      return;
     }
-    void this.router.navigate(['/login'], {
-      queryParams: { returnUrl: this.router.url },
+    const key = String(commentId);
+    if (this.activeReplyCommentId === commentId && !this.replyToAuthorMap[key]) {
+      this.activeReplyCommentId = null;
+    } else {
+      this.activeReplyCommentId = commentId;
+      this.showRepliesMap[key] = true;
+      this.replyToAuthorMap[key] = '';
+    }
+    this.replyErrorMessageMap[key] = '';
+    if (!this.replyContentMap[key]) {
+      this.replyContentMap[key] = '';
+    }
+    this.changeDetectorRef.markForCheck();
+  }
+
+  openReplyToReplyForm(comment: BlogComment, reply: any): void {
+    if (!this.isLoggedIn) {
+      this.requireLoginToComment();
+      return;
+    }
+    const key = String(comment.id);
+    this.activeReplyCommentId = comment.id;
+    this.showRepliesMap[key] = true;
+    this.replyToAuthorMap[key] = reply.author || '';
+    this.replyContentMap[key] = `@${reply.author} `;
+    this.replyErrorMessageMap[key] = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  cancelReply(commentId: string | number): void {
+    const key = String(commentId);
+    this.activeReplyCommentId = null;
+    this.replyContentMap[key] = '';
+    this.replyToAuthorMap[key] = '';
+    this.replyErrorMessageMap[key] = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  submitReply(comment: BlogComment): void {
+    const key = String(comment.id);
+    const content = (this.replyContentMap[key] || '').trim();
+
+    if (!content) {
+      this.replyErrorMessageMap[key] = 'Vui lòng nhập nội dung phản hồi.';
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    const token = isPlatformBrowser(this.platformId)
+      ? localStorage.getItem('authToken')
+      : null;
+
+    if (!this.isLoggedIn || !token) {
+      this.requireLoginToComment();
+      return;
+    }
+
+    this.isSubmittingReplyMap[key] = true;
+    this.replyErrorMessageMap[key] = '';
+    const replyToAuthor = this.replyToAuthorMap[key] || '';
+
+    this.blogService.replyComment(comment.id, content, token, replyToAuthor).subscribe({
+      next: (res) => {
+        if (!comment.replies) {
+          comment.replies = [];
+        }
+        
+        if (res && Array.isArray(res.replies)) {
+          comment.replies = res.replies;
+        } else {
+          const userName = localStorage.getItem('userName') || 'Bạn';
+          const userAvatar = localStorage.getItem('userAvatar') || 'assets/avatar-non.jpg';
+          comment.replies.push({
+            id: 'r-' + Date.now(),
+            author: userName,
+            avatar: userAvatar,
+            content: content,
+            time: 'Vừa xong',
+            role: 'user',
+            replyToAuthor: replyToAuthor || undefined
+          });
+        }
+
+        this.replyContentMap[key] = '';
+        this.replyToAuthorMap[key] = '';
+        this.activeReplyCommentId = null;
+        this.showRepliesMap[key] = true;
+        this.isSubmittingReplyMap[key] = false;
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        console.error('Lỗi phản hồi bình luận:', err);
+        this.replyErrorMessageMap[key] = err.error?.message || 'Không thể gửi phản hồi lúc này.';
+        this.isSubmittingReplyMap[key] = false;
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  private requireLoginToComment(): void {
+    this.dialogService.promptLogin({
+      title: 'Đăng nhập để bình luận',
+      description: 'Vui lòng đăng nhập để gửi bình luận và thảo luận cùng cộng đồng Urii.',
+      returnUrl: this.router.url
     });
   }
 
   toggleLike(): void {
     const blog = this.blogData;
-    const email = this.requireSignedInUser();
+    const email = this.requireSignedInUser('Đăng nhập để thích bài viết', 'Vui lòng đăng nhập để thả cảm xúc và tương tác với bài viết này.');
     if (!blog || !email) return;
 
     const storageKey = this.likesStorageKey(email);
@@ -207,7 +332,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   toggleBookmark(): void {
     const blog = this.blogData;
-    if (!blog || !this.requireSignedInUser()) return;
+    if (!blog || !this.requireSignedInUser('Đăng nhập để lưu bài viết', 'Vui lòng đăng nhập để lưu bài viết vào danh sách quan tâm của bạn.')) return;
 
     const bookmarks = this.readBookmarks();
     const blogId = String(blog.id);
@@ -247,14 +372,16 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     this.isBookmarked = this.readBookmarks()[String(this.blogData.id)] === true;
   }
 
-  private requireSignedInUser(): string | null {
+  private requireSignedInUser(title = 'Đăng nhập để tiếp tục', description = 'Vui lòng đăng nhập để sử dụng tính năng này.'): string | null {
     if (!isPlatformBrowser(this.platformId)) return null;
 
     const email = localStorage.getItem('userEmail')?.trim().toLowerCase() ?? '';
     if (localStorage.getItem('isLoggedIn') === 'true' && email) return email;
 
-    void this.router.navigate(['/login'], {
-      queryParams: { returnUrl: this.router.url },
+    this.dialogService.promptLogin({
+      title,
+      description,
+      returnUrl: this.router.url
     });
     return null;
   }
@@ -309,7 +436,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
 
   private showStorageError(): void {
     if (isPlatformBrowser(this.platformId)) {
-      window.alert('Không thể lưu thay đổi trên thiết bị này. Vui lòng kiểm tra bộ nhớ trình duyệt.');
+      this.dialogService.alert('Không thể lưu thay đổi trên thiết bị này. Vui lòng kiểm tra bộ nhớ trình duyệt.', 'Lỗi lưu trữ', 'error');
     }
   }
 }

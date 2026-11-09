@@ -3,78 +3,153 @@
 
         <header class="chat-header">
             <div class="avatar-container">
-                <img alt="Urii Mascot" class="bot-avatar-main" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKCfogwmg9DqaHtDqBGDh2EszSFoIZZh0_VFx8XTmsJvJQ6DvK6lTFpYUUQs4gkh03sU5B-CdJyukuKQI3rhRuKYPk2pen2JL5L9V5UXot14qDw1uz15BgBW1Jh-_7sxS2iwTvcE1_UVMGC7Wu4F-C4-vvBpA-xS01AIjeDjyDacX277JxX4u6OEYYqLtZWfvfEzFCFrgr5UPRDjkM8VL5YkMrne_f-MHbFHDpbTcGg_2j3mJ9MsLj1Od2yBZT76XH2Av_mLj0vLZu">
-                <span class="status-dot" [style.background-color]="statusDotColor ? '#22c55e' : '#f59e0b'"></span>
+                @if (isHistoryViewOpen) {
+                    @if (getCurrentUserAvatar()) {
+                        <img [src]="getCurrentUserAvatar()" alt="User Avatar" class="bot-avatar-main user-avatar-main">
+                    } @else {
+                        <div class="bot-avatar-main user-avatar-placeholder">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                    }
+                } @else {
+                    <img alt="Urii Mascot" class="bot-avatar-main" src="/assets/chatbotai.png">
+                    <span class="status-dot" [style.background-color]="statusDotColor ? '#22c55e' : '#f59e0b'"></span>
+                }
             </div>
             <div class="header-info">
-                <h2 class="bot-name">{{ botName }}</h2>
-                <p class="bot-status">{{ botStatus }}</p>
+                <h2 class="bot-name">{{ isHistoryViewOpen ? 'Lịch sử trò chuyện' : botName }}</h2>
+                <p class="bot-status">{{ isHistoryViewOpen ? (getCurrentUserName() || getCurrentUserEmail() || 'Thành viên Urii') : botStatus }}</p>
             </div>
             <nav class="header-actions">
-                <button id="btn-minimize" class="action-btn" (click)="closeChat()"><span class="material-symbols-outlined">remove</span></button>
-                <button id="btn-close" class="action-btn" (click)="closeChat()"><span class="material-symbols-outlined">close</span></button>
+                @if (isHistoryViewOpen) {
+                    <button class="action-btn" (click)="isHistoryViewOpen = false" title="Quay lại cuộc trò chuyện"><span class="material-symbols-outlined">chat</span></button>
+                    <button class="action-btn" (click)="resetChat()" title="Cuộc hội thoại mới"><span class="material-symbols-outlined">add</span></button>
+                } @else {
+                    <button id="btn-history" class="action-btn" (click)="toggleHistoryView()" title="Lịch sử trò chuyện (Dành cho thành viên)"><span class="material-symbols-outlined">history</span></button>
+                    <button id="btn-reset" class="action-btn" (click)="resetChat()" title="Làm mới (Bắt đầu cuộc trò chuyện mới)"><span class="material-symbols-outlined">restart_alt</span></button>
+                }
+                <button id="btn-minimize" class="action-btn" (click)="closeChat()" title="Thu nhỏ"><span class="material-symbols-outlined">remove</span></button>
+                <button id="btn-close" class="action-btn" (click)="closeChat()" title="Đóng"><span class="material-symbols-outlined">close</span></button>
             </nav>
         </header>
 
-        <main id="chat-body" class="chat-body">
-            <div class="date-separator"><span>Hôm nay</span></div>
-
-            @for (msg of messages; track msg.timestamp) {
-                @if (msg.sender === 'bot' || msg.sender === 'admin') {
-                    <article class="message bot-message">
-                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKCfogwmg9DqaHtDqBGDh2EszSFoIZZh0_VFx8XTmsJvJQ6DvK6lTFpYUUQs4gkh03sU5B-CdJyukuKQI3rhRuKYPk2pen2JL5L9V5UXot14qDw1uz15BgBW1Jh-_7sxS2iwTvcE1_UVMGC7Wu4F-C4-vvBpA-xS01AIjeDjyDacX277JxX4u6OEYYqLtZWfvfEzFCFrgr5UPRDjkM8VL5YkMrne_f-MHbFHDpbTcGg_2j3mJ9MsLj1Od2yBZT76XH2Av_mLj0vLZu" class="bot-avatar-chat" alt="Bot">
-                        <div class="message-content-wrapper">
-                            <div class="message-bubble"><p [innerHTML]="msg.text.replace('\n', '<br>')"></p></div>
-                            @if (msg.chips && msg.chips.length > 0) {
-                                <div class="suggested-chips">
-                                    @for (chip of msg.chips; track chip.label) {
-                                        <button class="chip" (click)="handleChipClick(chip.action)">{{ chip.label }}</button>
-                                    }
-                                </div>
-                            }
-                            <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
-                        </div>
-                    </article>
-                } @else {
-                    <article class="message user-message">
-                        <div class="user-avatar-chat"><span class="material-symbols-outlined">person</span></div>
-                        <div class="message-content-wrapper">
-                            <div class="message-bubble"><p>{{ msg.text }}</p></div>
-                            <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
-                        </div>
-                    </article>
-                }
-            }
-
-            <div id="typing-indicator" class="typing-indicator" [class.hidden]="!isTyping">
-                <div class="typing-bubble">
-                    <div class="dot"></div>
-                    <div class="dot"></div>
-                    <div class="dot"></div>
+        @if (isHistoryViewOpen) {
+            <!-- GIAO DIỆN LỊCH SỬ CHAT (CHỈ USER ĐÃ ĐĂNG NHẬP) -->
+            <main class="chat-history-container">
+                <div class="history-header-bar">
+                    <span class="history-title">Các cuộc trò chuyện gần đây</span>
+                    <button class="history-new-btn" (click)="resetChat()" title="Tạo cuộc hội thoại mới">
+                        <span class="material-symbols-outlined">add</span>
+                        <span>Mới</span>
+                    </button>
                 </div>
-            </div>
-        </main>
 
-        <footer class="chat-footer">
-            <div class="input-container" style="position: relative;">
-                <button id="btn-plus" class="icon-btn" (click)="triggerFileInput()"><span class="material-symbols-outlined">add_circle</span></button>
-                <input type="file" id="chat-file-input" style="display: none;" multiple>
-                
-                <button id="btn-emoji" class="icon-btn" (click)="toggleEmojiPicker($event)"><span class="material-symbols-outlined">mood</span></button>
-                
-                <div id="emoji-picker" class="emoji-picker" [class.hidden]="!isEmojiPickerOpen">
-                    @for (emo of emojis; track emo) {
-                        <span (click)="addEmoji(emo)">{{ emo }}</span>
+                <div class="history-list">
+                    @for (s of getUserSessions(); track s.sessionId) {
+                        <div class="history-item" [class.active-session]="s.sessionId === currentSessionId" (click)="switchSession(s.sessionId)">
+                            <div class="history-item-icon">
+                                @if (s.status === 'ai') {
+                                    <img src="/assets/chatbotai.png" alt="Trợ lý AI" class="history-item-avatar-img">
+                                } @else {
+                                    <span class="material-symbols-outlined">support_agent</span>
+                                }
+                            </div>
+                            <div class="history-item-body">
+                                <div class="history-item-top">
+                                    <span class="history-item-status-badge" [class.badge-agent]="s.status !== 'ai'">
+                                        {{ s.status === 'ai' ? 'Trợ lý AI' : 'Tư vấn viên' }}
+                                    </span>
+                                    <span class="history-item-date">{{ formatSessionDate(s.lastMessageTime) }}</span>
+                                </div>
+                                <p class="history-item-preview">{{ getSessionPreview(s) }}</p>
+                                <span class="history-item-count">{{ s.messages ? s.messages.length : 0 }} tin nhắn</span>
+                            </div>
+                            <button class="history-item-delete" (click)="deleteSession(s.sessionId, $event)" title="Xóa phiên này">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        </div>
+                    } @empty {
+                        <div class="history-empty">
+                            <span class="material-symbols-outlined history-empty-icon">chat_bubble_outline</span>
+                            <p class="history-empty-title">Chưa có lịch sử trò chuyện</p>
+                            <p class="history-empty-desc">Các cuộc trò chuyện của bạn với Trợ lý Urii sẽ được lưu trữ tự động tại đây.</p>
+                            <button class="btn-start-chat" (click)="resetChat()">Bắt đầu nhắn tin ngay</button>
+                        </div>
                     }
                 </div>
+            </main>
+        } @else {
+            <main id="chat-body" class="chat-body">
+                <div class="date-separator"><span>Hôm nay</span></div>
 
-                <input id="chat-input" type="text" placeholder="Nhập tin nhắn..." [(ngModel)]="userMessageText" (keydown.enter)="sendMessage()">
-                <button id="btn-send" class="send-btn" (click)="sendMessage()">
-                    <span class="material-symbols-outlined filled-icon">send</span>
-                </button>
-            </div>
-            <p class="credits">Cung cấp bởi Urii AI Engine v2.0</p>
-        </footer>
+                @for (msg of messages; track msg.timestamp) {
+                    @if (msg.sender === 'bot' || msg.sender === 'admin') {
+                        <article class="message bot-message">
+                            <img src="/assets/chatbotai.png" class="bot-avatar-chat" alt="Bot">
+                            <div class="message-content-wrapper">
+                                <div class="message-bubble" [class.message-bubble--warning]="msg.isWarning">
+                                    <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
+                                    @if (msg.targetUrl && msg.targetLabel) {
+                                        <button class="chat-navigation-action" (click)="navigateToAction(msg.targetUrl)">
+                                            <span>{{ msg.targetLabel }}</span>
+                                            <span class="material-symbols-outlined nav-icon">arrow_forward</span>
+                                        </button>
+                                    }
+                                </div>
+                                @if (msg.chips && msg.chips.length > 0) {
+                                    <div class="suggested-chips">
+                                        @for (chip of msg.chips; track chip.label) {
+                                            <button class="chip" (click)="handleChipClick(chip.action)">{{ chip.label }}</button>
+                                        }
+                                    </div>
+                                }
+                                <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
+                            </div>
+                        </article>
+                    } @else {
+                        <article class="message user-message">
+                            <div class="user-avatar-chat"><span class="material-symbols-outlined">person</span></div>
+                            <div class="message-content-wrapper">
+                                <div class="message-bubble"><p>{{ msg.text }}</p></div>
+                                <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
+                            </div>
+                        </article>
+                    }
+                }
+
+                <div id="typing-indicator" class="typing-indicator" [class.hidden]="!isTyping">
+                    <div class="typing-bubble">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="chat-footer">
+                <div class="input-container" style="position: relative;">
+                    <button id="btn-plus" class="icon-btn" (click)="triggerFileInput()"><span class="material-symbols-outlined">add_circle</span></button>
+                    <input type="file" id="chat-file-input" style="display: none;" multiple>
+                    
+                    <button id="btn-emoji" class="icon-btn" (click)="toggleEmojiPicker($event)"><span class="material-symbols-outlined">mood</span></button>
+                    
+                    <div id="emoji-picker" class="emoji-picker" [class.hidden]="!isEmojiPickerOpen">
+                        @for (emo of emojis; track emo) {
+                            <span (click)="addEmoji(emo)">{{ emo }}</span>
+                        }
+                    </div>
+
+                    <input #chatInput id="chat-input" type="text" placeholder="Nhập tin nhắn..." [(ngModel)]="userMessageText" (keydown)="onInputKeyDown($event, chatInput)">
+                    @if (userMessageText.trim().length > 0) {
+                        <button id="btn-clear-text" class="icon-btn clear-text-btn" (click)="clearInput(chatInput)" title="Xóa nội dung nhập (Esc)"><span class="material-symbols-outlined">close</span></button>
+                    }
+                    <button id="btn-send" class="send-btn" (click)="sendMessage(chatInput)">
+                        <span class="material-symbols-outlined filled-icon">send</span>
+                    </button>
+                </div>
+                <p class="credits">Cung cấp bởi Urii AI Engine v2.0</p>
+            </footer>
+        }
     </section>
 
     <aside class="fab-container">

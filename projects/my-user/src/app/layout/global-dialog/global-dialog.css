@@ -1,0 +1,304 @@
+.global-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(20, 10, 10, 0.56);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: dialogFadeIn 0.2s ease-out;
+}
+
+.global-dialog-card {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  padding: 30px 24px 24px;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 20px 48px rgba(132, 0, 1, 0.16), 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(132, 0, 1, 0.08);
+  text-align: center;
+  animation: dialogZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.global-dialog-icon-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.global-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fdf2f2;
+  color: #840001;
+}
+
+.global-dialog-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+/* Variant styles */
+.global-dialog--success .global-dialog-icon {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.global-dialog--warning .global-dialog-icon {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.global-dialog--error .global-dialog-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.global-dialog--info .global-dialog-icon {
+  background: #fdf2f2;
+  color: #840001;
+}
+
+.global-dialog-content {
+  margin-bottom: 24px;
+}
+
+.global-dialog-title {
+  margin: 0 0 10px;
+  color: #1c1917;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.global-dialog-message {
+  margin: 0;
+  color: #57534e;
+  font-size: 15px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.global-dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.global-dialog-actions--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.dialog-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.18s ease-in-out;
+  border: none;
+  outline: none;
+}
+
+.dialog-btn--confirm {
+  background: linear-gradient(135deg, #840001 0%, #aa0002 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(132, 0, 1, 0.28);
+}
+
+.dialog-btn--confirm:hover {
+  background: linear-gradient(135deg, #6c0001 0%, #900002 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(132, 0, 1, 0.35);
+}
+
+.dialog-btn--confirm:active {
+  transform: translateY(0);
+}
+
+.dialog-btn--cancel {
+  background: #f5f5f4;
+  color: #44403c;
+  border: 1px solid #e7e5e4;
+}
+
+.dialog-btn--cancel:hover {
+  background: #e7e5e4;
+  color: #1c1917;
+}
+
+@keyframes dialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ================= LOGIN PROMPT DIALOG (GIỐNG CHECKOUT POPUP) ================= */
+.checkout-login-backdrop {
+  position: fixed;
+  z-index: 13000;
+  inset: 0;
+  background: rgba(31, 18, 16, 0.58);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: checkoutLoginFade 0.2s ease-out;
+}
+
+.checkout-login-dialog {
+  position: relative;
+  z-index: 13001;
+  width: min(540px, calc(100vw - 24px));
+  padding: 34px clamp(16px, 5vw, 32px) 28px;
+  border: 1px solid #f1e2dd;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(132, 0, 1, 0.08), transparent 58%),
+    #fff;
+  box-shadow: 0 28px 90px rgba(32, 13, 12, 0.28);
+  text-align: center;
+  animation: checkoutLoginEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.checkout-login-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #766b68;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.checkout-login-close:hover {
+  background: #f5eeeb;
+  color: #840001;
+}
+
+.checkout-login-icon {
+  --logo-canvas-size: min(280px, 72vw);
+  position: relative;
+  display: flex;
+  width: var(--logo-canvas-size);
+  height: calc(var(--logo-canvas-size) * 0.4);
+  margin: 0 auto 15px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.checkout-login-icon img {
+  position: absolute;
+  top: calc(var(--logo-canvas-size) * -0.3);
+  left: 50%;
+  width: var(--logo-canvas-size);
+  height: var(--logo-canvas-size);
+  max-width: none;
+  transform: translateX(-50%);
+  object-fit: cover;
+}
+
+.checkout-login-eyebrow {
+  margin: 0 0 7px;
+  color: #9c5d54;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.checkout-login-dialog h2 {
+  margin: 0;
+  color: #302321;
+  font-size: clamp(16px, 4.5vw, 23px);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.checkout-login-description {
+  margin: 12px 0 22px;
+  color: #766b68;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.checkout-login-primary {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(110deg, #840001, #a9211d);
+  box-shadow: 0 8px 18px rgba(132, 0, 1, 0.2);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.18s ease, transform 0.18s ease;
+}
+
+.checkout-login-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.checkout-login-register {
+  margin: 17px 0 0;
+  color: #766b68;
+  font-size: 14px;
+}
+
+.checkout-login-register a {
+  color: #840001;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.checkout-login-register a:hover {
+  text-decoration: underline;
+}
+
+@keyframes checkoutLoginFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes checkoutLoginEnter {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

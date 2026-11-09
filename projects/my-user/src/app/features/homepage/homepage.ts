@@ -1,10 +1,13 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { inject, PLATFORM_ID } from '@angular/core';
-import { RouterModule } from '@angular/router'; 
-import { HttpClient } from '@angular/common/http';
-import { map } from 'rxjs';
+import { Router, RouterModule } from '@angular/router'; 
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { finalize, map } from 'rxjs';
 import { BlogPost, BlogService } from '../../core/services/blog.service';
+import { CartService } from '../../core/services/cart.service';
+import { ToastService } from '../../core/services/toast.service';
 
 interface HomeProduct {
   id: string | number;
@@ -20,16 +23,36 @@ interface HomeProduct {
   reviews: number;
 }
 
+export interface VoucherItem {
+  _id?: string;
+  id?: string;
+  code: string;
+  name: string;
+  description?: string;
+  type: 'shipping' | 'percent' | 'fixed';
+  discountValue: number;
+  minOrder?: number;
+  maxDiscount?: number;
+  startDate?: string;
+  endDate?: string;
+  quantity?: number;
+  used?: number;
+  isActive?: boolean;
+}
+
 @Component({
   selector: 'app-homepage',
   templateUrl: './homepage.html',
   styleUrls: ['./homepage.css'], 
   standalone: true, 
-  imports: [CommonModule, RouterModule]
+  imports: [CommonModule, RouterModule, FormsModule]
 })
 export class HomepageComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private readonly blogService = inject(BlogService);
+  private readonly cart = inject(CartService);
+  private readonly toast = inject(ToastService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -59,61 +82,70 @@ export class HomepageComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
 
+  // ================= POPUP VOUCHER SINH NHẬT 50% =================
+  isBirthdayModalOpen = false;
+  birthdayFormName = '';
+  birthdayFormBirth = '';
+  birthdayFormPhone = '';
+  isBirthLocked = false;
+  isSubmittingBirthday = false;
+  birthdayErrorMessage = '';
+  birthdaySuccessMessage = '';
+
+  // ================= POPUP VOUCHER =================
+  isVoucherModalOpen = false;
+  unclaimedVouchers: VoucherItem[] = [];
+  isLoadingVouchers = false;
+  voucherLoadError = '';
+  voucherToastMessage = '';
+  isClaimingMap: Record<string, boolean> = {};
+  isClaimingAll = false;
+
   ngOnInit(): void {
-    if (this.isBrowser) {
-      this.loadBestSellers();
-      this.loadCommunityPosts();
-    }
+    this.loadBestSellers();
+    this.loadCommunityPosts();
   }
 
-  loadBestSellers(): void {
+  private loadBestSellers(): void {
+    if (!this.isBrowser) return;
+
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.http.get<unknown>('/api/products').pipe(
-      map((data) => this.parseProducts(data)),
+    this.http.get<unknown>('/api/products?page=1&limit=20').pipe(
+      map((response) => this.extractProducts(response)),
     ).subscribe({
       next: (products) => {
-        this.bestSellers = [...products]
-          .sort((a, b) => b.reviews - a.reviews)
-          .slice(0, 4);
+        const sorted = [...products].sort((a, b) => b.reviews - a.reviews);
+        this.bestSellers = sorted.slice(0, 4);
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
-        console.error('Lỗi tải sản phẩm trang chủ:', error);
-        this.bestSellers = [];
-        this.errorMessage = 'Không thể tải sản phẩm. Vui lòng thử lại.';
+        console.error('Không thể tải danh sách sản phẩm bán chạy:', error);
+        this.errorMessage = 'Không thể tải danh sách sản phẩm lúc này.';
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       },
     });
   }
 
-  trackProduct(_index: number, product: HomeProduct): string | number {
-    return product.id;
-  }
-
-  trackCommunityPost(_index: number, post: BlogPost): string | number {
-    return post.id;
-  }
-
   private loadCommunityPosts(): void {
+    if (!this.isBrowser) return;
+
     this.isCommunityLoading = true;
     this.communityErrorMessage = '';
 
-    this.blogService.getBlogs().subscribe({
+    this.blogService.getBlogs().pipe(
+      map((posts) => posts.slice(0, 12)),
+    ).subscribe({
       next: (posts) => {
-        this.communityPosts = posts
-          .filter((post) => post.imageAvailable)
-          .sort((first, second) => this.parseCommunityPostDate(second.date) - this.parseCommunityPostDate(first.date))
-          .slice(0, 6);
+        this.communityPosts = posts;
         this.isCommunityLoading = false;
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
-        console.error('Lỗi tải bài viết cộng đồng:', error);
-        this.communityPosts = [];
+        console.error('Không thể tải bài viết cộng đồng:', error);
         this.communityErrorMessage = 'Không thể tải bài viết cộng đồng lúc này.';
         this.isCommunityLoading = false;
         this.changeDetectorRef.markForCheck();
@@ -121,32 +153,297 @@ export class HomepageComponent implements OnInit {
     });
   }
 
-  private parseCommunityPostDate(value: string): number {
-    const parsedDate = Date.parse(value);
-    if (Number.isFinite(parsedDate)) return parsedDate;
-
-    const vietnameseDate = /^(\d{1,2})\s+tháng\s+(\d{1,2}),?\s+(\d{4})$/i.exec(value.trim());
-    if (!vietnameseDate) return 0;
-
-    const [, day, month, year] = vietnameseDate;
-    return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+  addToCart(item: HomeProduct): void {
+    try {
+      this.cart.addItem({ productId: String(item.id), quantity: 1, variant: null });
+      this.toast.show(`Đã thêm "${item.name}" vào giỏ hàng.`);
+      if (this.isBrowser) {
+        window.dispatchEvent(new Event('cart:updated'));
+      }
+    } catch (error) {
+      console.error('Không thể thêm vào giỏ hàng:', error);
+      this.toast.show('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+    }
   }
 
-  private parseProducts(data: unknown): HomeProduct[] {
-    const records = Array.isArray(data)
-      ? data
-      : this.isRecord(data) && Array.isArray(data['products'])
-        ? data['products']
-        : [];
+  // ================= VOUCHER MODAL METHODS =================
+  // ================= BIRTHDAY VOUCHER POPUP =================
+  openBirthdayModal(): void {
+    if (!this.isBrowser) return;
 
-    return records.flatMap((record): HomeProduct[] => {
-      if (!this.isRecord(record)) return [];
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const token = localStorage.getItem('authToken') || '';
 
-      const rawId = record['id'] ?? record['_id'];
+    if (!isLoggedIn || !token) {
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: '/' } });
+      return;
+    }
+
+    this.birthdayErrorMessage = '';
+    this.birthdaySuccessMessage = '';
+    this.isSubmittingBirthday = false;
+
+    // Lấy thông tin user hiện tại và kiểm tra xem đã nhận voucher sinh nhật chưa
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    this.http.get<any>('/api/auth/me', { headers }).subscribe({
+      next: (user) => {
+        this.birthdayFormName = user.name || '';
+        this.birthdayFormPhone = user.phone || '';
+        const hasBirth = user.birth && typeof user.birth === 'string' && user.birth.trim();
+        if (hasBirth) {
+          this.birthdayFormBirth = user.birth.trim();
+          this.isBirthLocked = true;
+        } else {
+          this.birthdayFormBirth = '';
+          this.isBirthLocked = false;
+        }
+
+        this.http.get<any>('/api/user-vouchers/mine', { headers }).subscribe({
+          next: (vouchers) => {
+            const list = Array.isArray(vouchers) ? vouchers : [];
+            const alreadyClaimed = list.some((v: any) =>
+              v.code === 'URIIBD50' || v.voucherId === 'voucher-bd50' || v.voucher?.code === 'URIIBD50'
+            );
+            if (alreadyClaimed || hasBirth) {
+              this.isBirthLocked = true;
+            }
+            if (alreadyClaimed) {
+              this.toast.show('Bạn đã nhận voucher sinh nhật này rồi. Mỗi tài khoản chỉ được nhận 1 lần.', 'info');
+            }
+            this.isBirthdayModalOpen = true;
+            this.changeDetectorRef.markForCheck();
+          },
+          error: () => {
+            this.isBirthdayModalOpen = true;
+            this.changeDetectorRef.markForCheck();
+          }
+        });
+      },
+      error: () => {
+        this.isBirthdayModalOpen = true;
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  closeBirthdayModal(): void {
+    this.isBirthdayModalOpen = false;
+    this.birthdayErrorMessage = '';
+    this.birthdaySuccessMessage = '';
+  }
+
+  submitBirthdayVoucher(): void {
+    if (!this.isBrowser) return;
+
+    const name = (this.birthdayFormName || '').trim();
+    const birth = (this.birthdayFormBirth || '').trim();
+    const phone = (this.birthdayFormPhone || '').trim();
+
+    if (!name) {
+      this.birthdayErrorMessage = 'Vui lòng nhập họ và tên.';
+      return;
+    }
+    if (!birth) {
+      this.birthdayErrorMessage = 'Vui lòng nhập ngày tháng năm sinh.';
+      return;
+    }
+    if (!phone) {
+      this.birthdayErrorMessage = 'Vui lòng nhập số điện thoại.';
+      return;
+    }
+
+    // Nếu ngày sinh đã bị khóa (đã nhập trước đó) thì KHÔNG cho nhận voucher lại
+    if (this.isBirthLocked) {
+      this.birthdayErrorMessage = 'Ngày sinh của bạn đã được đăng ký. Mỗi tài khoản chỉ nhận voucher sinh nhật 1 lần.';
+      return;
+    }
+
+    const token = localStorage.getItem('isLoggedIn') === 'true'
+      ? localStorage.getItem('authToken') || ''
+      : '';
+
+    if (!token) {
+      this.closeBirthdayModal();
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: '/' } });
+      return;
+    }
+
+    this.isSubmittingBirthday = true;
+    this.birthdayErrorMessage = '';
+    this.birthdaySuccessMessage = '';
+
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    this.http.post<any>('/api/user-vouchers/claim-birthday', {
+      name,
+      birth,
+      phone
+    }, { headers }).pipe(
+      finalize(() => {
+        this.isSubmittingBirthday = false;
+        this.changeDetectorRef.markForCheck();
+      })
+    ).subscribe({
+      next: (res) => {
+        this.birthdaySuccessMessage = res.message || 'Nhận voucher thành công';
+        this.isBirthLocked = true; // Sau khi nhập thành công thì khóa luôn ô ngày sinh
+        this.toast.show(this.birthdaySuccessMessage, 'success');
+        this.changeDetectorRef.markForCheck();
+        setTimeout(() => {
+          this.closeBirthdayModal();
+        }, 1800);
+      },
+      error: (err) => {
+        this.birthdayErrorMessage = err.error?.message || 'Không thể nhận voucher lúc này. Vui lòng thử lại.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  openVoucherModal(): void {
+    this.isVoucherModalOpen = true;
+    this.voucherToastMessage = '';
+    this.voucherLoadError = '';
+    this.loadUnclaimedVouchers();
+  }
+
+  closeVoucherModal(): void {
+    this.isVoucherModalOpen = false;
+  }
+
+  loadUnclaimedVouchers(): void {
+    if (!this.isBrowser) return;
+
+    this.isLoadingVouchers = true;
+    this.voucherLoadError = '';
+
+    const token = localStorage.getItem('isLoggedIn') === 'true'
+      ? localStorage.getItem('authToken') || ''
+      : '';
+
+    const headers = token
+      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
+      : new HttpHeaders();
+
+    this.http.get<any>('/api/user-vouchers/available', { headers }).pipe(
+      finalize(() => {
+        this.isLoadingVouchers = false;
+        this.changeDetectorRef.markForCheck();
+      })
+    ).subscribe({
+      next: (res) => {
+        this.unclaimedVouchers = Array.isArray(res?.vouchers) ? res.vouchers : [];
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        console.error('Lỗi tải danh sách voucher:', err);
+        this.voucherLoadError = 'Không thể tải danh sách voucher. Vui lòng thử lại sau.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  claimSingleVoucher(voucher: VoucherItem): void {
+    if (!this.isBrowser) return;
+
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const token = localStorage.getItem('authToken') || '';
+
+    if (!isLoggedIn || !token) {
+      this.closeVoucherModal();
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: '/' } });
+      return;
+    }
+
+    const vId = voucher.id || voucher._id || voucher.code;
+    this.isClaimingMap[vId] = true;
+    this.voucherToastMessage = '';
+
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+
+    this.http.post<any>('/api/user-vouchers/claim', { voucherId: vId }, { headers }).pipe(
+      finalize(() => {
+        this.isClaimingMap[vId] = false;
+        this.changeDetectorRef.markForCheck();
+      })
+    ).subscribe({
+      next: (res) => {
+        this.voucherToastMessage = res.message || `Đã nhận voucher "${voucher.code}" thành công!`;
+        // Loại bỏ voucher vừa nhận khỏi danh sách chưa có
+        this.unclaimedVouchers = this.unclaimedVouchers.filter(v => (v.id || v._id || v.code) !== vId);
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        this.voucherToastMessage = err.error?.message || 'Không thể nhận voucher lúc này.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  claimAllVouchers(): void {
+    if (!this.isBrowser) return;
+
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const token = localStorage.getItem('authToken') || '';
+
+    if (!isLoggedIn || !token) {
+      this.closeVoucherModal();
+      void this.router.navigate(['/login'], { queryParams: { returnUrl: '/' } });
+      return;
+    }
+
+    if (this.isClaimingAll || !this.unclaimedVouchers.length) return;
+
+    this.isClaimingAll = true;
+    this.voucherToastMessage = '';
+
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+
+    this.http.post<any>('/api/user-vouchers/claim-all', {}, { headers }).pipe(
+      finalize(() => {
+        this.isClaimingAll = false;
+        this.changeDetectorRef.markForCheck();
+      })
+    ).subscribe({
+      next: (res) => {
+        this.voucherToastMessage = res.message || 'Chúc mừng bạn đã nhận tất cả voucher!';
+        this.unclaimedVouchers = [];
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (err) => {
+        this.voucherToastMessage = err.error?.message || 'Không thể nhận tất cả voucher lúc này.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  formatVoucherDiscount(voucher: VoucherItem): string {
+    if (voucher.type === 'percent') {
+      return `Giảm ${voucher.discountValue}%`;
+    }
+    if (voucher.type === 'shipping') {
+      return `Freeship ${Number(voucher.discountValue).toLocaleString('vi-VN')}đ`;
+    }
+    return `Giảm ${Number(voucher.discountValue).toLocaleString('vi-VN')}đ`;
+  }
+
+  private extractProducts(response: unknown): HomeProduct[] {
+    const list = Array.isArray(response)
+      ? response
+      : this.isRecord(response) && Array.isArray(response['products'])
+        ? response['products']
+        : this.isRecord(response) && Array.isArray(response['data'])
+          ? response['data']
+          : [];
+
+    return list.flatMap((item: unknown) => {
+      if (!this.isRecord(item)) return [];
+
+      const record = item as Record<string, unknown>;
+      const rawId = record['id'] ?? record['_id'] ?? record['productId'];
       const id = typeof rawId === 'string' || typeof rawId === 'number'
         ? rawId
-        : this.isRecord(rawId) && typeof rawId['$oid'] === 'string'
-          ? rawId['$oid']
+        : typeof record['_id'] === 'string'
+          ? record['_id']
           : null;
       const name = record['name'] ?? record['productName'];
       if (id === null || typeof name !== 'string') return [];
@@ -201,6 +498,14 @@ export class HomepageComponent implements OnInit {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+  }
+
+  trackProduct(index: number, item: HomeProduct): any {
+    return item?.id || index;
+  }
+
+  trackCommunityPost(index: number, post: BlogPost): any {
+    return post?.id || index;
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {

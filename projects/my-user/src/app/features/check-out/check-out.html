@@ -24,6 +24,309 @@
           <p>Admin sẽ duyệt đơn trước khi chuyển sang trạng thái xử lý tiếp theo. Giỏ hàng đã được cập nhật.</p>
           <a class="btn-place-order" routerLink="/products">Tiếp tục mua sắm</a>
         </section>
+      } @else if (qrCheckoutActive) {
+        <section class="section-card qr-checkout-panel" aria-live="polite">
+          <header class="qr-panel-header">
+            <div>
+              <p class="qr-panel-eyebrow">Thanh toán chuyển khoản tự động (VietQR · SePay)</p>
+              <h2 class="qr-panel-title">Thông tin thanh toán mã QR</h2>
+              @if (orderNumber || activePaymentOrderId) {
+                <p class="qr-order-ref">
+                  Mã đơn hàng: <strong>{{ orderNumber || activePaymentOrderId }}</strong>
+                </p>
+              }
+            </div>
+            @if (paymentInfo) {
+              <span class="qr-status-badge" [attr.data-status]="paymentInfo.statusId">
+                {{ paymentStatusLabel(paymentInfo.statusId) }}
+              </span>
+            }
+          </header>
+
+          @if (creatingPayment || restoringPayment) {
+            <div class="qr-loading-box" role="status">
+              <div class="qr-spinner" aria-hidden="true"></div>
+              <p>{{ restoringPayment ? 'Đang khôi phục thông tin thanh toán từ máy chủ...' : 'Đang khởi tạo mã QR thanh toán...' }}</p>
+            </div>
+          } @else if (!paymentInfo && paymentError) {
+            <div class="qr-error-box" role="alert">
+              <h3>Không thể tải thông tin thanh toán QR</h3>
+              <p>{{ paymentError }}</p>
+              <div class="qr-action-row">
+                <button
+                  type="button"
+                  class="btn-place-order qr-retry-create-btn"
+                  [disabled]="creatingPayment"
+                  (click)="retryCreateQrPayment()"
+                >
+                  Thử tạo lại mã QR
+                </button>
+                <button
+                  type="button"
+                  class="btn-qr-secondary qr-manual-check-btn"
+                  [disabled]="pollingInFlight"
+                  (click)="checkPaymentStatusNow()"
+                >
+                  Kiểm tra lại trạng thái
+                </button>
+              </div>
+            </div>
+          } @else if (paymentInfo) {
+            @if (paymentInfo.statusId === 'paid') {
+              <div class="qr-result-box qr-result-paid" role="status">
+                <div class="qr-result-icon" aria-hidden="true">✓</div>
+                <h3>Thanh toán chuyển khoản thành công!</h3>
+                <p class="qr-result-lead">
+                  Hệ thống đã ghi nhận đầy đủ khoản thanh toán của bạn. Đơn hàng đang chờ cửa hàng xác nhận trước khi chuyển sang bước xử lý tiếp theo.
+                </p>
+                <dl class="qr-summary-list">
+                  <div>
+                    <dt>Mã đơn hàng</dt>
+                    <dd><strong>{{ orderNumber || paymentInfo.orderId }}</strong></dd>
+                  </div>
+                  <div>
+                    <dt>Mã thanh toán (paymentCode)</dt>
+                    <dd><strong>{{ paymentInfo.paymentCode }}</strong></dd>
+                  </div>
+                  <div>
+                    <dt>Số tiền đã thanh toán</dt>
+                    <dd><strong>{{ paymentInfo.amountDue | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</strong></dd>
+                  </div>
+                  <div>
+                    <dt>Trạng thái thanh toán</dt>
+                    <dd><strong>{{ paymentStatusLabel(paymentInfo.statusId) }}</strong></dd>
+                  </div>
+                </dl>
+                <div class="qr-action-row">
+                  <a class="btn-place-order" routerLink="/products">Tiếp tục mua sắm</a>
+                </div>
+              </div>
+            } @else if (paymentInfo.statusId === 'expired' || paymentInfo.isExpired) {
+              <div class="qr-result-box qr-result-expired" role="alert">
+                <div class="qr-result-icon" aria-hidden="true">!</div>
+                <h3>Mã QR thanh toán đã hết hạn</h3>
+                <p class="qr-result-lead">
+                  Phiên thanh toán cho mã <strong>{{ paymentInfo.paymentCode }}</strong> đã quá thời hạn 24 giờ. Vui lòng không chuyển khoản vào mã QR cũ này.
+                </p>
+                <dl class="qr-summary-list">
+                  <div>
+                    <dt>Mã đơn hàng</dt>
+                    <dd><strong>{{ orderNumber || paymentInfo.orderId }}</strong></dd>
+                  </div>
+                  <div>
+                    <dt>Mã thanh toán cũ</dt>
+                    <dd>{{ paymentInfo.paymentCode }}</dd>
+                  </div>
+                  <div>
+                    <dt>Số tiền cần thanh toán</dt>
+                    <dd>{{ paymentInfo.amountDue | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Đã hết hạn lúc</dt>
+                    <dd>{{ paymentInfo.expiresAt | date:'HH:mm:ss dd/MM/yyyy' }}</dd>
+                  </div>
+                </dl>
+                @if (paymentError) {
+                  <p class="checkout-alert checkout-alert-error" role="alert">{{ paymentError }}</p>
+                }
+                <div class="qr-action-row">
+                  <button
+                    type="button"
+                    class="btn-place-order qr-recreate-btn"
+                    [disabled]="creatingPayment"
+                    (click)="recreateExpiredQrPayment()"
+                  >
+                    {{ creatingPayment ? 'Đang tạo mã QR mới...' : 'Tạo lại mã QR mới' }}
+                  </button>
+                  <a class="btn-qr-secondary" routerLink="/products">Quay lại cửa hàng</a>
+                </div>
+              </div>
+            } @else if (paymentInfo.statusId === 'cancelled') {
+              <div class="qr-result-box qr-result-cancelled" role="alert">
+                <div class="qr-result-icon" aria-hidden="true">×</div>
+                <h3>Giao dịch thanh toán đã bị hủy</h3>
+                <p class="qr-result-lead">
+                  Phiên thanh toán hoặc đơn hàng của bạn đã bị hủy. Vui lòng không thực hiện chuyển khoản cho mã thanh toán này.
+                </p>
+                <dl class="qr-summary-list">
+                  <div>
+                    <dt>Mã đơn hàng</dt>
+                    <dd><strong>{{ orderNumber || paymentInfo.orderId }}</strong></dd>
+                  </div>
+                  <div>
+                    <dt>Mã thanh toán (paymentCode)</dt>
+                    <dd>{{ paymentInfo.paymentCode }}</dd>
+                  </div>
+                  <div>
+                    <dt>Trạng thái</dt>
+                    <dd>{{ paymentStatusLabel(paymentInfo.statusId) }}</dd>
+                  </div>
+                </dl>
+                <div class="qr-action-row">
+                  <a class="btn-place-order" routerLink="/products">Quay lại mua sắm</a>
+                </div>
+              </div>
+            } @else {
+              <div class="qr-checkout-grid">
+                <div class="qr-code-column">
+                  <div class="qr-image-frame">
+                    @if (paymentInfo.qrCodeUrl && !qrImageError) {
+                      <img
+                        class="qr-code-image"
+                        [src]="paymentInfo.qrCodeUrl"
+                        [alt]="'Mã QR thanh toán đơn hàng ' + (orderNumber || paymentInfo.orderId)"
+                        (error)="onQrImageError()"
+                      >
+                    } @else {
+                      <div class="qr-image-fallback" role="alert">
+                        <p>Không tải được hình ảnh mã QR tự động.</p>
+                        <p>Bạn có thể chuyển khoản thủ công theo đúng thông tin bên cạnh hoặc tải lại mã QR.</p>
+                        <button
+                          type="button"
+                          class="btn-qr-secondary"
+                          [disabled]="creatingPayment"
+                          (click)="retryCreateQrPayment()"
+                        >
+                          Tải lại mã QR
+                        </button>
+                      </div>
+                    }
+                  </div>
+                  <div class="qr-scan-guide">
+                    <strong>Hướng dẫn thanh toán bằng mã QR:</strong>
+                    <ol>
+                      <li>Mở ứng dụng Ngân hàng hoặc Ví điện tử hỗ trợ quét mã <strong>VietQR</strong>.</li>
+                      <li>Quét mã QR phía trên hoặc nhập thông tin chuyển khoản bên cạnh.</li>
+                      <li>Kiểm tra đúng <strong>Số tiền</strong> và giữ nguyên <strong>Nội dung chuyển khoản</strong>.</li>
+                      <li>Xác nhận chuyển khoản và chờ hệ thống tự động cập nhật trong vài giây.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                <div class="qr-details-column">
+                  <div class="qr-detail-list">
+                    <div class="qr-detail-item">
+                      <div class="qr-detail-content">
+                        <span class="qr-detail-label">Ngân hàng thụ hưởng</span>
+                        <strong class="qr-detail-value" data-testid="qr-bank-name">
+                          {{ paymentInfo.bankName || paymentInfo.bankCode || 'Ngân hàng nội địa (VietQR)' }}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div class="qr-detail-item">
+                      <div class="qr-detail-content">
+                        <span class="qr-detail-label">Số tài khoản nhận</span>
+                        <strong class="qr-detail-value" data-testid="qr-account-number">
+                          {{ paymentInfo.accountNumber || 'Tự động điền khi quét mã QR' }}
+                        </strong>
+                      </div>
+                      @if (paymentInfo.accountNumber) {
+                        <button
+                          type="button"
+                          class="btn-copy-field copy-account-btn"
+                          (click)="copyPaymentField('accountNumber', paymentInfo.accountNumber, 'Đã sao chép số tài khoản nhận.')"
+                        >
+                          {{ copiedField === 'accountNumber' ? 'Đã sao chép' : 'Sao chép số TK' }}
+                        </button>
+                      }
+                    </div>
+
+                    <div class="qr-detail-item">
+                      <div class="qr-detail-content">
+                        <span class="qr-detail-label">Tên người nhận</span>
+                        <strong class="qr-detail-value" data-testid="qr-account-name">
+                          {{ paymentInfo.accountName || 'Tự động hiển thị khi quét mã QR' }}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div class="qr-detail-item qr-detail-highlight">
+                      <div class="qr-detail-content">
+                        <span class="qr-detail-label">Số tiền cần chuyển</span>
+                        <strong class="qr-detail-value qr-amount-value" data-testid="qr-amount-due">
+                          {{ paymentInfo.amountDue | currency:'VND':'symbol':'1.0-0':'vi-VN' }}
+                        </strong>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn-copy-field copy-amount-btn"
+                        (click)="copyPaymentField('amountDue', '' + paymentInfo.amountDue, 'Đã sao chép số tiền cần chuyển.')"
+                      >
+                        {{ copiedField === 'amountDue' ? 'Đã sao chép' : 'Sao chép số tiền' }}
+                      </button>
+                    </div>
+
+                    <div class="qr-detail-item qr-detail-highlight">
+                      <div class="qr-detail-content">
+                        <span class="qr-detail-label">Nội dung chuyển khoản chính xác</span>
+                        <strong class="qr-detail-value qr-code-value" data-testid="qr-transfer-content">
+                          {{ paymentInfo.paymentCode }}
+                        </strong>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn-copy-field copy-content-btn"
+                        (click)="copyPaymentField('paymentCode', paymentInfo.paymentCode, 'Đã sao chép nội dung chuyển khoản.')"
+                      >
+                        {{ copiedField === 'paymentCode' ? 'Đã sao chép' : 'Sao chép nội dung' }}
+                      </button>
+                    </div>
+
+                    <div class="qr-detail-meta">
+                      <div>
+                        <span>Mã thanh toán (paymentCode):</span>
+                        <strong data-testid="qr-payment-code">{{ paymentInfo.paymentCode }}</strong>
+                      </div>
+                      <div>
+                        <span>Thời hạn thanh toán:</span>
+                        <strong data-testid="qr-expires-at">{{ paymentInfo.expiresAt | date:'HH:mm:ss dd/MM/yyyy' }}</strong>
+                      </div>
+                      <div>
+                        <span>Trạng thái hiện tại:</span>
+                        <strong data-testid="qr-current-status">{{ paymentStatusLabel(paymentInfo.statusId) }}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="qr-important-note">
+                    <strong>Lưu ý quan trọng:</strong> Vui lòng giữ nguyên chính xác nội dung chuyển khoản
+                    <code>{{ paymentInfo.paymentCode }}</code> và chuyển đúng số tiền
+                    <strong>{{ paymentInfo.amountDue | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</strong>.
+                    Hệ thống sẽ tự động xác nhận ngay khi nhận được giao dịch từ ngân hàng.
+                  </div>
+
+                  @if (pollingError || paymentError) {
+                    <p class="checkout-alert checkout-alert-error" role="alert">
+                      {{ pollingError || paymentError }}
+                    </p>
+                  }
+
+                  <div class="qr-polling-bar">
+                    <div class="qr-polling-status">
+                      <span class="qr-pulse-dot" [class.paused]="!pollingActive" aria-hidden="true"></span>
+                      <span>
+                        {{ pollingInFlight
+                          ? 'Đang kiểm tra trạng thái giao dịch...'
+                          : pollingActive
+                            ? 'Đang tự động theo dõi trạng thái thanh toán...'
+                            : 'Tự động kiểm tra đang tạm dừng.' }}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn-qr-secondary check-payment-status-btn"
+                      [disabled]="pollingInFlight"
+                      (click)="checkPaymentStatusNow()"
+                    >
+                      {{ pollingInFlight ? 'Đang kiểm tra...' : 'Kiểm tra lại trạng thái' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </section>
       } @else if (loading) {
         <div class="section-card checkout-state" aria-live="polite">Đang tải thông tin thanh toán...</div>
       } @else if (lines.length === 0) {
@@ -83,16 +386,36 @@
             <section class="section-card">
               <h2 class="section-title">Phương thức thanh toán</h2>
               <label class="payment-option" [class.active]="paymentMethod === 'cod'">
-                <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod">
-                <span>Thanh toán khi nhận hàng (COD)</span>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cod"
+                  [checked]="paymentMethod === 'cod'"
+                  [(ngModel)]="paymentMethod"
+                  (change)="paymentMethod = 'cod'"
+                >
+                <span>
+                  Thanh toán khi nhận hàng (COD)
+                  <small>Thanh toán bằng tiền mặt khi nhận hàng</small>
+                </span>
+              </label>
+              <label class="payment-option" [class.active]="paymentMethod === 'bank_transfer'">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="bank_transfer"
+                  [checked]="paymentMethod === 'bank_transfer'"
+                  [(ngModel)]="paymentMethod"
+                  (change)="paymentMethod = 'bank_transfer'"
+                >
+                <span>
+                  Chuyển khoản ngân hàng (Mã QR tự động)
+                  <small>Quét mã VietQR, hệ thống tự động xác nhận thanh toán 24/7</small>
+                </span>
               </label>
               <label class="payment-option payment-option-disabled">
                 <input type="radio" name="paymentMethod" value="momo" disabled>
                 <span>Ví điện tử MoMo <small>Đang được hoàn thiện</small></span>
-              </label>
-              <label class="payment-option payment-option-disabled">
-                <input type="radio" name="paymentMethod" value="vnpay" disabled>
-                <span>Thanh toán qua ngân hàng <small>Đang được hoàn thiện</small></span>
               </label>
             </section>
           </div>
@@ -152,7 +475,7 @@
                     } @else if (vouchers.length === 0) {
                       <p class="voucher-dropdown-state">Hiện chưa có voucher khả dụng.</p>
                     } @else {
-                      @for (voucher of vouchers; track voucher.id) {
+                      @for (voucher of sortedVouchers; track voucher.id) {
                         <button
                           class="voucher-option"
                           type="button"
@@ -201,15 +524,49 @@
             <button
               class="btn-place-order"
               type="submit"
-              [disabled]="submitting || hasUnavailableItems"
-            >{{ submitting ? 'Đang gửi đơn...' : 'Đặt hàng' }}</button>
-            <p class="checkout-hint">Đơn hàng chỉ được xác nhận khi backend phản hồi thành công.</p>
+              [disabled]="submitting || creatingPayment || profileLoading || hasUnavailableItems"
+            >{{ submitting ? 'Đang gửi đơn...' : creatingPayment ? 'Đang tạo mã QR...' : profileLoading ? 'Đang tải hồ sơ...' : (paymentMethod === 'bank_transfer' ? 'Đặt hàng & Tạo mã QR' : 'Đặt hàng') }}</button>
+            <p class="checkout-hint">Đơn hàng chỉ được xác nhận khi admin phản hồi thành công.</p>
             <a class="back-to-cart" routerLink="/cart">Quay lại giỏ hàng</a>
           </aside>
         </form>
       }
     </div>
   </div>
+
+  @if (loginRequired) {
+    <div class="checkout-login-backdrop"></div>
+    <section
+      class="checkout-login-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkout-login-title"
+      aria-describedby="checkout-login-description"
+    >
+      <button
+        class="checkout-login-close"
+        type="button"
+        aria-label="Quay lại trang trước"
+        title="Quay lại trang trước"
+        (click)="goBackToPreviousPage()"
+      >×</button>
+      <div class="checkout-login-icon" aria-hidden="true">
+        <img src="assets/Urii-Logo.png" alt="">
+      </div>
+      <p class="checkout-login-eyebrow">Chỉ còn một bước nữa</p>
+      <h2 id="checkout-login-title">Đăng nhập để tiếp tục thanh toán</h2>
+      <p id="checkout-login-description" class="checkout-login-description">
+        Vui lòng đăng nhập để xác nhận đơn hàng và theo dõi quá trình giao hàng.
+      </p>
+      <button class="checkout-login-primary" type="button" (click)="goToLogin()">
+        Đăng nhập
+      </button>
+      <p class="checkout-login-register">
+        Chưa có tài khoản?
+        <a routerLink="/register" [queryParams]="{ returnUrl: '/checkout' }">Đăng ký ngay</a>
+      </p>
+    </section>
+  }
 
   @if (addressManagerOpen) {
     <div class="address-modal-backdrop" (click)="closeAddressManager()"></div>
@@ -220,7 +577,7 @@
       aria-labelledby="address-modal-title"
     >
       <header class="address-modal-header">
-        <h2 id="address-modal-title">⌖ Địa chỉ nhận hàng</h2>
+        <h2 id="address-modal-title"> Địa chỉ nhận hàng</h2>
         <button type="button" class="address-modal-close" aria-label="Đóng" (click)="closeAddressManager()">×</button>
       </header>
 

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { Product } from '../../../../../my-user/src/app/models/uri.model';
@@ -10,7 +11,7 @@ declare var bootstrap: any;
 @Component({
   selector: 'app-products-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './products-admin.html',
   styleUrls: ['./products-admin.css']
 })

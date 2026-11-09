@@ -146,13 +146,24 @@
                           <button class="btn-clear-all" (click)="clearAllNotifications()">Đọc tất cả</button>
                       </div>
                       <div class="dropdown-body custom-scrollbar">
-                          <div class="notification-item" *ngIf="notificationLoadError">
+                          <div class="notification-item loading-item" *ngIf="isLoadingNotifications && notifications.length === 0">
+                              <div class="notification-content">Đang tải thông báo...</div>
+                          </div>
+                          <div class="notification-item error-item" *ngIf="notificationLoadError">
                               <div class="notification-content">{{ notificationLoadError }}</div>
                           </div>
-                          <div class="notification-item" *ngIf="!notificationLoadError && notifications.length === 0">
+                          <div class="notification-item empty-item" *ngIf="!isLoadingNotifications && !notificationLoadError && notifications.length === 0">
                               <div class="notification-content">Chưa có thông báo.</div>
                           </div>
-                          <div class="notification-item" *ngFor="let notif of notifications">
+                          <div
+                              class="notification-item"
+                              *ngFor="let notif of notifications"
+                              [class.unread]="!notif.isRead"
+                              (click)="onNotificationClick(notif, $event)"
+                              role="button"
+                              tabindex="0"
+                              [attr.title]="'Mở xem chi tiết'"
+                              (keydown.enter)="onNotificationClick(notif, $event)">
                               <div class="notification-icon-circle">
                                   <span class="material-symbols-outlined">{{ notif.icon || 'notifications' }}</span>
                               </div>

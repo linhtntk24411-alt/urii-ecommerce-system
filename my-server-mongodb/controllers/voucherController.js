@@ -44,7 +44,8 @@ function isVoucherAvailable(voucher, now = new Date()) {
   }
   return (!startDate || startDate <= now)
     && (!endDate || now <= endDate)
-    && (voucher.quantity === undefined || voucher.used < voucher.quantity);
+    && (voucher.quantity === undefined
+      || (voucher.used || 0) + (voucher.reservedCount || 0) < voucher.quantity);
 }
 
 exports.getActiveVouchers = async (req, res) => {
@@ -98,6 +99,7 @@ exports.createVoucher = async (req, res) => {
     const voucher = await Voucher.create({
       ...req.body,
       id: req.body.id || `promotion-${randomUUID()}`,
+      reservedCount: 0,
       code
     });
     res.status(201).json(voucher);
@@ -126,20 +128,51 @@ exports.updateVoucher = async (req, res) => {
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
+  delete updates.reservedCount;
+  delete updates.used;
+  for (const [operator, fields] of Object.entries(updates)) {
+    if (!operator.startsWith('$') || !fields || typeof fields !== 'object' || Array.isArray(fields)) continue;
+    delete fields.reservedCount;
+    delete fields.used;
+  }
   if (typeof updates.code === 'string') {
     updates.code = updates.code.trim().toUpperCase();
   }
 
   try {
     const filter = voucherFilter(req.params.id);
+    const currentVoucher = await Voucher.findOne(filter).lean();
+    if (!currentVoucher) {
+      res.status(404).json({ message: 'Không tìm thấy khuyến mãi.' });
+      return;
+    }
+    if (updates.quantity !== undefined
+      && updates.quantity < (currentVoucher.used || 0) + (currentVoucher.reservedCount || 0)) {
+      res.status(409).json({ message: 'Số lượng voucher không thể nhỏ hơn số đã dùng và đang được giữ.' });
+      return;
+    }
 
-
-    const voucher = await Voucher.findOneAndUpdate(filter, updates, {
+    const guardedFilter = updates.quantity === undefined
+      ? filter
+      : {
+          ...filter,
+          $expr: {
+            $and: [
+              { $eq: [{ $ifNull: ['$used', 0] }, currentVoucher.used || 0] },
+              { $eq: [{ $ifNull: ['$reservedCount', 0] }, currentVoucher.reservedCount || 0] }
+            ]
+          }
+        };
+    const voucher = await Voucher.findOneAndUpdate(guardedFilter, updates, {
       new: true,
       runValidators: true
     });
     if (!voucher) {
-      res.status(404).json({ message: 'Không tìm thấy khuyến mãi.' });
+      res.status(updates.quantity === undefined ? 404 : 409).json({
+        message: updates.quantity === undefined
+          ? 'Không tìm thấy khuyến mãi.'
+          : 'Quota voucher vừa được thay đổi; vui lòng tải lại và thử lại.'
+      });
       return;
     }
     res.json(voucher);
@@ -159,12 +192,18 @@ exports.updateVoucher = async (req, res) => {
 
 exports.deleteVoucher = async (req, res) => {
   try {
-    const filter = voucherFilter(req.params.id);
-
-
+    const filter = {
+      ...voucherFilter(req.params.id),
+      reservedCount: { $in: [null, 0] }
+    };
     const voucher = await Voucher.findOneAndDelete(filter);
     if (!voucher) {
-      res.status(404).json({ message: 'Không tìm thấy khuyến mãi.' });
+      const exists = await Voucher.exists(voucherFilter(req.params.id));
+      res.status(exists ? 409 : 404).json({
+        message: exists
+          ? 'Không thể xóa voucher đang được giữ cho Payment.'
+          : 'Không tìm thấy khuyến mãi.'
+      });
       return;
     }
     res.json({ message: 'Đã xóa khuyến mãi.' });

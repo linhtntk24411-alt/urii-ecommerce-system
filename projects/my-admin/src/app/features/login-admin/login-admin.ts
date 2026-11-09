@@ -1,7 +1,7 @@
 import { Component, inject, OnInit,  OnDestroy, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 declare const google: any;
 
@@ -17,7 +17,7 @@ interface LoginResponse {
 }
 
 @Component({
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   selector: 'app-login-admin',
   standalone: true,
   styleUrl: './login-admin.css',
@@ -35,83 +35,14 @@ export class LoginAdmin implements OnInit, OnDestroy {
 
   isLoading = false;
   loginError = '';
-  showPassword = false;
-  private backendOrigin = 'http://localhost:3002';
-  private facebookPopup: Window | null = null;
 
-  private facebookMessageHandler = (event: MessageEvent): void => {
-    // Chỉ nhận thông điệp từ backend Urii
-    if (event.origin !== this.backendOrigin) return;
-
-    const data = event.data;
-
-    if (
-      !data ||
-      data.type !== 'urii-oauth' ||
-      data.provider !== 'facebook'
-    ) {
-      return;
-    }
-
-    this.ngZone.run(() => {
-      this.isLoading = false;
-
-      if (!data.ok) {
-        this.loginError = data.message || 'Đăng nhập Facebook thất bại.';
-        this.cdr.detectChanges();
-        return;
-      }
-
-      if (!data.token || data.user?.role !== 'admin') {
-        this.loginError = 'Tài khoản Facebook không có quyền truy cập Admin.';
-        this.cdr.detectChanges();
-        return;
-      }
-
-      this.saveSessionAndNavigate({
-        message: data.message,
-        token: data.token,
-        user: data.user
-      });
-
-      this.facebookPopup = null;
-      this.cdr.detectChanges();
-    });
-  };
-
-  loginWithFacebook(): void {
-    this.loginError = '';
-
-    if (!isPlatformBrowser(this.platformId)) return;
-
-    // Mở popup ngay trong sự kiện click để tránh trình duyệt chặn popup
-    this.facebookPopup = window.open(
-      `${this.backendOrigin}/api/auth/oauth/facebook`,
-      'UriiFacebookLogin',
-      'width=600,height=700,left=200,top=100'
-    );
-
-    if (!this.facebookPopup) {
-      this.loginError = 'Trình duyệt đã chặn cửa sổ đăng nhập Facebook. Hãy cho phép popup rồi thử lại.';
-      return;
-    }
-
-    this.isLoading = true;
-    this.cdr.detectChanges();
-  }
-
-  ngOnDestroy(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      window.removeEventListener('message', this.facebookMessageHandler);
-    }
-  }
+  private proxyApiUrl = '/api/auth';
+  private directApiUrl = 'http://localhost:3002/api/auth';
+  private googleClientId = '914516820403-sqm3ft1o05tc6i4q92lk0fu6058b1n8b.apps.googleusercontent.com';
 
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
   }
-
-  private apiUrl = 'http://localhost:3002/api/auth';
-  private googleClientId = '914516820403-sqm3ft1o05tc6i4q92lk0fu6058b1n8b.apps.googleusercontent.com';
 
   private saveSessionAndNavigate(response: LoginResponse): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -122,7 +53,18 @@ export class LoginAdmin implements OnInit, OnDestroy {
     }
 
     this.adminApi.setToken(response.token);
-    this.router.navigate(['/dashboard']);
+
+    this.ngZone.run(() => {
+      this.router.navigate(['/dashboard']).then(navigated => {
+        if (!navigated && isPlatformBrowser(this.platformId)) {
+          window.location.href = '/dashboard';
+        }
+      }).catch(() => {
+        if (isPlatformBrowser(this.platformId)) {
+          window.location.href = '/dashboard';
+        }
+      });
+    });
   }
 
   login(email: string, password: string): void {
@@ -140,38 +82,60 @@ export class LoginAdmin implements OnInit, OnDestroy {
     this.isLoading = true;
     this.cdr.detectChanges();
 
-    console.log('[LoginAdmin] Đang gửi yêu cầu đăng nhập tới:', `${this.apiUrl}/login`, { email });
+    const payload = { email, password };
 
-    this.http.post<LoginResponse>(`${this.apiUrl}/login`, {
-      email,
-      password
-    }).subscribe({
+    // Thử gửi qua proxy trước (/api/auth/login)
+    this.http.post<LoginResponse>(`${this.proxyApiUrl}/login`, payload).subscribe({
       next: (response) => {
-        console.log('[LoginAdmin] Đăng nhập thành công:', response);
-        this.isLoading = false;
-
-        if (response?.user?.role !== 'admin') {
-          this.loginError = 'Tài khoản không có quyền truy cập Admin.';
-          this.cdr.detectChanges();
-          return;
-        }
-
-        this.saveSessionAndNavigate(response);
-        this.cdr.detectChanges();
+        this.handleLoginSuccess(response);
       },
-      error: (error) => {
-        console.error('[LoginAdmin] Lỗi đăng nhập:', error);
-        this.isLoading = false;
-        if (error.status === 0) {
-          this.loginError = 'Không thể kết nối đến máy chủ backend (http://localhost:3002). Vui lòng đảm bảo server backend đang chạy.';
+      error: (proxyError) => {
+        // Nếu proxy bị lỗi mạng hoặc 404, thử kết nối thẳng backend port 3002
+        if (proxyError.status === 0 || proxyError.status === 404) {
+          console.warn('[LoginAdmin] Thử kết nối trực tiếp đến backend port 3002...');
+          this.http.post<LoginResponse>(`${this.directApiUrl}/login`, payload).subscribe({
+            next: (directResponse) => {
+              this.handleLoginSuccess(directResponse);
+            },
+            error: (directError) => {
+              this.handleLoginError(directError);
+            }
+          });
         } else {
-          this.loginError = error.error?.message || `Lỗi máy chủ (${error.status}): Không thể đăng nhập.`;
+          this.handleLoginError(proxyError);
         }
-        this.cdr.detectChanges();
       }
     });
   }
-  
+
+  private handleLoginSuccess(response: LoginResponse): void {
+    this.ngZone.run(() => {
+      this.isLoading = false;
+
+      if (response?.user?.role !== 'admin') {
+        this.loginError = 'Tài khoản không có quyền truy cập Admin (yêu cầu quyền quản trị viên).';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      this.saveSessionAndNavigate(response);
+      this.cdr.detectChanges();
+    });
+  }
+
+  private handleLoginError(error: any): void {
+    this.ngZone.run(() => {
+      console.error('[LoginAdmin] Lỗi đăng nhập:', error);
+      this.isLoading = false;
+      if (error.status === 0) {
+        this.loginError = 'Không thể kết nối đến máy chủ backend (http://localhost:3002). Vui lòng đảm bảo server backend đang chạy.';
+      } else {
+        this.loginError = error.error?.message || `Lỗi đăng nhập (${error.status}): Vui lòng kiểm tra lại email và mật khẩu.`;
+      }
+      this.cdr.detectChanges();
+    });
+  }
+
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       window.addEventListener('message', this.facebookMessageHandler);
@@ -229,33 +193,25 @@ export class LoginAdmin implements OnInit, OnDestroy {
     this.isLoading = true;
     this.cdr.detectChanges();
 
-    console.log('[LoginAdmin] Gửi xác thực Google token tới backend...');
+    const payload = { token: accessToken, target: 'admin' };
 
-    this.http.post<LoginResponse>(`${this.apiUrl}/google`, {
-      token: accessToken
-    }).subscribe({
+    this.http.post<LoginResponse>(`${this.proxyApiUrl}/google`, payload).subscribe({
       next: (response) => {
-        console.log('[LoginAdmin] Đăng nhập Google thành công:', response);
-        this.isLoading = false;
-
-        if (response?.user?.role !== 'admin') {
-          this.loginError = 'Tài khoản không có quyền truy cập Admin.';
-          this.cdr.detectChanges();
-          return;
-        }
-
-        this.saveSessionAndNavigate(response);
-        this.cdr.detectChanges();
+        this.handleLoginSuccess(response);
       },
-      error: (error) => {
-        console.error('[LoginAdmin] Lỗi đăng nhập Google:', error);
-        this.isLoading = false;
-        if (error.status === 0) {
-          this.loginError = 'Không thể kết nối đến máy chủ backend (http://localhost:3002). Vui lòng đảm bảo server backend đang chạy.';
+      error: (proxyError) => {
+        if (proxyError.status === 0 || proxyError.status === 404) {
+          this.http.post<LoginResponse>(`${this.directApiUrl}/google`, payload).subscribe({
+            next: (directResponse) => {
+              this.handleLoginSuccess(directResponse);
+            },
+            error: (directError) => {
+              this.handleLoginError(directError);
+            }
+          });
         } else {
-          this.loginError = error.error?.message || 'Đăng nhập Google thất bại.';
+          this.handleLoginError(proxyError);
         }
-        this.cdr.detectChanges();
       }
     });
   }

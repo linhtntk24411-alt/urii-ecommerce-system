@@ -1,3 +1,4 @@
+const Notification = require('../models/Notification');
 const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
 const User = require('../models/User');
@@ -5,6 +6,7 @@ const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const { generateAiReply } = require('../services/aiChatService');
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -438,5 +440,119 @@ exports.matchFaq = async (req, res) => {
   } catch (error) {
     console.error('Lỗi xử lý câu hỏi chatbot:', error);
     res.status(500).json({ message: 'Lỗi xử lý phản hồi tự động.' });
+  }
+};
+
+// Trả lời câu hỏi linh hoạt bằng AI, tự động trỏ danh mục và hỗ trợ deep-linking
+exports.askAi = async (req, res) => {
+  try {
+    const { message, history, context } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Vui lòng nhập nội dung câu hỏi.' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '';
+    const aiResponse = await generateAiReply({
+      message: message.trim(),
+      history: Array.isArray(history) ? history : [],
+      context: context || {},
+      apiKey
+    });
+
+    res.json({
+      success: true,
+      ...aiResponse
+    });
+  } catch (error) {
+    console.error('Lỗi API Chat AI:', error);
+    res.status(500).json({ message: 'Không thể tạo phản hồi từ AI lúc này.' });
+  }
+};
+
+
+// Khách hàng yêu cầu hỗ trợ từ Admin -> cập nhật status 'waiting' và tạo thông báo cho Admin
+exports.requestAgent = async (req, res) => {
+  try {
+    const { sessionId, userName, userEmail, message } = req.body;
+    const id = sessionId || req.params.id;
+
+    if (!id) {
+      return res.status(400).json({ message: 'Thiếu mã phiên trò chuyện (sessionId).' });
+    }
+
+    let session = await ChatSession.findOne({ sessionId: id });
+    if (!session) {
+      session = new ChatSession({
+        sessionId: id,
+        userName: userName || 'Khách vãng lai',
+        userEmail: userEmail || '',
+        avatar: 'images/avatar_user.jpeg',
+        status: 'waiting',
+        unreadCount: 1,
+        lastMessageTime: Date.now(),
+        messages: []
+      });
+    } else {
+      session.status = 'waiting';
+      session.unreadCount = (session.unreadCount || 0) + 1;
+      session.lastMessageTime = Date.now();
+      if (userName) session.userName = userName;
+      if (userEmail) session.userEmail = userEmail;
+    }
+
+    const noteText = message || 'Khách hàng yêu cầu nhân viên tư vấn/admin hỗ trợ trực tiếp.';
+    session.messages.push({
+      text: noteText,
+      sender: 'user',
+      timestamp: Date.now()
+    });
+
+    await session.save();
+
+    // Tạo thông báo cho Admin trong hệ thống
+    const notifId = `notif-chat-${Date.now()}`;
+    const displayName = session.userName || session.userEmail || 'Khách vãng lai';
+
+    try {
+      if (mongoose.connection.readyState === 1) {
+        await Notification.create({
+          id: notifId,
+          audience: 'admin',
+          typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
+          reference: { sessionId: session.sessionId },
+          isRead: false,
+          createdAt: new Date()
+        });
+      }
+    } catch (notifErr) {
+      try {
+        if (mongoose.connection.db) {
+          await mongoose.connection.db.collection('admin_notifications').insertOne({
+            id: notifId,
+            audience: 'admin',
+            typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
+            title: `Khách hàng chờ tư vấn tại phiên #${session.sessionId}`,
+            message: `Khách hàng ${displayName} đang yêu cầu nhân viên tư vấn hỗ trợ trực tiếp.`,
+            actionUrl: `/admin/chat/${session.sessionId}`,
+            isRead: false,
+            createdAt: new Date()
+          });
+        }
+      } catch (_) {}
+    }
+
+    emitCrudChange('notifications', 'created', notifId);
+    emitCrudChange('chat', 'status', session.sessionId);
+    emitCrudChange('chat', 'message', session.sessionId);
+
+    res.json({
+      success: true,
+      message: 'Đã gửi yêu cầu và thông báo đến Quản trị viên thành công.',
+      status: 'waiting',
+      sessionId: session.sessionId
+    });
+  } catch (error) {
+    console.error('Lỗi khi gửi yêu cầu hỗ trợ tới admin:', error);
+    res.status(500).json({ message: 'Không thể gửi yêu cầu hỗ trợ lúc này.' });
   }
 };

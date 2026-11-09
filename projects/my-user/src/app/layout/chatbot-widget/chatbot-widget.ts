@@ -1,11 +1,15 @@
+import { DialogService } from '../../core/services/dialog.service';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { delay, finalize, map, Observable } from 'rxjs';
+import { catchError, delay, finalize, map, Observable, of } from 'rxjs';
 
 interface ChatMessage {
+  targetUrl?: string;
+  targetLabel?: string;
+  isWarning?: boolean;
   text: string;
   sender: 'user' | 'bot' | 'admin';
   timestamp: number;
@@ -23,6 +27,9 @@ interface ChatSession {
 }
 
 interface ChatbotReply {
+  targetUrl?: string;
+  targetLabel?: string;
+  isWarning?: boolean;
   text: string;
   chips?: { label: string; action: string }[];
 }
@@ -43,6 +50,7 @@ interface ChatbotFaq {
 })
 export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy {
   isChatOpen: boolean = false;
+  isHistoryViewOpen: boolean = false;
   isEmojiPickerOpen: boolean = false;
   isTyping: boolean = false;
   userMessageText: string = '';
@@ -59,6 +67,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   private syncInterval: any;
   private pendingBotReplies = 0;
   private readonly http = inject(HttpClient);
+  private readonly dialogService = inject(DialogService);
 
   constructor(
     private router: Router,
@@ -93,6 +102,149 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.isChatOpen) {
       setTimeout(() => this.scrollToBottom(), 100);
     }
+  }
+
+  
+  
+  isUserLoggedIn(): boolean {
+    if (!isPlatformBrowser(this.platformId)) return false;
+    const email = localStorage.getItem('userEmail')?.trim();
+    return localStorage.getItem('isLoggedIn') === 'true' && Boolean(email);
+  }
+
+  getCurrentUserAvatar(): string {
+    if (!isPlatformBrowser(this.platformId)) return '';
+    const avatar = localStorage.getItem('userAvatar')?.trim();
+    if (!avatar) return '';
+    if (avatar.startsWith('/images/')) return `/api${avatar}`;
+    if (avatar.startsWith('images/')) return `/api/${avatar}`;
+    return avatar;
+  }
+
+  getCurrentUserName(): string {
+    if (!isPlatformBrowser(this.platformId)) return '';
+    return localStorage.getItem('userName')?.trim() || '';
+  }
+
+  getCurrentUserEmail(): string {
+    if (!isPlatformBrowser(this.platformId)) return '';
+    return localStorage.getItem('userEmail')?.trim().toLowerCase() || '';
+  }
+
+  getUserSessions(): ChatSession[] {
+    const email = this.getCurrentUserEmail();
+    if (!email) return [];
+    const sessions = this.getSessions();
+    return Object.values(sessions)
+      .filter((s) => s.userEmail && s.userEmail.trim().toLowerCase() === email && s.messages && s.messages.length > 0)
+      .sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+  }
+
+  toggleHistoryView(): void {
+    if (!this.isUserLoggedIn()) {
+      this.dialogService.promptLogin({
+        title: 'Đăng nhập để xem lịch sử chat',
+        description: 'Vui lòng đăng nhập tài khoản Urii để xem lại các cuộc trò chuyện và lịch sử tư vấn trước đây.',
+        returnUrl: this.router.url
+      });
+      return;
+    }
+    this.isHistoryViewOpen = !this.isHistoryViewOpen;
+    this.cdr.detectChanges();
+  }
+
+  switchSession(sessionId: string): void {
+    const sessions = this.getSessions();
+    if (!sessions[sessionId]) return;
+
+    this.currentSessionId = sessionId;
+    const userEmail = this.getCurrentUserEmail();
+    const cleanEmail = userEmail ? userEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'guest';
+    this.safeSetItem(`urii_chat_session_id_${cleanEmail}`, sessionId);
+
+    this.messages = [...(sessions[sessionId].messages || [])];
+    this.updateHeaderStatus(sessions[sessionId].status || 'ai');
+    this.isHistoryViewOpen = false;
+    this.cdr.detectChanges();
+    setTimeout(() => this.scrollToBottom(), 100);
+  }
+
+  deleteSession(sessionId: string, event: Event): void {
+    event.stopPropagation();
+    const sessions = this.getSessions();
+    delete sessions[sessionId];
+    this.saveSessions(sessions);
+
+    if (this.currentSessionId === sessionId) {
+      this.resetChat();
+    } else {
+      this.cdr.detectChanges();
+    }
+  }
+
+  formatSessionDate(timestamp: number): string {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    if (isToday) {
+      return `Hôm nay lúc ${timeStr}`;
+    }
+    return `${date.toLocaleDateString('vi-VN')} lúc ${timeStr}`;
+  }
+
+  getSessionPreview(session: ChatSession): string {
+    if (!session.messages || session.messages.length === 0) return 'Chưa có tin nhắn';
+    const last = session.messages[session.messages.length - 1];
+    return last.text.slice(0, 50) + (last.text.length > 50 ? '...' : '');
+  }
+
+  onInputKeyDown(event: KeyboardEvent, inputEl?: HTMLInputElement): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.sendMessage(inputEl);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.clearInput(inputEl);
+    }
+  }
+
+  resetChat(): void {
+    const isLoggedIn = this.safeGetItem('isLoggedIn') === 'true';
+    const userEmail = isLoggedIn ? (this.safeGetItem('userEmail') || 'guest') : 'guest';
+    const cleanEmail = userEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    const storageKey = `urii_chat_session_id_${cleanEmail}`;
+
+    const newSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    this.currentSessionId = newSessionId;
+    this.safeSetItem(storageKey, newSessionId);
+
+    const sessions = this.getSessions();
+    sessions[newSessionId] = {
+      sessionId: newSessionId,
+      userName: this.safeGetItem('userName') || 'Khách vãng lai',
+      userEmail: this.safeGetItem('userEmail') || '',
+      status: 'ai',
+      lastMessageTime: Date.now(),
+      unreadCount: 0,
+      messages: []
+    };
+    this.saveSessions(sessions);
+
+    this.messages = [];
+    this.userMessageText = '';
+    this.updateHeaderStatus('ai');
+    this.cdr.detectChanges();
+    this.loadChatHistory();
+  }
+
+  clearInput(inputEl?: HTMLInputElement): void {
+    this.userMessageText = '';
+    if (inputEl) inputEl.value = '';
+    const el = document.getElementById('chat-input') as HTMLInputElement;
+    if (el) el.value = '';
   }
 
   closeChat(): void {
@@ -161,16 +313,23 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private getCurrentSession(): ChatSession {
     const sessions = this.getSessions();
+    const userEmail = this.getCurrentUserEmail();
+    const userName = this.safeGetItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Khách vãng lai');
+
     if (!sessions[this.currentSessionId]) {
       sessions[this.currentSessionId] = {
         sessionId: this.currentSessionId,
-        userName: this.safeGetItem('userName') || 'Khách vãng lai',
-        userEmail: this.safeGetItem('userEmail') || '',
+        userName,
+        userEmail,
         status: 'ai',
         lastMessageTime: Date.now(),
         unreadCount: 0,
         messages: []
       };
+      this.saveSessions(sessions);
+    } else if (userEmail && (!sessions[this.currentSessionId].userEmail || sessions[this.currentSessionId].userEmail === 'guest')) {
+      sessions[this.currentSessionId].userEmail = userEmail;
+      sessions[this.currentSessionId].userName = userName;
       this.saveSessions(sessions);
     }
     return sessions[this.currentSessionId];
@@ -247,11 +406,23 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
-  sendMessage(): void {
-    const text = this.userMessageText.trim();
+  sendMessage(inputEl?: HTMLInputElement): void {
+    const raw = inputEl ? inputEl.value : this.userMessageText;
+    const text = (raw || this.userMessageText || '').trim();
     if (!text) return;
 
     this.userMessageText = '';
+    if (inputEl) inputEl.value = '';
+    const domEl = document.getElementById('chat-input') as HTMLInputElement;
+    if (domEl) domEl.value = '';
+
+    setTimeout(() => {
+      this.userMessageText = '';
+      if (inputEl) inputEl.value = '';
+      const el = document.getElementById('chat-input') as HTMLInputElement;
+      if (el) el.value = '';
+      this.cdr.detectChanges();
+    }, 0);
     const session = this.getCurrentSession();
 
     const userMsg: ChatMessage = {
@@ -273,6 +444,12 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     this.messages = [...session.messages];
     this.cdr.detectChanges(); 
     this.scrollToBottom();
+
+    const normQuery = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+    if (['admin', 'tu van vien', 'gap nguoi', 'nhan vien', 'chat voi admin'].some(kw => normQuery.includes(kw)) && session.status === 'ai') {
+      this.connectWithAdmin();
+      return;
+    }
 
     if (session.status === 'ai') {
       this.requestBotReply(text, session.sessionId);
@@ -312,6 +489,9 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       sender: 'bot',
       timestamp: Date.now(),
       chips: reply.chips,
+      targetUrl: reply.targetUrl,
+      targetLabel: reply.targetLabel,
+      isWarning: reply.isWarning,
     });
     freshSession.lastMessageTime = Date.now();
     currentSessions[sessionId] = freshSession;
@@ -325,9 +505,44 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private getBotReply(userMessage: string): Observable<ChatbotReply> {
-    return this.getFaqs().pipe(
-      map((response) => this.findFaqReply(response, userMessage)),
-      delay(1000),
+    const history = this.messages.slice(-6).map((m) => ({
+      text: m.text,
+      sender: m.sender,
+    }));
+
+    const context = {
+      currentUrl: this.router.url,
+      isLoggedIn: this.isUserLoggedIn(),
+      userEmail: this.getCurrentUserEmail(),
+    };
+
+    return this.http.post<{
+      success: boolean;
+      reply: string;
+      targetUrl?: string;
+      targetLabel?: string;
+      isWarning?: boolean;
+      chips?: { label: string; action: string }[];
+    }>('/api/chat/ai', {
+      message: userMessage,
+      history,
+      context,
+      sessionId: this.currentSessionId,
+    }).pipe(
+      map((res) => ({
+        text: res.reply,
+        targetUrl: res.targetUrl || undefined,
+        targetLabel: res.targetLabel || undefined,
+        isWarning: res.isWarning,
+        chips: res.chips && res.chips.length > 0 ? res.chips : undefined,
+      })),
+      catchError((err) => {
+        console.warn('Lỗi gọi API AI Chatbot, chuyển sang tìm kiếm FAQ dự phòng:', err);
+        return this.getFaqs().pipe(
+          map((response) => this.findFaqReply(response, userMessage)),
+          delay(500),
+        );
+      }),
     );
   }
 
@@ -436,32 +651,68 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
+  navigateToAction(url: string | undefined): void {
+    if (!url) return;
+    this.router.navigateByUrl(url);
+  }
+
+  
+  connectWithAdmin(): void {
+    const session = this.getCurrentSession();
+    const userMsg: ChatMessage = {
+      text: 'Yêu cầu liên hệ chat với Admin',
+      sender: 'user',
+      timestamp: Date.now()
+    };
+    session.messages.push(userMsg);
+    session.status = 'waiting';
+    session.unreadCount = (session.unreadCount || 0) + 1;
+    session.lastMessageTime = Date.now();
+
+    const botNotice: ChatMessage = {
+      text: 'Dạ Urii đã gửi thông báo đến Quản trị viên/Admin rồi ạ! 🔔 Quản trị viên đã nhận được yêu cầu và sẽ phản hồi lại ngay cho bạn tại khung chat này. Bạn vui lòng đợi trong giây lát nhé! ✨',
+      sender: 'bot',
+      timestamp: Date.now() + 300,
+      chips: [{ label: 'Hủy yêu cầu (Chat tiếp với AI)', action: 'Hủy yêu cầu' }]
+    };
+    session.messages.push(botNotice);
+
+    const sessions = this.getSessions();
+    sessions[session.sessionId] = session;
+    this.saveSessions(sessions);
+
+    this.messages = [...session.messages];
+    this.updateHeaderStatus('waiting');
+    this.cdr.detectChanges();
+    this.scrollToBottom();
+
+    // Gửi yêu cầu lên backend tạo notification cho Admin
+    this.http.post('/api/chat/request-agent', {
+      sessionId: session.sessionId,
+      userName: session.userName,
+      userEmail: session.userEmail,
+      message: 'Khách hàng yêu cầu nhân viên tư vấn/admin hỗ trợ trực tiếp.'
+    }).subscribe({
+      next: () => console.log('Đã gửi thông báo cho admin'),
+      error: (err) => console.warn('Lỗi gửi thông báo admin:', err)
+    });
+  }
+
   handleChipClick(action: string): void {
-    if (action === 'Yêu cầu đặt hàng' || action === 'Đặt hàng yêu cầu') {
-      this.router.navigate(['/custom-order-request']);
+    if (!action) return;
+
+    if (action.startsWith('/')) {
+      this.router.navigateByUrl(action);
       return;
     }
 
-    if (['Tư vấn từ nhân viên', 'Gặp tư vấn viên', 'Tư vấn viên'].includes(action)) {
-      const session = this.getCurrentSession();
-      const userMsg: ChatMessage = {
-        text: 'Tư vấn từ nhân viên',
-        sender: 'user',
-        timestamp: Date.now()
-      };
-      session.messages.push(userMsg);
-      session.status = 'waiting';
-      session.unreadCount = (session.unreadCount || 0) + 1;
+    if (action === 'Yêu cầu đặt hàng' || action === 'Đặt hàng yêu cầu') {
+      this.router.navigate(['/custom-order']);
+      return;
+    }
 
-      const sessions = this.getSessions();
-      sessions[session.sessionId] = session;
-      this.saveSessions(sessions);
-
-      this.messages = [...session.messages];
-      this.updateHeaderStatus('waiting');
-      this.cdr.detectChanges();
-      this.scrollToBottom();
-      this.requestBotReply(action, session.sessionId);
+    if (['Tư vấn từ nhân viên', 'Gặp tư vấn viên', 'Tư vấn viên', 'Chat với Admin', 'Liên hệ Admin'].includes(action)) {
+      this.connectWithAdmin();
       return;
     }
 

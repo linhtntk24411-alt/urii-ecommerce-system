@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
+const { sendOtpEmail } = require('../services/emailService');
 const oauthProviders = require('../services/oauthProviders');
 const { emitCrudChange } = require('../realtime');
 
@@ -36,7 +38,7 @@ function formatAuthUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
-    avatar: user.avatar || '/images/avatar-non.jpg',
+    avatar: (!user.avatar || user.avatar.includes('googleusercontent.com')) ? '/images/avatar-non.jpg' : user.avatar,
     phone: user.phone || '',
     birth: user.birth || '',
     address: user.address || '',
@@ -74,20 +76,272 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    await User.create({
-      name: name.trim(),
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Xóa các OTP cũ nếu có
+    await Otp.deleteMany({ email: normalizedEmail, purpose: 'register' });
+
+    // Lưu OTP mới với hạn 60 giây
+    await Otp.create({
       email: normalizedEmail,
-      password: hashedPassword,
-      authProviders: ['password']
+      name: name.trim(),
+      hashedPassword,
+      otp,
+      purpose: 'register',
+      createdAt: new Date()
     });
-    res.status(201).json({ message: 'Đăng ký thành công!' });
+
+    // Gửi email OTP
+    await sendOtpEmail(normalizedEmail, name.trim(), otp, 'register');
+
+    res.status(200).json({
+      requireOtp: true,
+      email: normalizedEmail,
+      message: 'Mã xác thực OTP đã được gửi đến email của bạn. Mã có hiệu lực trong 60 giây.'
+    });
   } catch (error) {
     if (error.code === 11000) {
       res.status(409).json({ message: 'Email đã tồn tại.' });
       return;
     }
-    console.error('Lỗi đăng ký tài khoản:', error);
-    res.status(500).json({ message: 'Không thể đăng ký tài khoản lúc này.' });
+    console.error('Lỗi gửi OTP đăng ký:', error);
+    res.status(500).json({ message: 'Không thể xử lý yêu cầu đăng ký lúc này.' });
+  }
+};
+
+exports.verifyOtp = async (req, res) => {
+  const { email, otp } = req.body || {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const trimmedOtp = typeof otp === 'string' ? otp.trim() : '';
+
+  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email và mã OTP 6 chữ số.' });
+  }
+
+  try {
+    const record = await Otp.findOne({ email: normalizedEmail, purpose: 'register' }).sort({ createdAt: -1 });
+    if (!record) {
+      return res.status(400).json({
+        message: 'Không tìm thấy yêu cầu xác thực hoặc mã đã hết hạn. Vui lòng bấm gửi lại mã OTP.'
+      });
+    }
+
+    // Kiểm tra thời hạn 60 giây (1 phút)
+    const diffSeconds = (Date.now() - record.createdAt.getTime()) / 1000;
+    if (diffSeconds > 60) {
+      return res.status(400).json({
+        message: 'Mã xác thực OTP đã hết hạn (quá 60 giây). Vui lòng nhấn gửi lại mã mới.'
+      });
+    }
+
+    if (record.otp !== trimmedOtp) {
+      return res.status(400).json({
+        message: 'Mã xác thực OTP không chính xác. Vui lòng kiểm tra lại.'
+      });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail }).lean();
+    if (existingUser) {
+      await Otp.deleteMany({ email: normalizedEmail });
+      return res.status(409).json({ message: 'Email này đã được đăng ký tài khoản.' });
+    }
+
+    const user = await User.create({
+      name: record.name,
+      email: normalizedEmail,
+      password: record.hashedPassword,
+      authProviders: ['password'],
+      avatar: '/images/avatar-non.jpg',
+      role: 'user',
+      joinDate: new Date().toLocaleDateString('vi-VN')
+    });
+
+    await Otp.deleteMany({ email: normalizedEmail });
+
+    return res.status(201).json({
+      message: 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.',
+      userId: user._id.toString()
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Email đã tồn tại.' });
+    }
+    console.error('Lỗi xác thực OTP:', error);
+    return res.status(500).json({ message: 'Không thể xác thực OTP lúc này.' });
+  }
+};
+
+exports.resendOtp = async (req, res) => {
+  const { email } = req.body || {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    return res.status(400).json({ message: 'Email không hợp lệ.' });
+  }
+
+  try {
+    const existingUser = await User.findOne({ email: normalizedEmail }).lean();
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email này đã được đăng ký.' });
+    }
+
+    const record = await Otp.findOne({ email: normalizedEmail, purpose: 'register' }).sort({ createdAt: -1 });
+    if (!record) {
+      return res.status(400).json({
+        message: 'Không tìm thấy thông tin đăng ký trước đó. Vui lòng thực hiện đăng ký lại từ đầu.'
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    record.otp = otp;
+    record.createdAt = new Date();
+    await record.save();
+
+    await sendOtpEmail(normalizedEmail, record.name, otp, 'register');
+
+    return res.json({
+      message: 'Mã xác thực OTP mới đã được gửi đến email của bạn. Mã có hiệu lực trong 60 giây.'
+    });
+  } catch (error) {
+    console.error('Lỗi gửi lại mã OTP:', error);
+    return res.status(500).json({ message: 'Không thể gửi lại mã OTP lúc này.' });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body || {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email hợp lệ.' });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail }).lean();
+    if (!user) {
+      return res.status(404).json({ message: 'Email này chưa được đăng ký tài khoản tại Urii.' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.deleteMany({ email: normalizedEmail, purpose: 'reset-password' });
+
+    await Otp.create({
+      email: normalizedEmail,
+      name: user.name || '',
+      otp,
+      purpose: 'reset-password',
+      createdAt: new Date()
+    });
+
+    await sendOtpEmail(normalizedEmail, user.name, otp, 'reset-password');
+
+    return res.status(200).json({
+      message: 'Mã xác thực OTP đã được gửi đến email của bạn. Mã có hiệu lực trong 60 giây.'
+    });
+  } catch (error) {
+    console.error('Lỗi yêu cầu đặt lại mật khẩu:', error);
+    return res.status(500).json({ message: 'Không thể xử lý yêu cầu quên mật khẩu lúc này.' });
+  }
+};
+
+exports.verifyResetOtp = async (req, res) => {
+  const { email, otp } = req.body || {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const trimmedOtp = typeof otp === 'string' ? otp.trim() : '';
+
+  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email và mã OTP.' });
+  }
+
+  try {
+    const record = await Otp.findOne({ email: normalizedEmail, purpose: 'reset-password' }).sort({ createdAt: -1 });
+    if (!record) {
+      return res.status(400).json({
+        message: 'Không tìm thấy yêu cầu đặt lại mật khẩu hoặc mã đã hết hạn. Vui lòng bấm gửi lại mã.'
+      });
+    }
+
+    const diffSeconds = (Date.now() - record.createdAt.getTime()) / 1000;
+    if (diffSeconds > 60) {
+      return res.status(400).json({
+        message: 'Mã xác thực OTP đã hết hạn (quá 60 giây). Vui lòng nhấn gửi lại mã mới.'
+      });
+    }
+
+    if (record.otp !== trimmedOtp) {
+      return res.status(400).json({
+        message: 'Mã xác thực OTP không chính xác. Vui lòng kiểm tra lại.'
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Xác thực mã OTP thành công. Vui lòng nhập mật khẩu mới.'
+    });
+  } catch (error) {
+    console.error('Lỗi xác thực mã reset OTP:', error);
+    return res.status(500).json({ message: 'Không thể xác thực OTP lúc này.' });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { email, otp, password } = req.body || {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const trimmedOtp = typeof otp === 'string' ? otp.trim() : '';
+
+  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp) {
+    return res.status(400).json({ message: 'Thông tin xác thực không hợp lệ.' });
+  }
+
+  if (typeof password !== 'string'
+    || password.length < PASSWORD_MIN_LENGTH
+    || Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES
+    || !/[A-Z]/.test(password)
+    || !/[a-z]/.test(password)
+    || !/[0-9]/.test(password)) {
+    return res.status(400).json({
+      message: 'Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số.'
+    });
+  }
+
+  try {
+    const record = await Otp.findOne({ email: normalizedEmail, purpose: 'reset-password' }).sort({ createdAt: -1 });
+    if (!record) {
+      return res.status(400).json({
+        message: 'Phiên xác thực đã hết hạn hoặc không tồn tại. Vui lòng thực hiện lại từ đầu.'
+      });
+    }
+
+    const diffSeconds = (Date.now() - record.createdAt.getTime()) / 1000;
+    if (diffSeconds > 300) {
+      return res.status(400).json({
+        message: 'Phiên đặt lại mật khẩu đã hết hạn. Vui lòng thực hiện lại từ đầu.'
+      });
+    }
+
+    if (record.otp !== trimmedOtp) {
+      return res.status(400).json({
+        message: 'Mã xác thực OTP không hợp lệ.'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const user = await User.findOneAndUpdate(
+      { email: normalizedEmail },
+      { $set: { password: hashedPassword } }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng để cập nhật mật khẩu.' });
+    }
+
+    await Otp.deleteMany({ email: normalizedEmail, purpose: 'reset-password' });
+
+    return res.status(200).json({
+      message: 'Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập với mật khẩu mới.'
+    });
+  } catch (error) {
+    console.error('Lỗi đặt lại mật khẩu:', error);
+    return res.status(500).json({ message: 'Không thể đặt lại mật khẩu lúc này.' });
   }
 };
 
@@ -337,12 +591,13 @@ function sendOAuthCallbackResult(req, res, statusCode, provider, payload) {
       var targetOrigin = ${serializedOrigin};
       try {
         if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, targetOrigin);
+          try { window.opener.postMessage(payload, targetOrigin); } catch (e) {}
+          try { window.opener.postMessage(payload, '*'); } catch (e) {}
         }
       } catch (e) {}
-      try {
-        window.close();
-      } catch (e) {}
+      setTimeout(function () {
+        try { window.close(); } catch (e) {}
+      }, 500);
     })();
   </script>
 </body>
@@ -539,13 +794,12 @@ exports.oauthCallback = async (req, res) => {
           });
           return;
         }
-        if (!['user', 'admin'].includes(linkedByProviderId.role)) {
+        if (linkedByProviderId.role !== 'user') {
           sendOAuthCallbackResult(req, res, 403, provider, {
-            message: 'Tài khoản không có quyền đăng nhập bằng Facebook.'
+            message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
           });
           return;
         }
-
         user = linkedByProviderId;
       }
     }
@@ -575,7 +829,7 @@ exports.oauthCallback = async (req, res) => {
 };
 
 exports.googleLogin = async (req, res) => {
-  const { token } = req.body || {};
+  const { token, target } = req.body || {};
 
   if (typeof token !== 'string' || !token) {
     return res.status(400).json({
@@ -621,67 +875,95 @@ exports.googleLogin = async (req, res) => {
     const email = payload.email.trim().toLowerCase();
     const googleId = payload.sub;
 
-    // 2. Chỉ cho phép tài khoản admin đã tồn tại
-    const user = await User.findOne({ email });
-
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({
-        message: 'Tài khoản Google không có quyền truy cập Admin.'
-      });
-    }
-
-    // 3. Kiểm tra Google ID đã liên kết với tài khoản khác chưa
-    const linkedGoogleUser = await User.findOne({
+    // 2. Tìm kiếm tài khoản theo Google ID hoặc theo email
+    let user = await User.findOne({
       'oauthAccounts.provider': 'google',
       'oauthAccounts.providerUserId': googleId
     });
 
-    if (
-      linkedGoogleUser &&
-      linkedGoogleUser._id.toString() !== user._id.toString()
-    ) {
-      return res.status(403).json({
-        message: 'Tài khoản Google đã được liên kết với tài khoản khác.'
+    if (!user) {
+      user = await User.findOne({ email });
+    }
+
+    // 3. Nếu là yêu cầu từ trang Admin (target === 'admin')
+    if (target === 'admin') {
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({
+          message: 'Tài khoản Google không có quyền truy cập Admin.'
+        });
+      }
+    }
+
+    // 4. Nếu tài khoản chưa tồn tại -> Tự động đăng ký người dùng mới (role: 'user')
+    if (!user) {
+      const displayName = payload.name?.trim() || email.split('@')[0];
+      const todayFormatted = new Date().toLocaleDateString('vi-VN');
+
+      user = await User.create({
+        name: displayName,
+        email,
+        avatar: '/images/avatar-non.jpg',
+        role: 'user',
+        joinDate: todayFormatted,
+        authProviders: ['google'],
+        oauthAccounts: [{ provider: 'google', providerUserId: googleId }]
       });
-    }
-
-    // 4. Kiểm tra Google ID đã được liên kết với admin chưa
-    if (!Array.isArray(user.oauthAccounts)) {
-      user.oauthAccounts = [];
-    }
-    const existingGoogleAccount = user.oauthAccounts.find(
-      account => account.provider === 'google'
-    );
-
-    if (
-      existingGoogleAccount &&
-      existingGoogleAccount.providerUserId !== googleId
-    ) {
-      return res.status(403).json({
-        message: 'Tài khoản Google không khớp với tài khoản đã liên kết.'
+    } else {
+      // 5. Nếu tài khoản đã tồn tại, kiểm tra và liên kết Google ID
+      const linkedOtherUser = await User.findOne({
+        'oauthAccounts.provider': 'google',
+        'oauthAccounts.providerUserId': googleId,
+        _id: { $ne: user._id }
       });
-    }
 
-    // 5. Liên kết Google với tài khoản admin
-    if (!existingGoogleAccount) {
-      user.oauthAccounts.push({
-        provider: 'google',
-        providerUserId: googleId
-      });
-    }
+      if (linkedOtherUser) {
+        return res.status(409).json({
+          message: 'Tài khoản Google này đã được liên kết với một tài khoản khác.'
+        });
+      }
 
-    if (!Array.isArray(user.authProviders)) {
-      user.authProviders = [];
-    }
-    if (!user.authProviders.includes('google')) {
-      user.authProviders.push('google');
-    }
+      if (!Array.isArray(user.oauthAccounts)) {
+        user.oauthAccounts = [];
+      }
+      const existingGoogleAccount = user.oauthAccounts.find(
+        account => account.provider === 'google'
+      );
 
-    if (!user.avatar && payload.picture) {
-      user.avatar = payload.picture;
-    }
+      if (
+        existingGoogleAccount &&
+        existingGoogleAccount.providerUserId !== googleId
+      ) {
+        return res.status(409).json({
+          message: 'Email này đã liên kết với một tài khoản Google khác.'
+        });
+      }
 
-    await user.save();
+      let changed = false;
+      if (!existingGoogleAccount) {
+        user.oauthAccounts.push({
+          provider: 'google',
+          providerUserId: googleId
+        });
+        changed = true;
+      }
+
+      if (!Array.isArray(user.authProviders)) {
+        user.authProviders = [];
+      }
+      if (!user.authProviders.includes('google')) {
+        user.authProviders.push('google');
+        changed = true;
+      }
+
+      if (!user.avatar || user.avatar.includes('googleusercontent.com')) {
+        user.avatar = '/images/avatar-non.jpg';
+        changed = true;
+      }
+
+      if (changed) {
+        await user.save();
+      }
+    }
 
     // 6. Cấp JWT
     const jwtToken = jwt.sign(
@@ -700,7 +982,7 @@ exports.googleLogin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Lỗi đăng nhập Google Admin:', error);
+    console.error('Lỗi xác thực Google:', error);
 
     return res.status(500).json({
       message: 'Không thể xác thực Google lúc này.'

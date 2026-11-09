@@ -17,7 +17,11 @@
     @if (errorMessage) {
       <div class="cart-alert" role="status">
         <span>{{ errorMessage }}</span>
-        <button type="button" class="retry-cart-button" (click)="loadCart()">Thử tải lại</button>
+        @if (requiresLogin) {
+          <button type="button" class="retry-cart-button" (click)="loginAgain()">Đăng nhập lại</button>
+        } @else {
+          <button type="button" class="retry-cart-button" (click)="loadCart()">Thử tải lại</button>
+        }
       </div>
     }
 

@@ -30,19 +30,33 @@ test('customer order routes authenticate customers before the admin-only order r
   const detailRoute = orderRoutes.stack.find(
     (layer) => layer.route?.path === '/mine/:slug' && layer.route.methods.get
   );
+  const createPaymentRoute = orderRoutes.stack.find(
+    (layer) => layer.route?.path === '/:id/payment' && layer.route.methods.post
+  );
+  const getPaymentRoute = orderRoutes.stack.find(
+    (layer) => layer.route?.path === '/:id/payment' && layer.route.methods.get
+  );
   const adminOnlyLayer = orderRoutes.stack.findIndex(
-    (layer) => !layer.route && layer.handle === orderRoutes.stack[2]?.handle
+    (layer) => !layer.route && layer.handle === requireAdmin
   );
 
   assert.ok(listRoute);
   assert.ok(detailRoute);
+  assert.ok(createPaymentRoute);
+  assert.ok(getPaymentRoute);
   assert.equal(listRoute.route.stack[0].handle, authenticate);
   assert.equal(listRoute.route.stack[1].handle, requireCustomer);
   assert.equal(detailRoute.route.stack[0].handle, authenticate);
   assert.equal(detailRoute.route.stack[1].handle, requireCustomer);
+  assert.equal(createPaymentRoute.route.stack[0].handle, authenticate);
+  assert.equal(createPaymentRoute.route.stack[1].handle, requireCustomer);
+  assert.equal(getPaymentRoute.route.stack[0].handle, authenticate);
+  assert.equal(getPaymentRoute.route.stack[1].handle, requireCustomer);
   assert.equal(requireAdmin.name, 'requireAdmin');
   assert.ok(orderRoutes.stack.indexOf(listRoute) < adminOnlyLayer);
   assert.ok(orderRoutes.stack.indexOf(detailRoute) < adminOnlyLayer);
+  assert.ok(orderRoutes.stack.indexOf(createPaymentRoute) < adminOnlyLayer);
+  assert.ok(orderRoutes.stack.indexOf(getPaymentRoute) < adminOnlyLayer);
 });
 
 test('customer order list is filtered by authenticated user and stored status', async () => {
@@ -140,4 +154,16 @@ test('customer endpoints reject invalid status and invalid customer identity', a
     invalidUserResponse
   );
   assert.equal(invalidUserResponse.statusCode, 401);
+});
+
+test('admin statusType updates synchronize statusId and status for customer order views', async () => {
+  const enriched = await orderController.enrichOrders([{
+    id: 'UR-85001',
+    statusId: 'pending',
+    status: 'Đang chờ duyệt',
+    statusType: 'approved'
+  }]);
+  assert.equal(enriched[0].statusId, 'processing');
+  assert.equal(enriched[0].status, 'Đã xác nhận');
+  assert.equal(enriched[0].statusType, 'approved');
 });

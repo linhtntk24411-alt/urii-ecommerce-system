@@ -477,9 +477,14 @@ export class OrdersAdmin implements OnInit {
 
   // --- Actions ---
   updateOrderStatus(id: string, newStatus: string) {
-  this.adminApi.updateOrder(id, {
-    statusType: newStatus
-  }).subscribe({
+  const statusPayloadMap: Record<string, { statusId: string; status: string; statusType: string }> = {
+    pending: { statusId: 'pending', status: 'Chờ xác nhận', statusType: 'pending' },
+    approved: { statusId: 'processing', status: 'Đã xác nhận', statusType: 'approved' },
+    completed: { statusId: 'completed', status: 'Đã giao', statusType: 'completed' },
+    cancelled: { statusId: 'cancelled', status: 'Đã hủy', statusType: 'cancelled' }
+  };
+  const payload = statusPayloadMap[newStatus] || { statusType: newStatus };
+  this.adminApi.updateOrder(id, payload).subscribe({
     next: () => {
       const order = this.originalOrders.find(o => o.id === id);
       if (order) {

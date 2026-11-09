@@ -1,7 +1,8 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectorRef, Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, inject, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 interface OrderItem {
   name: string;
@@ -52,12 +53,14 @@ const STATUS_LABELS = new Map(ORDER_STATUSES.filter((status) => status.id).map((
   styleUrl: './my-orders.css',
   templateUrl: './my-orders.html',
 })
-export class MyOrders implements OnInit {
+export class MyOrders implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private refreshSubscription: Subscription | null = null;
 
   readonly statuses = ORDER_STATUSES;
   orders: CustomerOrder[] = [];
@@ -85,16 +88,96 @@ export class MyOrders implements OnInit {
       if (!this.getToken()) {
         this.requiresLogin = true;
         this.isLoading = false;
+        this.stopAutoRefresh();
         return;
       }
 
       this.requiresLogin = false;
       if (slug) this.loadOrder(slug);
       else this.loadOrders();
+      this.startAutoRefresh();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
+  }
+
+  @HostListener('window:focus')
+  onWindowFocus(): void {
+    if (!this.isBrowser) return;
+    this.refreshSilently();
+  }
+
+  private startAutoRefresh(): void {
+    this.stopAutoRefresh();
+    if (!this.isBrowser) return;
+    this.refreshTimer = setInterval(() => {
+      this.refreshSilently();
+    }, 4000);
+  }
+
+  private stopAutoRefresh(): void {
+    if (this.refreshTimer !== null) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    if (this.refreshSubscription !== null) {
+      this.refreshSubscription.unsubscribe();
+      this.refreshSubscription = null;
+    }
+  }
+
+  private refreshSilently(): void {
+    if (this.isLoading || this.refreshSubscription !== null) return;
+    const token = this.getToken();
+    if (!token) return;
+
+    if (this.orderSlug) {
+      this.refreshSubscription = this.http.get<unknown>(`/api/orders/mine/${encodeURIComponent(this.orderSlug)}`, {
+        headers: this.authorizationHeaders(token),
+      }).subscribe({
+        next: (response) => {
+          this.refreshSubscription = null;
+          const order = this.parseOrder(response);
+          if (order) {
+            this.activeOrder = order;
+            this.changeDetectorRef.markForCheck();
+          }
+        },
+        error: () => {
+          this.refreshSubscription = null;
+        },
+      });
+      return;
+    }
+
+    let params = new HttpParams().set('page', this.currentPage).set('limit', 5);
+    if (this.selectedStatus) params = params.set('statusId', this.selectedStatus);
+    this.refreshSubscription = this.http.get<unknown>('/api/orders/mine', {
+      headers: this.authorizationHeaders(token),
+      params,
+    }).subscribe({
+      next: (response) => {
+        this.refreshSubscription = null;
+        const orderPage = this.parseOrderPage(response);
+        if (orderPage) {
+          this.orders = orderPage.orders;
+          this.currentPage = orderPage.page;
+          this.totalPages = orderPage.totalPages;
+          this.totalOrders = orderPage.total;
+          this.changeDetectorRef.markForCheck();
+        }
+      },
+      error: () => {
+        this.refreshSubscription = null;
+      },
     });
   }
 
   loadOrders(page = 1): void {
+    this.refreshSubscription?.unsubscribe();
+    this.refreshSubscription = null;
     const token = this.getToken();
     if (!token) {
       this.requiresLogin = true;
@@ -133,6 +216,8 @@ export class MyOrders implements OnInit {
   }
 
   loadOrder(slug = this.orderSlug): void {
+    this.refreshSubscription?.unsubscribe();
+    this.refreshSubscription = null;
     const token = this.getToken();
     if (!token || !slug) return;
 
@@ -167,6 +252,7 @@ export class MyOrders implements OnInit {
   }
 
   statusLabel(order: CustomerOrder): string {
+    if (order.status === 'Đã xác nhận') return 'Đã xác nhận';
     return STATUS_LABELS.get(order.statusId) || order.status || order.statusId;
   }
 

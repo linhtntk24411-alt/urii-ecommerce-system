@@ -31,6 +31,42 @@ const shippingStatusesById = new Map((orderStatuses.shippingStatuses || []).map(
 const cancelReasonsById = new Map((orderReasons.cancelReasons || []).map((r) => [r.id, r]));
 const returnReasonsById = new Map((orderReasons.returnReasons || []).map((r) => [r.id, r]));
 
+const ADMIN_STATUS_TO_ORDER_STATUS = {
+  pending: { statusId: 'pending', status: 'Chờ xác nhận', statusType: 'pending' },
+  approved: { statusId: 'processing', status: 'Đã xác nhận', statusType: 'approved' },
+  processing: { statusId: 'processing', status: 'Chờ lấy hàng', statusType: 'processing' },
+  shipping: { statusId: 'shipping', status: 'Chờ giao hàng', statusType: 'shipping' },
+  completed: { statusId: 'completed', status: 'Đã giao', statusType: 'completed' },
+  returned: { statusId: 'returned', status: 'Trả hàng', statusType: 'returned' },
+  cancelled: { statusId: 'cancelled', status: 'Đã hủy', statusType: 'cancelled' }
+};
+
+function normalizeOrderStatusUpdates(updates) {
+  if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+    return;
+  }
+  const hasExplicitStatusId = typeof updates.statusId === 'string' && updates.statusId.trim().length > 0;
+  const hasExplicitStatusType = typeof updates.statusType === 'string' && updates.statusType.trim().length > 0;
+  if (!hasExplicitStatusId && !hasExplicitStatusType) {
+    return;
+  }
+  const rawKey = hasExplicitStatusType && !hasExplicitStatusId
+    ? updates.statusType.trim().toLowerCase()
+    : updates.statusId.trim().toLowerCase();
+  const mapped = ADMIN_STATUS_TO_ORDER_STATUS[rawKey];
+  if (!mapped) return;
+
+  if (!hasExplicitStatusId || !orderStatusesById.has(updates.statusId)) {
+    updates.statusId = mapped.statusId;
+  }
+  if (!hasExplicitStatusType) {
+    updates.statusType = mapped.statusType;
+  }
+  if (typeof updates.status !== 'string' || !updates.status.trim()) {
+    updates.status = mapped.status;
+  }
+}
+
 function addHoursIso(isoOrDate, hours) {
   const base = isoOrDate ? new Date(isoOrDate) : new Date();
   const validBase = Number.isNaN(base.getTime()) ? new Date() : base;
@@ -71,7 +107,12 @@ async function enrichOrders(orders) {
 
   return orders.map((order) => {
     const user = order.userId ? usersById.get(String(order.userId)) : null;
-    const statusMeta = order.statusId ? orderStatusesById.get(order.statusId) : null;
+    const rawStatusType = typeof order.statusType === 'string' ? order.statusType.trim().toLowerCase() : '';
+    const mappedLegacyStatus = (!order.statusId || order.statusId === 'pending') && rawStatusType && rawStatusType !== 'pending'
+      ? ADMIN_STATUS_TO_ORDER_STATUS[rawStatusType]
+      : null;
+    const effectiveStatusId = mappedLegacyStatus?.statusId || order.statusId;
+    const statusMeta = effectiveStatusId ? orderStatusesById.get(effectiveStatusId) : null;
     const cancelReasonMeta = order.cancellationReasonId
       ? cancelReasonsById.get(order.cancellationReasonId)
       : null;
@@ -93,9 +134,10 @@ async function enrichOrders(orders) {
 
     return {
       ...order,
+      statusId: effectiveStatusId,
       orderType: order.orderType || 'normal',
       orderTypeLabel: orderTypesById.get(order.orderType || 'normal')?.label || '',
-      status: order.status || statusMeta?.label || '',
+      status: mappedLegacyStatus?.status || order.status || statusMeta?.label || '',
       statusType: order.statusType || statusMeta?.statusType || '',
       icon: order.icon || statusMeta?.icon || '',
       isWaiting: Boolean(statusMeta?.isWaiting),
@@ -486,6 +528,7 @@ exports.updateOrder = async (req, res) => {
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
+  normalizeOrderStatusUpdates(updates);
 
   try {
     let order;

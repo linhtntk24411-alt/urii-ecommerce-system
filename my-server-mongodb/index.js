@@ -13,6 +13,7 @@ const http = require('node:http');
 const mongoose = require('mongoose');
 const app = require('./app');
 const { initializeRealtime } = require('./realtime');
+const Order = require('./models/Order');
 const Payment = require('./models/Payment');
 const PaymentTransaction = require('./models/PaymentTransaction');
 const { startPaymentExpirationWorker } = require('./services/paymentExpirationWorker');
@@ -33,7 +34,19 @@ async function start() {
   await mongoose.connect(process.env.MONGO_URI);
   await Promise.all([
     Payment.createIndexes(),
-    PaymentTransaction.createIndexes()
+    PaymentTransaction.createIndexes(),
+    Order.updateMany(
+      { statusId: 'pending', statusType: 'approved' },
+      { $set: { statusId: 'processing', status: 'Đã xác nhận' } }
+    ),
+    Order.updateMany(
+      { statusId: 'pending', statusType: 'completed' },
+      { $set: { statusId: 'completed', status: 'Đã giao' } }
+    ),
+    Order.updateMany(
+      { statusId: 'pending', statusType: 'cancelled' },
+      { $set: { statusId: 'cancelled', status: 'Đã hủy' } }
+    )
   ]);
   const server = http.createServer(app);
   const io = initializeRealtime(server, app.get('allowedOrigins'));

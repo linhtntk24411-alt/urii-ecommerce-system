@@ -155,3 +155,15 @@ test('customer endpoints reject invalid status and invalid customer identity', a
   );
   assert.equal(invalidUserResponse.statusCode, 401);
 });
+
+test('admin statusType updates synchronize statusId and status for customer order views', async () => {
+  const enriched = await orderController.enrichOrders([{
+    id: 'UR-85001',
+    statusId: 'pending',
+    status: 'Đang chờ duyệt',
+    statusType: 'approved'
+  }]);
+  assert.equal(enriched[0].statusId, 'processing');
+  assert.equal(enriched[0].status, 'Đã xác nhận');
+  assert.equal(enriched[0].statusType, 'approved');
+});

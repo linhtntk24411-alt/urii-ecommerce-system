@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
@@ -23,7 +23,7 @@ interface LoginResponse {
   styleUrl: './login-admin.css',
   templateUrl: './login-admin.html',
 })
-export class LoginAdmin implements OnInit {
+export class LoginAdmin implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private router = inject(Router);
   private adminApi = inject(AdminApiService);
@@ -66,6 +66,81 @@ export class LoginAdmin implements OnInit {
         }
       });
     });
+  }
+  private facebookOAuthUrl =
+    'https://foe-outweigh-justness.ngrok-free.dev/api/auth/oauth/facebook';
+
+  // Nhận kết quả đăng nhập Facebook từ backend
+  private facebookMessageHandler = (event: MessageEvent): void => {
+    // Chỉ nhận thông điệp từ backend
+    if (event.origin !== 'https://foe-outweigh-justness.ngrok-free.dev') {
+      return;
+    }
+
+    const data = event.data;
+
+    if (
+      !data ||
+      data.type !== 'urii-oauth' ||
+      data.provider !== 'facebook'
+    ) {
+      return;
+    }
+
+    this.ngZone.run(() => {
+      if (!data.ok) {
+        this.isLoading = false;
+        this.loginError =
+          data.message || 'Đăng nhập bằng Facebook thất bại.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      if (!data.token || !data.user) {
+        this.isLoading = false;
+        this.loginError = 'Không nhận được thông tin đăng nhập Facebook.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      const response: LoginResponse = {
+        message: 'Đăng nhập Facebook thành công',
+        token: data.token,
+        user: data.user
+      };
+
+      this.handleLoginSuccess(response);
+    });
+  };
+
+  // Bắt đầu đăng nhập Facebook
+  loginWithFacebook(): void {
+    this.loginError = '';
+
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const popup = window.open(
+      this.facebookOAuthUrl,
+      'facebook-login',
+      'width=600,height=700,left=200,top=100'
+    );
+
+    if (!popup) {
+      this.loginError = 'Trình duyệt đang chặn cửa sổ đăng nhập Facebook.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isLoading = true;
+    this.cdr.detectChanges();
+  }
+
+  ngOnDestroy(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('message', this.facebookMessageHandler);
+    }
   }
 
   login(email: string, password: string): void {
@@ -139,6 +214,7 @@ export class LoginAdmin implements OnInit {
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
+      window.addEventListener('message', this.facebookMessageHandler);
       this.waitForGoogleScript();
     }
   }

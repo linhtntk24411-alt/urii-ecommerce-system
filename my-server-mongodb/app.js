@@ -24,6 +24,7 @@ const cartRoutes = require('./routes/cartRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
 const allowedOrigins = new Set(
@@ -34,6 +35,18 @@ const allowedOrigins = new Set(
 );
 
 app.disable('x-powered-by');
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    console.log(`${req.method} ${req.originalUrl || req.path} ${res.statusCode} ${Date.now() - startedAt}ms`);
+  });
+  next();
+});
+
+// Mount webhook routes trước CORS/express.json() toàn cục để giữ nguyên rawBody và giới hạn payload riêng
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/webhook', webhookRoutes);
+
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.has(origin)) {
@@ -52,13 +65,6 @@ app.use(cors({
 app.set('allowedOrigins', allowedOrigins);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
-app.use((req, res, next) => {
-  const startedAt = Date.now();
-  res.on('finish', () => {
-    console.log(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - startedAt}ms`);
-  });
-  next();
-});
 app.use('/images', express.static(path.join(__dirname, 'public/images'), {
   maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0
 }));
@@ -287,20 +293,30 @@ app.use((error, req, res, next) => {
     next(error);
     return;
   }
+  const isWebhook = req.path?.startsWith('/api/webhooks') || req.path?.startsWith('/api/webhook');
   if (error.message === 'Origin is not allowed by CORS') {
     res.status(403).json({ message: 'Origin không được phép.' });
     return;
   }
   if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
-    res.status(400).json({ message: 'JSON request không hợp lệ.' });
+    res.status(400).json({
+      ...(isWebhook ? { success: false } : {}),
+      message: 'JSON request không hợp lệ.'
+    });
     return;
   }
   if (error.type === 'entity.too.large') {
-    res.status(413).json({ message: 'Request vượt quá dung lượng cho phép.' });
+    res.status(413).json({
+      ...(isWebhook ? { success: false } : {}),
+      message: 'Request vượt quá dung lượng cho phép.'
+    });
     return;
   }
   console.error(error);
-  res.status(500).json({ message: 'Đã xảy ra lỗi máy chủ.' });
+  res.status(500).json({
+    ...(isWebhook ? { success: false } : {}),
+    message: 'Đã xảy ra lỗi máy chủ.'
+  });
 });
 
 module.exports = app;

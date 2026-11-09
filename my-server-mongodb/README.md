@@ -72,6 +72,53 @@ Admin CRUD endpoints require `Authorization: Bearer <token>` from an admin accou
 
 `GET /api/vouchers` remains public and only returns active, currently available vouchers. `POST /api/chat/match`, `POST /api/chat/sessions`, and `POST /api/chat/sessions/:id/messages` are public chatbot-client operations. User API responses never include password hashes; passwords submitted to the admin user endpoints are bcrypt-hashed before storage.
 
+### Bank-transfer payment API & SePay Webhook Integration
+
+Configure the receiving account and SePay webhook authentication in the backend `.env`; do not put these values in frontend code or commit them to Git:
+
+```dotenv
+PAYMENT_QR_BANK_CODE=
+PAYMENT_QR_ACCOUNT_NUMBER=
+PAYMENT_QR_ACCOUNT_NAME=
+PAYMENT_QR_TEMPLATE=
+SEPAY_WEBHOOK_API_KEY=
+SEPAY_WEBHOOK_SECRET=
+SEPAY_WEBHOOK_TOLERANCE_SECONDS=300
+```
+
+`POST /api/orders/:id/payment` requires the owning customer's bearer token and an existing bank-transfer order. It recalculates product/variant prices, stock, shipping, and any owned, available voucher from MongoDB; client-supplied totals are ignored. In one MongoDB transaction it reserves the requested stock and voucher quota, updates the order's financial snapshots, and creates or reuses the order's Payment. A valid Payment and its reservations last 24 hours. Repeated requests for the same order reuse the active Payment and payment code. The response includes the payment code, server-calculated amount, expiry, and a VietQR image URL; missing account configuration returns `503`. Configure SePay's payment-code parser to recognize the generated `URII` prefix before receiving real transfers.
+
+`GET /api/orders/:id/payment` requires the same ownership and returns the server-side payment status without depending on QR account settings. It does not create or return a QR image. Expiration is processed by the backend worker and also checked during payment creation or status retrieval; expiration releases the stock and voucher reservations once. A subsequent payment request may create a fresh 24-hour Payment attempt with a new payment code. Admin changes to order financial fields first cancel the active Payment and release its reservations. Product stock/variant changes and voucher quota reductions/deletions that would invalidate active reservations are rejected. COD orders do not use this reservation flow.
+
+`POST /api/webhooks/sepay` receives external webhook notifications from SePay with a `64kb` raw-body limit:
+- **Authentication**: Requires SePay API Key header (`Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>`) and/or HMAC-SHA256 raw-body signature (`X-SePay-Signature: sha256=<hex>` with optional `X-SePay-Timestamp` verified against `SEPAY_WEBHOOK_SECRET`). Customer/admin Bearer JWTs are rejected (`401`).
+- **Reconciliation & Atomicity**: Strictly matches incoming (`transferType: "in"`) transfers containing a single exact `URII` + 16 uppercase hex `paymentCode` and `transferAmount === amountDue` while the Payment is `awaiting_payment`, unexpired, on a non-cancelled Order with valid inventory and voucher reservations. Within one MongoDB transaction, it inserts the `PaymentTransaction`, consumes inventory (`reservedStock`) and voucher reservations without double-decrementing `stock`, marks `Payment.statusId = "paid"`, and updates `Order.payment.statusId = "paid"` while leaving `Order.statusId` in its current shop-confirmation flow (`pending`).
+- **Abnormal & Concurrent Transfers**: Outgoing transfers, unknown/wrong `paymentCode`, underpaid/overpaid amounts, transfers arriving after Payment expiration or Order cancellation, duplicate payments to an already-paid Payment, and invalid reservations are durably recorded in `PaymentTransaction` (`needsReview: true` where applicable) without auto-reopening expired/cancelled orders or double-consuming reservations. Duplicate `sepayTransactionId` deliveries are idempotent (`200 { "success": true, "duplicate": true }`). Database errors return `500` so SePay retries according to its Fibonacci schedule.
+
+#### Testing the webhook locally with SePay Test Mode and ngrok
+
+1. Start the backend locally (by default on port `3002`, or the `PORT` configured in `.env`) with `SEPAY_WEBHOOK_API_KEY` set in `.env`.
+2. Expose the local port over HTTPS using `ngrok`:
+   ```sh
+   ngrok http 3002
+   ```
+3. In the SePay Dashboard (**Webhooks** configuration or **Test Mode / Gửi thử Webhook**), set:
+   - **Webhook URL**: `https://<your-ngrok-subdomain>.ngrok-free.app/api/webhooks/sepay`
+   - **Authentication type**: `API Key` with the same value as `SEPAY_WEBHOOK_API_KEY` (and optional `SEPAY_WEBHOOK_SECRET` if HMAC signature is enabled).
+   - **Content-Type**: `application/json`
+4. Create a bank-transfer order and call `POST /api/orders/:id/payment` to obtain its `paymentCode` (e.g. `URII0123456789ABCDEF`) and `amountDue`.
+5. Trigger a test incoming webhook from SePay Test Mode (or `curl`) with `transferType: "in"`, `transferAmount` equal to `amountDue`, and `content` containing the exact `paymentCode`, then verify `GET /api/orders/:id/payment` transitions to `paid`.
+
+Payment and transaction schema indexes are explicitly created during backend startup. Before deployment against a database containing pre-existing payment records, inspect for duplicate order/payment codes and SePay transaction IDs before index creation. Payment creation and reservation lifecycle require a MongoDB deployment that supports transactions (such as a replica set).
+
+To run the reservation race/expiration and SePay webhook integration test against an isolated transaction-capable MongoDB database, set `PAYMENT_TEST_MONGO_URI` and run:
+
+```sh
+node --test test/payment-reservations.integration.test.js
+```
+
+The test uses a unique database name and removes its test documents when it finishes. Do not point it at a production database.
+
 Cart prices and stock are read from the product and its selected variant; client-supplied prices are ignored. Reviews can only be created for products in the customer's successfully delivered orders, and each order/product pair can be reviewed once. Every review stores a 1–5 star rating and the purchased product and variant; text and media are optional. `data/review_orders.json` intentionally has 31 star-only reviews, 20 reviews with text only, and 10 with media (7 image and 3 video reviews). Orders contain customer/product/variant IDs and delivery status, while reviews focus on order/product IDs, rating, comment, and optional media. Product and variant labels, customer details, prices, and other data are joined from their existing fixtures. It includes delivered orders that are both reviewed and not yet reviewed, with every product covered by at least one rating. The development seed inserts this data without replacing existing records. Upload it to Atlas with `npm run upload -- carts`, then `npm run upload -- review-orders`, followed by `npm run upload -- reviews`.
 
 Review creation accepts `orderId`, `productId`, `rating` (integer from 1 to 5), optional `content`, and optional `media` entries (`type: "image" | "video"` and a backend `/images/...` path or HTTP(S) URL). A rating by itself is a valid review. The reviewed variant is taken from the purchased order item, not trusted from the request.

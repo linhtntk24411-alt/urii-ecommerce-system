@@ -204,7 +204,11 @@ exports.getMyAvailableVouchers = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy tài khoản người dùng.' });
     }
 
-    const userVouchers = await UserVoucher.find({ userId, isUsed: false })
+    const userVouchers = await UserVoucher.find({
+      userId,
+      isUsed: false,
+      reservedByPaymentId: null
+    })
       .sort({ claimedAt: -1 })
       .lean();
     const voucherIds = userVouchers.map((userVoucher) => userVoucher.voucherId);

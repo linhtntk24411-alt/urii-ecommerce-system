@@ -231,6 +231,8 @@ test('canonical API routes and supported aliases resolve', async () => {
     ['/api/blog', 'POST'],
     ['/api/orders', 'POST'],
     ['/api/order', 'POST'],
+    ['/api/orders/order-1/payment', 'POST'],
+    ['/api/orders/order-1/payment', 'GET'],
     ['/api/cart', 'GET'],
     ['/api/cart/items', 'POST'],
     ['/api/reviews/mine', 'GET'],
@@ -532,7 +534,7 @@ test('returns only available vouchers claimed by the authenticated account', asy
     select: () => ({ lean: async () => ({ _id: userId, birth: '' }) }),
   }));
   const findClaims = mock.method(UserVoucher, 'find', (query) => {
-    assert.deepEqual(query, { userId, isUsed: false });
+    assert.deepEqual(query, { userId, isUsed: false, reservedByPaymentId: null });
     return { sort: () => ({ lean: async () => claims }) };
   });
   const findVouchers = mock.method(Voucher, 'find', () => ({

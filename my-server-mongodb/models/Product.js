@@ -12,12 +12,14 @@ const productSchema = new mongoose.Schema({
   rating: { type: Number, default: 0, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0, min: 0 },
   stock: { type: Number, default: 0, min: 0 },
+  reservedStock: { type: Number, default: 0, min: 0 },
   description: String,
   specifications: { type: Map, of: String },
   variants: [{ 
     name: String, 
     price: Number, 
     stock: { type: Number, default: 0, min: 0 },
+    reservedStock: { type: Number, default: 0, min: 0 },
     image: String // Link ảnh của từng biến thể
   }]
 }, { timestamps: true });

@@ -1,11 +1,18 @@
 import { CommonModule, isPlatformBrowser, Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AddressArea, AddressLookupService } from '../../core/services/address-lookup.service';
 import { CartItem, CartService } from '../../core/services/cart.service';
-import { CheckoutService, CheckoutVoucher, CreateOrderPayload } from '../../core/services/checkout.service';
+import {
+  CheckoutService,
+  CheckoutVoucher,
+  CreateOrderPayload,
+  OrderPaymentInfo,
+  PaymentStatusId,
+} from '../../core/services/checkout.service';
 import { CheckoutSelectionService } from '../../core/services/checkout-selection.service';
 import { CatalogProduct, ProductCatalogService } from '../../core/services/product-catalog.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -27,6 +34,19 @@ interface DeliveryAddress {
   isDefault: boolean;
 }
 
+interface PersistedQrPaymentSession {
+  orderId: string;
+  orderNumber: string;
+  paymentCode: string;
+  qrCodeUrl: string;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+}
+
+export type CopiedPaymentField = 'accountNumber' | 'amountDue' | 'paymentCode';
+
 @Component({
   selector: 'app-check-out',
   standalone: true,
@@ -34,7 +54,7 @@ interface DeliveryAddress {
   templateUrl: './check-out.html',
   styleUrl: './check-out.css',
 })
-export class CheckOut implements OnInit {
+export class CheckOut implements OnInit, OnDestroy {
   private readonly cart = inject(CartService);
   private readonly catalog = inject(ProductCatalogService);
   private readonly checkout = inject(CheckoutService);
@@ -48,6 +68,11 @@ export class CheckOut implements OnInit {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private currentUserId: string | null = null;
+  private pollingTimer: ReturnType<typeof setInterval> | null = null;
+  private pollingSubscription: Subscription | null = null;
+  private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly pollIntervalMs = 4000;
 
   lines: CheckoutLine[] = [];
   vouchers: CheckoutVoucher[] = [];
@@ -70,6 +95,20 @@ export class CheckOut implements OnInit {
   paymentMethod = 'cod';
   orderSuccess = false;
   orderNumber = '';
+
+  qrCheckoutActive = false;
+  creatingPayment = false;
+  restoringPayment = false;
+  qrPaymentCreateFailed = false;
+  qrImageError = false;
+  paymentError = '';
+  pollingError = '';
+  pollingActive = false;
+  pollingInFlight = false;
+  activePaymentOrderId: string | null = null;
+  paymentInfo: OrderPaymentInfo | null = null;
+  copiedField: CopiedPaymentField | null = null;
+
   addresses: DeliveryAddress[] = [];
   selectedAddressId: string | null = null;
   addressManagerOpen = false;
@@ -99,6 +138,15 @@ export class CheckOut implements OnInit {
     this.loadProvinces();
     this.loadCheckout();
     this.loadVouchers(token);
+    this.tryRestoreActiveQrSession(token);
+  }
+
+  ngOnDestroy(): void {
+    this.stopPaymentPolling();
+    if (this.copyResetTimer !== null) {
+      clearTimeout(this.copyResetTimer);
+      this.copyResetTimer = null;
+    }
   }
 
   private loadCurrentUser(token: string): void {
@@ -622,9 +670,33 @@ export class CheckOut implements OnInit {
     return this.linePrice(line) * line.item.quantity;
   }
 
+  private resolveLineVariantIndex(line: CheckoutLine): number | null {
+    if (typeof line.item.variantIndex === 'number' && line.item.variantIndex >= 0) {
+      return line.item.variantIndex;
+    }
+    if (!line.item.variant || !line.product?.variants?.length) {
+      return null;
+    }
+    const foundIndex = line.product.variants.findIndex((entry) => entry.name === line.item.variant);
+    return foundIndex >= 0 ? foundIndex : null;
+  }
+
   placeOrder(): void {
     this.errorMessage = '';
-    if (this.submitting) return;
+    this.paymentError = '';
+    if (this.submitting || this.creatingPayment) return;
+
+    const token = window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.loginRequired = true;
+      return;
+    }
+
+    if (this.paymentMethod === 'bank_transfer' && this.activePaymentOrderId && this.qrPaymentCreateFailed) {
+      this.requestQrPayment(this.activePaymentOrderId, token);
+      return;
+    }
+
     if (this.lines.length === 0) {
       this.errorMessage = 'Giỏ hàng chưa có sản phẩm để thanh toán.';
       return;
@@ -649,20 +721,33 @@ export class CheckOut implements OnInit {
       return;
     }
 
+    const isBankTransfer = this.paymentMethod === 'bank_transfer';
     const payload: CreateOrderPayload = {
       userName: this.customerName.trim(),
       date: new Date().toISOString(),
       status: 'Đang chờ duyệt',
       statusType: 'pending',
       total: String(Math.round(this.total)),
-      items: this.lines.map((line) => ({
-        productId: line.item.productId,
-        name: line.product?.name ?? '',
-        price: this.linePrice(line),
-        quantity: line.item.quantity,
-        image: line.product?.image ?? '',
-      })),
-      payment: { method: this.paymentMethod, status: 'pending' },
+      items: this.lines.map((line) => {
+        const variantIndex = this.resolveLineVariantIndex(line);
+        return {
+          productId: line.item.productId,
+          name: line.product?.name ?? '',
+          price: this.linePrice(line),
+          quantity: line.item.quantity,
+          image: line.product?.image ?? '',
+          ...(line.item.variant ? { variantName: line.item.variant } : {}),
+          ...(variantIndex !== null ? { variantIndex } : {}),
+        };
+      }),
+      payment: isBankTransfer
+        ? {
+            method: 'bank_transfer',
+            methodId: 'bank_transfer',
+            status: 'Chờ thanh toán',
+            statusId: 'awaiting_payment',
+          }
+        : { method: this.paymentMethod, status: 'pending' },
       shipping: { method: 'standard', fee: this.shippingFee },
       ...(this.orderNote.trim() ? { note: this.orderNote.trim() } : {}),
       ...(this.appliedVoucher
@@ -676,22 +761,31 @@ export class CheckOut implements OnInit {
     };
 
     this.submitting = true;
-    const token = window.localStorage.getItem('authToken')?.trim();
-    if (!token) {
-      this.submitting = false;
-      this.loginRequired = true;
-      return;
-    }
     this.checkout.createOrder(payload, token).subscribe({
       next: (response: unknown) => {
         this.submitting = false;
-        this.orderNumber = this.readOrderNumber(response);
-        this.orderSuccess = true;
+        const createdOrderId = this.readOrderNumber(response);
+        this.orderNumber = createdOrderId;
         if (this.selection.shouldRemoveFromCartAfterCheckout()) {
           this.cart.removePurchasedItems(this.lines.map((line) => line.item));
         }
         this.selection.clear();
         this.lines = [];
+
+        if (isBankTransfer) {
+          if (!createdOrderId) {
+            this.errorMessage = 'Đơn hàng đã tạo nhưng máy chủ không trả về mã đơn hàng để khởi tạo QR.';
+            this.changeDetectorRef.markForCheck();
+            return;
+          }
+          this.activePaymentOrderId = createdOrderId;
+          this.qrCheckoutActive = true;
+          this.requestQrPayment(createdOrderId, token);
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+
+        this.orderSuccess = true;
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
@@ -714,12 +808,413 @@ export class CheckOut implements OnInit {
     });
   }
 
+  requestQrPayment(orderId: string, tokenOverride?: string): void {
+    const token = tokenOverride ?? window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.stopPaymentPolling();
+      this.loginRequired = true;
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.creatingPayment = true;
+    this.paymentError = '';
+    this.pollingError = '';
+    this.qrPaymentCreateFailed = false;
+    this.qrImageError = false;
+    this.activePaymentOrderId = orderId;
+    this.qrCheckoutActive = true;
+
+    this.checkout.createOrderPayment(orderId, token).subscribe({
+      next: (payment) => {
+        this.creatingPayment = false;
+        this.qrPaymentCreateFailed = false;
+        this.paymentInfo = payment;
+        this.orderNumber = this.orderNumber || payment.orderId;
+
+        if (payment.statusId === 'awaiting_payment' && !payment.isExpired) {
+          this.persistQrSession(payment);
+          this.startPaymentPolling(payment.orderId);
+        } else {
+          this.stopPaymentPolling();
+          if (payment.statusId === 'paid' || payment.statusId === 'cancelled') {
+            this.clearPersistedQrSession();
+          }
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        this.creatingPayment = false;
+        this.qrPaymentCreateFailed = true;
+        console.error('Không thể khởi tạo thanh toán QR:', error);
+        this.paymentError = this.formatPaymentApiError(error, 'Không thể tạo mã QR thanh toán.');
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  retryCreateQrPayment(): void {
+    const orderId = this.paymentInfo?.orderId ?? this.activePaymentOrderId;
+    if (!orderId || this.creatingPayment) return;
+    this.requestQrPayment(orderId);
+  }
+
+  recreateExpiredQrPayment(): void {
+    const orderId = this.paymentInfo?.orderId ?? this.activePaymentOrderId;
+    if (!orderId || this.creatingPayment) return;
+    this.requestQrPayment(orderId);
+  }
+
+  startPaymentPolling(orderId: string): void {
+    this.stopPaymentPolling();
+    if (!this.isBrowser || !orderId) return;
+
+    this.pollingActive = true;
+    this.pollingTimer = setInterval(() => {
+      this.pollPaymentOnce(orderId, false);
+    }, this.pollIntervalMs);
+  }
+
+  stopPaymentPolling(): void {
+    if (this.pollingTimer !== null) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+    if (this.pollingSubscription !== null) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+    this.pollingInFlight = false;
+    this.pollingActive = false;
+  }
+
+  checkPaymentStatusNow(): void {
+    const orderId = this.paymentInfo?.orderId ?? this.activePaymentOrderId;
+    if (!orderId) return;
+    this.pollPaymentOnce(orderId, true);
+  }
+
+  private pollPaymentOnce(orderId: string, isManual: boolean): void {
+    if (this.pollingInFlight && !isManual) {
+      return;
+    }
+    if (isManual && this.pollingSubscription !== null) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+
+    const token = window.localStorage.getItem('authToken')?.trim();
+    if (!token) {
+      this.stopPaymentPolling();
+      this.loginRequired = true;
+      this.changeDetectorRef.markForCheck();
+      return;
+    }
+
+    this.pollingInFlight = true;
+    if (isManual) {
+      this.pollingError = '';
+      this.paymentError = '';
+    }
+
+    this.pollingSubscription = this.checkout.getOrderPaymentStatus(orderId, token).subscribe({
+      next: (latest) => {
+        this.pollingInFlight = false;
+        this.pollingError = '';
+        this.paymentError = '';
+        this.paymentInfo = this.mergePaymentWithCachedQr(latest, this.paymentInfo);
+
+        if (latest.statusId === 'paid') {
+          this.stopPaymentPolling();
+          this.clearPersistedQrSession();
+          this.toast.show('Đã nhận thanh toán thành công!');
+        } else if (latest.statusId === 'expired' || latest.isExpired) {
+          this.stopPaymentPolling();
+        } else if (latest.statusId === 'cancelled') {
+          this.stopPaymentPolling();
+          this.clearPersistedQrSession();
+        } else if (isManual) {
+          this.toast.show('Hệ thống vẫn đang chờ nhận giao dịch chuyển khoản.');
+          if (!this.pollingActive) {
+            this.startPaymentPolling(orderId);
+          }
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        this.pollingInFlight = false;
+        console.error('Lỗi khi kiểm tra trạng thái thanh toán:', error);
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403 || error.status === 404)) {
+          this.stopPaymentPolling();
+          this.pollingError = this.formatPaymentApiError(error, 'Không thể kiểm tra trạng thái thanh toán.');
+        } else if (error instanceof HttpErrorResponse && error.status === 0) {
+          this.pollingError = 'Mất kết nối mạng khi kiểm tra trạng thái thanh toán. Bạn có thể bấm "Kiểm tra lại trạng thái" để thử lại.';
+        } else {
+          this.pollingError = this.formatPaymentApiError(
+            error,
+            'Không thể đồng bộ trạng thái thanh toán tạm thời. Vui lòng thử kiểm tra lại.',
+          );
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private tryRestoreActiveQrSession(token: string): void {
+    const saved = this.readPersistedQrSession();
+    if (!saved || !saved.orderId) return;
+
+    this.paymentMethod = 'bank_transfer';
+    this.activePaymentOrderId = saved.orderId;
+    this.orderNumber = saved.orderNumber || saved.orderId;
+    this.qrCheckoutActive = true;
+    this.restoringPayment = true;
+    this.paymentError = '';
+    this.pollingError = '';
+
+    this.checkout.getOrderPaymentStatus(saved.orderId, token).subscribe({
+      next: (latest) => {
+        this.restoringPayment = false;
+        const merged = this.mergePaymentWithPersistedSession(latest, saved);
+        this.paymentInfo = merged;
+
+        if (merged.statusId === 'awaiting_payment' && !merged.isExpired) {
+          if (merged.qrCodeUrl) {
+            this.persistQrSession(merged);
+            this.startPaymentPolling(merged.orderId);
+          } else {
+            this.requestQrPayment(merged.orderId, token);
+          }
+        } else {
+          this.stopPaymentPolling();
+          if (merged.statusId === 'paid' || merged.statusId === 'cancelled') {
+            this.clearPersistedQrSession();
+          }
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error: unknown) => {
+        this.restoringPayment = false;
+        console.error('Không thể khôi phục phiên thanh toán QR:', error);
+        if (error instanceof HttpErrorResponse && (error.status === 404 || error.status === 403)) {
+          this.clearPersistedQrSession();
+          this.qrCheckoutActive = false;
+          this.activePaymentOrderId = null;
+          this.errorMessage = 'Không tìm thấy phiên thanh toán trước đó. Vui lòng kiểm tra mục Đơn hàng của bạn.';
+        } else {
+          this.paymentError = this.formatPaymentApiError(
+            error,
+            'Không thể khôi phục trạng thái thanh toán do lỗi kết nối. Vui lòng bấm "Kiểm tra lại trạng thái".',
+          );
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+    });
+  }
+
+  private mergePaymentWithCachedQr(
+    latest: OrderPaymentInfo,
+    previous: OrderPaymentInfo | null,
+  ): OrderPaymentInfo {
+    if (!previous || previous.paymentCode !== latest.paymentCode) {
+      return latest;
+    }
+    const keepQr = latest.statusId === 'awaiting_payment' && !latest.isExpired;
+    return {
+      ...latest,
+      qrCodeUrl: latest.qrCodeUrl || (keepQr ? previous.qrCodeUrl : ''),
+      bankCode: latest.bankCode || previous.bankCode,
+      bankName: latest.bankName || previous.bankName,
+      accountNumber: latest.accountNumber || previous.accountNumber,
+      accountName: latest.accountName || previous.accountName,
+    };
+  }
+
+  private mergePaymentWithPersistedSession(
+    latest: OrderPaymentInfo,
+    saved: PersistedQrPaymentSession,
+  ): OrderPaymentInfo {
+    if (saved.paymentCode && saved.paymentCode !== latest.paymentCode) {
+      return latest;
+    }
+    const keepQr = latest.statusId === 'awaiting_payment' && !latest.isExpired;
+    return {
+      ...latest,
+      qrCodeUrl: latest.qrCodeUrl || (keepQr ? saved.qrCodeUrl : ''),
+      bankCode: latest.bankCode || saved.bankCode,
+      bankName: latest.bankName || saved.bankName,
+      accountNumber: latest.accountNumber || saved.accountNumber,
+      accountName: latest.accountName || saved.accountName,
+    };
+  }
+
+  onQrImageError(): void {
+    this.qrImageError = true;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  async copyPaymentField(field: CopiedPaymentField, rawValue: string, successMessage: string): Promise<void> {
+    const value = rawValue.trim();
+    if (!value || !this.isBrowser) return;
+
+    let copied = false;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(value);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+
+    if (!copied) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        copied = false;
+      }
+    }
+
+    if (copied) {
+      this.copiedField = field;
+      if (this.copyResetTimer !== null) {
+        clearTimeout(this.copyResetTimer);
+      }
+      this.copyResetTimer = setTimeout(() => {
+        this.copiedField = null;
+        this.changeDetectorRef.markForCheck();
+      }, 2000);
+      this.toast.show(successMessage);
+      this.changeDetectorRef.markForCheck();
+    } else {
+      this.toast.show('Không thể tự động sao chép. Vui lòng sao chép thủ công.');
+    }
+  }
+
+  paymentStatusLabel(statusId: PaymentStatusId | undefined): string {
+    switch (statusId) {
+      case 'awaiting_payment':
+        return 'Đang chờ thanh toán';
+      case 'paid':
+        return 'Đã thanh toán';
+      case 'expired':
+        return 'Đã hết hạn';
+      case 'cancelled':
+        return 'Đã hủy';
+      default:
+        return 'Đang xử lý';
+    }
+  }
+
+  exitQrCheckout(): void {
+    this.stopPaymentPolling();
+    this.clearPersistedQrSession();
+    this.qrCheckoutActive = false;
+    this.paymentInfo = null;
+    this.activePaymentOrderId = null;
+    this.paymentError = '';
+    this.pollingError = '';
+    this.qrPaymentCreateFailed = false;
+  }
+
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
       maximumFractionDigits: 0,
     }).format(amount);
+  }
+
+  private qrSessionStorageKey(): string | null {
+    if (!this.currentUserId) return null;
+    return `activeQrPayment:v1:user:${this.currentUserId}`;
+  }
+
+  private persistQrSession(payment: OrderPaymentInfo): void {
+    const key = this.qrSessionStorageKey();
+    if (!key || !this.isBrowser) return;
+    const sessionData: PersistedQrPaymentSession = {
+      orderId: payment.orderId,
+      orderNumber: this.orderNumber || payment.orderId,
+      paymentCode: payment.paymentCode,
+      qrCodeUrl: payment.qrCodeUrl,
+      bankCode: payment.bankCode,
+      bankName: payment.bankName,
+      accountNumber: payment.accountNumber,
+      accountName: payment.accountName,
+    };
+    try {
+      window.localStorage.setItem(key, JSON.stringify(sessionData));
+    } catch (error) {
+      console.error('Không thể lưu thông tin phiên QR:', error);
+    }
+  }
+
+  private readPersistedQrSession(): PersistedQrPaymentSession | null {
+    const key = this.qrSessionStorageKey();
+    if (!key || !this.isBrowser) return null;
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed: unknown = JSON.parse(raw);
+      if (!this.isRecord(parsed) || typeof parsed['orderId'] !== 'string' || !parsed['orderId'].trim()) {
+        return null;
+      }
+      return {
+        orderId: parsed['orderId'].trim(),
+        orderNumber: typeof parsed['orderNumber'] === 'string' ? parsed['orderNumber'].trim() : parsed['orderId'].trim(),
+        paymentCode: typeof parsed['paymentCode'] === 'string' ? parsed['paymentCode'].trim() : '',
+        qrCodeUrl: typeof parsed['qrCodeUrl'] === 'string' ? parsed['qrCodeUrl'].trim() : '',
+        bankCode: typeof parsed['bankCode'] === 'string' ? parsed['bankCode'].trim() : '',
+        bankName: typeof parsed['bankName'] === 'string' ? parsed['bankName'].trim() : '',
+        accountNumber: typeof parsed['accountNumber'] === 'string' ? parsed['accountNumber'].trim() : '',
+        accountName: typeof parsed['accountName'] === 'string' ? parsed['accountName'].trim() : '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private clearPersistedQrSession(): void {
+    const key = this.qrSessionStorageKey();
+    if (!key || !this.isBrowser) return;
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors on cleanup
+    }
+  }
+
+  private formatPaymentApiError(error: unknown, fallback: string): string {
+    const serverMessage = this.readServerMessage(error);
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 0) {
+        return 'Không kết nối được máy chủ thanh toán. Vui lòng kiểm tra kết nối mạng và thử lại.';
+      }
+      if (error.status === 401) {
+        return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.';
+      }
+      if (error.status === 403) {
+        return serverMessage || 'Bạn không có quyền truy cập thông tin thanh toán của đơn hàng này.';
+      }
+      if (error.status === 404) {
+        return serverMessage || 'Không tìm thấy đơn hàng hoặc thông tin thanh toán.';
+      }
+      if (error.status === 409) {
+        return serverMessage || 'Không thể khởi tạo thanh toán cho trạng thái đơn hàng hiện tại.';
+      }
+      if (error.status === 503) {
+        return serverMessage || 'Cổng thanh toán QR đang tạm thời bảo trì. Vui lòng thử lại sau.';
+      }
+    }
+    return serverMessage ? `${fallback} (${serverMessage})` : fallback;
   }
 
   private persistAddresses(): void {

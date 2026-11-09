@@ -31,6 +31,15 @@ const userVoucherSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  reservedByPaymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment',
+    default: null
+  },
+  reservedUntil: {
+    type: Date,
+    default: null
+  },
   usedAt: {
     type: Date,
     default: null

@@ -700,6 +700,7 @@ exports.oauthCallback = async (req, res) => {
     let user = null;
 
     if (provider === 'google') {
+      console.log('ĐANG CHẠY OAUTH CALLBACK:', provider);
       if (!EMAIL_PATTERN.test(email) || identity.emailVerified !== true) {
         sendOAuthCallbackResult(req, res, 401, provider, {
           message: 'Nhà cung cấp không trả về danh tính/email hợp lệ.'
@@ -754,6 +755,7 @@ exports.oauthCallback = async (req, res) => {
         await user.save();
       }
     } else if (provider === 'facebook') {
+      console.log('ĐANG VÀO NHÁNH FACEBOOK');
       const linkUserId = verifyLinkUser(linkCookieToken);
       if (linkUserId) {
         const currentUser = await User.findById(linkUserId).select('+password');
@@ -794,9 +796,9 @@ exports.oauthCallback = async (req, res) => {
           });
           return;
         }
-        if (linkedByProviderId.role !== 'user') {
+        if (!['user', 'admin'].includes(linkedByProviderId.role)) {
           sendOAuthCallbackResult(req, res, 403, provider, {
-            message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
+            message: 'Tài khoản không có quyền đăng nhập qua OAuth.'
           });
           return;
         }

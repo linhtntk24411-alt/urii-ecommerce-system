@@ -26,6 +26,7 @@ const mongoose = require('mongoose');
 const { randomInt } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 const paymentLifecycleService = require('../services/paymentLifecycleService');
 
 function generateOrderId() {
@@ -646,6 +647,49 @@ exports.requestReturnOrder = async (req, res) => {
   }
 };
 
+async function notifyUserOnOrderStatusChange(order, newStatusId) {
+  if (!order || !order.userId || !newStatusId) return;
+  const orderCode = String(order.id || order._id).slice(-8);
+
+  if (newStatusId === 'processing') {
+    await createUserNotification({
+      userId: order.userId,
+      typeId: 'USER_ORDER_CONFIRMED',
+      reference: { orderId: String(order._id || order.id) },
+      title: `Đơn hàng #${orderCode} đã được xác nhận`,
+      message: `Shop đã xác nhận đơn hàng #${orderCode} và đang đóng gói chuẩn bị giao hàng.`,
+      actionUrl: `/orders`
+    });
+  } else if (newStatusId === 'shipping') {
+    await createUserNotification({
+      userId: order.userId,
+      typeId: 'USER_ORDER_SHIPPING',
+      reference: { orderId: String(order._id || order.id) },
+      title: `Đơn hàng #${orderCode} đang được giao`,
+      message: `Đơn hàng #${orderCode} đã được bàn giao cho đơn vị vận chuyển.`,
+      actionUrl: `/orders`
+    });
+  } else if (newStatusId === 'completed') {
+    await createUserNotification({
+      userId: order.userId,
+      typeId: 'USER_ORDER_DELIVERED',
+      reference: { orderId: String(order._id || order.id) },
+      title: `Giao hàng thành công #${orderCode}`,
+      message: `Đơn hàng #${orderCode} đã giao thành công. Cảm ơn bạn đã mua sắm tại Urii!`,
+      actionUrl: `/orders`
+    });
+  } else if (newStatusId === 'cancelled') {
+    await createUserNotification({
+      userId: order.userId,
+      typeId: 'USER_ORDER_CANCEL_APPROVED',
+      reference: { orderId: String(order._id || order.id) },
+      title: `Đã hủy đơn hàng #${orderCode}`,
+      message: `Đơn hàng #${orderCode} đã được chuyển sang trạng thái đã hủy.`,
+      actionUrl: `/orders`
+    });
+  }
+}
+
 exports.updateOrder = async (req, res) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     res.status(400).json({ message: 'Dữ liệu đơn hàng không hợp lệ.' });
@@ -684,7 +728,13 @@ exports.updateOrder = async (req, res) => {
           res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
           return;
         }
-        emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
+        if (updates.statusId) {
+          notifyUserOnOrderStatusChange(order, updates.statusId).catch(console.error);
+        }
+        emitCrudChange('orders', 'updated', order._id, {
+          userId: order.userId,
+          status: order.status
+        });
         const [enriched] = await enrichOrders([order.toObject()]);
         res.json(enriched);
         return;
@@ -753,7 +803,13 @@ exports.updateOrder = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
     }
-    emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
+    if (updates.statusId) {
+      notifyUserOnOrderStatusChange(order, updates.statusId).catch(console.error);
+    }
+    emitCrudChange('orders', 'updated', order._id, {
+      userId: order.userId,
+      status: order.status
+    });
     const [enriched] = await enrichOrders([order.toObject()]);
     res.json(enriched);
   } catch (error) {

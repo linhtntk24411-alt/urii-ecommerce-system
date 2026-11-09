@@ -1,7 +1,7 @@
 import { UserSocketService } from '../../../core/services/user-socket.service';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectorRef, Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 
@@ -44,7 +44,8 @@ const REQUEST_STATUS_LABELS = new Map(
   styleUrl: './custom-orders.css',
   templateUrl: './custom-orders.html',
 })
-export class CustomOrders implements OnInit {
+export class CustomOrders implements OnInit, OnDestroy {
+  private refreshTimer: any;
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -84,7 +85,69 @@ export class CustomOrders implements OnInit {
       this.requiresLogin = false;
       if (this.requestSlug) this.loadRequest(this.requestSlug);
       else this.loadRequests();
+      this.startAutoRefresh();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
+  }
+
+  private startAutoRefresh(): void {
+    this.stopAutoRefresh();
+    if (!this.isBrowser) return;
+    this.refreshTimer = setInterval(() => {
+      this.refreshSilently();
+    }, 4000);
+  }
+
+  private stopAutoRefresh(): void {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  private refreshSilently(): void {
+    if (!this.isBrowser || this.isLoading || !this.getToken()) return;
+    const token = this.getToken();
+    if (!token) return;
+
+    if (this.requestSlug) {
+      this.http.get<unknown>(`/api/custom-orders/mine/${encodeURIComponent(this.requestSlug)}`, {
+        headers: this.authorizationHeaders(token)
+      }).subscribe({
+        next: (res) => {
+          const parsed = this.parseRequest(res);
+          if (parsed) {
+            this.activeRequest = parsed;
+            this.changeDetectorRef.markForCheck();
+          }
+        },
+        error: () => {}
+      });
+    } else {
+      let params = new HttpParams().set('page', this.currentPage).set('limit', 5);
+      if (this.selectedStatus) {
+        params = params.set('status', this.selectedStatus);
+      }
+      this.http.get<unknown>('/api/custom-orders/mine', {
+        headers: this.authorizationHeaders(token),
+        params
+      }).subscribe({
+        next: (res) => {
+          const pageData = this.parsePage(res);
+          if (pageData) {
+            this.requests = pageData.orders;
+            this.totalPages = pageData.totalPages;
+            this.totalCount = pageData.total;
+            this.activeCount = pageData.activeCount;
+            this.changeDetectorRef.markForCheck();
+          }
+        },
+        error: () => {}
+      });
+    }
   }
 
   loadRequests(page = 1): void {

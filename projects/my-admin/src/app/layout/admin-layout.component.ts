@@ -1,8 +1,8 @@
-import { Component, inject, HostListener, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Import để dùng *ngIf, *ngFor
+import { Component, HostListener, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common'; // Import để dùng *ngIf, *ngFor
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AdminApiService } from '../core/services/admin-api.service';
-import { AdminSocketService } from '../core/services/admin-socket.service';
+import { AdminRealtimeService } from '../core/services/admin-realtime.service';
 
 type AdminSearchType = 'order' | 'user' | 'product' | 'promotion' | 'blog' | 'comment' | 'map';
 type AdminSearchTab = 'all' | AdminSearchType;
@@ -23,16 +23,21 @@ interface AdminSearchResult {
   templateUrl: './admin-layout.component.html',
   styleUrls: ['./admin-layout.component.css']
 })
-export class AdminLayoutComponent implements OnInit {
-  private readonly socket = inject(AdminSocketService);
+export class AdminLayoutComponent implements OnInit, OnDestroy {
+  private notificationPollInterval: any;
+  private realtimeSub: any;
   constructor(
     private adminApi: AdminApiService,
-    private router: Router
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: object,
+    private adminRealtime: AdminRealtimeService
   ) {}
   ngOnInit(): void {
     this.loadNotifications();
-    this.socket.onCrudChange().subscribe(() => {
-      this.loadNotifications();
+    this.realtimeSub = this.adminRealtime.crudChanged$.subscribe((event) => {
+      if (event.resource === 'notifications') {
+        this.loadNotifications(true);
+      }
     });
 
     // Tải đơn hàng
@@ -95,6 +100,19 @@ export class AdminLayoutComponent implements OnInit {
 
     // Tải thông báo ngay khi vào trang để hiển thị badge số lượng thông báo
     this.loadNotifications();
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.notificationPollInterval = setInterval(() => {
+        this.loadNotifications(true);
+      }, 3500);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.realtimeSub?.unsubscribe();
+    if (this.notificationPollInterval) {
+      clearInterval(this.notificationPollInterval);
+    }
   }
 
   // Trạng thái đóng/mở menu trên mobile
@@ -165,12 +183,16 @@ export class AdminLayoutComponent implements OnInit {
   isLoadingNotifications = false;
   private isMarkingNotificationsRead = false;
 
-  loadNotifications(): void {
-    this.notificationLoadError = '';
-    this.isLoadingNotifications = true;
+  loadNotifications(silent = false): void {
+    if (!silent) {
+      this.notificationLoadError = '';
+      this.isLoadingNotifications = true;
+    }
     this.adminApi.getAdminNotifications().subscribe({
       next: (response: any) => {
-        this.isLoadingNotifications = false;
+        if (!silent) {
+          this.isLoadingNotifications = false;
+        }
         const notificationList = Array.isArray(response)
           ? response
           : Array.isArray(response?.notifications)
@@ -178,10 +200,12 @@ export class AdminLayoutComponent implements OnInit {
             : null;
 
         if (!notificationList) {
-          this.notificationLoadError = 'Máy chủ trả về danh sách thông báo không hợp lệ.';
-          console.error('API thông báo trả về dữ liệu không hợp lệ:', response);
-          this.notifications = [];
-          this.unreadCount = 0;
+          if (!silent) {
+            this.notificationLoadError = 'Máy chủ trả về danh sách thông báo không hợp lệ.';
+            console.error('API thông báo trả về dữ liệu không hợp lệ:', response);
+            this.notifications = [];
+            this.unreadCount = 0;
+          }
           return;
         }
 
@@ -199,11 +223,13 @@ export class AdminLayoutComponent implements OnInit {
           : this.notifications.filter(notification => !notification.isRead).length;
       },
       error: (error) => {
-        this.isLoadingNotifications = false;
-        console.error('Lỗi tải thông báo quản trị:', error);
-        this.notificationLoadError = 'Không thể tải thông báo. Vui lòng thử lại sau.';
-        this.notifications = [];
-        this.unreadCount = 0;
+        if (!silent) {
+          this.isLoadingNotifications = false;
+          console.error('Lỗi tải thông báo quản trị:', error);
+          this.notificationLoadError = 'Không thể tải thông báo. Vui lòng thử lại sau.';
+          this.notifications = [];
+          this.unreadCount = 0;
+        }
       }
     });
   }

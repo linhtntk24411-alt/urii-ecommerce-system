@@ -5,12 +5,25 @@ let ioInstance;
 let adminNamespace;
 let userNamespace;
 
+function joinChatRoom(socket, sessionId) {
+  if (!sessionId) return;
+  socket.join(`chat:${sessionId}`);
+  socket.join(`chat_${sessionId}`);
+}
+
+function leaveChatRoom(socket, sessionId) {
+  if (!sessionId) return;
+  socket.leave(`chat:${sessionId}`);
+  socket.leave(`chat_${sessionId}`);
+}
+
 function initializeRealtime(server, allowedOrigins) {
   const io = new Server(server, {
     cors: {
       origin(origin, callback) {
         callback(null, !origin || allowedOrigins.has(origin));
-      }
+      },
+      credentials: true
     },
     allowRequest(request, callback) {
       const origin = request.headers.origin;
@@ -19,8 +32,6 @@ function initializeRealtime(server, allowedOrigins) {
   });
 
   ioInstance = io;
-
-  // 1. Admin Namespace (/admin) - Bắt buộc token Admin
   adminNamespace = io.of('/admin');
   adminNamespace.use((socket, next) => {
     const token = socket.handshake.auth?.token;
@@ -43,47 +54,49 @@ function initializeRealtime(server, allowedOrigins) {
   });
 
   adminNamespace.on('connection', (socket) => {
-    socket.on('join:chat', (sessionId) => {
-      if (sessionId) socket.join(`chat:${sessionId}`);
-    });
-    socket.on('leave:chat', (sessionId) => {
-      if (sessionId) socket.leave(`chat:${sessionId}`);
-    });
+    socket.join('admins');
+    socket.on('join:chat', (sessionId) => joinChatRoom(socket, sessionId));
+    socket.on('leave:chat', (sessionId) => leaveChatRoom(socket, sessionId));
+    socket.on('chat:join', (sessionId) => joinChatRoom(socket, sessionId));
+    socket.on('chat:leave', (sessionId) => leaveChatRoom(socket, sessionId));
   });
 
-  // 2. User Namespace (/user) và Root (/) - Cho phép cả User đăng nhập & khách vãng lai
   userNamespace = io.of('/user');
-  const setupUserSocket = (nsp) => {
-    nsp.use((socket, next) => {
+  const setupUserSocket = (namespace) => {
+    namespace.use((socket, next) => {
       const token = socket.handshake.auth?.token;
       if (token && process.env.JWT_SECRET) {
         try {
           const user = jwt.verify(token, process.env.JWT_SECRET);
           socket.user = user;
-          socket.userId = String(user.id || user._id);
+          socket.userId = String(user.id || user._id || '');
         } catch {
-          // Token không hợp lệ thì coi như guest
+          // Invalid or expired tokens connect as guests.
         }
       }
       next();
     });
 
-    nsp.on('connection', (socket) => {
+    namespace.on('connection', (socket) => {
+      socket.join('public');
       if (socket.userId) {
         socket.join(`user:${socket.userId}`);
+        socket.join(`user_${socket.userId}`);
       }
-      socket.join('public');
+      const email = socket.user?.email;
+      if (email) {
+        socket.join(`email_${email.trim().toLowerCase()}`);
+      }
 
-      socket.on('join:chat', (sessionId) => {
-        if (sessionId) socket.join(`chat:${sessionId}`);
-      });
-      socket.on('leave:chat', (sessionId) => {
-        if (sessionId) socket.leave(`chat:${sessionId}`);
-      });
+      socket.on('join:chat', (sessionId) => joinChatRoom(socket, sessionId));
+      socket.on('leave:chat', (sessionId) => leaveChatRoom(socket, sessionId));
+      socket.on('chat:join', (sessionId) => joinChatRoom(socket, sessionId));
+      socket.on('chat:leave', (sessionId) => leaveChatRoom(socket, sessionId));
       socket.on('identify', (userId) => {
         if (userId) {
           socket.userId = String(userId);
           socket.join(`user:${socket.userId}`);
+          socket.join(`user_${socket.userId}`);
         }
       });
     });
@@ -91,7 +104,6 @@ function initializeRealtime(server, allowedOrigins) {
 
   setupUserSocket(io);
   setupUserSocket(userNamespace);
-
   return io;
 }
 
@@ -101,26 +113,46 @@ function emitCrudChange(resource, action, id, extraData = {}) {
   ioInstance?.emit('crud:changed', payload);
   userNamespace?.emit('crud:changed', payload);
 
-  // Nếu là sự kiện chat
+  if (['products', 'maps', 'categories', 'blogs'].includes(resource)) {
+    userNamespace?.emit('catalog:updated', payload);
+  }
+
   if (resource === 'chat') {
     adminNamespace?.emit('chat:update', payload);
     ioInstance?.to(`chat:${id}`).emit('chat:update', payload);
+    ioInstance?.to(`chat_${id}`).emit('chat:update', payload);
     userNamespace?.to(`chat:${id}`).emit('chat:update', payload);
+    userNamespace?.to(`chat_${id}`).emit('chat:update', payload);
   }
 
-  // Nếu có đích danh userId (ví dụ thông báo, cập nhật đơn hàng)
-  if (extraData?.userId) {
-    const userTarget = `user:${extraData.userId}`;
-    ioInstance?.to(userTarget).emit('user:update', payload);
-    userNamespace?.to(userTarget).emit('user:update', payload);
+  if (extraData.userId) {
+    emitToUser(extraData.userId, 'user:update', payload);
   }
 }
 
 function emitToUser(userId, event, data) {
   if (!userId) return;
-  const userTarget = `user:${userId}`;
-  ioInstance?.to(userTarget).emit(event, data);
-  userNamespace?.to(userTarget).emit(event, data);
+  const id = String(userId);
+  ioInstance?.to(`user:${id}`).emit(event, data);
+  ioInstance?.to(`user_${id}`).emit(event, data);
+  userNamespace?.to(`user:${id}`).emit(event, data);
+  userNamespace?.to(`user_${id}`).emit(event, data);
+}
+
+function emitToUserEmail(email, event, payload) {
+  if (!email) return;
+  const room = `email_${email.trim().toLowerCase()}`;
+  ioInstance?.to(room).emit(event, payload);
+  userNamespace?.to(room).emit(event, payload);
+}
+
+function emitToSession(sessionId, event, payload) {
+  if (!sessionId) return;
+  for (const room of [`chat:${sessionId}`, `chat_${sessionId}`]) {
+    ioInstance?.to(room).emit(event, payload);
+    userNamespace?.to(room).emit(event, payload);
+  }
+  adminNamespace?.emit(event, { sessionId, ...payload });
 }
 
 function broadcastEvent(event, data) {
@@ -130,8 +162,10 @@ function broadcastEvent(event, data) {
 }
 
 module.exports = {
+  initializeRealtime,
   emitCrudChange,
   emitToUser,
-  broadcastEvent,
-  initializeRealtime
+  emitToUserEmail,
+  emitToSession,
+  broadcastEvent
 };

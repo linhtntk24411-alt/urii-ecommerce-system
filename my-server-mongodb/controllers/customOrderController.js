@@ -7,6 +7,7 @@ const { getPagination } = require('../utils/pagination');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { isDataImageUrl, saveDataUrlImage } = require('../utils/imageUpload');
 const { emitCrudChange } = require('../realtime');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 
 const CUSTOM_ORDER_STATUSES = ['pending', 'quoted', 'processing', 'completed', 'cancelled'];
 const ACTIVE_CUSTOM_ORDER_STATUSES = ['pending', 'quoted', 'processing'];
@@ -323,6 +324,43 @@ exports.getCustomOrderById = async (req, res) => {
   }
 };
 
+async function notifyUserOnCustomOrderStatusChange(customOrder, newStatus) {
+  if (!customOrder || (!customOrder.userId && !customOrder.email) || !newStatus) return;
+  const requestCode = String(customOrder.id || customOrder._id).slice(-8);
+
+  if (newStatus === 'quoted') {
+    await createUserNotification({
+      userId: customOrder.userId,
+      userEmail: customOrder.email,
+      typeId: 'USER_CUSTOM_ORDER_QUOTED',
+      reference: { customOrderId: String(customOrder.id || customOrder._id) },
+      title: `Đã có báo giá yêu cầu custom #${requestCode}`,
+      message: `Urii đã cập nhật bảng màu và báo giá cho yêu cầu custom #${requestCode}. Hãy kiểm tra và xác nhận nhé!`,
+      actionUrl: `/custom-order-list`
+    });
+  } else if (newStatus === 'processing') {
+    await createUserNotification({
+      userId: customOrder.userId,
+      userEmail: customOrder.email,
+      typeId: 'USER_CUSTOM_ORDER_PROCESSING',
+      reference: { customOrderId: String(customOrder.id || customOrder._id) },
+      title: `Đơn custom #${requestCode} đang được chế tác`,
+      message: `Xưởng Urii đang tiến hành xếp hạt và chế tác mẫu custom #${requestCode} của bạn.`,
+      actionUrl: `/custom-order-list`
+    });
+  } else if (newStatus === 'completed') {
+    await createUserNotification({
+      userId: customOrder.userId,
+      userEmail: customOrder.email,
+      typeId: 'USER_CUSTOM_ORDER_COMPLETED',
+      reference: { customOrderId: String(customOrder.id || customOrder._id) },
+      title: `Hoàn thiện đơn custom #${requestCode}`,
+      message: `Bộ sản phẩm custom #${requestCode} đã hoàn tất chế tác và sẵn sàng giao đến bạn!`,
+      actionUrl: `/custom-order-list`
+    });
+  }
+}
+
 exports.updateCustomOrder = async (req, res) => {
   if (!isRecord(req.body)) {
     res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
@@ -361,7 +399,14 @@ exports.updateCustomOrder = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }
-    emitCrudChange('customOrders', 'updated', customOrder.id, { userId: customOrder.userId, status: customOrder.status, quotedPrice: customOrder.quotedPrice });
+    if (updates.status) {
+      notifyUserOnCustomOrderStatusChange(customOrder, updates.status).catch(console.error);
+    }
+    emitCrudChange('customOrders', 'updated', customOrder.id, {
+      userId: customOrder.userId,
+      status: customOrder.status,
+      quotedPrice: customOrder.quotedPrice
+    });
     const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
     res.json(enriched);
   } catch (error) {

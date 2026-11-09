@@ -10,6 +10,7 @@ router.post('/match', c.matchFaq);
 router.post('/ai', c.askAi);
 router.post('/request-agent', c.requestAgent);
 router.post('/sessions/:id/request-agent', c.requestAgent);
+router.post('/sessions/:id/cancel-agent', c.cancelAgent);
 router.get('/sessions/:id', c.getSessionById);
 router.post('/sessions', c.createOrUpdateSession);
 router.post('/sessions/:id/messages', c.addMessage);

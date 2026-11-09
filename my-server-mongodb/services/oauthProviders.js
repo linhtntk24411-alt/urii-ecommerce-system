@@ -142,6 +142,9 @@ async function exchangeAuthorizationCode(provider, code) {
   const profile = await fetchJson(config.profileEndpoint, {
     headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
   });
+  if (provider === 'facebook') {
+    console.log('FACEBOOK USER ID:', profile.id);
+  }
 
   if (provider === 'google') {
     return {

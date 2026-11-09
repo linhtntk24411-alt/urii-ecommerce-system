@@ -46,6 +46,8 @@ export const routes: Routes = [
   { path: 'about', component: About },
   { path: 'account/orders', redirectTo: 'orders', pathMatch: 'full' },
   { path: 'account/profile', redirectTo: 'profile', pathMatch: 'full' },
+  { path: 'custom-orders', redirectTo: 'custom-order-list', pathMatch: 'full' },
+  { path: 'chat', redirectTo: 'support', pathMatch: 'full' },
   {
     path: '',
     component: SidebarAccount,

@@ -1,5 +1,5 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectorRef, Component, DestroyRef, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FavoriteProductsService } from '../../core/services/favorite-products.service';
@@ -43,7 +43,8 @@ type SortOption = 'popular' | 'price-asc' | 'price-desc' | 'sale';
   templateUrl: './product.html',
   styleUrl: './product.css',
 })
-export class Product implements OnInit {
+export class Product implements OnInit, OnDestroy {
+  private productPollTimer: any;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -92,6 +93,9 @@ export class Product implements OnInit {
 
     if (this.isBrowser) {
       void this.loadProducts();
+      this.productPollTimer = setInterval(() => {
+        void this.refreshProductsSilently();
+      }, 4000);
     }
   }
 
@@ -322,6 +326,31 @@ export class Product implements OnInit {
       console.error('Không thể chuẩn bị sản phẩm thanh toán:', error);
       this.toast.show('Không thể chuyển đến thanh toán. Vui lòng thử lại.', 'error');
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.productPollTimer) {
+      clearInterval(this.productPollTimer);
+    }
+  }
+
+  private async refreshProductsSilently(): Promise<void> {
+    if (!this.isBrowser || this.loading) return;
+    try {
+      const response = await window.fetch('/api/products');
+      if (!response.ok) return;
+      const products = this.parseProducts(await response.json());
+      const currentSig = this.allProducts.map(p => `${p.id}_${p.currentPrice || p.originalPrice}_${p.stock}`).join('|');
+      const newSig = products.map(p => `${p.id}_${p.currentPrice || p.originalPrice}_${p.stock}`).join('|');
+      if (currentSig !== newSig) {
+        this.allProducts = products;
+        try {
+          window.localStorage.setItem('products', JSON.stringify(products));
+        } catch (_) {}
+        this.applyFilters();
+        this.changeDetectorRef.markForCheck();
+      }
+    } catch (_) {}
   }
 
   private applyFilters(): void {

@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 const { generateAiReply } = require('../services/aiChatService');
 
 function isRecord(value) {
@@ -224,6 +225,17 @@ exports.addMessage = async (req, res) => {
     if (msgSender === 'admin') {
       session.unreadCount = 0;
       session.status = 'active';
+      if (session.userId || session.userEmail) {
+        createUserNotification({
+          userId: session.userId,
+          userEmail: session.userEmail,
+          typeId: 'USER_CHAT_ADMIN_REPLIED',
+          reference: { sessionId: session.sessionId },
+          title: 'Tư vấn viên Urii đã phản hồi bạn',
+          message: `Tư vấn viên vừa gửi tin nhắn mới trong phiên chat #${session.sessionId.slice(-6)}.`,
+          actionUrl: '/support'
+        }).catch(console.error);
+      }
     } else if (msgSender === 'user') {
       session.unreadCount = (session.unreadCount || 0) + 1;
     }
@@ -266,6 +278,17 @@ exports.updateStatus = async (req, res) => {
 
     if (status === 'active') {
       session.unreadCount = 0;
+      if (session.userId || session.userEmail) {
+        createUserNotification({
+          userId: session.userId,
+          userEmail: session.userEmail,
+          typeId: 'USER_CHAT_ADMIN_REPLIED',
+          reference: { sessionId: session.sessionId },
+          title: 'Tư vấn viên đã tiếp nhận hỗ trợ',
+          message: `Nhân viên tư vấn đã bắt đầu tiếp quản phiên chat #${session.sessionId.slice(-6)} của bạn.`,
+          actionUrl: '/support'
+        }).catch(console.error);
+      }
     }
 
     session.lastMessageTime = Date.now();

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit,  OnDestroy, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
@@ -23,7 +23,7 @@ interface LoginResponse {
   styleUrl: './login-admin.css',
   templateUrl: './login-admin.html',
 })
-export class LoginAdmin implements OnInit, OnDestroy {
+export class LoginAdmin implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private adminApi = inject(AdminApiService);
@@ -35,6 +35,7 @@ export class LoginAdmin implements OnInit, OnDestroy {
 
   isLoading = false;
   loginError = '';
+  showPassword = false;
 
   private proxyApiUrl = '/api/auth';
   private directApiUrl = 'http://localhost:3002/api/auth';
@@ -138,7 +139,6 @@ export class LoginAdmin implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      window.addEventListener('message', this.facebookMessageHandler);
       this.waitForGoogleScript();
     }
   }

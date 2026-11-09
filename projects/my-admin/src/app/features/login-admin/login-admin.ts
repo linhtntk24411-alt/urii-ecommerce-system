@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit,  OnDestroy, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -19,10 +19,11 @@ interface LoginResponse {
 @Component({
   imports: [CommonModule],
   selector: 'app-login-admin',
+  standalone: true,
   styleUrl: './login-admin.css',
   templateUrl: './login-admin.html',
 })
-export class LoginAdmin implements OnInit {
+export class LoginAdmin implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private router = inject(Router);
   private adminApi = inject(AdminApiService);
@@ -34,6 +35,80 @@ export class LoginAdmin implements OnInit {
 
   isLoading = false;
   loginError = '';
+  showPassword = false;
+  private backendOrigin = 'http://localhost:3002';
+  private facebookPopup: Window | null = null;
+
+  private facebookMessageHandler = (event: MessageEvent): void => {
+    // Chỉ nhận thông điệp từ backend Urii
+    if (event.origin !== this.backendOrigin) return;
+
+    const data = event.data;
+
+    if (
+      !data ||
+      data.type !== 'urii-oauth' ||
+      data.provider !== 'facebook'
+    ) {
+      return;
+    }
+
+    this.ngZone.run(() => {
+      this.isLoading = false;
+
+      if (!data.ok) {
+        this.loginError = data.message || 'Đăng nhập Facebook thất bại.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      if (!data.token || data.user?.role !== 'admin') {
+        this.loginError = 'Tài khoản Facebook không có quyền truy cập Admin.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      this.saveSessionAndNavigate({
+        message: data.message,
+        token: data.token,
+        user: data.user
+      });
+
+      this.facebookPopup = null;
+      this.cdr.detectChanges();
+    });
+  };
+
+  loginWithFacebook(): void {
+    this.loginError = '';
+
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    // Mở popup ngay trong sự kiện click để tránh trình duyệt chặn popup
+    this.facebookPopup = window.open(
+      `${this.backendOrigin}/api/auth/oauth/facebook`,
+      'UriiFacebookLogin',
+      'width=600,height=700,left=200,top=100'
+    );
+
+    if (!this.facebookPopup) {
+      this.loginError = 'Trình duyệt đã chặn cửa sổ đăng nhập Facebook. Hãy cho phép popup rồi thử lại.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.cdr.detectChanges();
+  }
+
+  ngOnDestroy(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('message', this.facebookMessageHandler);
+    }
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
 
   private apiUrl = 'http://localhost:3002/api/auth';
   private googleClientId = '914516820403-sqm3ft1o05tc6i4q92lk0fu6058b1n8b.apps.googleusercontent.com';
@@ -99,6 +174,7 @@ export class LoginAdmin implements OnInit {
   
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
+      window.addEventListener('message', this.facebookMessageHandler);
       this.waitForGoogleScript();
     }
   }

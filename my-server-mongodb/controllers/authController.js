@@ -539,12 +539,13 @@ exports.oauthCallback = async (req, res) => {
           });
           return;
         }
-        if (linkedByProviderId.role !== 'user') {
+        if (!['user', 'admin'].includes(linkedByProviderId.role)) {
           sendOAuthCallbackResult(req, res, 403, provider, {
-            message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
+            message: 'Tài khoản không có quyền đăng nhập bằng Facebook.'
           });
           return;
         }
+
         user = linkedByProviderId;
       }
     }

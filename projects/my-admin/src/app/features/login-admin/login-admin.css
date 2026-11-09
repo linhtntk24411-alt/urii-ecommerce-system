@@ -151,8 +151,15 @@
 }
 
 .password-icon {
+  align-items: center;
+  background: transparent;
+  border: none;
   color: #765858;
+  cursor: pointer;
+  display: flex;
   height: 20px;
+  justify-content: center;
+  padding: 0;
   position: absolute;
   right: 13px;
   top: 10px;
@@ -163,8 +170,20 @@
   fill: none;
   height: 100%;
   stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-width: 1.8;
   width: 100%;
+}
+
+.password-icon:hover {
+  color: #a50000;
+}
+
+.password-icon:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid #a50000;
+  outline-offset: 3px;
 }
 
 .text-link {

@@ -714,6 +714,7 @@ test('creates customer checkout orders as pending and associates them with the a
     });
 
     assert.equal(response.status, 201);
+    assert.match(createdOrder.id, /^UR-\d{5}$/);
     assert.equal(createdOrder.userId, userId);
     assert.equal(createdOrder.statusId, 'pending');
     assert.equal(createdOrder.status, 'Đang chờ duyệt');
@@ -762,6 +763,7 @@ test('associates an admin checkout without a customer ID with the authenticated 
     });
 
     assert.equal(response.status, 201);
+    assert.match(createdOrder.id, /^UR-\d{5}$/);
     assert.equal(createdOrder.userId, userId);
     assert.equal(createdOrder.statusId, 'pending');
     const payload = await response.json();

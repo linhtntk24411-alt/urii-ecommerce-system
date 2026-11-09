@@ -4,10 +4,14 @@ const Payment = require('../models/Payment');
 const orderStatuses = require('../data/order_statuses.json');
 const orderReasons = require('../data/order_reasons.json');
 const mongoose = require('mongoose');
-const { randomUUID } = require('node:crypto');
+const { randomInt } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
 const paymentLifecycleService = require('../services/paymentLifecycleService');
+
+function generateOrderId() {
+  return `UR-${randomInt(10000, 100000)}`;
+}
 
 class PaymentOrderConflictError extends Error {
   constructor(message) {
@@ -286,12 +290,27 @@ exports.createOrder = async (req, res) => {
         }
       : orderData.waitingInfo;
 
-    const order = await Order.create({
-      ...orderData,
-      id: orderData.id || `order-${randomUUID()}`,
-      statusId,
-      waitingInfo: defaultWaitingInfo
-    });
+    const customId = typeof orderData.id === 'string' && orderData.id.trim()
+      ? orderData.id.trim()
+      : '';
+    let order = null;
+    const maxAttempts = customId ? 1 : 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        order = await Order.create({
+          ...orderData,
+          id: customId || generateOrderId(),
+          statusId,
+          waitingInfo: defaultWaitingInfo
+        });
+        break;
+      } catch (createError) {
+        if (createError?.code === 11000 && !customId && attempt < maxAttempts) {
+          continue;
+        }
+        throw createError;
+      }
+    }
     emitCrudChange('orders', 'created', order._id);
     const [enriched] = await enrichOrders([order.toObject()]);
     res.status(201).json(enriched);

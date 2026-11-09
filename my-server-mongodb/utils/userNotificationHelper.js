@@ -1,18 +1,10 @@
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const { emitCrudChange } = require('../realtime');
+const { emitCrudChange, emitToUser, emitToUserEmail } = require('../realtime');
 
 /**
- * Tạo thông báo nhắm tới một User cụ thể và phát sự kiện realtime
- * @param {Object} params
- * @param {string|mongoose.Types.ObjectId} [params.userId]
- * @param {string} [params.userEmail]
- * @param {string} params.typeId - Mã loại thông báo (vd: USER_ORDER_CONFIRMED, USER_CHAT_ADMIN_REPLIED...)
- * @param {Object} [params.reference] - Thông tin tham chiếu (orderId, sessionId, customOrderId...)
- * @param {string} [params.title] - Tiêu đề tùy chỉnh (nếu có)
- * @param {string} [params.message] - Nội dung tùy chỉnh (nếu có)
- * @param {string} [params.actionUrl] - Đường dẫn khi click
+ * Tạo thông báo nhắm tới một User cụ thể và phát sự kiện realtime qua Socket.IO
  */
 async function createUserNotification({
   userId,
@@ -25,10 +17,12 @@ async function createUserNotification({
 }) {
   try {
     let targetUserId = userId;
-    if (!targetUserId && userEmail) {
-      const user = await User.findOne({ email: userEmail.trim().toLowerCase() }).select('_id').lean();
+    let resolvedEmail = userEmail;
+    if (!targetUserId && resolvedEmail) {
+      const user = await User.findOne({ email: resolvedEmail.trim().toLowerCase() }).select('_id email').lean();
       if (user) {
         targetUserId = user._id;
+        resolvedEmail = user.email;
       }
     }
 
@@ -51,7 +45,7 @@ async function createUserNotification({
       updatedAt: new Date()
     };
 
-    // 1. Lưu vào collection thô 'user_notifications' (phục vụ fallback query)
+    // 1. Lưu vào collection thô 'user_notifications'
     try {
       if (mongoose.connection.db) {
         await mongoose.connection.db.collection('user_notifications').insertOne({
@@ -72,7 +66,14 @@ async function createUserNotification({
       console.warn('Lỗi lưu Notification model:', modelErr.message);
     }
 
-    // 3. Bắn sự kiện realtime
+    // 3. Bắn sự kiện realtime trực tiếp qua Socket.IO tới User đang online
+    if (targetUserId) {
+      emitToUser(String(targetUserId), 'notification:new', notifDoc);
+    }
+    if (resolvedEmail) {
+      emitToUserEmail(resolvedEmail, 'notification:new', notifDoc);
+    }
+
     emitCrudChange('notifications', 'created', notifId);
     return notifDoc;
   } catch (error) {

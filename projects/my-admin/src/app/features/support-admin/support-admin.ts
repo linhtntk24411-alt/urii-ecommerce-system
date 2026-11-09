@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { AdminRealtimeService } from '../../core/services/admin-realtime.service';
 
 @Component({
   selector: 'app-support-admin',
@@ -21,16 +22,29 @@ export class SupportAdmin implements OnInit, OnDestroy {
   adminReplyText: string = '';
   private pollInterval: any;
   private routeSub: any;
+  private realtimeSub: any;
 
   constructor(
     private cdr: ChangeDetectorRef,
     private adminApi: AdminApiService,
     private route: ActivatedRoute,
-    @Inject(PLATFORM_ID) private platformId: object
+    @Inject(PLATFORM_ID) private platformId: object,
+    private adminRealtime: AdminRealtimeService
   ) {}
 
   ngOnInit(): void {
     this.loadSessions();
+    this.realtimeSub = this.adminRealtime.crudChanged$.subscribe((event) => {
+      if (event.resource === 'chat') {
+        this.loadSessions(true);
+      }
+    });
+
+    this.adminRealtime.chatMessage$.subscribe((msg) => {
+      if (msg && msg.sessionId === this.selectedSessionId) {
+        this.loadSessions(true);
+      }
+    });
     this.lastKnownSessionsJSON = typeof localStorage !== 'undefined' ? (localStorage.getItem('urii_chat_sessions') || '{}') : '{}';
 
     // Lắng nghe queryParams để tự động chọn phiên chat khi click từ thông báo
@@ -56,6 +70,9 @@ export class SupportAdmin implements OnInit, OnDestroy {
     }
     if (this.routeSub) {
       this.routeSub.unsubscribe();
+    }
+    if (this.realtimeSub) {
+      this.realtimeSub.unsubscribe();
     }
   }
 

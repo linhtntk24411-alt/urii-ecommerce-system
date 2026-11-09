@@ -5,7 +5,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { randomUUID } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
-const { emitCrudChange } = require('../realtime');
+const { emitCrudChange, emitToSession } = require('../realtime');
 const { createUserNotification } = require('../utils/userNotificationHelper');
 const { generateAiReply } = require('../services/aiChatService');
 
@@ -242,6 +242,13 @@ exports.addMessage = async (req, res) => {
 
     await session.save();
     emitCrudChange('chat', 'message', session.sessionId);
+    emitToSession(session.sessionId, 'chat:message', {
+      sessionId: session.sessionId,
+      text: text.trim(),
+      sender: msgSender,
+      timestamp: Date.now(),
+      isSystemLog: Boolean(isSystemLog)
+    });
     const [enriched] = await enrichSessions([session.toObject()]);
     res.json(enriched);
   } catch (error) {
@@ -295,6 +302,11 @@ exports.updateStatus = async (req, res) => {
     await session.save();
 
     emitCrudChange('chat', 'status', session.sessionId);
+    emitToSession(session.sessionId, 'chat:status', {
+      sessionId: session.sessionId,
+      status,
+      systemLog
+    });
     const [enriched] = await enrichSessions([session.toObject()]);
     res.json(enriched);
   } catch (error) {

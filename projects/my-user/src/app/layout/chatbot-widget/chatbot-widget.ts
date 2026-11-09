@@ -1,4 +1,5 @@
 import { DialogService } from '../../core/services/dialog.service';
+import { UserRealtimeService } from '../../core/services/realtime.service';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -14,6 +15,7 @@ interface ChatMessage {
   sender: 'user' | 'bot' | 'admin';
   timestamp: number;
   chips?: { label: string; action: string }[];
+  isSystemLog?: boolean;
 }
 
 interface ChatSession {
@@ -68,6 +70,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   private pendingBotReplies = 0;
   private readonly http = inject(HttpClient);
   private readonly dialogService = inject(DialogService);
+  private readonly realtimeService = inject(UserRealtimeService);
 
   constructor(
     private router: Router,
@@ -79,6 +82,55 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     if (isPlatformBrowser(this.platformId)) {
       this.currentSessionId = this.getOrCreateSessionId();
       this.loadChatHistory();
+      this.realtimeService.joinChat(this.currentSessionId);
+
+      this.realtimeService.chatMessage$.subscribe((msg) => {
+        if (msg.sessionId === this.currentSessionId && msg.sender !== 'user') {
+          const session = this.getCurrentSession();
+          const exists = session.messages.some(m => m.timestamp === msg.timestamp && m.text === msg.text);
+          if (!exists) {
+            session.messages.push({
+              text: msg.text,
+              sender: msg.sender as any,
+              timestamp: msg.timestamp || Date.now(),
+              isSystemLog: Boolean(msg.isSystemLog)
+            });
+            session.lastMessageTime = Date.now();
+            if (msg.sender === 'admin') {
+              session.status = 'active';
+              this.updateHeaderStatus('active');
+            }
+            const sessions = this.getSessions();
+            sessions[session.sessionId] = session;
+            this.saveSessions(sessions);
+            this.messages = [...session.messages];
+            this.cdr.detectChanges();
+            this.scrollToBottom();
+          }
+        }
+      });
+
+      this.realtimeService.chatStatus$.subscribe((data) => {
+        if (data.sessionId === this.currentSessionId) {
+          const session = this.getCurrentSession();
+          session.status = data.status as any;
+          this.updateHeaderStatus(session.status);
+          if (data.systemLog) {
+            session.messages.push({
+              text: data.systemLog,
+              sender: data.status === 'ai' ? 'bot' : 'admin',
+              timestamp: Date.now(),
+              isSystemLog: true
+            });
+          }
+          const sessions = this.getSessions();
+          sessions[session.sessionId] = session;
+          this.saveSessions(sessions);
+          this.messages = [...session.messages];
+          this.cdr.detectChanges();
+          this.scrollToBottom();
+        }
+      });
     }
   }
 
@@ -160,7 +212,9 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     const sessions = this.getSessions();
     if (!sessions[sessionId]) return;
 
+    if (this.currentSessionId) { this.realtimeService.leaveChat(this.currentSessionId); }
     this.currentSessionId = sessionId;
+    this.realtimeService.joinChat(sessionId);
     const userEmail = this.getCurrentUserEmail();
     const cleanEmail = userEmail ? userEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'guest';
     this.safeSetItem(`urii_chat_session_id_${cleanEmail}`, sessionId);

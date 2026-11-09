@@ -6,6 +6,7 @@ import { CartService } from '../../core/services/cart.service';
 import { Subscription, TimeoutError, timeout } from 'rxjs';
 import { HeaderSearch } from '../header-search/header-search.component';
 import { NotificationService } from '../../core/services/notification.service';
+import { UserRealtimeService } from '../../core/services/realtime.service';
 
 interface CurrentUserProfile {
   id?: string;
@@ -37,6 +38,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   notificationLoadError = '';
   private isMarkingNotificationsRead = false;
   private notificationPollInterval: any;
+  private realtimeSub: any;
   
   isMobileMenuOpen: boolean = false;
   isMobileProductOpen: boolean = true;
@@ -54,7 +56,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
     @Inject(PLATFORM_ID) private platformId: Object,
     private readonly changeDetectorRef: ChangeDetectorRef,
     private readonly cart: CartService,
-    private readonly toastNotification: NotificationService
+    private readonly toastNotification: NotificationService,
+    private readonly realtimeService: UserRealtimeService
   ) {
     afterNextRender(() => {
       if (!isPlatformBrowser(this.platformId)) return;
@@ -63,6 +66,19 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.updateCartBadge();
       this.loadCurrentUser();
       this.loadNotifications();
+      this.realtimeSub = this.realtimeService.notification$.subscribe((notif) => {
+        const mapped = {
+          ...notif,
+          desc: notif.message || notif.desc || '',
+          time: this.formatNotificationTime(notif.createdAt as any)
+        };
+        this.notifications = [mapped, ...this.notifications.filter(n => n.id !== notif.id)];
+        this.notificationCount = this.notifications.filter(n => !n.isRead).length;
+
+        const toastMsg = notif.title ? `${notif.title}: ${notif.message || ''}` : (notif.message || 'Bạn có thông báo mới!');
+        this.toastNotification.info(toastMsg.slice(0, 120));
+        this.changeDetectorRef.markForCheck();
+      });
 
       this.notificationPollInterval = setInterval(() => {
         if (this.isLoggedIn) {
@@ -113,6 +129,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.profileRequest?.unsubscribe();
+    this.realtimeSub?.unsubscribe();
     if (this.notificationPollInterval) {
       clearInterval(this.notificationPollInterval);
     }

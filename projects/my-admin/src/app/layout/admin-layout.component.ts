@@ -2,6 +2,7 @@ import { Component, HostListener, OnInit, OnDestroy, Inject, PLATFORM_ID } from 
 import { CommonModule, isPlatformBrowser } from '@angular/common'; // Import để dùng *ngIf, *ngFor
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AdminApiService } from '../core/services/admin-api.service';
+import { AdminRealtimeService } from '../core/services/admin-realtime.service';
 
 type AdminSearchType = 'order' | 'user' | 'product' | 'promotion' | 'blog' | 'comment' | 'map';
 type AdminSearchTab = 'all' | AdminSearchType;
@@ -24,13 +25,20 @@ interface AdminSearchResult {
 })
 export class AdminLayoutComponent implements OnInit, OnDestroy {
   private notificationPollInterval: any;
+  private realtimeSub: any;
   constructor(
     private adminApi: AdminApiService,
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: object
+    @Inject(PLATFORM_ID) private platformId: object,
+    private adminRealtime: AdminRealtimeService
   ) {}
   ngOnInit(): void {
     this.loadNotifications();
+    this.realtimeSub = this.adminRealtime.crudChanged$.subscribe((event) => {
+      if (event.resource === 'notifications') {
+        this.loadNotifications(true);
+      }
+    });
 
     // Tải đơn hàng
     this.adminApi.getOrders().subscribe({
@@ -101,6 +109,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.realtimeSub?.unsubscribe();
     if (this.notificationPollInterval) {
       clearInterval(this.notificationPollInterval);
     }

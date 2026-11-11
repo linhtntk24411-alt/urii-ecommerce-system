@@ -1,29 +1,28 @@
 <section class="account-page">
+  <!-- Header -->
   <header class="account-page__header">
     <div class="account-page__intro">
-      <p class="account-page__eyebrow">TRẢI NGHIỆM MUA SẮM</p>
-      <h1>Đánh giá của tôi</h1>
-      <p>Lưu lại những chia sẻ của bạn về các sản phẩm Urii.</p>
-    </div>
-    @if (!isLoading && !requiresLogin && !errorMessage) {
-      <div class="review-count">
-        <span>{{ reviews.length }}</span>
-        <small>đánh giá</small>
+      <div class="account-page__breadcrumb">
+        <a routerLink="/orders">Đơn hàng của tôi</a>
+        <span class="material-symbols-outlined">chevron_right</span>
+        <span>Đánh giá của tôi</span>
       </div>
-    }
+      <h1>Đánh giá của tôi</h1>
+      <p>Xem lại tất cả nhận xét và trải nghiệm bạn đã chia sẻ về các sản phẩm thủ công Urii.</p>
+    </div>
   </header>
 
   @if (isLoading) {
     <section class="review-state" role="status">
-      <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
-      <p>Đang tải đánh giá...</p>
+      <span class="material-symbols-outlined review-state__spinner" aria-hidden="true">progress_activity</span>
+      <p>Đang tải danh sách đánh giá của bạn...</p>
     </section>
   } @else if (requiresLogin) {
     <section class="review-state">
       <span class="material-symbols-outlined" aria-hidden="true">lock</span>
       <h2>Đăng nhập để xem đánh giá</h2>
-      <p>Vui lòng đăng nhập để xem đánh giá của bạn.</p>
-      <a class="review-state__button" routerLink="/login" [queryParams]="{ returnUrl: '/myreview' }">Đăng nhập</a>
+      <p>Vui lòng đăng nhập để xem lịch sử đánh giá sản phẩm của bạn.</p>
+      <a class="review-state__button" routerLink="/login" [queryParams]="{ returnUrl: '/myreview' }">Đăng nhập ngay</a>
     </section>
   } @else if (errorMessage) {
     <section class="review-state review-state--error" role="alert">
@@ -32,62 +31,183 @@
     </section>
   } @else if (reviews.length === 0) {
     <section class="review-state">
-      <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+      <div class="review-state__icon-wrap">
+        <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+      </div>
       <h2>Chưa có đánh giá nào</h2>
-      <p>Đánh giá sản phẩm bạn đã mua sẽ được lưu và hiển thị tại đây.</p>
-      <a class="review-state__button" routerLink="/orders">Xem đơn hàng</a>
+      <p>Sau khi nhận hàng thành công, bạn hãy chia sẻ cảm nhận để nhận xu thưởng và điểm ưu đãi từ Urii nhé!</p>
+      <a class="review-state__button" routerLink="/orders">Xem đơn hàng để đánh giá</a>
     </section>
   } @else {
-    <div class="review-list">
-      @for (review of reviews; track review.id) {
-        <article class="review-card">
-          <div class="review-card__product">
-            @if (review.productImage) {
-              <img class="review-card__image" [src]="review.productImage" [alt]="review.productName">
-            } @else {
-              <span class="review-card__image review-card__image--placeholder material-symbols-outlined" aria-hidden="true">
-                inventory_2
-              </span>
+    <!-- Thống kê & Bộ lọc chuẩn sàn TMĐT -->
+    <div class="review-filter-card">
+      <div class="review-score-summary">
+        <div class="score-number">{{ averageRating }}</div>
+        <div class="score-stars-wrap">
+          <div class="score-stars">
+            @for (star of [1, 2, 3, 4, 5]; track star) {
+              <span class="material-symbols-outlined score-star--filled">star</span>
             }
-            <div class="review-card__product-info">
-              <span class="review-card__eyebrow">SẢN PHẨM ĐÃ ĐÁNH GIÁ</span>
-              <h2>{{ review.productName || 'Sản phẩm' }}</h2>
-              @if (review.variantName) {
-                <p>Phân loại: {{ review.variantName }}</p>
+          </div>
+          <span class="score-total">{{ reviews.length }} lượt đánh giá</span>
+        </div>
+      </div>
+
+      <!-- Filter Buttons -->
+      <div class="filter-chips-list">
+        <button type="button" class="filter-chip" [class.filter-chip--active]="activeFilter === 'all'" (click)="setFilter('all')">
+          Tất cả ({{ reviews.length }})
+        </button>
+        <button type="button" class="filter-chip" [class.filter-chip--active]="activeFilter === 5" (click)="setFilter(5)">
+          5 Sao ({{ getStarCount(5) }})
+        </button>
+        <button type="button" class="filter-chip" [class.filter-chip--active]="activeFilter === 4" (click)="setFilter(4)">
+          4 Sao ({{ getStarCount(4) }})
+        </button>
+        <button type="button" class="filter-chip" [class.filter-chip--active]="activeFilter === 3" (click)="setFilter(3)">
+          3 Sao ({{ getStarCount(3) }})
+        </button>
+        @if (getLowStarCount() > 0) {
+          <button type="button" class="filter-chip" [class.filter-chip--active]="activeFilter === 'low'" (click)="setFilter('low')">
+            1-2 Sao ({{ getLowStarCount() }})
+          </button>
+        }
+        @if (getMediaReviewCount() > 0) {
+          <button type="button" class="filter-chip" [class.filter-chip--active]="activeFilter === 'media'" (click)="setFilter('media')">
+            Có Hình ảnh / Video ({{ getMediaReviewCount() }})
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Danh sách đánh giá chi tiết từng sản phẩm -->
+    <div class="reviews-container">
+      @for (review of filteredReviews; track review.id) {
+        <article class="review-item-card">
+          <!-- Card Header: Thông tin shop & đơn hàng -->
+          <div class="review-item__header">
+            <div class="review-item__shop-info">
+              <span class="shop-badge">Urii Store</span>
+              <span class="verified-buyer-tag">
+                <span class="material-symbols-outlined">verified</span>
+                Đã mua hàng thành công
+              </span>
+              @if (review.orderId) {
+                <span class="order-code">#{{ review.orderId }}</span>
               }
             </div>
             @if (review.createdAt) {
-              <time class="review-card__date" [attr.datetime]="review.createdAt">
-                {{ review.createdAt | date: 'dd/MM/yyyy' }}
+              <time class="review-item__date">
+                {{ review.createdAt | date: 'dd/MM/yyyy HH:mm' }}
               </time>
             }
           </div>
-          <div class="review-card__rating" [attr.aria-label]="review.rating + ' trên 5 sao'">
-            <span class="review-card__stars" aria-hidden="true">
-              @for (star of ratingStars; track star) {
-                <span class="material-symbols-outlined" [class.review-card__star--filled]="star <= review.rating">star</span>
+
+          <!-- Product Snippet -->
+          <div class="review-item__product-snippet">
+            <a [routerLink]="['/product-detail', review.productSlug]" class="product-snippet__link" [title]="'Xem chi tiết ' + review.productName">
+              @if (review.productImage) {
+                <img class="product-snippet__img" [src]="review.productImage" [alt]="review.productName" />
+              } @else {
+                <div class="product-snippet__placeholder">
+                  <span class="material-symbols-outlined">inventory_2</span>
+                </div>
               }
-            </span>
-            <strong>{{ review.rating }}.0</strong>
-          </div>
-          @if (review.content) {
-            <p class="review-card__content">{{ review.content }}</p>
-          } @else {
-            <p class="review-card__content review-card__content--empty">Bạn đã không để lại nhận xét.</p>
-          }
-          @if (review.media.length) {
-            <div class="review-card__media" aria-label="Ảnh và video đính kèm">
-              @for (item of review.media; track item.url) {
-                @if (item.type === 'image') {
-                  <img [src]="item.url" alt="Ảnh đính kèm trong đánh giá" loading="lazy">
-                } @else {
-                  <video [src]="item.url" controls preload="metadata" aria-label="Video đính kèm trong đánh giá"></video>
+              <div class="product-snippet__meta">
+                <h3 class="product-snippet__title">{{ review.productName }}</h3>
+                @if (review.variantName) {
+                  <span class="product-snippet__variant">Phân loại: {{ review.variantName }}</span>
                 }
+              </div>
+            </a>
+          </div>
+
+          <!-- Rating Stars & Emotions -->
+          <div class="review-item__rating-row">
+            <div class="rating-stars">
+              @for (star of ratingStars; track star) {
+                <span class="material-symbols-outlined" [class.star--filled]="star <= review.rating">
+                  {{ star <= review.rating ? 'star' : 'star_border' }}
+                </span>
+              }
+            </div>
+            <span class="rating-label-text">{{ ratingLabel(review.rating) }}</span>
+          </div>
+
+          <!-- Review Content -->
+          <div class="review-item__content">
+            @if (review.content) {
+              <p class="content-paragraph">{{ review.content }}</p>
+            } @else {
+              <p class="content-paragraph content-paragraph--empty">Người mua không để lại nhận xét bằng lời.</p>
+            }
+          </div>
+
+          <!-- Media Gallery -->
+          @if (review.media && review.media.length > 0) {
+            <div class="review-item__media-gallery">
+              @for (item of review.media; track item.url) {
+                <div class="media-thumb-wrap" (click)="openMedia(item)" [title]="'Xem ' + (item.type === 'image' ? 'ảnh' : 'video')">
+                  @if (item.type === 'image') {
+                    <img [src]="item.url" alt="Ảnh đánh giá" class="media-thumb-img" loading="lazy" />
+                  } @else {
+                    <div class="media-thumb-video">
+                      <video [src]="item.url" preload="metadata"></video>
+                      <span class="material-symbols-outlined play-icon">play_circle</span>
+                    </div>
+                  }
+                </div>
               }
             </div>
           }
+
+          <!-- Seller Reply (Phản hồi từ người bán) -->
+          @if (review.replies && review.replies.length > 0) {
+            @for (reply of review.replies; track reply.createdAt || reply.content) {
+              <div class="seller-reply-box">
+                <div class="seller-reply__header">
+                  <span class="material-symbols-outlined reply-icon">storefront</span>
+                  <strong>Phản hồi từ {{ reply.author || 'Urii Official Store' }}</strong>
+                  @if (reply.createdAt) {
+                    <span class="reply-date">({{ reply.createdAt | date: 'dd/MM/yyyy' }})</span>
+                  }
+                </div>
+                <p class="seller-reply__text">{{ reply.content }}</p>
+              </div>
+            }
+          }
+
+          <!-- Card Bottom Actions -->
+          <div class="review-item__footer-actions">
+            @if (review.orderId) {
+              <a [routerLink]="['/orders', review.orderId]" class="btn-action-outline">
+                <span class="material-symbols-outlined">receipt_long</span>
+                Chi tiết đơn hàng
+              </a>
+            }
+            <a [routerLink]="['/product-detail', review.productSlug]" class="btn-action-primary">
+              <span class="material-symbols-outlined">shopping_cart</span>
+              Mua lại
+            </a>
+          </div>
         </article>
       }
+    </div>
+  }
+
+  <!-- LIGHTBOX MODAL CHO ẢNH / VIDEO -->
+  @if (activeMediaModal) {
+    <div class="media-lightbox-backdrop" (click)="closeMedia()">
+      <div class="media-lightbox-content" (click)="$event.stopPropagation()">
+        <button type="button" class="lightbox-close-btn" (click)="closeMedia()" aria-label="Đóng">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+        @if (activeMediaModal.type === 'image') {
+          <img [src]="activeMediaModal.url" alt="Ảnh đánh giá phóng to" class="lightbox-img" />
+        } @else {
+          <video [src]="activeMediaModal.url" controls autoplay class="lightbox-video"></video>
+        }
+      </div>
     </div>
   }
 </section>

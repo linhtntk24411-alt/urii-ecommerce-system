@@ -151,6 +151,15 @@ export class MyOrders implements OnInit, OnDestroy {
   isSubmittingReview = false;
   reviewSubmitSuccess = false;
   reviewErrorMessage = '';
+  readonly reviewQuickTags = [
+    'Đúng mô tả',
+    'Hạt sáng bóng & đều đẹp',
+    'Màu sắc chuẩn ảnh mẫu',
+    'Đóng gói đẹp & chắc chắn',
+    'Giao hàng siêu nhanh',
+    'Shop phục vụ rất nhiệt tình'
+  ];
+  reviewedProductIds = new Set<string>();
   showTrackingView = false;
   copiedText = '';
 
@@ -184,6 +193,64 @@ export class MyOrders implements OnInit, OnDestroy {
     { id: 'EXPIRED', label: 'Hàng hết hạn sử dụng', requiresImage: true },
     { id: 'NOT_AS_DESCRIBED', label: 'Khác với mô tả', requiresImage: true },
   ];
+
+  // Cancellation flow cho đơn hàng Chờ xác nhận
+  cancelModalOpen = false;
+  cancelTargetOrder: CustomerOrder | null = null;
+  selectedCancelReasonId = 'CANCEL_CHANGE_MIND';
+  cancelCustomNote = '';
+  isSubmittingCancel = false;
+  cancelErrorMessage = '';
+  cancelSuccessMessage = '';
+
+  readonly cancelReasonsList = [
+    { id: 'CANCEL_WRONG_ADDRESS', label: 'Tôi muốn thay đổi địa chỉ giao hàng' },
+    { id: 'CANCEL_VOUCHER', label: 'Tôi muốn nhập / thay đổi mã Voucher giảm giá' },
+    { id: 'CANCEL_WRONG_INFO', label: 'Tôi muốn thay đổi sản phẩm trong đơn hàng (kích thước, màu sắc, số lượng...)' },
+    { id: 'CANCEL_PAYMENT_ISSUE', label: 'Thủ tục thanh toán quá rắc rối' },
+    { id: 'CANCEL_FIND_CHEAPER', label: 'Tìm thấy giá rẻ hơn ở nơi khác' },
+    { id: 'CANCEL_CHANGE_MIND', label: 'Tôi đổi ý, không muốn mua nữa' },
+    { id: 'CANCEL_OTHER', label: 'Lý do khác (vui lòng nêu rõ lý do)' },
+  ];
+
+  // Hỗ trợ thu gọn / xổ dọc cho đơn hàng có nhiều sản phẩm
+  expandedOrderSlugs = new Set<string>();
+
+  toggleOrderExpansion(slug: string, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (this.expandedOrderSlugs.has(slug)) {
+      this.expandedOrderSlugs.delete(slug);
+    } else {
+      this.expandedOrderSlugs.add(slug);
+    }
+    this.changeDetectorRef.markForCheck();
+  }
+
+  isOrderExpanded(slug: string): boolean {
+    return this.expandedOrderSlugs.has(slug);
+  }
+
+  getVariantClass(variantName?: string, index: number = 0): string {
+    if (!variantName) return 'order-card__product-variant--c0';
+    const lower = variantName.toLowerCase();
+    if (lower.includes('hồng') || lower.includes('pink')) return 'order-card__product-variant--c3';
+    if (lower.includes('tím') || lower.includes('purple')) return 'order-card__product-variant--c1';
+    if (lower.includes('xanh lá') || lower.includes('ngọc') || lower.includes('green')) return 'order-card__product-variant--c4';
+    if (lower.includes('xanh') || lower.includes('blue') || lower.includes('cyan')) return 'order-card__product-variant--c2';
+    if (lower.includes('cam') || lower.includes('orange')) return 'order-card__product-variant--c0';
+    if (lower.includes('vàng') || lower.includes('yellow') || lower.includes('gold')) return 'order-card__product-variant--c5';
+    if (lower.includes('đỏ') || lower.includes('red')) return 'order-card__product-variant--c7';
+    
+    let hash = 0;
+    for (let i = 0; i < variantName.length; i++) {
+      hash = variantName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIdx = Math.abs(hash + index) % 8;
+    return `order-card__product-variant--c${colorIdx}`;
+  }
 
   private ordersCache = new Map<string, { orders: CustomerOrder[]; page: number; totalPages: number; total: number }>();
 
@@ -481,9 +548,74 @@ export class MyOrders implements OnInit, OnDestroy {
     this.loadOrders(page, false);
   }
 
+  formatOrderDate(dateStr?: string): string {
+    if (!dateStr) return '';
+    const clean = dateStr.trim();
+    if (!clean) return '';
+    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(clean)) {
+      return clean.split('T')[0];
+    }
+    const d = new Date(clean);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+    return clean;
+  }
+
   statusLabel(order: CustomerOrder): string {
-    if (order.status === 'Đã xác nhận') return 'Đã xác nhận';
-    return STATUS_LABELS.get(order.statusId) || order.status || order.statusId;
+    const statusId = (order.statusId || '').toLowerCase().trim();
+    if (statusId === 'pending') return 'Chờ xác nhận';
+    if (statusId === 'approved') return 'Đã xác nhận';
+    if (statusId === 'processing') return 'Chờ lấy hàng';
+    if (statusId === 'shipping') return 'Chờ giao hàng';
+    if (statusId === 'completed') return 'Đã giao';
+    if (statusId === 'cancelled') return 'Đã hủy';
+    if (statusId === 'returned') return 'Trả hàng';
+    if (statusId === 'cancel_requested') return 'Chờ xác nhận hủy';
+    if (statusId === 'return_requested') return 'Chờ hoàn trả';
+
+    if (order.status && order.status.trim()) {
+      const s = order.status.trim();
+      if (s.includes('Chá»') || s.includes('xÃ¡c') || s.includes('xĂ¡c')) return 'Chờ xác nhận';
+      if (s.includes('giao') || s.includes('Giao') || s.includes('nháº­n') || s.includes('nhận')) return 'Đã giao';
+      if (s.includes('hủy') || s.includes('há»§y')) return 'Đã hủy';
+      if (s.includes('lấy') || s.includes('láº¥y') || s.includes('chuẩn bị')) return 'Chờ lấy hàng';
+      return s;
+    }
+    return order.status || order.statusId || '';
+  }
+
+  getStatusClass(order: CustomerOrder): string {
+    const status = (order.statusId || '').toLowerCase();
+    const label = (this.statusLabel(order) || order.status || '').toLowerCase();
+    if (status === 'completed' || label.includes('đã giao') || label.includes('đã nhận') || label.includes('hoàn thành')) {
+      return 'status--completed';
+    }
+    if (status === 'cancelled' || label.includes('đã hủy') || label.includes('hủy đơn')) {
+      return 'status--cancelled';
+    }
+    if (status === 'approved' || label.includes('đã xác nhận')) {
+      return 'status--approved';
+    }
+    if (status === 'pending' || label.includes('chờ xác nhận')) {
+      return 'status--pending';
+    }
+    if (status === 'shipping' || label.includes('chờ giao') || label.includes('đang giao')) {
+      return 'status--shipping';
+    }
+    if (status === 'processing' || label.includes('chờ lấy hàng') || label.includes('chuẩn bị')) {
+      return 'status--processing';
+    }
+    if (status === 'returned' || status === 'return_requested' || label.includes('trả hàng') || label.includes('hoàn tiền')) {
+      return 'status--returned';
+    }
+    if (status === 'cancel_requested' || label.includes('chờ hủy') || label.includes('yêu cầu hủy')) {
+      return 'status--cancel-requested';
+    }
+    return 'status--default';
   }
 
   totalItemCount(order: CustomerOrder): number {
@@ -752,6 +884,120 @@ export class MyOrders implements OnInit, OnDestroy {
     });
   }
 
+  openCancelModal(order: CustomerOrder, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.cancelTargetOrder = order;
+    this.selectedCancelReasonId = 'CANCEL_CHANGE_MIND';
+    this.cancelCustomNote = '';
+    this.cancelErrorMessage = '';
+    this.cancelSuccessMessage = '';
+    this.isSubmittingCancel = false;
+    this.cancelModalOpen = true;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  closeCancelModal(): void {
+    this.cancelModalOpen = false;
+    this.cancelTargetOrder = null;
+    this.cancelErrorMessage = '';
+    this.cancelSuccessMessage = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  selectCancelReason(reasonId: string): void {
+    this.selectedCancelReasonId = reasonId;
+    this.cancelErrorMessage = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  confirmCancelOrder(): void {
+    if (!this.cancelTargetOrder) return;
+    const token = this.getToken();
+    if (!token) {
+      this.cancelErrorMessage = 'Vui lòng đăng nhập lại để thực hiện.';
+      return;
+    }
+
+    if (this.selectedCancelReasonId === 'CANCEL_OTHER' && !this.cancelCustomNote.trim()) {
+      this.cancelErrorMessage = 'Vui lòng nhập lý do cụ thể khi chọn Lý do khác.';
+      return;
+    }
+
+    const selectedReason = this.cancelReasonsList.find(r => r.id === this.selectedCancelReasonId);
+    const reasonText = this.selectedCancelReasonId === 'CANCEL_OTHER'
+      ? this.cancelCustomNote.trim()
+      : (selectedReason?.label || 'Tôi đổi ý, không muốn mua nữa');
+
+    this.isSubmittingCancel = true;
+    this.cancelErrorMessage = '';
+
+    const payload = {
+      reasonId: this.selectedCancelReasonId,
+      reason: reasonText,
+      note: this.cancelCustomNote.trim() || reasonText,
+    };
+
+    const targetSlug = this.cancelTargetOrder.slug;
+    this.http.post<{ success?: boolean; message?: string }>(
+      `/api/orders/mine/${encodeURIComponent(targetSlug)}/cancel`,
+      payload,
+      { headers: this.authorizationHeaders(token) }
+    ).subscribe({
+      next: () => {
+        this.isSubmittingCancel = false;
+        this.cancelSuccessMessage = 'Hủy đơn hàng thành công!';
+        this.ordersCache.clear();
+        this.changeDetectorRef.markForCheck();
+
+        setTimeout(() => {
+          this.closeCancelModal();
+          if (this.orderSlug) {
+            this.loadOrder(this.orderSlug);
+          } else {
+            this.loadOrders(this.currentPage, true);
+          }
+        }, 1200);
+      },
+      error: (err: unknown) => {
+        // Fallback sang endpoint cancel-request
+        this.http.post<{ success?: boolean; message?: string }>(
+          `/api/orders/${encodeURIComponent(targetSlug)}/cancel-request`,
+          payload,
+          { headers: this.authorizationHeaders(token) }
+        ).subscribe({
+          next: () => {
+            this.isSubmittingCancel = false;
+            this.cancelSuccessMessage = 'Đã hủy đơn hàng thành công!';
+            this.ordersCache.clear();
+            this.changeDetectorRef.markForCheck();
+            setTimeout(() => {
+              this.closeCancelModal();
+              if (this.orderSlug) {
+                this.loadOrder(this.orderSlug);
+              } else {
+                this.loadOrders(this.currentPage, true);
+              }
+            }, 1200);
+          },
+          error: (fallbackErr: unknown) => {
+            this.isSubmittingCancel = false;
+            if (fallbackErr instanceof HttpErrorResponse && fallbackErr.error?.message) {
+              this.cancelErrorMessage = fallbackErr.error.message;
+            } else if (err instanceof HttpErrorResponse && err.error?.message) {
+              this.cancelErrorMessage = err.error.message;
+            } else {
+              this.cancelErrorMessage = 'Không thể hủy đơn hàng. Vui lòng thử lại sau.';
+            }
+            this.changeDetectorRef.markForCheck();
+          }
+        });
+      }
+    });
+  }
+
   isStepActive(order: CustomerOrder, step: number): boolean {
     if (order.statusId === 'completed') return true;
     if (order.statusId === 'shipping') return step <= 2;
@@ -767,10 +1013,38 @@ export class MyOrders implements OnInit, OnDestroy {
     return order.trackingNumber || `SPXVN${order.slug.replace(/[^0-9]/g, '') || '06742286147A'}`;
   }
 
-  formatTotal(order: CustomerOrder): string {
-    if (order.total) return order.total;
-    if (order.totalAmount === null) return '';
-    return `${new Intl.NumberFormat('vi-VN').format(order.totalAmount)}đ`;
+  formatPrice(value: number | string | null | undefined): string {
+    if (value === null || value === undefined || value === '') return '0đ';
+    if (typeof value === 'number') {
+      return `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
+    }
+    const str = String(value).trim();
+    if (!str) return '0đ';
+    // If it's already properly formatted with dot thousands separator e.g. '213.000đ' or '213.000 ₫'
+    if (/^\d{1,3}(\.\d{3})+(\s?[đ₫])?$/i.test(str)) {
+      const clean = str.replace(/\s?[đ₫]$/i, '');
+      return `${clean}đ`;
+    }
+    // Extract numeric digits
+    const digitsOnly = str.replace(/[^0-9]/g, '');
+    if (digitsOnly.length > 0) {
+      const num = Number(digitsOnly);
+      if (!isNaN(num)) {
+        return `${new Intl.NumberFormat('vi-VN').format(num)}đ`;
+      }
+    }
+    return `${str}đ`;
+  }
+
+  formatTotal(order: CustomerOrder | null): string {
+    if (!order) return '0đ';
+    if (order.totalAmount !== null && order.totalAmount !== undefined && order.totalAmount > 0) {
+      return this.formatPrice(order.totalAmount);
+    }
+    if (order.total) {
+      return this.formatPrice(order.total);
+    }
+    return this.formatPrice(order.totalAmount);
   }
 
   
@@ -1045,6 +1319,7 @@ export class MyOrders implements OnInit, OnDestroy {
 
   openReviewModal(order: CustomerOrder, item?: OrderItem): void {
     this.selectedReviewOrder = order;
+    this.reviewedProductIds.clear();
 
     // Find eligible matching item if available
     const eligibleMatch = this.eligibleOrders.find(
@@ -1072,6 +1347,51 @@ export class MyOrders implements OnInit, OnDestroy {
     this.reviewSubmitSuccess = false;
     this.isSubmittingReview = false;
     this.isReviewModalOpen = true;
+  }
+
+  selectReviewProduct(item: OrderItem): void {
+    if (this.selectedReviewItem === item) return;
+    this.selectedReviewItem = item;
+    this.reviewRating = 5;
+    this.reviewHoverRating = 0;
+    this.reviewContent = '';
+    this.reviewErrorMessage = '';
+    this.reviewSubmitSuccess = false;
+    this.isSubmittingReview = false;
+  }
+
+  addReviewTag(tag: string): void {
+    if (!tag) return;
+    const current = (this.reviewContent || '').trim();
+    if (!current) {
+      this.reviewContent = tag;
+    } else if (!current.includes(tag)) {
+      this.reviewContent = `${current}, ${tag.toLowerCase()}`;
+    }
+  }
+
+  hasReviewedProduct(productId?: string): boolean {
+    if (!productId) return false;
+    return this.reviewedProductIds.has(productId);
+  }
+
+  getRemainingUnreviewedCount(): number {
+    if (!this.selectedReviewOrder || !this.selectedReviewOrder.items) return 0;
+    return this.selectedReviewOrder.items.filter(
+      (item) => item.productId && !this.reviewedProductIds.has(item.productId)
+    ).length;
+  }
+
+  reviewNextProduct(): void {
+    if (!this.selectedReviewOrder || !this.selectedReviewOrder.items) return;
+    const nextItem = this.selectedReviewOrder.items.find(
+      (item) => item.productId && !this.reviewedProductIds.has(item.productId)
+    );
+    if (nextItem) {
+      this.selectReviewProduct(nextItem);
+    } else {
+      this.closeReviewModal();
+    }
   }
 
   closeReviewModal(): void {
@@ -1110,7 +1430,7 @@ export class MyOrders implements OnInit, OnDestroy {
       return;
     }
 
-    const productId = this.selectedReviewItem.productId || '';
+    const productId = this.selectedReviewItem.productId || this.selectedReviewItem.slug || '';
     if (!productId) {
       this.reviewErrorMessage = 'Không tìm thấy mã sản phẩm cần đánh giá.';
       return;
@@ -1132,9 +1452,14 @@ export class MyOrders implements OnInit, OnDestroy {
       next: () => {
         this.isSubmittingReview = false;
         this.reviewSubmitSuccess = true;
+        this.reviewedProductIds.add(productId);
+        if (this.selectedReviewOrder) {
+          this.unreviewedOrderIds.delete(this.selectedReviewOrder.slug);
+        }
         this.ordersCache.clear();
         this.loadEligibleOrders();
         this.loadOrdersSummary();
+        this.loadOrders(this.currentPage, false);
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {

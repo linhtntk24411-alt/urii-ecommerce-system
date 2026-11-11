@@ -75,13 +75,13 @@
 }
 
 .chat-window {
-    width: min(340px, calc(100vw - 32px));
+    width: min(390px, calc(100vw - 32px));
     min-width: 0;
-    max-width: 340px;
-    height: 500px;
-    max-height: calc(100vh - 112px);
+    max-width: 390px;
+    height: 580px;
+    max-height: calc(100vh - 100px);
     background: #ffffff;
-    border-radius: 16px;
+    border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     border: none;
     display: flex;
@@ -92,9 +92,9 @@
 }
 
 .chat-header {
-    background-color: #840001 !important;
+    background: linear-gradient(135deg, #a61c28 0%, #800000 100%) !important;
     color: #ffffff !important;
-    padding: 16px;
+    padding: 16px 18px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -165,7 +165,9 @@
     flex: 1;
     padding: 12px;
     overflow-y: auto;
-    background-image: linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)), url('/assets/nen-chat-box.png');
+    background-color: #fbf9f8;
+    background-image: radial-gradient(#ede6e4 1px, transparent 1px);
+    background-size: 20px 20px;
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
@@ -199,11 +201,15 @@
 .message-content-wrapper { display: flex; flex-direction: column; gap: 6px; }
 .message-bubble { font-size: 13px; line-height: 1.4; }
 .bot-message .message-bubble {
-    background-color: var(--chat-bg-gray);
-    color: var(--text-dark);
-    padding: 10px 12px;
-    border-radius: 0 12px 12px 12px;
-    white-space: pre-line; 
+    background-color: #ffffff;
+    color: #272023;
+    padding: 12px 15px;
+    border-radius: 4px 16px 16px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #ede8e7;
+    white-space: pre-line;
+    font-size: 13.5px;
+    line-height: 1.55;
 }
 
 .user-message { 
@@ -211,10 +217,13 @@
     flex-direction: row-reverse !important; 
 }
 .user-message .message-bubble {
-    background-color: #840001 !important; 
-    color: #ffffff !important;            
-    padding: 10px 12px !important;
-    border-radius: 12px 0 12px 12px !important;
+    background: linear-gradient(135deg, #a61c28 0%, #800000 100%) !important;
+    color: #ffffff !important;
+    padding: 11px 15px !important;
+    border-radius: 16px 4px 16px 16px !important;
+    box-shadow: 0 3px 10px rgba(128, 0, 0, 0.2) !important;
+    font-size: 13.5px;
+    line-height: 1.5;
 }
 .user-message .message-bubble p {
     color: #ffffff !important;           
@@ -231,18 +240,23 @@
     margin-top: 4px; 
 }
 .chip {
-    background: transparent !important;
-    border: 1.5px solid var(--primary-color) !important;
-    color: var(--primary-color) !important;
+    background: #ffffff !important;
+    border: 1px solid #fecdd3 !important;
+    color: #9b111e !important;
     padding: 6px 14px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+    box-shadow: 0 1px 3px rgba(155, 17, 30, 0.06);
     transition: all 0.2s ease;
 }
-.chip:hover { 
-    background-color: rgba(132, 0, 1, 0.08) !important; 
+.chip:hover {
+    background-color: #9b111e !important;
+    color: #ffffff !important;
+    border-color: #9b111e !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(155, 17, 30, 0.25);
 }
 
 .typing-indicator { align-self: flex-start; margin-left: 36px; }

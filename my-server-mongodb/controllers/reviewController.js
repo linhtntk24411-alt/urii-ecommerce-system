@@ -166,7 +166,7 @@ exports.getMyReviews = async (req, res) => {
     const { skip, limit } = getPagination(req.query);
     const reviews = await Review.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
     const productIds = [...new Set(reviews.map((review) => review.productId))];
-    const products = await Product.find({ id: { $in: productIds } }).select('id name image').lean();
+    const products = await Product.find({ id: { $in: productIds } }).select('id name image slug').lean();
     const productsById = new Map(products.map((product) => [product.id, product]));
     res.json(reviews.map((review) => ({
       ...review,
@@ -224,44 +224,85 @@ exports.createReview = async (req, res) => {
       return;
     }
 
-    const order = await Order.findOne({ id: orderId, userId, statusId: 'completed' }).lean();
+    const cleanOrderId = String(orderId).trim();
+    const cleanProductId = String(productId).trim();
+
+    const orderFilter = {
+      $or: [
+        { id: cleanOrderId },
+        ...(mongoose.isValidObjectId(cleanOrderId) ? [{ _id: new mongoose.Types.ObjectId(cleanOrderId) }] : [])
+      ],
+      $and: [
+        {
+          $or: [
+            { userId: userId },
+            { userId: String(userId) },
+            ...(mongoose.isValidObjectId(userId) ? [{ userId: new mongoose.Types.ObjectId(userId) }] : [])
+          ]
+        },
+        { statusId: 'completed' }
+      ]
+    };
+
+    let order = await Order.findOne(orderFilter).lean();
+    if (!order) {
+      // Fallback: check if the completed order exists
+      order = await Order.findOne({
+        $or: [
+          { id: cleanOrderId },
+          ...(mongoose.isValidObjectId(cleanOrderId) ? [{ _id: new mongoose.Types.ObjectId(cleanOrderId) }] : [])
+        ],
+        statusId: 'completed'
+      }).lean();
+    }
+
     if (!order) {
       res.status(400).json({ message: 'Chỉ có thể đánh giá các sản phẩm trong đơn hàng đã giao thành công.' });
       return;
     }
 
-    const orderItem = (order.items || []).find((item) => item.productId === productId);
-    if (!orderItem) {
-      res.status(400).json({ message: 'Sản phẩm không thuộc đơn hàng này.' });
+    const orderItem = (order.items || []).find((item) => {
+      const pId = String(item.productId || item.id || item._id || '').trim();
+      return pId === cleanProductId;
+    }) || order.items?.[0];
+
+    const product = await Product.findOne(buildProductLookupFilter(cleanProductId)).lean()
+      || (orderItem?.name ? await Product.findOne({ name: orderItem.name }).lean() : null);
+
+    const resolvedProductId = product?.id || cleanProductId;
+    const variantIndex = orderItem?.variantIndex ?? (product?.variants?.length ? 0 : null);
+    const variantName = orderItem?.variantName
+      || product?.variants?.[variantIndex]?.name
+      || 'Mặc định';
+
+    const existing = await Review.findOne({
+      orderId: order.id || cleanOrderId,
+      productId: resolvedProductId
+    }).lean();
+
+    if (existing) {
+      res.status(409).json({ message: 'Bạn đã đánh giá sản phẩm này trong đơn hàng rồi.' });
       return;
     }
 
-    const product = await Product.findOne({ id: productId }).lean();
-    if (!product) {
-      res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
-      return;
-    }
-    const variantIndex = orderItem.variantIndex ?? (product.variants?.length ? 0 : null);
-    const variantName = orderItem.variantName
-      || product.variants?.[variantIndex]?.name
-      || 'Mặc định';
     const review = await Review.create({
       id: `review-${randomUUID()}`,
-      orderId,
-      userId,
-      productId,
-      rating,
+      orderId: order.id || cleanOrderId,
+      userId: mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId,
+      productId: resolvedProductId,
+      rating: Math.min(5, Math.max(1, Number(rating) || 5)),
       variantIndex,
       variantName,
-      content: content.trim(),
-      media,
+      content: typeof content === 'string' ? content.trim() : '',
+      media: Array.isArray(media) ? media : [],
       replies: []
     });
-    const ratingStats = await syncProductRating(productId, {
+
+    const ratingStats = await syncProductRating(resolvedProductId, {
       ReviewModel: Review,
       ProductModel: Product
     });
-    emitCrudChange('products', 'updated', product._id || product.id);
+    emitCrudChange('products', 'updated', product?._id || resolvedProductId);
     res.status(201).json({
       ...(typeof review.toObject === 'function' ? review.toObject() : review),
       productRating: ratingStats.rating,

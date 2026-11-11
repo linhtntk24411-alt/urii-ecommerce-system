@@ -501,10 +501,98 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+exports.cancelMyPendingOrder = async (req, res) => {
+  const { reasonId, reason, note } = req.body || {};
+  const matchedReason = cancelReasonsById.get(reasonId);
+  const reasonText = (typeof reason === 'string' && reason.trim())
+    || matchedReason?.label
+    || (typeof note === 'string' && note.trim())
+    || 'Khách hàng hủy đơn khi đang chờ xác nhận';
+
+  try {
+    const slugOrId = req.params.slug || req.params.id;
+    const filter = mongoose.isValidObjectId(slugOrId)
+      ? { _id: slugOrId }
+      : { id: slugOrId };
+    const order = await Order.findOne(filter);
+    if (!order) {
+      res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+      return;
+    }
+    if (req.auth?.role !== 'admin' && String(order.userId) !== String(req.auth?.id)) {
+      res.status(403).json({ message: 'Bạn không có quyền hủy đơn hàng này.' });
+      return;
+    }
+    if (order.statusId !== 'pending') {
+      res.status(400).json({
+        message: 'Chỉ có thể hủy trực tiếp các đơn hàng đang ở trạng thái Chờ xác nhận.'
+      });
+      return;
+    }
+
+    const nowIso = new Date().toISOString().slice(0, 19);
+    order.statusId = 'cancelled';
+    order.status = 'Đã hủy';
+    order.statusType = 'cancelled';
+    order.cancellationReasonId = reasonId || 'CANCEL_CHANGE_MIND';
+    order.cancellationReason = reasonText;
+    order.cancellationNote = typeof note === 'string' ? note.trim() : '';
+    order.cancellationStatusId = 'approved';
+    order.cancellationRequestedAt = nowIso;
+    order.cancellationApprovedAt = nowIso;
+    order.cancelledAt = nowIso;
+    order.waitingInfo = undefined;
+    order.timeline = [
+      ...(order.timeline || []),
+      { statusId: 'cancelled', status: 'Đã hủy đơn hàng', time: nowIso, note: reasonText }
+    ];
+
+    await order.save();
+
+    // Hủy payment đang chờ thanh toán nếu có
+    try {
+      const payment = await Payment.findOne({ orderId: order._id });
+      if (payment && payment.statusId === 'awaiting_payment') {
+        await paymentLifecycleService.cancelPaymentInSession(payment, null);
+        order.payment = order.payment || {};
+        order.payment.statusId = 'cancelled';
+        order.payment.status = 'Đã hủy';
+        await order.save();
+      }
+    } catch (payErr) {
+      console.warn('Lỗi khi hủy payment cho đơn pending:', payErr);
+    }
+
+    emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
+
+    try {
+      await createUserNotification({
+        userId: order.userId,
+        typeId: 'USER_ORDER_CANCELLED',
+        reference: { orderId: String(order._id || order.id) },
+        title: `Đã hủy đơn hàng #${order.id || order._id}`,
+        message: `Đơn hàng #${order.id || order._id} đã được hủy thành công. Lý do: ${reasonText}.`,
+        actionUrl: `/orders`
+      });
+    } catch (notifErr) {
+      console.warn('Lỗi tạo notification:', notifErr);
+    }
+
+    const [enriched] = await enrichOrders([order.toObject()]);
+    res.json({ success: true, message: 'Đã hủy đơn hàng thành công.', order: enriched });
+  } catch (error) {
+    console.error('Lỗi khi hủy đơn hàng:', error);
+    res.status(500).json({ message: 'Không thể hủy đơn hàng. Vui lòng thử lại sau.' });
+  }
+};
+
 exports.requestCancelOrder = async (req, res) => {
-  const { reasonId, note } = req.body || {};
-  const reason = cancelReasonsById.get(reasonId);
-  if (!reason) {
+  const { reasonId, note, reason: customReason } = req.body || {};
+  const reason = cancelReasonsById.get(reasonId) || {
+    id: reasonId || 'CANCEL_OTHER',
+    label: customReason || (typeof note === 'string' ? note : 'Khách hàng yêu cầu hủy đơn')
+  };
+  if (!reason && !customReason && !note) {
     res.status(400).json({ message: 'Lý do hủy đơn hàng không hợp lệ.' });
     return;
   }
@@ -533,6 +621,30 @@ exports.requestCancelOrder = async (req, res) => {
     }
 
     const nowIso = new Date().toISOString().slice(0, 19);
+
+    // Nếu đơn hàng đang ở trạng thái 'pending' (Chờ xác nhận), cho phép hủy ngay lập tức
+    if (order.statusId === 'pending') {
+      order.statusId = 'cancelled';
+      order.status = 'Đã hủy';
+      order.statusType = 'cancelled';
+      order.cancellationReasonId = reason.id;
+      order.cancellationReason = customReason || reason.label || (typeof note === 'string' ? note.trim() : '');
+      order.cancellationNote = typeof note === 'string' ? note.trim() : '';
+      order.cancellationStatusId = 'approved';
+      order.cancellationRequestedAt = nowIso;
+      order.cancellationApprovedAt = nowIso;
+      order.cancelledAt = nowIso;
+      order.waitingInfo = undefined;
+      order.timeline = [
+        ...(order.timeline || []),
+        { statusId: 'cancelled', status: 'Đã hủy đơn hàng', time: nowIso, note: reason.label }
+      ];
+      await order.save();
+      emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
+      const [enriched] = await enrichOrders([order.toObject()]);
+      return res.json(enriched);
+    }
+
     const slaHours = reason.slaHours || orderReasons.waitingPolicies?.awaiting_cancel_approval?.slaHours || 24;
     const deadlineIso = addHoursIso(nowIso, slaHours);
 
@@ -709,10 +821,21 @@ exports.updateOrder = async (req, res) => {
     const filter = mongoose.isValidObjectId(req.params.id)
       ? { _id: req.params.id }
       : { id: req.params.id };
-    const currentOrder = await Order.findOne(filter).select('_id').lean();
+    const currentOrder = await Order.findOne(filter).select('_id statusId status').lean();
     if (!currentOrder) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
+    }
+
+    // Quy định: Dữ liệu đang chờ xác nhận thì không được giao hàng. Khi nào xác nhận xong mới tiến hành chuẩn bị và giao.
+    if (currentOrder.statusId === 'pending') {
+      const targetStatusId = updates.statusId || (updates.statusType ? ADMIN_STATUS_TO_ORDER_STATUS[String(updates.statusType).toLowerCase()]?.statusId : undefined);
+      if (targetStatusId === 'shipping' || targetStatusId === 'completed') {
+        res.status(400).json({
+          message: 'Đơn hàng đang chờ xác nhận không được giao hàng. Vui lòng xác nhận đơn hàng trước khi tiến hành chuẩn bị và giao.'
+        });
+        return;
+      }
     }
     const currentPayment = await Payment.findOne({ orderId: currentOrder._id })
       .select('_id')

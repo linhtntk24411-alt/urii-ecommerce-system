@@ -14,6 +14,8 @@ router.get('/:id/payment', authenticate, requireCustomer, paymentController.getO
 
 router.get('/metadata', c.getOrderMetadata);
 router.get('/mine', authenticate, c.getMyOrders);
+router.post('/mine/:slug/cancel', authenticate, requireCustomer, c.cancelMyPendingOrder);
+router.post('/:id/cancel', authenticate, c.cancelMyPendingOrder);
 router.post('/:id/cancel-request', authenticate, c.requestCancelOrder);
 router.post('/:id/return-request', authenticate, c.requestReturnOrder);
 

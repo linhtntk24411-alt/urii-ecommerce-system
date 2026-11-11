@@ -480,8 +480,18 @@ export class OrdersAdmin implements OnInit {
   }
 
   // --- Actions ---
+  alertPendingDeliveryError(): void {
+    alert('Đơn hàng đang chờ xác nhận không được giao hàng. Vui lòng xác nhận đơn hàng trước khi tiến hành chuẩn bị và giao.');
+  }
+
   updateOrderStatus(id: string, newStatus: string) {
-  const statusPayloadMap: Record<string, { statusId: string; status: string; statusType: string }> = {
+    const order = this.originalOrders.find(o => String(o.id) === String(id));
+    if (order && (order.status === 'pending' || order.statusId === 'pending') && (newStatus === 'completed' || newStatus === 'shipping')) {
+      this.alertPendingDeliveryError();
+      this.activeDropdownId = null;
+      return;
+    }
+    const statusPayloadMap: Record<string, { statusId: string; status: string; statusType: string }> = {
     pending: { statusId: 'pending', status: 'Chá» xĂ¡c nháº­n', statusType: 'pending' },
     approved: { statusId: 'processing', status: 'ÄĂ£ xĂ¡c nháº­n', statusType: 'approved' },
     completed: { statusId: 'completed', status: 'ÄĂ£ giao', statusType: 'completed' },

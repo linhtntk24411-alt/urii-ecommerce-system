@@ -1,15 +1,31 @@
 <div style="width: 100%; max-width: 1400px; margin: 0 auto; height: 100%;">
     
-    <!-- Page Title -->
+    <!-- Page Title & Navigation Tabs -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
             <h1 class="fw-bold mb-1" style="font-size: 28px; font-family: 'Segoe UI', sans-serif;">Hỗ trợ Chatbot</h1>
-            <p class="text-muted small m-0">Tư vấn trực tiếp cho khách hàng và quản lý luồng Human-in-the-loop</p>
+            <p class="text-muted small m-0">Tư vấn trực tiếp cho khách hàng và quản lý kịch bản trả lời tự động AI (FAQs)</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-2" 
+                    [class.btn-danger]="activeTab === 'chat'" 
+                    [class.btn-outline-secondary]="activeTab !== 'chat'"
+                    (click)="switchTab('chat')">
+                <i class="bi bi-chat-dots-fill"></i> Hội thoại trực tiếp
+                <span class="badge bg-white text-danger ms-1" *ngIf="getWaitingCount() > 0 && activeTab === 'chat'">{{ getWaitingCount() }}</span>
+            </button>
+            <button class="btn btn-sm px-3 py-2 rounded-3 fw-bold d-flex align-items-center gap-2" 
+                    [class.btn-danger]="activeTab === 'faqs'" 
+                    [class.btn-outline-secondary]="activeTab !== 'faqs'"
+                    (click)="switchTab('faqs')">
+                <i class="bi bi-robot"></i> Quản lý kịch bản & FAQs
+                <span class="badge bg-danger ms-1" *ngIf="faqs.length > 0 && activeTab !== 'faqs'">{{ faqs.length }}</span>
+            </button>
         </div>
     </div>
 
-    <!-- Chat Workspace Container -->
-    <div class="row g-0 rounded-4 shadow-sm border overflow-hidden bg-white" style="height: calc(80vh - 60px); min-height: 550px;">
+    <!-- TAB 1: Chat Workspace Container -->
+    <div *ngIf="activeTab === 'chat'" class="row g-0 rounded-4 shadow-sm border overflow-hidden bg-white" style="height: calc(80vh - 60px); min-height: 550px;">
         
         <!-- Left Column: Chat Sessions List -->
         <div class="col-12 col-md-4 border-end d-flex flex-column h-100 bg-light-subtle">
@@ -166,6 +182,163 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: Quản lý kịch bản & FAQs Chatbot Container (Thêm, Sửa, Xóa) -->
+    <div *ngIf="activeTab === 'faqs'" class="rounded-4 shadow-sm border overflow-hidden bg-white p-4">
+        
+        <!-- Header Actions & Search -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <div class="d-flex align-items-center gap-3 flex-grow-1" style="max-width: 500px;">
+                <div class="input-group rounded-3 border overflow-hidden">
+                    <span class="input-group-text border-0 bg-transparent text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" [(ngModel)]="faqSearchQuery" class="form-control border-0 ps-1" placeholder="Tìm theo tiêu đề, intent, từ khóa...">
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-semibold d-flex align-items-center gap-1.5" (click)="loadFaqs()" [disabled]="isLoadingFaqs">
+                    <i class="bi bi-arrow-clockwise" [class.spin]="isLoadingFaqs"></i> Làm mới
+                </button>
+                <button class="btn btn-danger rounded-3 px-3 py-2 fw-semibold d-flex align-items-center gap-1.5 shadow-sm" (click)="openCreateFaqModal()">
+                    <i class="bi bi-plus-lg"></i> Thêm kịch bản FAQ mới
+                </button>
+            </div>
+        </div>
+
+        <!-- FAQ Table List -->
+        <div class="table-responsive rounded-3 border">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <th style="width: 220px;">Tiêu đề & Intent</th>
+                        <th style="width: 250px;">Từ khóa nhận diện</th>
+                        <th>Nội dung câu trả lời</th>
+                        <th style="width: 180px;">Gợi ý nhanh</th>
+                        <th style="width: 120px;" class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (faq of getFilteredFaqs(); track faq.id || faq._id) {
+                    <tr>
+                        <td>
+                            <strong class="text-dark d-block mb-1" style="font-size: 14.5px;">{{ faq.title || 'Chưa đặt tên' }}</strong>
+                            <span class="badge bg-secondary-subtle text-secondary border" style="font-family: monospace; font-size: 11px;">
+                                {{ faq.intent }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                @for (kw of (faq.keywords || []); track kw) {
+                                    <span class="badge bg-light text-dark border fw-normal" style="font-size: 11.5px;">{{ kw }}</span>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            <div class="text-truncate-2" style="font-size: 13.5px; color: #374151; max-width: 380px; white-space: pre-line;">
+                                {{ faq.response }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                @for (reply of (faq.quickReplies || []); track reply) {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-medium" style="font-size: 11px;">{{ reply }}</span>
+                                }
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary px-2 py-1 rounded-2" (click)="openEditFaqModal(faq)" title="Sửa kịch bản FAQ">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger px-2 py-1 rounded-2" (click)="openDeleteFaqModal(faq)" title="Xóa kịch bản FAQ">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    } @empty {
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2 text-secondary mb-2 d-block"></i>
+                            <span>{{ isLoadingFaqs ? 'Đang tải danh sách câu hỏi...' : 'Không tìm thấy kịch bản FAQ nào.' }}</span>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- MODAL THÊM / SỬA FAQ -->
+    <div class="modal fade show d-block" *ngIf="faqModalOpen" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom px-4 py-3">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="bi" [class.bi-plus-circle]="!isEditingFaq" [class.bi-pencil-square]="isEditingFaq"></i>
+                        {{ isEditingFaq ? 'Chỉnh sửa kịch bản FAQ' : 'Thêm kịch bản FAQ mới' }}
+                    </h5>
+                    <button type="button" class="btn-close" (click)="closeFaqModal()" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger py-2 small" *ngIf="faqSaveError">{{ faqSaveError }}</div>
+
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small text-secondary">Tiêu đề câu hỏi / Tình huống <span class="text-danger">*</span></label>
+                            <input type="text" [(ngModel)]="faqForm.title" class="form-control rounded-3" placeholder="Ví dụ: Bảng mã màu & Số lượng màu hạt">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-secondary">Mã Intent nhận diện <span class="text-danger">*</span></label>
+                            <input type="text" [(ngModel)]="faqForm.intent" class="form-control rounded-3 font-monospace" placeholder="Ví dụ: colors_catalog">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-secondary">Từ khóa nhận diện (Keywords) <span class="text-danger">*</span></label>
+                            <input type="text" [(ngModel)]="faqForm.keywords" class="form-control rounded-3" placeholder="Các từ khóa phân cách bằng dấu phẩy: bảng màu, mã màu, bao nhiêu màu, hạt màu...">
+                            <small class="text-muted" style="font-size: 11px;">Khi khách hàng gõ chứa các từ khóa này, bot sẽ ưu tiên trả lời kịch bản này.</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-secondary">Nội dung câu trả lời của Chatbot <span class="text-danger">*</span></label>
+                            <textarea [(ngModel)]="faqForm.response" class="form-control rounded-3" rows="4" placeholder="Nhập câu trả lời chính xác, hữu ích và thân thiện của Urii..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-secondary">Nút gợi ý nhanh (Quick Replies / Chips)</label>
+                            <input type="text" [(ngModel)]="faqForm.quickReplies" class="form-control rounded-3" placeholder="Phân cách bằng dấu phẩy: Xem bảng màu, Bộ KIT 72 màu, Gặp tư vấn viên">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top px-4 py-3">
+                    <button type="button" class="btn btn-outline-secondary rounded-3 px-3" (click)="closeFaqModal()" [disabled]="isSavingFaq">Hủy</button>
+                    <button type="button" class="btn btn-danger rounded-3 px-4 fw-bold" (click)="saveFaq()" [disabled]="isSavingFaq">
+                        <i class="bi bi-check2"></i> {{ isSavingFaq ? 'Đang lưu...' : (isEditingFaq ? 'Cập nhật FAQ' : 'Tạo FAQ mới') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL XÁC NHẬN XÓA FAQ -->
+    <div class="modal fade show d-block" *ngIf="deleteFaqModalOpen && faqToDelete" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow-lg text-center p-3">
+                <div class="modal-body pt-3 pb-2">
+                    <div class="text-danger mb-3">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 40px;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Xóa kịch bản này?</h5>
+                    <p class="text-muted small mb-0">
+                        Bạn có chắc chắn muốn xóa kịch bản <b>{{ faqToDelete.title }}</b> ({{ faqToDelete.intent }}) không? Thao tác này không thể hoàn tác.
+                    </p>
+                </div>
+                <div class="d-flex justify-content-center gap-2 pt-2 pb-1">
+                    <button type="button" class="btn btn-outline-secondary rounded-3 px-3" (click)="closeDeleteFaqModal()" [disabled]="isDeletingFaq">Hủy</button>
+                    <button type="button" class="btn btn-danger rounded-3 px-3 fw-bold" (click)="confirmDeleteFaq()" [disabled]="isDeletingFaq">
+                        {{ isDeletingFaq ? 'Đang xóa...' : 'Đồng ý xóa' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>

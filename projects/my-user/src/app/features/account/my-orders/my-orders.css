@@ -218,22 +218,22 @@
 }
 
 /* ========================================================
-   COMPACT STATUS TABS (MỖI TAG MỘT MÀU RIÊNG + VIỀN BO TRÒN)
-   Căn chỉnh vừa vặn không bị che "Đã hủy"
+   ORDER STATUS TABS (CHUẨN GIAO DIỆN THEO ẢNH MẪU)
+   Gạch chân đỏ active, badge số tròn đỏ đậm đồng bộ
    ======================================================== */
 .order-tabs {
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
-  justify-content: flex-start;
   align-items: center;
-  gap: 3px;
-  margin-bottom: 14px;
-  padding: 2px 2px 4px;
-  border-bottom: 1px solid #eae3e0;
+  gap: 24px;
+  margin-bottom: 18px;
+  padding: 0 4px;
+  border-bottom: 1.5px solid #ece5e2;
   scrollbar-width: thin;
   scrollbar-color: #d1c7c4 transparent;
   -webkit-overflow-scrolling: touch;
+  background: transparent;
 }
 
 .order-tabs::-webkit-scrollbar {
@@ -251,225 +251,58 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  padding: 1.5px 5.5px;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #475569;
+  padding: 10px 2px 12px;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1.5px;
+  background: transparent;
+  color: #3b2f2c;
   font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .order-tabs__item:hover {
-  transform: translateY(-1px);
+  color: #8b181b;
 }
 
 .order-tabs__item--active {
+  color: #8b181b;
   font-weight: 700;
+  border-bottom-color: #8b181b;
+}
+
+.order-tab-label {
+  display: inline-block;
 }
 
 .order-tab-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 13px;
-  height: 13px;
-  padding: 0 2px;
-  margin-left: 2px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  margin-left: 6px;
   border-radius: 999px;
-  background: #990000;
-  color: #ffffff;
-  font-size: 8.5px;
-  font-weight: 800;
+  background: #8b181b !important;
+  color: #ffffff !important;
+  font-size: 10.5px;
+  font-weight: 700;
   line-height: 1;
 }
 
-/* 1. Tất cả (All): Xám than Slate */
-.order-tabs__item[data-status='all'],
-.order-tabs__item[data-status=''] {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #334155;
-}
-.order-tabs__item[data-status='all'].order-tabs__item--active,
-.order-tabs__item[data-status=''].order-tabs__item--active {
-  background: #334155;
-  border-color: #1e293b;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(51, 65, 85, 0.22);
-}
-.order-tabs__item[data-status='all'] .order-tab-badge,
-.order-tabs__item[data-status=''] .order-tab-badge {
-  background: #475569 !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='all'].order-tabs__item--active .order-tab-badge,
-.order-tabs__item[data-status=''].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #1e293b !important;
-}
-
-/* 2. Chờ xác nhận (Pending): Vàng hổ phách Amber */
-.order-tabs__item[data-status='pending'] {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #b45309;
-}
-.order-tabs__item[data-status='pending'].order-tabs__item--active {
-  background: #d97706;
-  border-color: #b45309;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.22);
-}
-.order-tabs__item[data-status='pending'] .order-tab-badge {
-  background: #d97706 !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='pending'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #b45309 !important;
-}
-
-/* 3. Chờ lấy hàng (Processing): Cam Carot */
-.order-tabs__item[data-status='processing'] {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #c2410c;
-}
-.order-tabs__item[data-status='processing'].order-tabs__item--active {
-  background: #ea580c;
-  border-color: #c2410c;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.22);
-}
-.order-tabs__item[data-status='processing'] .order-tab-badge {
-  background: #ea580c !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='processing'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #c2410c !important;
-}
-
-/* 4. Chờ giao hàng (Shipping): Xanh dương Sky Blue */
-.order-tabs__item[data-status='shipping'] {
-  background: #f0f9ff;
-  border-color: #bae6fd;
-  color: #0369a1;
-}
-.order-tabs__item[data-status='shipping'].order-tabs__item--active {
-  background: #0284c7;
-  border-color: #0369a1;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.22);
-}
-.order-tabs__item[data-status='shipping'] .order-tab-badge {
-  background: #0284c7 !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='shipping'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #0369a1 !important;
-}
-
-/* 5. Đã giao (Completed): Xanh lá ngọc Emerald */
-.order-tabs__item[data-status='completed'] {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #047857;
-}
-.order-tabs__item[data-status='completed'].order-tabs__item--active {
-  background: #059669;
-  border-color: #047857;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.22);
-}
-.order-tabs__item[data-status='completed'] .order-tab-badge {
-  background: #059669 !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='completed'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #047857 !important;
-}
-
-/* 6. Chưa đánh giá (Unreviewed): Đỏ rượu vang Urii */
-.order-tabs__item[data-status='unreviewed'] {
-  background: #fff1f2;
-  border-color: #fecdd3;
-  color: #be123c;
-}
-.order-tabs__item[data-status='unreviewed'].order-tabs__item--active {
-  background: #990000;
-  border-color: #7a0000;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(153, 0, 0, 0.22);
-}
-.order-tabs__item[data-status='unreviewed'] .order-tab-badge {
-  background: #be123c !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='unreviewed'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #990000 !important;
-}
-
-/* 7. Trả hàng (Returned): Tím Lavender / Violet */
-.order-tabs__item[data-status='returned'] {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #6d28d9;
-}
-.order-tabs__item[data-status='returned'].order-tabs__item--active {
-  background: #7c3aed;
-  border-color: #6d28d9;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.22);
-}
-.order-tabs__item[data-status='returned'] .order-tab-badge {
-  background: #7c3aed !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='returned'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #6d28d9 !important;
-}
-
-/* 8. Đã hủy (Cancelled): Đỏ san hô Red */
-.order-tabs__item[data-status='cancelled'] {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #b91c1c;
-}
-.order-tabs__item[data-status='cancelled'].order-tabs__item--active {
-  background: #dc2626;
-  border-color: #b91c1c;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.22);
-}
-.order-tabs__item[data-status='cancelled'] .order-tab-badge {
-  background: #dc2626 !important;
-  color: #ffffff !important;
-}
-.order-tabs__item[data-status='cancelled'].order-tabs__item--active .order-tab-badge {
-  background: #ffffff !important;
-  color: #b91c1c !important;
-}
-
 /* ========================================================
-   ORDER CARDS LIST (SHOPEE STYLE)
+   ORDER CARDS LIST (CHUẨN GIAO DIỆN THEO ẢNH MẪU)
    ======================================================== */
 .orders-list {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .order-card,
@@ -478,14 +311,14 @@
   border: 1px solid #eee6e3;
   border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 2px 10px rgba(67, 31, 24, 0.03);
+  box-shadow: 0 2px 8px rgba(67, 31, 24, 0.03);
 }
 
 .order-card {
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .order-card__header {
@@ -496,137 +329,151 @@
   border-bottom: 1px solid #f2ecea;
 }
 
-.order-card__shop-wrap,
-.order-card__shop-tag {
+.order-card__shop-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.order-card__order-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  background-color: #8b181b;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.order-card__mall-badge {
+  display: inline-block;
+  padding: 1.5px 5px;
+  background-color: #d0011b;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
 }
 
 .order-card__shop-name {
-  font-size: 14px;
-  font-weight: 800;
-  color: #1f1615;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #8b181b;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.order-card__shop-name:hover {
+  text-decoration: underline;
+}
+
+.order-card__shop-chevron {
+  font-size: 16px;
+  color: #8b181b;
+  margin-left: -2px;
+  user-select: none;
 }
 
 .order-card__order-id {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #786561;
-  background: #f4eeee;
-  padding: 2px 7px;
-  border-radius: 5px;
-  letter-spacing: 0.3px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8c736e;
+  margin-left: 6px;
 }
 
 .order-card__order-date {
-  font-size: 12.5px;
-  color: #9c8e8a;
-  font-weight: 500;
+  font-size: 13px;
+  color: #8c736e;
+  font-weight: 400;
 }
 
-.order-card__status-wrap,
-.order-card__status-group {
+.order-card__status-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.order-card__status-tag {
+.order-card__status-tag-text {
+  font-size: 13.5px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3.5px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
-  border: 1.5px solid #a7f3d0;
-  background: #ecfdf5;
-  color: #047857;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  transition: all 0.15s ease;
+  gap: 4px;
+  color: #4b5563;
+  transition: color 0.15s ease;
 }
 
-.order-card__status-tag[data-status='pending'] {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #b45309;
+/* Các tag trạng thái với màu sắc nhận diện riêng biệt, sinh động */
+.order-card__status-tag-text[data-status='pending'],
+.order-card__status-tag-text.status--pending {
+  color: #d97706 !important; /* Vàng cam hổ phách Chờ xác nhận */
 }
 
-.order-card__status-tag[data-status='cancel_requested'] {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #c2410c;
+.order-card__status-tag-text[data-status='approved'],
+.order-card__status-tag-text.status--approved {
+  color: #059669 !important; /* Xanh lục bảo Đã xác nhận */
 }
 
-.order-card__status-tag[data-status='processing'] {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #c2410c;
+.order-card__status-tag-text[data-status='processing'],
+.order-card__status-tag-text.status--processing {
+  color: #0891b2 !important; /* Xanh ngọc Cyan Chờ lấy hàng */
 }
 
-.order-card__status-tag[data-status='shipping'] {
-  background: #f0f9ff;
-  border-color: #bae6fd;
-  color: #0369a1;
+.order-card__status-tag-text[data-status='shipping'],
+.order-card__status-tag-text.status--shipping {
+  color: #2563eb !important; /* Xanh dương Blue Chờ giao hàng */
 }
 
-.order-card__status-tag[data-status='completed'] {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #047857;
+.order-card__status-tag-text[data-status='completed'],
+.order-card__status-tag-text.status--completed {
+  color: #16a34a !important; /* Xanh lá Đã giao (theo yêu cầu) */
 }
 
-.order-card__status-tag[data-status='cancelled'] {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #dc2626;
+.order-card__status-tag-text[data-status='cancelled'],
+.order-card__status-tag-text.status--cancelled {
+  color: #dc2626 !important; /* Màu đỏ Đã hủy (theo yêu cầu) */
 }
 
-.order-card__status-tag[data-status='return_requested'],
-.order-card__status-tag[data-status='returned'] {
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-  color: #7c3aed;
+.order-card__status-tag-text[data-status='returned'],
+.order-card__status-tag-text[data-status='return_requested'],
+.order-card__status-tag-text.status--returned {
+  color: #7c3aed !important; /* Tím Violet Trả hàng/Hoàn tiền */
 }
 
-.status-dot {
-  width: 6.5px;
-  height: 6.5px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-
-.order-card-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.order-card__status-tag-text[data-status='cancel_requested'],
+.order-card__status-tag-text.status--cancel-requested {
+  color: #ea580c !important; /* Cam gạch Chờ hủy */
 }
 
 .order-review-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2.5px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
   border: 1px solid transparent;
 }
 
 .order-review-tag .material-symbols-outlined {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .order-review-tag--pending {
-  background: #fff1f2;
-  color: #be123c;
-  border-color: #f43f5e;
+  background: #fff8e1;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.order-review-tag--pending .material-symbols-outlined {
+  color: #f59e0b;
 }
 
 .order-review-tag--reviewed {
@@ -646,9 +493,14 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 8px 10px;
+  padding: 6px 4px;
   border-radius: 8px;
   transition: all 0.15s ease;
+}
+
+.order-card__product-row:not(:last-child) {
+  border-bottom: 1px solid #f6f0ee;
+  padding-bottom: 12px;
 }
 
 .order-card__product-row--clickable {
@@ -660,7 +512,7 @@
 }
 
 .order-card__product-row--clickable:hover .order-card__product-title {
-  color: #990000;
+  color: #8b181b;
   text-decoration: underline;
 }
 
@@ -668,8 +520,8 @@
   width: 68px;
   height: 68px;
   flex: 0 0 68px;
-  border-radius: 8px;
-  border: 1px solid #eee5e2;
+  border-radius: 6px;
+  border: 1px solid #ece5e2;
   overflow: hidden;
   background: #fcf9f9;
   display: flex;
@@ -684,7 +536,7 @@
 }
 
 .order-card__placeholder-icon {
-  font-size: 32px;
+  font-size: 30px;
   color: #bfaea9;
 }
 
@@ -693,14 +545,14 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .order-card__product-title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #2b1f1d;
+  color: #221815;
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -711,9 +563,136 @@
 .order-card__product-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Tag phân loại sản phẩm: Mỗi tag phân loại có các màu sắc khác nhau rõ rệt */
+.order-card__product-variant {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* Palette 0: Amber / Cam hổ phách ấm áp */
+.order-card__product-variant.order-card__product-variant--c0 {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+/* Palette 1: Tím Tử Đinh Hương / Purple */
+.order-card__product-variant.order-card__product-variant--c1 {
+  background-color: #f5f3ff;
+  color: #6d28d9;
+  border-color: #c4b5fd;
+}
+
+/* Palette 2: Xanh lam Ocean / Sky Blue */
+.order-card__product-variant.order-card__product-variant--c2 {
+  background-color: #f0f9ff;
+  color: #0284c7;
+  border-color: #7dd3fc;
+}
+
+/* Palette 3: Hồng Phấn / Rose Pink */
+.order-card__product-variant.order-card__product-variant--c3 {
+  background-color: #fff1f2;
+  color: #e11d48;
+  border-color: #fecdd3;
+}
+
+/* Palette 4: Xanh Lục Bảo Emerald */
+.order-card__product-variant.order-card__product-variant--c4 {
+  background-color: #ecfdf5;
+  color: #059669;
+  border-color: #6ee7b7;
+}
+
+/* Palette 5: Vàng Hổ Phách Gold */
+.order-card__product-variant.order-card__product-variant--c5 {
+  background-color: #fefce8;
+  color: #b45309;
+  border-color: #fde047;
+}
+
+/* Palette 6: Xanh Chàm Indigo */
+.order-card__product-variant.order-card__product-variant--c6 {
+  background-color: #eef2ff;
+  color: #4338ca;
+  border-color: #a5b4fc;
+}
+
+/* Palette 7: Đỏ Thắm Ruby */
+.order-card__product-variant.order-card__product-variant--c7 {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+/* Danh sách xổ dọc hoặc thu gọn khi đơn hàng có nhiều sản phẩm */
+.order-card__scrollable-items {
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+  margin-top: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #d1c7c4 transparent;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.order-card__scrollable-items::-webkit-scrollbar {
+  width: 4px;
+}
+
+.order-card__scrollable-items::-webkit-scrollbar-thumb {
+  background: #dcd2cf;
+  border-radius: 4px;
+}
+
+.order-card__toggle-items-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 14px;
+  margin-top: 4px;
+  background: #faf6f5;
+  border: 1px dashed #e3d2ce;
+  border-radius: 6px;
+  color: #8c736e;
+  font-family: inherit;
   font-size: 12.5px;
-  color: #7d6e6a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.order-card__toggle-items-btn:hover {
+  background: #fff5f5;
+  border-color: #8b181b;
+  color: #8b181b;
+}
+
+.order-card__toggle-items-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.order-card__product-qty {
+  color: #757575;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .order-card__product-pricing {
@@ -725,15 +704,15 @@
 }
 
 .order-card__price-original {
-  font-size: 12px;
-  color: #9c8e8a;
+  font-size: 12.5px;
+  color: #9e9e9e;
   text-decoration: line-through;
 }
 
 .order-card__price-current {
   font-size: 14.5px;
   font-weight: 700;
-  color: #990000;
+  color: #212121;
 }
 
 /* Total Bar */
@@ -742,19 +721,19 @@
   align-items: baseline;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid #f6f0ee;
+  padding-top: 12px;
+  border-top: 1px solid #f5edea;
 }
 
 .order-card__total-label {
   font-size: 13.5px;
-  color: #574b48;
+  color: #423835;
 }
 
 .order-card__total-value {
   font-size: 17px;
   font-weight: 800;
-  color: #990000;
+  color: #8b181b;
 }
 
 /* Reward banner */
@@ -852,20 +831,379 @@
   border-color: #86efac;
 }
 
-.orders-button--change-address {
-  border-color: #fca5a5;
-  background: #fff5f5;
+.orders-button--cancel {
+  border-color: #e5e7eb;
+  background: #ffffff;
   color: #b91c1c;
+}
+
+.orders-button--cancel:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.orders-button--confirm-cancel {
+  background: #8b181b;
+  color: #ffffff;
+  border-color: #8b181b;
+}
+
+.orders-button--confirm-cancel:hover {
+  background: #731215;
+}
+
+.orders-button--confirm-cancel:disabled {
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.orders-button--change-address {
+  border-color: #dcd2cf;
+  background: #ffffff;
+  color: #3b2f2c;
   gap: 4px;
 }
 
 .orders-button--change-address:hover {
-  background: #fee2e2;
-  border-color: #ef4444;
+  background: #fbf7f6;
+  border-color: #c7b8b4;
 }
 
 .orders-button--change-address .material-symbols-outlined {
   font-size: 15px;
+}
+
+/* ========================================================
+   PAGINATION THEO ẢNH MẪU 3 & 4
+   Các ô vuông bo góc mềm (squircle radius 12px), ô active màu đỏ đậm #840001
+   ======================================================== */
+.orders-pagination {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-top: 32px !important;
+  margin-bottom: 28px !important;
+}
+
+.orders-pagination button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  border: 1.5px solid #ebdcd8 !important;
+  background: #ffffff !important;
+  color: #3f3330 !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+}
+
+.orders-pagination button:hover:not(:disabled) {
+  border-color: #840001 !important;
+  color: #840001 !important;
+  background: #fff8f8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(132, 0, 1, 0.12) !important;
+}
+
+.orders-pagination button.orders-pagination__active {
+  background: #840001 !important;
+  border-color: #840001 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(132, 0, 1, 0.28) !important;
+}
+
+.orders-pagination button:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  border-color: #f0e4e1 !important;
+  background: #faf7f7 !important;
+  color: #c4b5b2 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.orders-pagination .pagination-arrow-svg {
+  width: 18px !important;
+  height: 18px !important;
+  color: #5c4d49 !important;
+  transition: all 0.15s ease !important;
+}
+
+.orders-pagination button:hover:not(:disabled) .pagination-arrow-svg {
+  color: #840001 !important;
+}
+
+.orders-pagination button:disabled .pagination-arrow-svg {
+  color: #c4b5b2 !important;
+}
+
+/* ========================================================
+   MODAL HỦY ĐƠN HÀNG (CHO KHÁCH KHI ĐƠN CHỜ XÁC NHẬN)
+   ======================================================== */
+.cancel-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.cancel-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: slideUp 0.2s ease-out;
+}
+
+.cancel-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0e8e6;
+}
+
+.cancel-modal__title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cancel-modal__icon {
+  font-size: 22px;
+  color: #b91c1c;
+}
+
+.cancel-modal__title-group h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2b1f1d;
+}
+
+.cancel-modal__close {
+  background: transparent;
+  border: none;
+  color: #8c736e;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.cancel-modal__close:hover {
+  color: #1f1615;
+}
+
+.cancel-modal__body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cancel-modal__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+.cancel-modal__notice .notice-icon {
+  font-size: 20px;
+  color: #f59e0b;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cancel-modal__notice strong {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.cancel-modal__notice p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cancel-modal__alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cancel-modal__alert--error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.cancel-modal__alert--success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.cancel-reasons-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cancel-reasons-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #3b2f2c;
+}
+
+.cancel-reasons-label .required {
+  color: #dc2626;
+}
+
+.cancel-reasons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cancel-reason-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid #ece5e2;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cancel-reason-option:hover {
+  background: #faf6f5;
+  border-color: #dcd2cf;
+}
+
+.cancel-reason-option--active {
+  border-color: #8b181b;
+  background: #fff8f8;
+}
+
+.cancel-radio-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.cancel-radio-circle--checked {
+  border-color: #8b181b;
+}
+
+.cancel-radio-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #8b181b;
+}
+
+.cancel-reason-text {
+  font-size: 13.5px;
+  color: #332724;
+  font-weight: 500;
+}
+
+.cancel-custom-note-field {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-note-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b3d39;
+}
+
+.cancel-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ece5e2;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #2b1f1d;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cancel-textarea:focus {
+  border-color: #8b181b;
+  box-shadow: 0 0 0 3px rgba(139, 24, 27, 0.1);
+}
+
+.cancel-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #f0e8e6;
+  background: #faf8f7;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ========================================================
@@ -1757,40 +2095,73 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(520px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   z-index: 10001;
   overflow: hidden;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .review-modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #eee;
+  padding: 16px 22px;
+  border-bottom: 1px solid #f0e6e8;
+  flex-shrink: 0;
+  background: #ffffff;
 }
 
-.review-modal__header h2 {
+.review-modal__header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.review-modal__header-title .material-symbols-outlined {
+  font-size: 24px;
+  color: #840001;
+}
+
+.review-modal__header-title h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
+  color: #2b1d24;
 }
 
 .review-modal__close {
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 20px;
+  padding: 6px;
+  border-radius: 8px;
+  color: #8a7a82;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-modal__close:hover {
+  background: #fdf2f4;
+  color: #840001;
 }
 
 .review-modal__form {
-  padding: 20px;
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 140px);
+  scrollbar-width: thin;
+  scrollbar-color: #d1c7c4 transparent;
 }
 
 .review-rating-stars {
@@ -2551,6 +2922,299 @@
   background: #e8e8e8;
   color: #aaa;
   cursor: not-allowed;
+}
+
+/* ========================================================
+   GIAO DIỆN ĐÁNH GIÁ CHI TIẾT TỪNG SẢN PHẨM TRONG ĐƠN
+   ======================================================== */
+.review-item-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 6px;
+  padding-right: 4px;
+}
+
+.review-item-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #faf6f7;
+  border: 1.5px solid #ebdbe0;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.review-item-chip:hover {
+  background: #fff0f3;
+  border-color: #840001;
+}
+
+.review-item-chip--active {
+  background: #fff0f3 !important;
+  border-color: #840001 !important;
+  box-shadow: 0 2px 8px rgba(132, 0, 1, 0.12);
+}
+
+.review-item-chip__thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid #e5d5d8;
+  flex-shrink: 0;
+}
+
+.review-item-chip__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.review-item-chip__name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #3b2835;
+  line-height: 1.35;
+}
+
+.review-item-chip__status-done {
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 1px 7px;
+  border-radius: 99px;
+  width: fit-content;
+}
+
+/* Review Product Preview Card inside Modal */
+.review-product-preview {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 12px 14px !important;
+  background: #faf6f7 !important;
+  border: 1px solid #ebdbe0 !important;
+  border-radius: 12px !important;
+  margin-bottom: 4px !important;
+}
+
+.review-product-preview__thumb-wrap {
+  width: 72px !important;
+  height: 72px !important;
+  min-width: 72px !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1px solid #e8dadc !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.review-product-preview__thumb {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.review-product-preview__icon {
+  font-size: 32px !important;
+  color: #c4b5b8 !important;
+}
+
+.review-product-preview__meta {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.review-product-preview__order {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #840001 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  display: block !important;
+}
+
+.review-product-preview__name {
+  margin: 0 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #2b1d24 !important;
+  line-height: 1.4 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.review-product-preview__sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.review-product-preview__variant {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c6873;
+  background: #ebdbe0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.review-product-preview__price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #840001;
+}
+
+/* Quick review tags chips */
+.review-quick-tags-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #635259;
+  margin-bottom: 8px;
+}
+
+.review-quick-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.review-quick-tag-chip {
+  padding: 5px 12px;
+  background: #ffffff;
+  border: 1px solid #ebdbe0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d5b64;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.review-quick-tag-chip:hover {
+  background: #fff0f3;
+  color: #840001;
+  border-color: #840001;
+  transform: translateY(-1px);
+}
+
+.review-continue-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fdf2f4;
+  border: 1px dashed #f87171;
+  border-radius: 10px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.review-continue-prompt .material-symbols-outlined {
+  font-size: 26px;
+  color: #840001;
+}
+
+.review-continue-prompt p {
+  margin: 0;
+  font-size: 13.5px;
+  color: #55444b;
+}
+
+/* Star rating inside modal */
+.review-stars-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 6px 0 !important;
+}
+
+.review-stars-row {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.review-star-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  border-radius: 8px !important;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease !important;
+  outline: none !important;
+}
+
+.review-star-btn:hover {
+  transform: scale(1.22) !important;
+  background-color: #fff4e5 !important;
+}
+
+.review-star-btn:active {
+  transform: scale(0.92) !important;
+}
+
+.review-star-svg {
+  display: block !important;
+  transition: all 0.15s ease !important;
+}
+
+.review-stars-label {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #d97706 !important;
+  min-width: 90px !important;
+}
+
+.review-error-banner {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 14px !important;
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  border-radius: 8px !important;
+  color: #dc2626 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.review-error-banner .material-symbols-outlined {
+  font-size: 20px !important;
+}
+
+.review-modal__footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  margin-top: 8px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid #f0e6e8 !important;
 }
 
 /* ========================================================

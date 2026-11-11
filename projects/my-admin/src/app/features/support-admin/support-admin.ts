@@ -23,6 +23,28 @@ export class SupportAdmin implements OnInit, OnDestroy {
   lastKnownSessionsJSON: string = '';
   
   adminReplyText: string = '';
+  activeTab: 'chat' | 'faqs' = 'chat';
+
+  // Quản lý kịch bản FAQs Chatbot (Thêm, Sửa, Xóa)
+  faqs: any[] = [];
+  faqSearchQuery: string = '';
+  isLoadingFaqs: boolean = false;
+  faqModalOpen: boolean = false;
+  isEditingFaq: boolean = false;
+  editingFaqId: string | null = null;
+  faqForm = {
+    intent: '',
+    title: '',
+    keywords: '',
+    response: '',
+    quickReplies: ''
+  };
+  isSavingFaq: boolean = false;
+  faqSaveError: string = '';
+  deleteFaqModalOpen: boolean = false;
+  faqToDelete: any = null;
+  isDeletingFaq: boolean = false;
+
   private pollInterval: any;
   private routeSub: any;
   private realtimeSub = new Subscription();
@@ -358,6 +380,191 @@ export class SupportAdmin implements OnInit, OnDestroy {
     })
       .then(() => this.loadSessions(true))
       .catch(err => console.error('Lỗi trả phiên chat cho bot:', err));
+  }
+
+  switchTab(tab: 'chat' | 'faqs'): void {
+    this.activeTab = tab;
+    if (tab === 'faqs') {
+      this.loadFaqs();
+    }
+  }
+
+  loadFaqs(): void {
+    this.isLoadingFaqs = true;
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+    fetch('/api/chat/faqs', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(res => res.json())
+      .then(data => {
+        this.isLoadingFaqs = false;
+        this.faqs = Array.isArray(data) ? data : [];
+        this.cdr.detectChanges();
+      })
+      .catch(err => {
+        this.isLoadingFaqs = false;
+        console.error('Lỗi tải danh sách FAQ:', err);
+        this.cdr.detectChanges();
+      });
+  }
+
+  getFilteredFaqs(): any[] {
+    if (!this.faqSearchQuery || !this.faqSearchQuery.trim()) {
+      return this.faqs;
+    }
+    const q = this.faqSearchQuery.toLowerCase().trim();
+    return this.faqs.filter(faq => {
+      const title = (faq.title || '').toLowerCase();
+      const intent = (faq.intent || '').toLowerCase();
+      const response = (faq.response || '').toLowerCase();
+      const keywords = (faq.keywords || []).map((k: string) => String(k).toLowerCase()).join(' ');
+      return title.includes(q) || intent.includes(q) || response.includes(q) || keywords.includes(q);
+    });
+  }
+
+  openCreateFaqModal(): void {
+    this.isEditingFaq = false;
+    this.editingFaqId = null;
+    this.faqSaveError = '';
+    this.faqForm = {
+      intent: '',
+      title: '',
+      keywords: '',
+      response: '',
+      quickReplies: ''
+    };
+    this.faqModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  openEditFaqModal(faq: any): void {
+    this.isEditingFaq = true;
+    this.editingFaqId = faq.id || faq._id;
+    this.faqSaveError = '';
+    this.faqForm = {
+      intent: faq.intent || '',
+      title: faq.title || '',
+      keywords: Array.isArray(faq.keywords) ? faq.keywords.join(', ') : '',
+      response: faq.response || '',
+      quickReplies: Array.isArray(faq.quickReplies) ? faq.quickReplies.join(', ') : ''
+    };
+    this.faqModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeFaqModal(): void {
+    this.faqModalOpen = false;
+    this.faqSaveError = '';
+    this.isSavingFaq = false;
+  }
+
+  saveFaq(): void {
+    if (!this.faqForm.title.trim() || !this.faqForm.intent.trim() || !this.faqForm.response.trim()) {
+      this.faqSaveError = 'Vui lòng điền đầy đủ Tiêu đề, Mã Intent và Câu trả lời.';
+      return;
+    }
+
+    const keywords = this.faqForm.keywords
+      .split(',')
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+
+    const quickReplies = this.faqForm.quickReplies
+      .split(',')
+      .map(r => r.trim())
+      .filter(r => r.length > 0);
+
+    const payload = {
+      title: this.faqForm.title.trim(),
+      intent: this.faqForm.intent.trim(),
+      keywords,
+      response: this.faqForm.response.trim(),
+      quickReplies
+    };
+
+    this.isSavingFaq = true;
+    this.faqSaveError = '';
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    const url = this.isEditingFaq && this.editingFaqId
+      ? `/api/chat/faqs/${encodeURIComponent(this.editingFaqId)}`
+      : '/api/chat/faqs';
+    const method = this.isEditingFaq ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(async res => {
+        this.isSavingFaq = false;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Không thể lưu kịch bản FAQ.');
+        }
+        return res.json();
+      })
+      .then(() => {
+        this.closeFaqModal();
+        this.loadFaqs();
+      })
+      .catch(err => {
+        this.isSavingFaq = false;
+        this.faqSaveError = err.message || 'Lỗi kết nối máy chủ.';
+        this.cdr.detectChanges();
+      });
+  }
+
+  openDeleteFaqModal(faq: any): void {
+    this.faqToDelete = faq;
+    this.deleteFaqModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDeleteFaqModal(): void {
+    this.deleteFaqModalOpen = false;
+    this.faqToDelete = null;
+    this.isDeletingFaq = false;
+  }
+
+  confirmDeleteFaq(): void {
+    if (!this.faqToDelete) return;
+    const targetId = this.faqToDelete.id || this.faqToDelete._id;
+    this.isDeletingFaq = true;
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    fetch(`/api/chat/faqs/${encodeURIComponent(targetId)}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(async res => {
+        this.isDeletingFaq = false;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Không thể xóa FAQ.');
+        }
+        return res.json();
+      })
+      .then(() => {
+        this.closeDeleteFaqModal();
+        this.loadFaqs();
+      })
+      .catch(err => {
+        this.isDeletingFaq = false;
+        alert(err.message || 'Lỗi xóa FAQ.');
+        this.cdr.detectChanges();
+      });
   }
 
   private scrollToBottom(): void {

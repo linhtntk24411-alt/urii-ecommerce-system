@@ -437,6 +437,17 @@ exports.deleteFaq = async (req, res) => {
   }
 };
 
+function removeVietnameseTones(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
+
 // Khớp câu hỏi của người dùng với kịch bản trả lời tự động (FAQ Matching)
 exports.matchFaq = async (req, res) => {
   try {
@@ -446,26 +457,30 @@ exports.matchFaq = async (req, res) => {
     }
 
     const q = query.toLowerCase().trim();
+    const qNorm = removeVietnameseTones(q);
     const faqs = await ChatbotFaq.find().lean();
 
-    // Tìm FAQ có keyword trùng khớp cao nhất
     let matchedFaq = null;
-    let maxMatch = 0;
+    let maxScore = 0;
 
     for (const faq of faqs) {
-      let matches = 0;
+      let score = 0;
       for (const kw of faq.keywords || []) {
-        if (q.includes(kw.toLowerCase())) {
-          matches++;
+        const kwLower = kw.toLowerCase().trim();
+        const kwNorm = removeVietnameseTones(kwLower);
+        if (q === kwLower || qNorm === kwNorm) {
+          score += 10;
+        } else if (q.includes(kwLower) || qNorm.includes(kwNorm)) {
+          score += kwNorm.length;
         }
       }
-      if (matches > maxMatch) {
-        maxMatch = matches;
+      if (score > maxScore) {
+        maxScore = score;
         matchedFaq = faq;
       }
     }
 
-    if (matchedFaq && maxMatch > 0) {
+    if (matchedFaq && maxScore >= 3) {
       return res.json({
         matched: true,
         intent: matchedFaq.intent,
@@ -474,7 +489,6 @@ exports.matchFaq = async (req, res) => {
       });
     }
 
-    // Câu trả lời mặc định khi không khớp keyword
     res.json({
       matched: false,
       intent: 'fallback',
@@ -495,9 +509,73 @@ exports.askAi = async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng nhập nội dung câu hỏi.' });
     }
 
+    const trimmedMsg = message.trim();
+    const msgNorm = removeVietnameseTones(trimmedMsg);
+
+    // Ưu tiên tra cứu trực tiếp các kịch bản FAQ do Admin cấu hình trong Database
+    try {
+      const faqs = await ChatbotFaq.find().lean();
+      let bestFaq = null;
+      let highestScore = 0;
+
+      for (const faq of faqs) {
+        let score = 0;
+        for (const kw of faq.keywords || []) {
+          const kwNorm = removeVietnameseTones(kw);
+          if (msgNorm === kwNorm) {
+            score += 15;
+          } else if (msgNorm.includes(kwNorm)) {
+            score += kwNorm.length >= 4 ? kwNorm.length : 3;
+          }
+        }
+        if (score > highestScore) {
+          highestScore = score;
+          bestFaq = faq;
+        }
+      }
+
+      if (bestFaq && highestScore >= 6) {
+        const chips = (bestFaq.quickReplies || []).map((r) => {
+          const label = typeof r === 'string' ? r : (r.label || '');
+          const action = typeof r === 'string' ? r : (r.action || r.label || '');
+          return { label, action };
+        });
+
+        let targetUrl = '';
+        let targetLabel = '';
+        if (bestFaq.intent === 'order_tracking') {
+          targetUrl = '/orders';
+          targetLabel = 'Đơn hàng của tôi';
+        } else if (bestFaq.intent === 'colors_catalog') {
+          targetUrl = '/products?category=BEADS';
+          targetLabel = 'Xem bảng màu hạt';
+        } else if (bestFaq.intent === 'custom_order') {
+          targetUrl = '/custom-order';
+          targetLabel = 'Đặt làm theo yêu cầu';
+        } else if (bestFaq.intent === 'vouchers') {
+          targetUrl = '/vouchers';
+          targetLabel = 'Kho voucher của tôi';
+        } else if (bestFaq.intent === 'perler_guide') {
+          targetUrl = '/sample-maps';
+          targetLabel = 'Thư viện map mẫu';
+        }
+
+        return res.json({
+          success: true,
+          reply: bestFaq.response,
+          targetUrl,
+          targetLabel,
+          isWarning: false,
+          chips
+        });
+      }
+    } catch (faqErr) {
+      console.warn('Lỗi tra cứu ChatbotFaq trong askAi:', faqErr.message);
+    }
+
     const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '';
     const aiResponse = await generateAiReply({
-      message: message.trim(),
+      message: trimmedMsg,
       history: Array.isArray(history) ? history : [],
       context: context || {},
       apiKey

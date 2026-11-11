@@ -43,6 +43,9 @@ export class SupportAdmin implements OnInit, OnDestroy {
   faqSaveError: string = '';
   deleteFaqModalOpen: boolean = false;
   faqToDelete: any = null;
+  deleteSessionModalOpen: boolean = false;
+  sessionToDelete: any = null;
+  isDeletingSession: boolean = false;
   isDeletingFaq: boolean = false;
 
   private pollInterval: any;
@@ -563,6 +566,61 @@ export class SupportAdmin implements OnInit, OnDestroy {
       .catch(err => {
         this.isDeletingFaq = false;
         alert(err.message || 'Lỗi xóa FAQ.');
+        this.cdr.detectChanges();
+      });
+  }
+
+  openDeleteSessionModal(session: any, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    this.sessionToDelete = session;
+    this.deleteSessionModalOpen = true;
+  }
+
+  closeDeleteSessionModal(): void {
+    this.deleteSessionModalOpen = false;
+    this.sessionToDelete = null;
+    this.isDeletingSession = false;
+  }
+
+  confirmDeleteSession(): void {
+    if (!this.sessionToDelete) return;
+    const sessionId = this.sessionToDelete.sessionId || this.sessionToDelete.id;
+    this.isDeletingSession = true;
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    fetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+      .then(async res => {
+        this.isDeletingSession = false;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Không thể xóa cuộc trò chuyện.');
+        }
+        return res.json();
+      })
+      .then(() => {
+        delete this.sessions[sessionId];
+        this.saveSessions();
+        if (this.selectedSessionId === sessionId) {
+          this.selectedSessionId = '';
+        }
+        this.closeDeleteSessionModal();
+        this.loadSessions(true);
+        this.cdr.detectChanges();
+      })
+      .catch(err => {
+        this.isDeletingSession = false;
+        alert(err.message || 'Lỗi xóa cuộc trò chuyện.');
         this.cdr.detectChanges();
       });
   }

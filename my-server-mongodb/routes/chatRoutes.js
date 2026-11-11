@@ -14,6 +14,8 @@ router.post('/sessions/:id/cancel-agent', c.cancelAgent);
 router.get('/sessions/:id', c.getSessionById);
 router.post('/sessions', c.createOrUpdateSession);
 router.post('/sessions/:id/messages', c.addMessage);
+router.delete('/sessions/:id/messages', c.clearSessionMessages);
+router.delete('/sessions/:id', c.deleteSession);
 
 // Admin-only endpoints (dành cho SupportAdmin / Quản trị viên)
 router.post('/faqs', authenticate, requireAdmin, c.createFaq);
@@ -24,6 +26,5 @@ router.get('/sessions', authenticate, requireAdmin, c.getAllSessions);
 router.put('/sessions/:id', authenticate, requireAdmin, c.updateSession);
 router.patch('/sessions/:id', authenticate, requireAdmin, c.updateSession);
 router.put('/sessions/:id/status', authenticate, requireAdmin, c.updateStatus);
-router.delete('/sessions/:id', authenticate, requireAdmin, c.deleteSession);
 
 module.exports = router;

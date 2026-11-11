@@ -226,17 +226,40 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     setTimeout(() => this.scrollToBottom(), 100);
   }
 
-  deleteSession(sessionId: string, event: Event): void {
-    event.stopPropagation();
+  deleteSession(sessionId: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    if (!sessionId) return;
+
+    // 1. Gọi backend xóa phiên chat vĩnh viễn trên server
+    this.http.delete(`/api/chat/sessions/${encodeURIComponent(sessionId)}`).subscribe({
+      next: () => console.log('Đã xóa phiên chat trên server:', sessionId),
+      error: (err) => console.warn('Lỗi gọi API xóa phiên chat:', err)
+    });
+
+    // 2. Xóa phiên chat khỏi localStorage
     const sessions = this.getSessions();
     delete sessions[sessionId];
     this.saveSessions(sessions);
 
+    // 3. Nếu đang mở phiên bị xóa thì tạo phiên mới
     if (this.currentSessionId === sessionId) {
       this.resetChat();
     } else {
       this.cdr.detectChanges();
     }
+  }
+
+  confirmClearCurrentChat(): void {
+    if (!this.currentSessionId) return;
+    const hasMessages = this.messages && this.messages.length > 0;
+    if (hasMessages) {
+      const confirmed = window.confirm('Bạn có chắc chắn muốn xóa toàn bộ đoạn chat hiện tại không?');
+      if (!confirmed) return;
+    }
+    this.deleteSession(this.currentSessionId);
   }
 
   formatSessionDate(timestamp: number): string {

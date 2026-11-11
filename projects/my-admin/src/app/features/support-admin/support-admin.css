@@ -322,6 +322,15 @@
     overflow: hidden;
 }
 
+.delete-session-btn {
+    opacity: 0.6;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.delete-session-btn:hover {
+    opacity: 1 !important;
+    transform: scale(1.15);
+}
+
 /* Mobile Responsive for Support Chat */
 @media (max-width: 767.98px) {
     .row.g-0.rounded-4 {

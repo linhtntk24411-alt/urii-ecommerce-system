@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, inject, OnDestroy, OnInit, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom, Subscription, TimeoutError } from 'rxjs';
@@ -15,12 +15,13 @@ interface BlogDraft {
   seoTitle: string;
   seoDesc: string;
   imagePreviewUrls: string[];
+  hasAcceptedGuidelines?: boolean;
 }
 
 @Component({
   selector: 'app-blog-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './blog-create.html',
   styleUrl: './blog-create.css'
 })
@@ -31,6 +32,8 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
   blogForm: FormGroup;
   imagePreviewUrls: string[] = [];
   isSeoOpen = false;
+  isGuidelinesOpen = true;
+  hasAcceptedGuidelines = false;
   wordCount: number = 0;
   autoSaveMessage = 'Chưa lưu';
   isSaving = false;
@@ -104,12 +107,16 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
     if (files.length === 0) return;
     const supportedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
     if (files.some((file) => !supportedImageTypes.includes(file.type))) {
-      this.errorMessage = 'Chỉ hỗ trợ ảnh PNG, JPG, WEBP hoặc GIF.';
+      const msg = 'Chỉ hỗ trợ ảnh định dạng PNG, JPG, WEBP hoặc GIF.';
+      this.errorMessage = msg;
+      this.dialogService.alert(msg, 'Định dạng ảnh không hợp lệ', 'warning');
       return;
     }
     if (files.reduce((total, file) => total + file.size, 0) +
       this.imagePreviewUrls.reduce((total, image) => total + this.dataUrlSize(image), 0) > this.maxImageBytes) {
-      this.errorMessage = 'Tổng dung lượng ảnh không được vượt quá 6MB.';
+      const msg = 'Tổng dung lượng ảnh vượt quá giới hạn 6MB. Vui lòng chọn ảnh nhẹ hơn.';
+      this.errorMessage = msg;
+      this.dialogService.alert(msg, 'Ảnh quá dung lượng', 'warning');
       return;
     }
 
@@ -147,40 +154,100 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onContentChange();
   }
 
+  toggleGuidelines(): void {
+    this.isGuidelinesOpen = !this.isGuidelinesOpen;
+  }
+
+  onGuidelinesCheckboxChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.hasAcceptedGuidelines = input.checked;
+    this.scheduleAutoSave();
+    if (this.hasAcceptedGuidelines) {
+      this.errorMessage = '';
+    }
+  }
+
   toggleSeo(): void {
     this.isSeoOpen = !this.isSeoOpen;
   }
 
   saveDraft(): void {
-    const saved = this.persistDraft();
     if (!isPlatformBrowser(this.platformId)) return;
 
+    const title = String(this.blogForm.get('title')?.value ?? '').trim();
+    const content = String(this.blogForm.get('content')?.value ?? '');
+
+    if (!title && !this.contentText(content).trim() && this.imagePreviewUrls.length === 0) {
+      this.dialogService.alert(
+        'Bản nháp hiện đang trống. Vui lòng nhập tiêu đề hoặc nội dung trước khi lưu nháp.',
+        'Bản nháp trống',
+        'info'
+      );
+      return;
+    }
+
+    const saved = this.persistDraft();
     if (saved) {
-      this.showDialog('Đã lưu bản nháp thành công!');
+      this.dialogService.alert('Đã lưu bản nháp bài viết thành công!', 'Lưu bản nháp', 'success');
     } else {
-      this.showDialog(this.errorMessage || 'Không thể lưu bản nháp. Vui lòng thử lại.');
+      this.dialogService.alert(this.errorMessage || 'Không thể lưu bản nháp. Vui lòng thử lại.', 'Lỗi lưu bản nháp', 'error');
     }
   }
 
   publish(): void {
-    if (this.isPublishing) return;
+    if (this.isPublishing) {
+      this.dialogService.alert('Bài viết đang được xử lý đăng tải, vui lòng chờ trong giây lát...', 'Đang xử lý', 'info');
+      return;
+    }
 
     if (!isPlatformBrowser(this.platformId)) return;
     const token = localStorage.getItem('authToken');
     if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
-      this.dialogService.promptLogin({
-        title: 'Đăng nhập để đăng tải bài viết',
-        description: 'Vui lòng đăng nhập tài khoản Urii để đăng bài viết lên Góc Cộng Đồng.',
-        returnUrl: this.router.url
+      this.dialogService.alert('Bạn cần đăng nhập tài khoản Urii trước khi đăng bài viết lên cộng đồng.', 'Yêu cầu đăng nhập', 'warning').then(() => {
+        this.dialogService.promptLogin({
+          title: 'Đăng nhập để đăng tải bài viết',
+          description: 'Vui lòng đăng nhập tài khoản Urii để đăng bài viết lên Góc Cộng Đồng.',
+          returnUrl: this.router.url
+        });
       });
+      return;
+    }
+
+    if (!this.hasAcceptedGuidelines) {
+      this.isGuidelinesOpen = true;
+      this.errorMessage = 'Vui lòng tick xác nhận "Tôi đã đọc và cam kết tuân thủ Quy chuẩn cộng đồng" trước khi đăng bài.';
+      this.dialogService.alert(
+        'Bạn chưa xác nhận Quy chuẩn cộng đồng!\n\nVui lòng tích chọn ô "Tôi đã đọc, hiểu rõ và cam kết tuân thủ đầy đủ Quy chuẩn cộng đồng & Hướng dẫn đăng bài của Urii" ở trên để được phép đăng bài.',
+        'Chưa xác nhận Quy chuẩn',
+        'warning'
+      );
+      if (typeof document !== 'undefined') {
+        const el = document.querySelector('.community-guidelines-card');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
       return;
     }
 
     const title = String(this.blogForm.get('title')?.value ?? '').trim();
     const content = String(this.blogForm.get('content')?.value ?? '');
-    if (!title || !this.contentText(content).trim()) {
+
+    if (!title) {
       this.blogForm.get('title')?.markAsTouched();
-      this.errorMessage = 'Vui lòng nhập Tiêu đề và Nội dung bài viết!';
+      this.errorMessage = 'Vui lòng nhập Tiêu đề bài viết!';
+      this.dialogService.alert('Vui lòng nhập Tiêu đề cho bài viết của bạn trước khi xuất bản!', 'Thiếu tiêu đề bài viết', 'warning');
+      if (typeof document !== 'undefined') {
+        const input = document.querySelector('input[formControlName="title"]') as HTMLInputElement;
+        input?.focus();
+      }
+      return;
+    }
+
+    if (!this.contentText(content).trim()) {
+      this.errorMessage = 'Vui lòng nhập Nội dung bài viết!';
+      this.dialogService.alert('Vui lòng viết nội dung cho bài viết trước khi xuất bản!', 'Thiếu nội dung bài viết', 'warning');
+      if (this.editor) {
+        this.editor.nativeElement.focus();
+      }
       return;
     }
 
@@ -329,6 +396,9 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
         seoDesc: draft.seoDesc,
       });
       this.imagePreviewUrls = draft.imagePreviewUrls;
+      if (typeof draft.hasAcceptedGuidelines === 'boolean') {
+        this.hasAcceptedGuidelines = draft.hasAcceptedGuidelines;
+      }
       this.autoSaveMessage = 'Đã khôi phục bản nháp';
     } catch (error: unknown) {
       console.error('Lỗi khôi phục bản nháp blog:', error);
@@ -345,6 +415,7 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
       seoTitle: String(this.blogForm.get('seoTitle')?.value ?? ''),
       seoDesc: String(this.blogForm.get('seoDesc')?.value ?? ''),
       imagePreviewUrls: [...this.imagePreviewUrls],
+      hasAcceptedGuidelines: this.hasAcceptedGuidelines,
     };
   }
 

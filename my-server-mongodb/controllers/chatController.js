@@ -315,16 +315,37 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-// Xóa một phiên chat
+// Xóa toàn bộ tin nhắn trong một phiên chat
+exports.clearSessionMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = await ChatSession.findOneAndUpdate(
+      { sessionId: id },
+      { $set: { messages: [], lastMessageTime: Date.now() } },
+      { new: true }
+    );
+    if (!session) {
+      return res.status(404).json({ message: 'Không tìm thấy phiên chat để xóa tin nhắn.' });
+    }
+    emitCrudChange('chat', 'update', id);
+    res.json({ success: true, message: 'Đã xóa toàn bộ tin nhắn trong đoạn chat.', session });
+  } catch (error) {
+    console.error('Lỗi xóa tin nhắn trong phiên chat:', error);
+    res.status(500).json({ message: 'Không thể xóa tin nhắn.' });
+  }
+};
+
+// Xóa một phiên chat hoàn toàn
 exports.deleteSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await ChatSession.findOneAndDelete({ sessionId: id });
+    const deleted = await ChatSession.findOneAndDelete({ sessionId: id })
+      || (mongoose.isValidObjectId(id) ? await ChatSession.findByIdAndDelete(id) : null);
     if (!deleted) {
       return res.status(404).json({ message: 'Không tìm thấy phiên chat để xóa.' });
     }
     emitCrudChange('chat', 'delete', id);
-    res.json({ success: true, message: 'Đã xóa phiên chat.' });
+    res.json({ success: true, message: 'Đã xóa phiên chat thành công.' });
   } catch (error) {
     console.error('Lỗi xóa phiên chat:', error);
     res.status(500).json({ message: 'Không thể xóa phiên chat.' });

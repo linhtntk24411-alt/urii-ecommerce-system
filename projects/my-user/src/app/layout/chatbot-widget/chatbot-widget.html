@@ -26,6 +26,7 @@
                     <button class="action-btn" (click)="resetChat()" title="Cuộc hội thoại mới"><span class="material-symbols-outlined">add</span></button>
                 } @else {
                     <button id="btn-history" class="action-btn" (click)="toggleHistoryView()" title="Lịch sử trò chuyện (Dành cho thành viên)"><span class="material-symbols-outlined">history</span></button>
+                    <button id="btn-clear-chat" class="action-btn" (click)="confirmClearCurrentChat()" title="Xóa đoạn chat này"><span class="material-symbols-outlined">delete_sweep</span></button>
                     <button id="btn-reset" class="action-btn" (click)="resetChat()" title="Làm mới (Bắt đầu cuộc trò chuyện mới)"><span class="material-symbols-outlined">restart_alt</span></button>
                 }
                 <button id="btn-minimize" class="action-btn" (click)="closeChat()" title="Thu nhỏ"><span class="material-symbols-outlined">remove</span></button>

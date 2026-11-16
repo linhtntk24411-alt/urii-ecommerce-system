@@ -12,6 +12,7 @@ import { PromotionsComponent } from './features/promotions/promotions.component'
 import { UsersComponent } from './features/users/users.component';
 import { BlogsAdmin } from './features/blogs-admin/blogs-admin';
 import { CommentsAdmin } from './features/comments-admin/comments-admin';
+import { HelpCenterAdmin } from './features/help-center-admin/help-center-admin';
 
 const requireAdminLogin: CanActivateChildFn = () => {
   if (!isPlatformBrowser(inject(PLATFORM_ID))) {
@@ -42,6 +43,7 @@ export const routes: Routes = [
       { path: 'chatbot', component: SupportAdmin },
       { path: 'blogs', component: BlogsAdmin },
       { path: 'comments', component: CommentsAdmin },
+      {path:'helps', component: HelpCenterAdmin},
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   }

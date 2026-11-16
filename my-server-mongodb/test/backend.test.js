@@ -829,6 +829,71 @@ function reactionQuery(value) {
     then(resolve, reject) { return Promise.resolve(value).then(resolve, reject); } };
 }
 
+function openUserSocket(token, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const socket = connectSocket(`${baseUrl}/user`, { auth: token ? { token } : {}, transports: ['websocket'], reconnection: false, extraHeaders: headers });
+    const timer = setTimeout(() => { socket.close(); reject(new Error('Socket timeout')); }, 1500);
+    socket.once('connect', () => { clearTimeout(timer); resolve(socket); });
+    socket.once('connect_error', error => { clearTimeout(timer); socket.close(); reject(error); });
+  });
+}
+
+test('merge socket: rejects invalid tokens, unauthorized chat rooms and forged identify', async t => {
+  const session = new ChatSession({ sessionId: 'private-room', userName: 'Owner', reactionOwnerId: 'account:507f1f77bcf86cd799439011' });
+  t.mock.method(ChatSession, 'findOne', filter => reactionQuery(filter.sessionId === session.sessionId ? session : null));
+  await assert.rejects(openUserSocket('invalid'), /Unauthorized/);
+  const owner = await openUserSocket(reactionToken()); const stranger = await openUserSocket(reactionToken('507f1f77bcf86cd799439012')); const guest = await openUserSocket();
+  t.after(() => { owner.close(); stranger.close(); guest.close(); });
+  assert.equal((await owner.timeout(1000).emitWithAck('chat:join', 'private-room')).ok, true);
+  assert.equal((await stranger.timeout(1000).emitWithAck('chat:join', 'private-room')).ok, false);
+  assert.equal((await guest.timeout(1000).emitWithAck('chat:join', 'private-room')).ok, false);
+  stranger.emit('identify', '507f1f77bcf86cd799439011');
+  await stranger.timeout(1000).emitWithAck('chat:join', 'missing-room');
+  assert.equal(io.of('/user').sockets.get(stranger.id).rooms.has('user:507f1f77bcf86cd799439011'), false);
+  let deliveries = 0; let leaks = 0;
+  owner.on('chat:message', () => deliveries++); stranger.on('chat:message', () => leaks++); guest.on('chat:message', () => leaks++);
+  require('../realtime').emitToSession('private-room', 'chat:message', { sessionId: 'private-room' });
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal(deliveries, 1); assert.equal(leaks, 0);
+});
+
+test('merge socket: guest ownership and private order notifications remain isolated', async t => {
+  const secret = 'c'.repeat(64); const hash = require('node:crypto').createHash('sha256').update(secret).digest('hex');
+  t.mock.method(ChatSession, 'findOne', () => reactionQuery({ sessionId: 'guest-room', reactionGuestHash: hash }));
+  const guest = await openUserSocket('', { Cookie: `urii_reaction_guest=${secret}` });
+  const owner = await openUserSocket(reactionToken()); const other = await openUserSocket(reactionToken('507f1f77bcf86cd799439012'));
+  t.after(() => { guest.close(); owner.close(); other.close(); });
+  assert.equal((await guest.timeout(1000).emitWithAck('join:chat', 'guest-room')).ok, true);
+  let received = 0; let leaked = 0;
+  owner.on('user:update', () => received++); other.on('user:update', () => leaked++); other.on('crud:changed', () => leaked++);
+  emitCrudChange('orders', 'updated', 'private-order', { userId: '507f1f77bcf86cd799439011', address: { name: 'Private' } });
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal(received, 1); assert.equal(leaked, 0);
+});
+
+test('merge chat: request-agent ignores client history and cancels without replacing message records', async t => {
+  const session = new ChatSession({ sessionId: 'safe-room', userName: 'Owner', reactionOwnerId: 'account:507f1f77bcf86cd799439011', status: 'ai', messages: [
+    { messageId: 'keep', clientRequestId: 'keep-request-111111111', senderId: 'account:507f1f77bcf86cd799439011', sender: 'user', text: 'Retained', recalledAt: 123, reactions: [{ actor: 'account:other', emoji: '👍' }] }
+  ] });
+  const before = JSON.stringify(session.messages);
+  t.mock.method(ChatSession, 'findOne', () => reactionQuery(session));
+  t.mock.method(ChatSession, 'findOneAndUpdate', (filter, update) => {
+    assert.equal(update.$push, undefined); assert.equal(update.$set.messages, undefined);
+    if (filter.status?.$ne === 'waiting' && session.status === 'waiting') return reactionQuery(null);
+    if (filter.status === 'waiting' && session.status !== 'waiting') return reactionQuery(null);
+    session.status = update.$set.status; return reactionQuery(session);
+  });
+  const payload = { sessionId: 'safe-room', messages: [{ sender: 'admin', text: 'Overwrite' }] };
+  assert.equal((await reactionRequest('/request-agent', payload, reactionToken(), 'POST')).status, 200);
+  assert.equal((await reactionRequest('/request-agent', payload, reactionToken(), 'POST')).status, 200);
+  assert.equal(JSON.stringify(session.messages), before);
+  assert.equal((await reactionRequest('/sessions/safe-room/cancel-agent', {}, reactionToken('507f1f77bcf86cd799439012'), 'POST')).status, 403);
+  assert.equal((await reactionRequest('/sessions/safe-room/cancel-agent', {}, reactionToken(), 'POST')).status, 200);
+  assert.equal(session.status, 'ai'); assert.equal(JSON.stringify(session.messages), before);
+  session.status = 'active';
+  assert.equal((await reactionRequest('/sessions/safe-room/cancel-agent', {}, reactionToken(), 'POST')).status, 409);
+});
+
 function chatZip(entries) {
   const locals = []; const directory = []; let offset = 0;
   for (const [name, content] of entries) {

@@ -1,7 +1,11 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, Inject, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
+import { AdminRealtimeService } from '../../core/services/admin-realtime.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-support-admin',
@@ -11,6 +15,7 @@ import { AdminApiService } from '../../core/services/admin-api.service';
   styleUrls: ['./support-admin.css']
 })
 export class SupportAdmin implements OnInit, OnDestroy {
+  private readonly socket = inject(AdminSocketService);
   sessions: { [key: string]: any } = {};
   currentFilter: string = 'all'; // 'all', 'waiting', 'active'
   selectedSessionId: string | null = null;
@@ -18,6 +23,31 @@ export class SupportAdmin implements OnInit, OnDestroy {
   lastKnownSessionsJSON: string = '';
   
   adminReplyText: string = '';
+  activeTab: 'chat' | 'faqs' = 'chat';
+
+  // Quản lý kịch bản FAQs Chatbot (Thêm, Sửa, Xóa)
+  faqs: any[] = [];
+  faqSearchQuery: string = '';
+  isLoadingFaqs: boolean = false;
+  faqModalOpen: boolean = false;
+  isEditingFaq: boolean = false;
+  editingFaqId: string | null = null;
+  faqForm = {
+    intent: '',
+    title: '',
+    keywords: '',
+    response: '',
+    quickReplies: ''
+  };
+  isSavingFaq: boolean = false;
+  faqSaveError: string = '';
+  deleteFaqModalOpen: boolean = false;
+  faqToDelete: any = null;
+  deleteSessionModalOpen: boolean = false;
+  sessionToDelete: any = null;
+  isDeletingSession: boolean = false;
+  isDeletingFaq: boolean = false;
+
   private pollInterval: any;
   reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
   reactionState: Record<string, { actor: string; emoji: string }[]> = {};
@@ -26,6 +56,14 @@ export class SupportAdmin implements OnInit, OnDestroy {
   reactionBusy = false;
   reactionError = '';
   private reactionLoading = false;
+  private messageEpoch = 0;
+  private sessionVersions = new Map<string, number>();
+  private acceptSnapshot(sessionId: string, updatedAt: unknown): boolean {
+    const version = new Date(String(updatedAt || '')).getTime();
+    if (!Number.isFinite(version)) return true;
+    if (version < (this.sessionVersions.get(sessionId) || 0)) return false;
+    this.sessionVersions.set(sessionId, version); return true;
+  }
   recallMenu: string | null = null;
   recallBusy = false;
   recallError = '';
@@ -216,7 +254,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
     finally { this.forwardBusy = false; this.cdr.markForCheck(); }
   }
 
-  private rememberMessages(sessionId: string, messages: any[]): void {
+  private rememberMessages(sessionId: string, messages: any[], fromPoll = false): void {
+    if (!fromPoll) this.messageEpoch++;
     const identity = this.reactionHeaders()['Authorization'] || '';
     if (this.verificationIdentity !== identity) { this.clearAttachmentUrls(); this.verifiedMessages.clear(); this.unverifiedMessages.clear(); this.verificationIdentity = identity; }
     for (const message of messages) {
@@ -290,6 +329,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
   }
 
   async loadReactions(): Promise<void> {
+    const epoch = this.messageEpoch;
     const sessionId = this.selectedSessionId;
     if (!sessionId || this.reactionLoading) return;
     const identity = this.reactionHeaders()['Authorization'] || '';
@@ -298,10 +338,11 @@ export class SupportAdmin implements OnInit, OnDestroy {
       const response = await fetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}/reactions`, { headers: this.reactionHeaders(), cache: 'no-store' });
       if (!response.ok) return;
       const data = await response.json();
-      if (this.selectedSessionId !== sessionId || identity !== (this.reactionHeaders()['Authorization'] || '')) return;
+      if (epoch !== this.messageEpoch || this.selectedSessionId !== sessionId || identity !== (this.reactionHeaders()['Authorization'] || '')) return;
+      if (!this.acceptSnapshot(sessionId, data.updatedAt)) return;
       this.reactionState = data.reactions || {};
       this.reactionActor = data.actor;
-      this.rememberMessages(sessionId, data.messages || []);
+      this.rememberMessages(sessionId, data.messages || [], true);
       this.cdr.markForCheck();
     } catch { /* Keep the last server-confirmed reactions until polling reconnects. */ }
     finally { this.reactionLoading = false; }
@@ -331,6 +372,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Không thể lưu cảm xúc.');
+      this.messageEpoch++;
       if (this.selectedSessionId === sessionId && !this.isRecalled(message)) this.reactionState = { ...this.reactionState, [message.messageId]: data.reactions };
       this.reactionPicker = null;
     } catch (error) { this.reactionError = (error as Error).message; }
@@ -339,19 +381,49 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
   @HostListener('document:click') closeReaction(): void { this.reactionPicker = null; }
   @HostListener('document:keydown.escape') closeReactionOnEscape(): void { this.reactionPicker = null; }
+  private routeSub: any;
+  private sessionsRequest = 0;
+  private realtimeSub = new Subscription();
 
   constructor(
     private cdr: ChangeDetectorRef,
-    private adminApi: AdminApiService
+    private adminApi: AdminApiService,
+    private route: ActivatedRoute,
+    @Inject(PLATFORM_ID) private platformId: object,
+    private adminRealtime: AdminRealtimeService
   ) {}
 
   ngOnInit(): void {
     this.loadSessions();
+    this.realtimeSub.add(this.socket.onChatUpdate().subscribe(() => { this.loadSessions(true); void this.loadReactions(); }));
+    this.realtimeSub.add(this.socket.onCrudChange('chat').subscribe(() => { this.loadSessions(true); void this.loadReactions(); }));
+    this.realtimeSub.add(this.adminRealtime.crudChanged$.subscribe((event) => {
+      if (event.resource === 'chat') {
+        this.loadSessions(true);
+      }
+    }));
+
+    this.realtimeSub.add(this.adminRealtime.chatMessage$.subscribe((msg) => {
+      if (msg && msg.sessionId === this.selectedSessionId) {
+        this.loadSessions(true);
+      }
+    }));
     this.lastKnownSessionsJSON = typeof localStorage !== 'undefined' ? (localStorage.getItem('urii_chat_sessions') || '{}') : '{}';
+
+    // Lắng nghe queryParams để tự động chọn phiên chat khi click từ thông báo
+    this.routeSub = this.route.queryParams.subscribe(params => {
+      const sid = params['sessionId'];
+      if (sid) {
+        this.selectedSessionId = sid;
+        if (this.sessions[sid]) {
+          this.selectSession(sid);
+        }
+      }
+    });
     
-    // Kiểm tra đồng bộ định kỳ
-    if (typeof window !== 'undefined') {
-      this.pollInterval = setInterval(() => this.checkAndSyncStorage(), 3000);
+    // Kiểm tra đồng bộ định kỳ từ server backend
+    if (isPlatformBrowser(this.platformId)) {
+      this.pollInterval = setInterval(() => { this.loadSessions(true); void this.loadReactions(); }, 3000);
     }
   }
 
@@ -360,6 +432,12 @@ export class SupportAdmin implements OnInit, OnDestroy {
     clearTimeout(this.forwardNoticeTimer);
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
+    }
+    if (this.routeSub) {
+      this.routeSub.unsubscribe();
+    }
+    if (this.realtimeSub) {
+      this.realtimeSub.unsubscribe();
     }
   }
 
@@ -398,9 +476,11 @@ export class SupportAdmin implements OnInit, OnDestroy {
     return list.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
   }
 
-  loadSessions() {
+  loadSessions(silent = false) {
+    const request = ++this.sessionsRequest;
+    const epoch = this.messageEpoch;
     const identity = this.reactionHeaders()['Authorization'] || '';
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    if (!silent && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       try {
         const local = JSON.parse(localStorage.getItem('urii_chat_sessions') || '{}');
         if (local && Object.keys(local).length > 0) {
@@ -421,13 +501,15 @@ export class SupportAdmin implements OnInit, OnDestroy {
     })
       .then(r => r.json())
       .then(data => {
-        if (identity !== (this.reactionHeaders()['Authorization'] || '')) return;
+        if (epoch !== this.messageEpoch || request !== this.sessionsRequest || identity !== (this.reactionHeaders()['Authorization'] || '')) return;
         const list = Array.isArray(data) ? data : (data?.sessions || []);
         if (list.length > 0) {
           const map: { [key: string]: any } = { ...this.sessions };
+          const prevSelectedMsgCount = this.selectedSessionId ? (this.sessions[this.selectedSessionId]?.messages?.length || 0) : 0;
           list.forEach((s: any) => {
             const key = s.sessionId || s._id;
-            this.rememberMessages(key, s.messages || []);
+            if (!this.acceptSnapshot(key, s.updatedAt)) return;
+            this.rememberMessages(key, s.messages || [], true);
             const cacheMessage = ({ recalledAt, recalledBy, ...message }: any) => message;
             const localMessages = this.sessions[key]?.messages;
             const messages = localMessages ? [...localMessages] : (s.messages || []).map(cacheMessage);
@@ -447,14 +529,26 @@ export class SupportAdmin implements OnInit, OnDestroy {
               lastMessageTime: s.lastMessageTime || (s.updatedAt ? new Date(s.updatedAt).getTime() : Date.now())
             };
           });
+
           this.sessions = map;
           if (typeof localStorage !== 'undefined') {
             this.saveSessions();
           }
+
+          // Nếu có selectedSessionId từ route mà chưa được focus
+          if (this.selectedSessionId && this.sessions[this.selectedSessionId]) {
+            const newMsgCount = this.sessions[this.selectedSessionId].messages?.length || 0;
+            if (newMsgCount > prevSelectedMsgCount) {
+              this.scrollToBottom();
+            }
+          }
+
           this.cdr.detectChanges();
         }
       })
-      .catch(err => console.error('Lỗi tải chat sessions từ backend:', err));
+      .catch(err => {
+        if (!silent) console.error('Lỗi tải chat sessions từ backend:', err);
+      });
   }
 
   saveSessions() {
@@ -509,6 +603,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
     }
     this.selectedSessionId = sessionId;
     void this.loadReactions();
+    this.socket.joinChat(sessionId);
     const session = this.sessions[sessionId];
     if (!session) return;
 
@@ -517,6 +612,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
       this.sessions[sessionId] = session;
       this.saveSessions();
     }
+    this.scrollToBottom();
   }
 
   getSelectedSession() {
@@ -570,6 +666,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
     const token = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
@@ -586,6 +684,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
       if (!response.ok) throw new Error(data.message || 'Không thể lưu tin nhắn.');
       const accepted = data.acceptedMessage;
       if (accepted?.clientRequestId === clientRequestId) {
+        this.rememberMessages(sentSessionId, [accepted]);
         const localMessage = this.sessions[sentSessionId]?.messages.find((m: any) => m.clientRequestId === clientRequestId);
         if (localMessage) { localMessage.messageId = accepted.messageId; localMessage.senderId = accepted.senderId; }
         this.saveSessions();
@@ -618,6 +717,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
     const token = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
@@ -629,7 +730,9 @@ export class SupportAdmin implements OnInit, OnDestroy {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ status: 'active', systemLog: 'Nhân viên tư vấn đã bắt đầu tiếp quản cuộc trò chuyện.' })
-    }).catch(err => console.error('Lỗi đổi trạng thái chat:', err));
+    })
+      .then(() => this.loadSessions(true))
+      .catch(err => console.error('Lỗi đổi trạng thái chat:', err));
   }
 
   handbackChat() {
@@ -640,7 +743,7 @@ export class SupportAdmin implements OnInit, OnDestroy {
     session.status = 'ai';
     session.messages.push({
       text: 'Nhân viên đã trả lại phiên chat cho Urii Bot tự động tư vấn.',
-      sender: 'admin',
+      sender: 'bot',
       timestamp: Date.now(),
       isSystemLog: true
     });
@@ -648,6 +751,8 @@ export class SupportAdmin implements OnInit, OnDestroy {
 
     this.sessions[this.selectedSessionId] = session;
     this.saveSessions();
+    this.cdr.detectChanges();
+    this.scrollToBottom();
 
     const token = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
@@ -659,7 +764,9 @@ export class SupportAdmin implements OnInit, OnDestroy {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ status: 'ai', systemLog: 'Nhân viên đã trả lại phiên chat cho Urii Bot tự động tư vấn.' })
-    }).catch(err => console.error('Lỗi trả phiên chat cho bot:', err));
+    })
+      .then(() => this.loadSessions(true))
+      .catch(err => console.error('Lỗi trả phiên chat cho bot:', err));
   }
 
   checkAndSyncStorage() {
@@ -670,5 +777,254 @@ export class SupportAdmin implements OnInit, OnDestroy {
     }
     this.loadSessions();
     void this.loadReactions();
+  }
+
+  switchTab(tab: 'chat' | 'faqs'): void {
+    this.activeTab = tab;
+    if (tab === 'faqs') this.loadFaqs();
+    else { this.loadSessions(true); void this.loadReactions(); }
+  }
+
+  loadFaqs(): void {
+    this.isLoadingFaqs = true;
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+    fetch('/api/chat/faqs', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(res => res.json())
+      .then(data => {
+        this.isLoadingFaqs = false;
+        this.faqs = Array.isArray(data) ? data : [];
+        this.cdr.detectChanges();
+      })
+      .catch(err => {
+        this.isLoadingFaqs = false;
+        console.error('Lỗi tải danh sách FAQ:', err);
+        this.cdr.detectChanges();
+      });
+  }
+
+  getFilteredFaqs(): any[] {
+    if (!this.faqSearchQuery || !this.faqSearchQuery.trim()) {
+      return this.faqs;
+    }
+    const q = this.faqSearchQuery.toLowerCase().trim();
+    return this.faqs.filter(faq => {
+      const title = (faq.title || '').toLowerCase();
+      const intent = (faq.intent || '').toLowerCase();
+      const response = (faq.response || '').toLowerCase();
+      const keywords = (faq.keywords || []).map((k: string) => String(k).toLowerCase()).join(' ');
+      return title.includes(q) || intent.includes(q) || response.includes(q) || keywords.includes(q);
+    });
+  }
+
+  openCreateFaqModal(): void {
+    this.isEditingFaq = false;
+    this.editingFaqId = null;
+    this.faqSaveError = '';
+    this.faqForm = {
+      intent: '',
+      title: '',
+      keywords: '',
+      response: '',
+      quickReplies: ''
+    };
+    this.faqModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  openEditFaqModal(faq: any): void {
+    this.isEditingFaq = true;
+    this.editingFaqId = faq.id || faq._id;
+    this.faqSaveError = '';
+    this.faqForm = {
+      intent: faq.intent || '',
+      title: faq.title || '',
+      keywords: Array.isArray(faq.keywords) ? faq.keywords.join(', ') : '',
+      response: faq.response || '',
+      quickReplies: Array.isArray(faq.quickReplies) ? faq.quickReplies.join(', ') : ''
+    };
+    this.faqModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeFaqModal(): void {
+    this.faqModalOpen = false;
+    this.faqSaveError = '';
+    this.isSavingFaq = false;
+  }
+
+  saveFaq(): void {
+    if (!this.faqForm.title.trim() || !this.faqForm.intent.trim() || !this.faqForm.response.trim()) {
+      this.faqSaveError = 'Vui lòng điền đầy đủ Tiêu đề, Mã Intent và Câu trả lời.';
+      return;
+    }
+
+    const keywords = this.faqForm.keywords
+      .split(',')
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+
+    const quickReplies = this.faqForm.quickReplies
+      .split(',')
+      .map(r => r.trim())
+      .filter(r => r.length > 0);
+
+    const payload = {
+      title: this.faqForm.title.trim(),
+      intent: this.faqForm.intent.trim(),
+      keywords,
+      response: this.faqForm.response.trim(),
+      quickReplies
+    };
+
+    this.isSavingFaq = true;
+    this.faqSaveError = '';
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    const url = this.isEditingFaq && this.editingFaqId
+      ? `/api/chat/faqs/${encodeURIComponent(this.editingFaqId)}`
+      : '/api/chat/faqs';
+    const method = this.isEditingFaq ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(async res => {
+        this.isSavingFaq = false;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Không thể lưu kịch bản FAQ.');
+        }
+        return res.json();
+      })
+      .then(() => {
+        this.closeFaqModal();
+        this.loadFaqs();
+      })
+      .catch(err => {
+        this.isSavingFaq = false;
+        this.faqSaveError = err.message || 'Lỗi kết nối máy chủ.';
+        this.cdr.detectChanges();
+      });
+  }
+
+  openDeleteFaqModal(faq: any): void {
+    this.faqToDelete = faq;
+    this.deleteFaqModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDeleteFaqModal(): void {
+    this.deleteFaqModalOpen = false;
+    this.faqToDelete = null;
+    this.isDeletingFaq = false;
+  }
+
+  confirmDeleteFaq(): void {
+    if (!this.faqToDelete) return;
+    const targetId = this.faqToDelete.id || this.faqToDelete._id;
+    this.isDeletingFaq = true;
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    fetch(`/api/chat/faqs/${encodeURIComponent(targetId)}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(async res => {
+        this.isDeletingFaq = false;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Không thể xóa FAQ.');
+        }
+        return res.json();
+      })
+      .then(() => {
+        this.closeDeleteFaqModal();
+        this.loadFaqs();
+      })
+      .catch(err => {
+        this.isDeletingFaq = false;
+        alert(err.message || 'Lỗi xóa FAQ.');
+        this.cdr.detectChanges();
+      });
+  }
+
+  openDeleteSessionModal(session: any, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    this.sessionToDelete = session;
+    this.deleteSessionModalOpen = true;
+  }
+
+  closeDeleteSessionModal(): void {
+    this.deleteSessionModalOpen = false;
+    this.sessionToDelete = null;
+    this.isDeletingSession = false;
+  }
+
+  confirmDeleteSession(): void {
+    if (!this.sessionToDelete) return;
+    const sessionId = this.sessionToDelete.sessionId || this.sessionToDelete.id;
+    this.isDeletingSession = true;
+
+    const token = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('adminToken') || localStorage.getItem('urii-admin-token') || localStorage.getItem('token') || '')
+      : '';
+
+    fetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+      .then(async res => {
+        this.isDeletingSession = false;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Không thể xóa cuộc trò chuyện.');
+        }
+        return res.json();
+      })
+      .then(() => {
+        delete this.sessions[sessionId];
+        this.saveSessions();
+        if (this.selectedSessionId === sessionId) {
+          this.selectedSessionId = '';
+        }
+        this.closeDeleteSessionModal();
+        this.loadSessions(true);
+        this.cdr.detectChanges();
+      })
+      .catch(err => {
+        this.isDeletingSession = false;
+        alert(err.message || 'Lỗi xóa cuộc trò chuyện.');
+        this.cdr.detectChanges();
+      });
+  }
+
+  private scrollToBottom(): void {
+    if (typeof document === 'undefined') return;
+    setTimeout(() => {
+      const el = document.getElementById('admin-chat-messages');
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }, 60);
   }
 }

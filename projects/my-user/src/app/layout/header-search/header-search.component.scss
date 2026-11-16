@@ -1,8 +1,8 @@
 :host {
   display: block;
-  width: 200px;
+  width: 175px;
   min-width: 0;
-  flex: 0 1 200px;
+  flex: 0 1 175px;
   position: relative;
   z-index: 1005;
 }
@@ -264,6 +264,10 @@
 @keyframes dropdown-enter {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1280px) {
+  :host { width: 150px; flex-basis: 150px; }
 }
 
 @media (max-width: 1024px) {

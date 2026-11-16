@@ -1,9 +1,10 @@
-import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { TimeoutError, catchError, forkJoin, of } from 'rxjs';
 import { AdminApiService, AdminComment, AdminReview } from '../../core/services/admin-api.service';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 interface CommentItem {
   id: string;
@@ -31,6 +32,7 @@ interface CommentItem {
   styleUrls: ['./comments-admin.css']
 })
 export class CommentsAdmin implements OnInit {
+  private readonly socket = inject(AdminSocketService);
   constructor(
     private adminApi: AdminApiService,
     private changeDetectorRef: ChangeDetectorRef,
@@ -440,9 +442,13 @@ export class CommentsAdmin implements OnInit {
 
   changeStatus(id: string, newStatus: 'normal' | 'flagged'): void {
     const comment = this.allComments.find(c => c.id === id);
-
     if (comment) {
       comment.status = newStatus;
+      const rawId = id.startsWith('review:') ? id.replace(/^review:/, '') : id;
+      this.adminApi.updateCommentStatus(rawId, newStatus).subscribe({
+        next: () => this.loadComments(),
+        error: (err) => console.error('Lỗi đổi trạng thái bình luận qua API:', err)
+      });
     }
   }
   deleteComment(id: string) {
@@ -461,6 +467,19 @@ export class CommentsAdmin implements OnInit {
   confirmDeleteComment(): void {
     const id = this.deletingCommentId;
     if (!id) return;
+
+    if (id.startsWith('review:')) {
+      const reviewId = id.replace(/^review:/, '');
+      this.adminApi.deleteReview(reviewId).subscribe({
+        next: () => this.loadComments(),
+        error: (err) => console.error('Lỗi xóa đánh giá qua API:', err)
+      });
+    } else {
+      this.adminApi.deleteComment(id).subscribe({
+        next: () => this.loadComments(),
+        error: (err) => console.error('Lỗi xóa bình luận qua API:', err)
+      });
+    }
 
     this.allComments = this.allComments.filter(comment => comment.id !== id);
     this.closeDeleteConfirm();

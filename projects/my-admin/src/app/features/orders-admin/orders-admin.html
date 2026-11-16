@@ -126,7 +126,11 @@
                                     <ul class="dropdown-menu shadow" [class.show]="activeDropdownId === o.id">
                                         <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'pending')">Chờ xác nhận</a></li>
                                         <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'approved')">Đã xác nhận</a></li>
-                                        <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'completed')">Hoàn thành</a></li>
+                                        @if (o.status !== 'pending') {
+                                            <li><a class="dropdown-item py-2" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'completed')">Hoàn thành</a></li>
+                                        } @else {
+                                            <li><a class="dropdown-item py-2 text-muted disabled" href="#" (click)="$event.preventDefault(); alertPendingDeliveryError()" title="Cần xác nhận đơn trước khi giao">Hoàn thành (Cần xác nhận trước)</a></li>
+                                        }
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item py-2 text-danger" href="#" (click)="$event.preventDefault(); updateOrderStatus(o.id, 'cancelled')">Đã hủy</a></li>
                                     </ul>

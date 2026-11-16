@@ -218,7 +218,12 @@ export class ProductDetail implements OnInit {
 
   toggleFavorite(): void {
     if (!this.product) return;
-    if (!this.isBrowser || window.localStorage.getItem('isLoggedIn') !== 'true') {
+    const isUserLoggedIn = this.isBrowser && (
+      window.localStorage.getItem('isLoggedIn') === 'true' ||
+      Boolean(window.localStorage.getItem('authToken')) ||
+      Boolean(window.localStorage.getItem('urii.auth.token'))
+    );
+    if (!isUserLoggedIn) {
       this.dialogService.promptLogin({
         title: 'Đăng nhập để lưu sản phẩm yêu thích',
         description: 'Vui lòng đăng nhập để lưu sản phẩm này vào danh sách yêu thích của bạn.',
@@ -274,7 +279,7 @@ export class ProductDetail implements OnInit {
     this.errorMessage = '';
     this.reviewErrorMessage = '';
     this.statusMessage = '';
-    const cachedProduct = this.readCachedProducts().find((item) => item.slug === slug);
+    const cachedProduct = this.readCachedProducts().find((item) => item.slug === slug || String(item.id) === slug);
 
     try {
       const response = await window.fetch('/api/products');
@@ -284,7 +289,7 @@ export class ProductDetail implements OnInit {
 
       const data: unknown = await response.json();
       const products = this.parseProducts(data);
-      const found = products.find((item) => item.slug === slug);
+      const found = products.find((item) => item.slug === slug || String(item.id) === slug);
       if (!found) {
         if (cachedProduct) {
           this.setProduct(cachedProduct);
@@ -298,6 +303,14 @@ export class ProductDetail implements OnInit {
 
       this.setProduct(found);
       this.isFavorite = this.favorites.has(found.id);
+      if (this.isBrowser && (window.localStorage.getItem('isLoggedIn') === 'true' || Boolean(window.localStorage.getItem('authToken')))) {
+        void this.favorites.syncWithServer().then(() => {
+          if (this.product) {
+            this.isFavorite = this.favorites.has(this.product.id);
+            this.changeDetectorRef.markForCheck();
+          }
+        });
+      }
       await this.loadCustomerReviews(found);
       try {
         window.localStorage.setItem('products', JSON.stringify(products));

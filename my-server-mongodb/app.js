@@ -130,6 +130,8 @@ app.use('/api/promotions', voucherRoutes);
 app.use('/api/promotion', voucherRoutes);
 app.use('/api/user-vouchers', require('./routes/userVoucherRoutes'));
 app.use('/api/user-voucher', require('./routes/userVoucherRoutes'));
+app.use('/api/saved-vouchers', require('./routes/userVoucherRoutes'));
+app.use('/api/saved-voucher', require('./routes/userVoucherRoutes'));
 
 app.use('/api/dashboard', dashboardRoutes);
 

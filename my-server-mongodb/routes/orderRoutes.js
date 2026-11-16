@@ -5,12 +5,17 @@ const paymentController = require('../controllers/paymentController');
 const { authenticate, requireAdmin, requireCustomer } = require('../middleware/auth');
 
 router.get('/mine', authenticate, requireCustomer, c.getMyOrders);
+router.get('/mine/summary', authenticate, requireCustomer, c.getMyOrdersSummary);
 router.get('/mine/:slug', authenticate, requireCustomer, c.getMyOrderBySlug);
+router.put('/mine/:slug/address', authenticate, requireCustomer, c.updateMyOrderAddress);
+router.patch('/mine/:slug/address', authenticate, requireCustomer, c.updateMyOrderAddress);
 router.post('/:id/payment', authenticate, requireCustomer, paymentController.createOrderPayment);
 router.get('/:id/payment', authenticate, requireCustomer, paymentController.getOrderPaymentStatus);
 
 router.get('/metadata', c.getOrderMetadata);
 router.get('/mine', authenticate, c.getMyOrders);
+router.post('/mine/:slug/cancel', authenticate, requireCustomer, c.cancelMyPendingOrder);
+router.post('/:id/cancel', authenticate, c.cancelMyPendingOrder);
 router.post('/:id/cancel-request', authenticate, c.requestCancelOrder);
 router.post('/:id/return-request', authenticate, c.requestReturnOrder);
 

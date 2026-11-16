@@ -10,10 +10,127 @@
       <p class="blog-create-subtitle">Chia sẻ kỹ thuật, mẫu map hoặc hành trình sáng tạo hạt nhựa của bạn.</p>
     </div>
     <div class="blog-create-actions">
-      <button type="button" class="btn-draft" (click)="saveDraft()">Lưu bản nháp</button>
-      <button type="button" class="btn-publish" [disabled]="isPublishing" (click)="publish()">
-        {{ isPublishing ? 'Đang đăng...' : 'Đăng bài' }}
+      <button type="button" class="btn-draft" (click)="saveDraft()" title="Lưu bản nháp vào thiết bị">Lưu bản nháp</button>
+      <button type="button" class="btn-publish" [class.ready]="hasAcceptedGuidelines" (click)="publish()" [title]="hasAcceptedGuidelines ? 'Xuất bản bài viết lên cộng đồng' : 'Cần tick xác nhận Quy chuẩn cộng đồng để đăng bài'">
+        <span class="material-symbols-outlined btn-publish-spinner" *ngIf="isPublishing">sync</span>
+        <span>{{ isPublishing ? 'Đang đăng...' : 'Đăng bài' }}</span>
       </button>
+    </div>
+  </div>
+
+  <!-- Quy chuẩn cộng đồng & Lưu ý khi đăng bài -->
+  <div class="community-guidelines-card" [class.is-collapsed]="!isGuidelinesOpen" [class.is-accepted]="hasAcceptedGuidelines">
+    <div class="guidelines-header" (click)="toggleGuidelines()" role="button" tabindex="0" (keydown.enter)="toggleGuidelines()" (keydown.space)="toggleGuidelines()">
+      <div class="guidelines-header__left">
+        <div class="guidelines-badge-icon-wrap" [class.badge-accepted]="hasAcceptedGuidelines">
+          <span class="material-symbols-outlined guidelines-badge-icon">
+            {{ hasAcceptedGuidelines ? 'verified' : 'verified_user' }}
+          </span>
+        </div>
+        <div>
+          <div class="guidelines-title-row">
+            <span class="guidelines-title">Quy chuẩn cộng đồng &amp; Hướng dẫn đăng bài</span>
+            <span class="guidelines-pill" [class.pill-accepted]="hasAcceptedGuidelines">
+              <span class="material-symbols-outlined pill-icon" *ngIf="hasAcceptedGuidelines">check</span>
+              {{ hasAcceptedGuidelines ? 'Đã cam kết tuân thủ' : 'Cần đọc và xác nhận' }}
+            </span>
+          </div>
+          <p class="guidelines-hint" *ngIf="!isGuidelinesOpen && !hasAcceptedGuidelines">
+            Vui lòng tuân thủ tôn chỉ sáng tạo văn minh, tôn trọng tác quyền và không chia sẻ nội dung độc hại. Nhấp để xem...
+          </p>
+          <p class="guidelines-hint hint-success" *ngIf="!isGuidelinesOpen && hasAcceptedGuidelines">
+            Bạn đã đồng ý tuân thủ Quy chuẩn cộng đồng Urii. Nhấp để xem lại các điều khoản...
+          </p>
+        </div>
+      </div>
+      <button type="button" class="btn-toggle-guidelines" (click)="$event.stopPropagation(); toggleGuidelines()" [attr.aria-expanded]="isGuidelinesOpen" [attr.aria-label]="isGuidelinesOpen ? 'Thu gọn quy chuẩn' : 'Mở rộng quy chuẩn'">
+        <span>{{ isGuidelinesOpen ? 'Thu gọn' : 'Xem quy chuẩn' }}</span>
+        <span class="material-symbols-outlined chevron-icon" [class.rotated]="isGuidelinesOpen">expand_more</span>
+      </button>
+    </div>
+
+    <!-- Chi tiết 4 quy chuẩn -->
+    <div class="guidelines-body" *ngIf="isGuidelinesOpen">
+      <p class="guidelines-intro">
+        Urii hướng tới không gian sáng tạo thủ công hạt nhựa và đồ DIY lành mạnh, văn minh và truyền cảm hứng. Vui lòng nắm rõ 4 quy chuẩn cốt lõi:
+      </p>
+
+      <div class="guidelines-grid">
+        <div class="guideline-item">
+          <div class="guideline-icon-wrap icon-respect">
+            <span class="material-symbols-outlined">forum</span>
+          </div>
+          <div class="guideline-item__content">
+            <h4>1. Văn minh &amp; Tôn trọng</h4>
+            <p>Sử dụng ngôn từ hòa nhã, lịch sự. Tuyệt đối không dùng từ ngữ thô tục, công kích cá nhân, xúc phạm danh dự hoặc quấy rối.</p>
+          </div>
+        </div>
+
+        <div class="guideline-item">
+          <div class="guideline-icon-wrap icon-copyright">
+            <span class="material-symbols-outlined">palette</span>
+          </div>
+          <div class="guideline-item__content">
+            <h4>2. Tác quyền &amp; Mẫu thiết kế</h4>
+            <p>Tôn trọng quyền sở hữu trí tuệ; không mạo danh tác phẩm DIY của người khác. Nếu dùng mẫu sưu tầm, vui lòng ghi rõ nguồn tác giả.</p>
+          </div>
+        </div>
+
+        <div class="guideline-item">
+          <div class="guideline-icon-wrap icon-safety">
+            <span class="material-symbols-outlined">verified</span>
+          </div>
+          <div class="guideline-item__content">
+            <h4>3. Hình ảnh &amp; Nội dung sạch</h4>
+            <p>Ảnh chụp rõ nét, phù hợp thuần phong mỹ tục. Không phát tán hình ảnh bạo lực, phản cảm, liên kết độc hại hoặc spam bán hàng.</p>
+          </div>
+        </div>
+
+        <div class="guideline-item">
+          <div class="guideline-icon-wrap icon-penalty">
+            <span class="material-symbols-outlined">gavel</span>
+          </div>
+          <div class="guideline-item__content">
+            <h4>4. Biện pháp xử lý vi phạm</h4>
+            <p>Bài viết vi phạm sẽ bị gỡ bỏ ngay lập tức. Người dùng cố tình vi phạm sẽ bị tạm khóa quyền đăng bài hoặc khóa tài khoản vĩnh viễn.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="guidelines-footer">
+        <div class="guidelines-footer__info">
+          <span class="material-symbols-outlined">info</span>
+          <span>Bằng việc bấm <strong>"Đăng bài"</strong>, bạn cam kết tuân thủ đầy đủ Quy chuẩn cộng đồng của Urii.</span>
+        </div>
+        <a routerLink="/support" [queryParams]="{ tab: 'community-standards' }" target="_blank" class="guidelines-link">
+          <span>Xem chi tiết Tiêu chuẩn cộng đồng Urii</span>
+          <span class="material-symbols-outlined">arrow_outward</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Thanh xác nhận cam kết (Luôn hiển thị) -->
+    <div class="guidelines-consent-bar" [class.consent-checked]="hasAcceptedGuidelines">
+      <label class="guidelines-checkbox-label">
+        <input
+          type="checkbox"
+          class="guidelines-checkbox-native"
+          [checked]="hasAcceptedGuidelines"
+          (change)="onGuidelinesCheckboxChange($event)"
+        />
+        <span class="custom-checkbox" [class.checked]="hasAcceptedGuidelines">
+          <span class="material-symbols-outlined check-icon">check</span>
+        </span>
+        <span class="checkbox-text">
+          <strong>Tôi đã đọc, hiểu rõ và cam kết tuân thủ đầy đủ</strong> Quy chuẩn cộng đồng &amp; Tiêu chuẩn sáng tạo của Urii.
+        </span>
+      </label>
+      <span class="consent-status-badge badge-warning" *ngIf="!hasAcceptedGuidelines">
+        <span class="material-symbols-outlined">priority_high</span> Bắt buộc xác nhận
+      </span>
+      <span class="consent-status-badge badge-ok" *ngIf="hasAcceptedGuidelines">
+        <span class="material-symbols-outlined">check_circle</span> Đã xác nhận
+      </span>
     </div>
   </div>
 
@@ -83,9 +200,9 @@
         <span>Từ ngữ: {{ wordCount }}</span>
         <span>{{ autoSaveMessage }}</span>
       </div>
-      <div class="editor-footer__right">
-        <span class="material-symbols-outlined">check_circle</span>
-        <span>Sẵn sàng xuất bản</span>
+      <div class="editor-footer__right" [class.not-accepted]="!hasAcceptedGuidelines">
+        <span class="material-symbols-outlined">{{ hasAcceptedGuidelines ? 'check_circle' : 'warning' }}</span>
+        <span>{{ hasAcceptedGuidelines ? 'Sẵn sàng xuất bản' : 'Cần xác nhận quy chuẩn' }}</span>
       </div>
     </div>
   </div>
@@ -109,6 +226,33 @@
         <label>Thẻ (tags) cách nhau bằng dấu phẩy</label>
         <input type="text" formControlName="tags" placeholder="Ví dụ: perler, handmade, hướng dẫn" />
       </div>
+    </div>
+  </div>
+
+  <!-- Thanh thao tác nhanh phía dưới trang -->
+  <div class="blog-create-bottom-bar">
+    <div class="bottom-bar-consent">
+      <label class="guidelines-checkbox-label">
+        <input
+          type="checkbox"
+          class="guidelines-checkbox-native"
+          [checked]="hasAcceptedGuidelines"
+          (change)="onGuidelinesCheckboxChange($event)"
+        />
+        <span class="custom-checkbox" [class.checked]="hasAcceptedGuidelines">
+          <span class="material-symbols-outlined check-icon">check</span>
+        </span>
+        <span class="checkbox-text">
+          Đồng ý với <a routerLink="/support" [queryParams]="{ tab: 'community-standards' }" target="_blank">Quy chuẩn cộng đồng &amp; Hướng dẫn đăng bài Urii</a>
+        </span>
+      </label>
+    </div>
+    <div class="bottom-bar-actions">
+      <button type="button" class="btn-draft" (click)="saveDraft()" title="Lưu bản nháp vào thiết bị">Lưu bản nháp</button>
+      <button type="button" class="btn-publish" [class.ready]="hasAcceptedGuidelines" (click)="publish()" [title]="hasAcceptedGuidelines ? 'Xuất bản bài viết' : 'Cần tick xác nhận Quy chuẩn cộng đồng để đăng bài'">
+        <span class="material-symbols-outlined btn-publish-spinner" *ngIf="isPublishing">sync</span>
+        <span>{{ isPublishing ? 'Đang đăng...' : 'Đăng bài' }}</span>
+      </button>
     </div>
   </div>
 </div>

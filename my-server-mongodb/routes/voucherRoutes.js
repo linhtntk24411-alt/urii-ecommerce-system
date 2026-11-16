@@ -5,6 +5,8 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/', voucherController.getActiveVouchers);
+router.get('/check/:code', voucherController.checkVoucher);
+router.post('/check', voucherController.checkVoucher);
 router.get('/manage', authenticate, requireAdmin, voucherController.getAllVouchers);
 router.post('/', authenticate, requireAdmin, voucherController.createVoucher);
 router.get('/:id', authenticate, requireAdmin, voucherController.getVoucherById);

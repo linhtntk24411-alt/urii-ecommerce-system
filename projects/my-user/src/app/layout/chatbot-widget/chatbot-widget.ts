@@ -1,10 +1,11 @@
 import { DialogService } from '../../core/services/dialog.service';
+import { UserRealtimeService } from '../../core/services/realtime.service';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, HostListener, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, delay, finalize, map, Observable, of, firstValueFrom } from 'rxjs';
+import { catchError, delay, finalize, map, Observable, of, firstValueFrom, Subscription } from 'rxjs';
 import { StorageService } from '../../core/services/storage.service';
 
 interface ChatMessage {
@@ -22,6 +23,7 @@ interface ChatMessage {
   sender: 'user' | 'bot' | 'admin';
   timestamp: number;
   chips?: { label: string; action: string }[];
+  isSystemLog?: boolean;
 }
 
 interface ChatSession {
@@ -84,6 +86,14 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   reactionBusy = false;
   reactionError = '';
   private reactionLoading = false;
+  private messageEpoch = 0;
+  private sessionVersions = new Map<string, number>();
+  private acceptSnapshot(sessionId: string, updatedAt: unknown): boolean {
+    const version = new Date(String(updatedAt || '')).getTime();
+    if (!Number.isFinite(version)) return true;
+    if (version < (this.sessionVersions.get(sessionId) || 0)) return false;
+    this.sessionVersions.set(sessionId, version); return true;
+  }
   private reactionIdentityKey = '';
   private reactionPreparation: Promise<unknown> = Promise.resolve();
   private reactionSessions = new Map<string, Promise<{ serverId: string; actor: string }>>();
@@ -228,7 +238,8 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     } finally { this.stickerBusy = false; this.cdr.markForCheck(); }
   }
 
-  private rememberMessages(serverId: string, messages: any[]): void {
+  private rememberMessages(serverId: string, messages: any[], fromPoll = false): void {
+    if (!fromPoll) this.messageEpoch++;
     const identity = this.authStorage.getToken() || 'guest';
     if (this.verificationIdentity !== identity) { this.clearAttachmentUrls(); this.verifiedMessages.clear(); this.unverifiedMessages.clear(); this.verificationIdentity = identity; }
     for (const message of messages) {
@@ -353,6 +364,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       const fresh = this.getSessions();
       const localMessage = fresh[localId]?.messages.find(m => m.clientRequestId === message.clientRequestId);
       if (localMessage && data.acceptedMessage?.clientRequestId === message.clientRequestId) {
+        this.rememberMessages(identity.serverId, [data.acceptedMessage]);
         localMessage.messageId = data.acceptedMessage.messageId;
         localMessage.senderId = data.acceptedMessage.senderId;
         localMessage.serverSessionId = identity.serverId;
@@ -370,6 +382,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   async loadReactions(): Promise<void> {
+    const epoch = this.messageEpoch;
     const localId = this.currentSessionId;
     const authKey = this.authStorage.getToken() || 'guest';
     const identityKey = authKey + ':' + localId;
@@ -385,10 +398,12 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     try {
       const serverId = known ? (await known).serverId : savedId!;
       const data = await firstValueFrom(this.http.get<any>(`/api/chat/sessions/${encodeURIComponent(serverId)}/reactions`));
-      if (localId !== this.currentSessionId || authKey !== (this.authStorage.getToken() || 'guest')) return;
+      if (epoch !== this.messageEpoch || localId !== this.currentSessionId || authKey !== (this.authStorage.getToken() || 'guest')) return;
+      if (!this.acceptSnapshot(serverId, data.updatedAt)) return;
       this.reactionState = data.reactions || {};
       this.reactionActor = data.actor;
-      this.rememberMessages(serverId, data.messages || []);
+      this.realtimeService.joinChat(serverId);
+      this.rememberMessages(serverId, data.messages || [], true);
       const sessions = this.getSessions();
       const session = sessions[localId];
       if (!session) return;
@@ -430,6 +445,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     this.reactionBusy = true;
     try {
       const data = await firstValueFrom(this.http.put<any>(`/api/chat/sessions/${encodeURIComponent(message.serverSessionId)}/messages/${encodeURIComponent(message.messageId!)}/reaction`, { emoji: previous?.emoji === emoji ? null : emoji }));
+      this.messageEpoch++;
       if (localId === this.currentSessionId && !this.isRecalled(message)) this.reactionState = { ...this.reactionState, [message.messageId!]: data.reactions };
       this.reactionPicker = null;
     } catch (error: any) { this.reactionError = error.error?.message || 'Không thể lưu cảm xúc.'; }
@@ -438,6 +454,12 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
 
   @HostListener('document:click') closeReaction(): void { this.reactionPicker = null; }
   @HostListener('document:keydown.escape') closeReactionOnEscape(): void { this.reactionPicker = null; }
+  private readonly realtimeService = inject(UserRealtimeService);
+  private readonly realtimeSub = new Subscription();
+  private joinRealtimeChat(): void {
+    const serverId = this.getSessions()[this.currentSessionId]?.messages.find(m => m.serverSessionId)?.serverSessionId;
+    if (serverId) this.realtimeService.joinChat(serverId);
+  }
 
   constructor(
     private router: Router,
@@ -449,6 +471,12 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     if (isPlatformBrowser(this.platformId)) {
       this.currentSessionId = this.getOrCreateSessionId();
       this.loadChatHistory();
+      this.joinRealtimeChat();
+      const refresh = () => { void this.loadReactions(); };
+      this.realtimeSub.add(this.realtimeService.chatMessage$.subscribe(refresh));
+      this.realtimeSub.add(this.realtimeService.chatStatus$.subscribe(refresh));
+      this.realtimeSub.add(this.realtimeService.chatUpdated$.subscribe(refresh));
+      this.realtimeSub.add(this.realtimeService.connected$.subscribe(connected => { if (connected) { this.joinRealtimeChat(); refresh(); } }));
     }
   }
 
@@ -462,6 +490,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
+    this.realtimeSub.unsubscribe();
     this.clearAttachmentUrls(); this.attachmentBusy = false; this.cancelAttachment();
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
@@ -529,6 +558,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     const sessions = this.getSessions();
     if (!sessions[sessionId]) return;
 
+    if (this.currentSessionId) { this.realtimeService.leaveChat(this.getSessions()[this.currentSessionId]?.messages.find(m => m.serverSessionId)?.serverSessionId || this.currentSessionId); }
     this.currentSessionId = sessionId;
     this.recallMenu = null;
     for (const message of sessions[sessionId].messages || []) {
@@ -546,17 +576,40 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     setTimeout(() => this.scrollToBottom(), 100);
   }
 
-  deleteSession(sessionId: string, event: Event): void {
-    event.stopPropagation();
+  deleteSession(sessionId: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    if (!sessionId) return;
+
+    // 1. Gọi backend xóa phiên chat vĩnh viễn trên server
+    this.http.delete(`/api/chat/sessions/${encodeURIComponent(this.getSessions()[sessionId]?.messages.find(m => m.serverSessionId)?.serverSessionId || sessionId)}`).subscribe({
+      next: () => console.log('Đã xóa phiên chat trên server:', sessionId),
+      error: (err) => console.warn('Lỗi gọi API xóa phiên chat:', err)
+    });
+
+    // 2. Xóa phiên chat khỏi localStorage
     const sessions = this.getSessions();
     delete sessions[sessionId];
     this.saveSessions(sessions);
 
+    // 3. Nếu đang mở phiên bị xóa thì tạo phiên mới
     if (this.currentSessionId === sessionId) {
       this.resetChat();
     } else {
       this.cdr.detectChanges();
     }
+  }
+
+  confirmClearCurrentChat(): void {
+    if (!this.currentSessionId) return;
+    const hasMessages = this.messages && this.messages.length > 0;
+    if (hasMessages) {
+      const confirmed = window.confirm('Bạn có chắc chắn muốn xóa toàn bộ đoạn chat hiện tại không?');
+      if (!confirmed) return;
+    }
+    this.deleteSession(this.currentSessionId);
   }
 
   formatSessionDate(timestamp: number): string {
@@ -792,6 +845,8 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
+  syncSessionWithServer(): void { void this.loadReactions(); }
+
   sendMessage(inputEl?: HTMLInputElement): void {
     const raw = inputEl ? inputEl.value : this.userMessageText;
     const text = (raw || this.userMessageText || '').trim();
@@ -837,6 +892,9 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       this.connectWithAdmin();
       return;
     }
+
+    // Nếu đang chờ hoặc đang chat trực tiếp với nhân viên Admin -> gửi tin nhắn lên server
+    if (session.status === 'waiting' || session.status === 'active') return;
 
     if (session.status === 'ai') {
       this.requestBotReply(text, session.sessionId);
@@ -1093,6 +1151,28 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
 
     if (action === 'Yêu cầu đặt hàng' || action === 'Đặt hàng yêu cầu') {
       this.router.navigate(['/custom-order']);
+      return;
+    }
+
+    if (action === 'Hủy yêu cầu' || action.includes('Hủy yêu cầu')) {
+      const session = this.getCurrentSession();
+      session.status = 'ai';
+      session.messages.push({
+        text: 'Dạ Urii đã hủy yêu cầu chuyển admin. Urii Bot sẵn sàng tiếp tục hỗ trợ giải đáp cho bạn nhé! ✨',
+        sender: 'bot',
+        timestamp: Date.now()
+      });
+      const sessions = this.getSessions();
+      sessions[session.sessionId] = session;
+      this.saveSessions(sessions);
+      this.messages = this.visibleMessages(session.messages);
+      this.updateHeaderStatus('ai');
+      this.cdr.detectChanges();
+      this.scrollToBottom();
+
+      this.http.post(`/api/chat/sessions/${encodeURIComponent(session.messages.find(m => m.serverSessionId)?.serverSessionId || session.sessionId)}/cancel-agent`, {}).subscribe({
+        error: (err) => console.warn('Lỗi gọi cancel-agent:', err)
+      });
       return;
     }
 

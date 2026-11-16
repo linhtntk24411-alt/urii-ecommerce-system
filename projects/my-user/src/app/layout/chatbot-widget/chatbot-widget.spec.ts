@@ -30,6 +30,20 @@ describe('ChatbotWidgetComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('merge: rejects older polling revisions and ignores stale responses after a confirmed mutation', async () => {
+    (component as any).currentSessionId = 'room';
+    const message = { messageId: 'mine', serverSessionId: 'server-room', sender: 'user' as const, senderId: 'guest:user', text: 'Active', timestamp: 1 };
+    localStorage.setItem('urii_chat_sessions', JSON.stringify({ room: { sessionId: 'room', status: 'active', messages: [message] } }));
+    expect((component as any).acceptSnapshot('server-room', '2026-11-16T10:00:02Z')).toBe(true);
+    expect((component as any).acceptSnapshot('server-room', '2026-11-16T10:00:01Z')).toBe(false);
+    const pending = component.loadReactions();
+    (component as any).rememberMessages('server-room', [{ ...message, recalledAt: 123 }]);
+    TestBed.inject(HttpTestingController).expectOne('/api/chat/sessions/server-room/reactions').flush({ actor: 'guest:user', status: 'waiting', messages: [message], reactions: { mine: [] } });
+    await pending;
+    expect(component.messageText(message)).toBe('Tin nhắn đã được thu hồi');
+    expect(JSON.parse(localStorage.getItem('urii_chat_sessions')!).room.status).toBe('active');
+  });
+
   it('keeps legacy messages visible without reaction controls', () => {
     component.isChatOpen = true;
     component.messages = [{ text: 'Legacy local history', sender: 'user', timestamp: 1 }];

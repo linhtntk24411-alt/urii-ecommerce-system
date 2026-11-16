@@ -5,7 +5,8 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { randomUUID, randomBytes, createHash } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
-const { emitCrudChange } = require('../realtime');
+const { emitCrudChange, emitToSession } = require('../realtime');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 const { generateAiReply } = require('../services/aiChatService');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -271,7 +272,7 @@ exports.getReactions = async (req, res) => {
     return publicMessage(m);
   });
   res.set('Cache-Control', 'private, no-store');
-  res.json({ actor: req.reactionActor, reactions, messages, status: session.status });
+  res.json({ actor: req.reactionActor, reactions, messages, status: session.status, updatedAt: session.updatedAt });
 };
 
 exports.setReaction = async (req, res) => {
@@ -517,7 +518,16 @@ exports.addMessage = async (req, res) => {
 
     const session = req.chatSession;
     if (!session) {
-      return res.status(404).json({ message: 'Không tìm thấy phiên chat.' });
+      session = new ChatSession({
+        sessionId: id,
+        userName: userName || 'Khách vãng lai',
+        userEmail: userEmail || '',
+        avatar: 'images/avatar_user.jpeg',
+        status: sender === 'admin' ? 'active' : 'waiting',
+        unreadCount: sender === 'admin' ? 0 : 1,
+        lastMessageTime: Date.now(),
+        messages: []
+      });
     }
 
     const msgSender = req.auth?.role === 'admin' ? 'admin' : 'user';
@@ -540,7 +550,16 @@ exports.addMessage = async (req, res) => {
     const accepted = saved?.messages.find(m => m.clientRequestId === clientRequestId && m.senderId === req.reactionActor);
     if (!accepted) return res.status(409).json({ message: 'Không thể xác nhận tin nhắn.' });
     if (accepted.text !== text.trim() || (accepted.type || 'text') !== type) return res.status(409).json({ message: 'Mã yêu cầu đã được dùng cho tin nhắn khác hoặc khác loại.' });
-    if (result) emitCrudChange('chat', 'message', id);
+    if (result) {
+      emitCrudChange('chat', 'message', id);
+      emitToSession(id, 'chat:message', { sessionId: id });
+      const recipient = saved.userId || (req.chatSession.reactionOwnerId?.startsWith('account:') ? req.chatSession.reactionOwnerId.slice(8) : null);
+      if (msgSender === 'admin' && recipient) {
+        void createUserNotification({ userId: recipient,
+          typeId: 'USER_CHAT_ADMIN_REPLIED', reference: { sessionId: id },
+          title: 'Urii Support', message: 'Bạn có tin nhắn mới từ tư vấn viên.', actionUrl: '/support' });
+      }
+    }
     const [enriched] = await enrichSessions([saved.toObject()]);
     const acceptedMessage = publicMessage(accepted);
     res.json({ ...enriched, acceptedMessage });
@@ -578,12 +597,27 @@ exports.updateStatus = async (req, res) => {
 
     if (status === 'active') {
       session.unreadCount = 0;
+      if (session.userId || session.userEmail) {
+        createUserNotification({
+          userId: session.userId,
+          userEmail: session.userEmail,
+          typeId: 'USER_CHAT_ADMIN_REPLIED',
+          reference: { sessionId: session.sessionId },
+          title: 'Tư vấn viên đã tiếp nhận hỗ trợ',
+          message: `Nhân viên tư vấn đã bắt đầu tiếp quản phiên chat #${session.sessionId.slice(-6)} của bạn.`,
+          actionUrl: '/support'
+        }).catch(console.error);
+      }
     }
 
     session.lastMessageTime = Date.now();
     await session.save();
 
     emitCrudChange('chat', 'status', session.sessionId);
+    emitToSession(session.sessionId, 'chat:status', {
+      sessionId: session.sessionId,
+      status
+    });
     const [enriched] = await enrichSessions([session.toObject()]);
     res.json(enriched);
   } catch (error) {
@@ -592,16 +626,37 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-// Xóa một phiên chat
+// Xóa toàn bộ tin nhắn trong một phiên chat
+exports.clearSessionMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = await ChatSession.findOneAndUpdate(
+      { sessionId: id },
+      { $set: { messages: [], lastMessageTime: Date.now() } },
+      { new: true }
+    );
+    if (!session) {
+      return res.status(404).json({ message: 'Không tìm thấy phiên chat để xóa tin nhắn.' });
+    }
+    emitCrudChange('chat', 'update', id);
+    res.json({ success: true, message: 'Đã xóa toàn bộ tin nhắn trong đoạn chat.', session });
+  } catch (error) {
+    console.error('Lỗi xóa tin nhắn trong phiên chat:', error);
+    res.status(500).json({ message: 'Không thể xóa tin nhắn.' });
+  }
+};
+
+// Xóa một phiên chat hoàn toàn
 exports.deleteSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await ChatSession.findOneAndDelete({ sessionId: id });
+    const deleted = await ChatSession.findOneAndDelete({ sessionId: id })
+      || (mongoose.isValidObjectId(id) ? await ChatSession.findByIdAndDelete(id) : null);
     if (!deleted) {
       return res.status(404).json({ message: 'Không tìm thấy phiên chat để xóa.' });
     }
     emitCrudChange('chat', 'delete', id);
-    res.json({ success: true, message: 'Đã xóa phiên chat.' });
+    res.json({ success: true, message: 'Đã xóa phiên chat thành công.' });
   } catch (error) {
     console.error('Lỗi xóa phiên chat:', error);
     res.status(500).json({ message: 'Không thể xóa phiên chat.' });
@@ -714,6 +769,17 @@ exports.deleteFaq = async (req, res) => {
   }
 };
 
+function removeVietnameseTones(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
+
 // Khớp câu hỏi của người dùng với kịch bản trả lời tự động (FAQ Matching)
 exports.matchFaq = async (req, res) => {
   try {
@@ -723,26 +789,30 @@ exports.matchFaq = async (req, res) => {
     }
 
     const q = query.toLowerCase().trim();
+    const qNorm = removeVietnameseTones(q);
     const faqs = await ChatbotFaq.find().lean();
 
-    // Tìm FAQ có keyword trùng khớp cao nhất
     let matchedFaq = null;
-    let maxMatch = 0;
+    let maxScore = 0;
 
     for (const faq of faqs) {
-      let matches = 0;
+      let score = 0;
       for (const kw of faq.keywords || []) {
-        if (q.includes(kw.toLowerCase())) {
-          matches++;
+        const kwLower = kw.toLowerCase().trim();
+        const kwNorm = removeVietnameseTones(kwLower);
+        if (q === kwLower || qNorm === kwNorm) {
+          score += 10;
+        } else if (q.includes(kwLower) || qNorm.includes(kwNorm)) {
+          score += kwNorm.length;
         }
       }
-      if (matches > maxMatch) {
-        maxMatch = matches;
+      if (score > maxScore) {
+        maxScore = score;
         matchedFaq = faq;
       }
     }
 
-    if (matchedFaq && maxMatch > 0) {
+    if (matchedFaq && maxScore >= 3) {
       return res.json({
         matched: true,
         intent: matchedFaq.intent,
@@ -751,7 +821,6 @@ exports.matchFaq = async (req, res) => {
       });
     }
 
-    // Câu trả lời mặc định khi không khớp keyword
     res.json({
       matched: false,
       intent: 'fallback',
@@ -772,9 +841,73 @@ exports.askAi = async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng nhập nội dung câu hỏi.' });
     }
 
+    const trimmedMsg = message.trim();
+    const msgNorm = removeVietnameseTones(trimmedMsg);
+
+    // Ưu tiên tra cứu trực tiếp các kịch bản FAQ do Admin cấu hình trong Database
+    try {
+      const faqs = await ChatbotFaq.find().lean();
+      let bestFaq = null;
+      let highestScore = 0;
+
+      for (const faq of faqs) {
+        let score = 0;
+        for (const kw of faq.keywords || []) {
+          const kwNorm = removeVietnameseTones(kw);
+          if (msgNorm === kwNorm) {
+            score += 15;
+          } else if (msgNorm.includes(kwNorm)) {
+            score += kwNorm.length >= 4 ? kwNorm.length : 3;
+          }
+        }
+        if (score > highestScore) {
+          highestScore = score;
+          bestFaq = faq;
+        }
+      }
+
+      if (bestFaq && highestScore >= 6) {
+        const chips = (bestFaq.quickReplies || []).map((r) => {
+          const label = typeof r === 'string' ? r : (r.label || '');
+          const action = typeof r === 'string' ? r : (r.action || r.label || '');
+          return { label, action };
+        });
+
+        let targetUrl = '';
+        let targetLabel = '';
+        if (bestFaq.intent === 'order_tracking') {
+          targetUrl = '/orders';
+          targetLabel = 'Đơn hàng của tôi';
+        } else if (bestFaq.intent === 'colors_catalog') {
+          targetUrl = '/products?category=BEADS';
+          targetLabel = 'Xem bảng màu hạt';
+        } else if (bestFaq.intent === 'custom_order') {
+          targetUrl = '/custom-order';
+          targetLabel = 'Đặt làm theo yêu cầu';
+        } else if (bestFaq.intent === 'vouchers') {
+          targetUrl = '/vouchers';
+          targetLabel = 'Kho voucher của tôi';
+        } else if (bestFaq.intent === 'perler_guide') {
+          targetUrl = '/sample-maps';
+          targetLabel = 'Thư viện map mẫu';
+        }
+
+        return res.json({
+          success: true,
+          reply: bestFaq.response,
+          targetUrl,
+          targetLabel,
+          isWarning: false,
+          chips
+        });
+      }
+    } catch (faqErr) {
+      console.warn('Lỗi tra cứu ChatbotFaq trong askAi:', faqErr.message);
+    }
+
     const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '';
     const aiResponse = await generateAiReply({
-      message: message.trim(),
+      message: trimmedMsg,
       history: Array.isArray(history) ? history : [],
       context: context || {},
       apiKey
@@ -794,72 +927,43 @@ exports.askAi = async (req, res) => {
 // Khách hàng yêu cầu hỗ trợ từ Admin -> cập nhật status 'waiting' và tạo thông báo cho Admin
 exports.requestAgent = async (req, res) => {
   try {
-    const { sessionId, userName, userEmail, message } = req.body;
-    const id = sessionId || req.params.id;
+    const id = req.chatSession?.sessionId;
+    if (!id) return res.status(403).json({ message: 'Forbidden' });
+    const session = await ChatSession.findOneAndUpdate({ sessionId: id, status: { $ne: 'waiting' } }, {
+      $set: { status: 'waiting', lastMessageTime: Date.now() }, $inc: { unreadCount: 1 }
+    }, { new: true, runValidators: true });
+    if (!session) return res.json({ success: true, status: 'waiting', sessionId: id });
 
-    if (!id) {
-      return res.status(400).json({ message: 'Thiếu mã phiên trò chuyện (sessionId).' });
-    }
-
-    let session = await ChatSession.findOne({ sessionId: id });
-    if (!session) {
-      session = new ChatSession({
-        sessionId: id,
-        userName: userName || 'Khách vãng lai',
-        userEmail: userEmail || '',
-        avatar: 'images/avatar_user.jpeg',
-        status: 'waiting',
-        unreadCount: 1,
-        lastMessageTime: Date.now(),
-        messages: []
-      });
-    } else {
-      session.status = 'waiting';
-      session.unreadCount = (session.unreadCount || 0) + 1;
-      session.lastMessageTime = Date.now();
-      if (userName) session.userName = userName;
-      if (userEmail) session.userEmail = userEmail;
-    }
-
-    const noteText = message || 'Khách hàng yêu cầu nhân viên tư vấn/admin hỗ trợ trực tiếp.';
-    session.messages.push({
-      text: noteText,
-      sender: 'user',
-      timestamp: Date.now()
-    });
-
-    await session.save();
-
-    // Tạo thông báo cho Admin trong hệ thống
     const notifId = `notif-chat-${Date.now()}`;
     const displayName = session.userName || session.userEmail || 'Khách vãng lai';
 
+    const notifDoc = {
+      id: notifId,
+      audience: 'admin',
+      typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
+      reference: { sessionId: session.sessionId },
+      title: `Khách hàng chờ tư vấn #${session.sessionId.slice(-6)}`,
+      message: `Khách hàng ${displayName} đang chờ hỗ trợ tư vấn trực tiếp.`,
+      actionUrl: `/chatbot?sessionId=${session.sessionId}`,
+      isRead: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    try {
+      if (mongoose.connection.db) {
+        await mongoose.connection.db.collection('admin_notifications').insertOne({ ...notifDoc });
+      }
+    } catch (notifColErr) {
+      console.error('Lỗi lưu admin_notifications collection:', notifColErr);
+    }
+
     try {
       if (mongoose.connection.readyState === 1) {
-        await Notification.create({
-          id: notifId,
-          audience: 'admin',
-          typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
-          reference: { sessionId: session.sessionId },
-          isRead: false,
-          createdAt: new Date()
-        });
+        await Notification.create(notifDoc);
       }
     } catch (notifErr) {
-      try {
-        if (mongoose.connection.db) {
-          await mongoose.connection.db.collection('admin_notifications').insertOne({
-            id: notifId,
-            audience: 'admin',
-            typeId: 'ADMIN_CHAT_WAITING_SUPPORT',
-            title: `Khách hàng chờ tư vấn tại phiên #${session.sessionId}`,
-            message: `Khách hàng ${displayName} đang yêu cầu nhân viên tư vấn hỗ trợ trực tiếp.`,
-            actionUrl: `/admin/chat/${session.sessionId}`,
-            isRead: false,
-            createdAt: new Date()
-          });
-        }
-      } catch (_) {}
+      console.warn('Lỗi Notification.create:', notifErr.message);
     }
 
     emitCrudChange('notifications', 'created', notifId);
@@ -875,5 +979,26 @@ exports.requestAgent = async (req, res) => {
   } catch (error) {
     console.error('Lỗi khi gửi yêu cầu hỗ trợ tới admin:', error);
     res.status(500).json({ message: 'Không thể gửi yêu cầu hỗ trợ lúc này.' });
+  }
+};
+
+// Khách hàng hủy yêu cầu hỗ trợ trực tiếp -> chuyển lại về 'ai'
+exports.cancelAgent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = await ChatSession.findOneAndUpdate({ sessionId: id, status: 'waiting' }, {
+      $set: { status: 'ai', lastMessageTime: Date.now() }
+    }, { new: true });
+    if (!session) {
+      if (req.chatSession.status === 'ai') return res.json({ success: true, status: 'ai' });
+      return res.status(409).json({ message: 'Conversation is no longer waiting.' });
+    }
+    emitCrudChange('chat', 'status', session.sessionId);
+    emitCrudChange('chat', 'message', session.sessionId);
+
+    res.json({ success: true, message: 'Đã hủy yêu cầu hỗ trợ.', status: 'ai' });
+  } catch (error) {
+    console.error('Lỗi hủy yêu cầu hỗ trợ:', error);
+    res.status(500).json({ message: 'Không thể hủy yêu cầu hỗ trợ.' });
   }
 };

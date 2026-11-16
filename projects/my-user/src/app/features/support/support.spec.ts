@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SupportComponent } from './support';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { PLATFORM_ID } from '@angular/core';
 
 describe('SupportComponent', () => {
   let component: SupportComponent;
@@ -10,6 +13,8 @@ describe('SupportComponent', () => {
     await TestBed.configureTestingModule({
       imports: [SupportComponent],
       providers: [
+        provideHttpClient(), provideHttpClientTesting(),
+        { provide: PLATFORM_ID, useValue: 'server' },
         provideRouter([
           { path: 'support', component: SupportComponent },
           { path: 'support/:tab', component: SupportComponent },

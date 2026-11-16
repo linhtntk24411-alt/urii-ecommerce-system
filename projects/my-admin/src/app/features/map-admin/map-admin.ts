@@ -1,8 +1,9 @@
-import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 declare var bootstrap: any;
 
@@ -14,6 +15,7 @@ declare var bootstrap: any;
   styleUrls: ['./map-admin.css']
 })
 export class MapAdmin implements OnInit {
+  private readonly socket = inject(AdminSocketService);
   constructor(
     private adminApi: AdminApiService,
     private changeDetectorRef: ChangeDetectorRef,
@@ -38,7 +40,7 @@ export class MapAdmin implements OnInit {
   mapName: string = '';
   mapAuthor: string = '';
   mapImage: string = '';
-  mapDifficulty: string = 'Dễ';
+  mapDifficulty: string = 'Dá»…';
   mapGridSize: string = '';
   mapTotalBeads: number | null = null;
   mapBeadType: string = 'Midi 5mm';
@@ -53,6 +55,7 @@ export class MapAdmin implements OnInit {
       this.applySearchTarget();
     });
     this.loadMaps();
+    this.socket.onCrudChange('gallery').subscribe(() => this.loadMaps());
   }
 
   loadMaps(): void {
@@ -74,8 +77,8 @@ export class MapAdmin implements OnInit {
             : null;
 
         if (!mapList) {
-          this.mapLoadError = 'Máy chủ trả về dữ liệu mẫu không hợp lệ.';
-          console.error('API thư viện map trả về dữ liệu không hợp lệ:', response);
+          this.mapLoadError = 'MĂ¡y chá»§ tráº£ vá» dá»¯ liá»‡u máº«u khĂ´ng há»£p lá»‡.';
+          console.error('API thÆ° viá»‡n map tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡:', response);
         } else {
           this.maps = mapList;
           this.currentPage = 1;
@@ -83,7 +86,7 @@ export class MapAdmin implements OnInit {
           try {
             localStorage.setItem('library_maps', JSON.stringify(mapList));
           } catch (error) {
-            console.error('Không thể lưu cache thư viện map:', error);
+            console.error('KhĂ´ng thá»ƒ lÆ°u cache thÆ° viá»‡n map:', error);
           }
         }
 
@@ -91,8 +94,8 @@ export class MapAdmin implements OnInit {
         this.changeDetectorRef.markForCheck();
       },
       error: (error) => {
-        console.error('Lỗi tải thư viện map:', error);
-        this.mapLoadError = 'Không thể tải danh sách mẫu. Vui lòng thử lại sau.';
+        console.error('Lá»—i táº£i thÆ° viá»‡n map:', error);
+        this.mapLoadError = 'KhĂ´ng thá»ƒ táº£i danh sĂ¡ch máº«u. Vui lĂ²ng thá»­ láº¡i sau.';
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       }
@@ -106,9 +109,9 @@ export class MapAdmin implements OnInit {
 
       const maps = JSON.parse(cached);
       if (Array.isArray(maps)) return maps;
-      console.error('Cache thư viện map không đúng định dạng.');
+      console.error('Cache thÆ° viá»‡n map khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng.');
     } catch (error) {
-      console.error('Không thể đọc cache thư viện map:', error);
+      console.error('KhĂ´ng thá»ƒ Ä‘á»c cache thÆ° viá»‡n map:', error);
     }
 
     return [];
@@ -184,9 +187,9 @@ export class MapAdmin implements OnInit {
   }
 
   getDifficultyBadgeClass(diff: string): string {
-    if (diff === 'Dễ') return 'bg-success';
-    if (diff === 'Trung bình') return 'bg-warning text-dark';
-    if (diff === 'Khó') return 'bg-danger';
+    if (diff === 'Dá»…') return 'bg-success';
+    if (diff === 'Trung bĂ¬nh') return 'bg-warning text-dark';
+    if (diff === 'KhĂ³') return 'bg-danger';
     return 'bg-secondary';
   }
 
@@ -195,14 +198,14 @@ export class MapAdmin implements OnInit {
     const modalTitleEl = document.getElementById('modalTitle');
 
     if (id) {
-      if (modalTitleEl) modalTitleEl.innerText = "Chỉnh sửa mẫu";
+      if (modalTitleEl) modalTitleEl.innerText = "Chá»‰nh sá»­a máº«u";
       const m = this.maps.find(item => item.map_id === id);
       if (m) {
         this.mapIdInput = m.map_id;
         this.mapName = m.map_name || '';
-        this.mapAuthor = m.author || 'Urii Thiết kế';
+        this.mapAuthor = m.author || 'Urii Thiáº¿t káº¿';
         this.mapImage = m.main_image || '';
-        this.mapDifficulty = m.difficulty || 'Dễ';
+        this.mapDifficulty = m.difficulty || 'Dá»…';
         this.mapGridSize = m.grid_size || '';
         this.mapTotalBeads = m.total_beads || null;
         this.mapBeadType = m.bead_type || 'Midi 5mm';
@@ -210,12 +213,12 @@ export class MapAdmin implements OnInit {
         this.mapDesc = m.description || '';
       }
     } else {
-      if (modalTitleEl) modalTitleEl.innerText = "Thêm mẫu mới";
+      if (modalTitleEl) modalTitleEl.innerText = "ThĂªm máº«u má»›i";
       this.mapIdInput = '';
       this.mapName = '';
       this.mapAuthor = '';
       this.mapImage = '';
-      this.mapDifficulty = 'Dễ';
+      this.mapDifficulty = 'Dá»…';
       this.mapGridSize = '';
       this.mapTotalBeads = null;
       this.mapBeadType = 'Midi 5mm';
@@ -231,13 +234,13 @@ export class MapAdmin implements OnInit {
 
   saveMap() {
     if (!this.mapName.trim()) {
-      alert("Vui lòng điền tên mẫu!");
+      alert("Vui lĂ²ng Ä‘iá»n tĂªn máº«u!");
       return;
     }
 
     let difficultyClass = 'badge-easy';
-    if (this.mapDifficulty === 'Trung bình') difficultyClass = 'badge-medium';
-    else if (this.mapDifficulty === 'Khó') difficultyClass = 'badge-hard';
+    if (this.mapDifficulty === 'Trung bĂ¬nh') difficultyClass = 'badge-medium';
+    else if (this.mapDifficulty === 'KhĂ³') difficultyClass = 'badge-hard';
 
     if (this.editingId) {
       const index = this.maps.findIndex(m => m.map_id === this.editingId);
@@ -245,7 +248,7 @@ export class MapAdmin implements OnInit {
         this.maps[index] = {
           ...this.maps[index],
           map_name: this.mapName.trim(),
-          author: this.mapAuthor.trim() || 'Urii Thiết kế',
+          author: this.mapAuthor.trim() || 'Urii Thiáº¿t káº¿',
           main_image: this.mapImage.trim(),
           difficulty: this.mapDifficulty,
           difficultyClass,
@@ -253,7 +256,7 @@ export class MapAdmin implements OnInit {
           total_beads: Number(this.mapTotalBeads) || 0,
           bead_type: this.mapBeadType.trim(),
           description: this.mapDesc.trim(),
-          time: this.mapTime.trim() || '15-20 phút'
+          time: this.mapTime.trim() || '15-20 phĂºt'
         };
       }
     } else {
@@ -263,7 +266,7 @@ export class MapAdmin implements OnInit {
       })) + 1 : 1;
 
       const map_id = 'M' + nextNum.toString().padStart(2, '0');
-      this.maps.push({
+      const createdMap = {
         map_id,
         map_name: this.mapName.trim(),
         author: this.mapAuthor.trim() || 'Urii Thiết kế',
@@ -279,6 +282,18 @@ export class MapAdmin implements OnInit {
         description: this.mapDesc.trim(),
         time: this.mapTime.trim() || "15-20 phút",
         related_product_ids: []
+      };
+      this.maps.push(createdMap);
+    }
+
+    const payloadMap = this.editingId
+      ? this.maps.find(m => m.map_id === this.editingId)
+      : this.maps[this.maps.length - 1];
+
+    if (payloadMap) {
+      this.adminApi.saveLibraryMap(payloadMap).subscribe({
+        next: () => this.loadMaps(),
+        error: (err) => console.error('Lỗi lưu map qua API:', err)
       });
     }
 
@@ -309,6 +324,11 @@ export class MapAdmin implements OnInit {
   confirmDeleteMap(): void {
     const id = this.deletingMapId;
     if (!id) return;
+
+    this.adminApi.deleteLibraryMap(id).subscribe({
+      next: () => this.loadMaps(),
+      error: (err) => console.error('Lỗi xóa map qua API:', err)
+    });
 
     this.maps = this.maps.filter(m => String(m.map_id || m.id || m._id || '') !== id);
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {

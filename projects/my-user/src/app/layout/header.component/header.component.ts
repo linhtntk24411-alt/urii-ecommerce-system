@@ -5,6 +5,8 @@ import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
 import { Subscription, TimeoutError, timeout } from 'rxjs';
 import { HeaderSearch } from '../header-search/header-search.component';
+import { NotificationService } from '../../core/services/notification.service';
+import { UserRealtimeService } from '../../core/services/realtime.service';
 
 interface CurrentUserProfile {
   id?: string;
@@ -12,6 +14,8 @@ interface CurrentUserProfile {
   name: string;
   email: string;
   avatar?: string;
+  orders?: number;
+  maps?: number;
 }
 
 @Component({
@@ -29,12 +33,21 @@ export class HeaderComponent implements OnInit, OnDestroy {
   userAvatar: string = '';
   cartCount: number = 0;
   notificationCount: number = 0; 
+  voucherCount: number = 0;
+  orderCount: number = 0;
+  customOrderCount: number = 0;
+  savedMapCount: number = 0;
+  favoriteCount: number = 0;
+  reviewCount: number = 0;
+  blogCount: number = 0;
 
   // --- THÔNG BÁO CHO USER ---
   isNotificationOpen = false;
   notifications: any[] = [];
   notificationLoadError = '';
   private isMarkingNotificationsRead = false;
+  private notificationPollInterval: any;
+  private realtimeSub: any;
   
   isMobileMenuOpen: boolean = false;
   isMobileProductOpen: boolean = true;
@@ -51,7 +64,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: Object,
     private readonly changeDetectorRef: ChangeDetectorRef,
-    private readonly cart: CartService
+    private readonly cart: CartService,
+    private readonly toastNotification: NotificationService,
+    private readonly realtimeService: UserRealtimeService
   ) {
     afterNextRender(() => {
       if (!isPlatformBrowser(this.platformId)) return;
@@ -60,6 +75,26 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.updateCartBadge();
       this.loadCurrentUser();
       this.loadNotifications();
+      this.loadUserVoucherCount();
+      this.realtimeSub = this.realtimeService.notification$.subscribe((notif) => {
+        const mapped = {
+          ...notif,
+          desc: notif.message || notif.desc || '',
+          time: this.formatNotificationTime(notif.createdAt as any)
+        };
+        this.notifications = [mapped, ...this.notifications.filter(n => n.id !== notif.id)];
+        this.notificationCount = this.notifications.filter(n => !n.isRead).length;
+
+        const toastMsg = notif.title ? `${notif.title}: ${notif.message || ''}` : (notif.message || 'Bạn có thông báo mới!');
+        this.toastNotification.info(toastMsg.slice(0, 120));
+        this.changeDetectorRef.markForCheck();
+      });
+
+      this.notificationPollInterval = setInterval(() => {
+        if (this.isLoggedIn) {
+          this.loadNotifications(true);
+        }
+      }, 3500);
       this.changeDetectorRef.markForCheck();
     });
   }
@@ -104,6 +139,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.profileRequest?.unsubscribe();
+    this.realtimeSub?.unsubscribe();
+    if (this.notificationPollInterval) {
+      clearInterval(this.notificationPollInterval);
+    }
     if (isPlatformBrowser(this.platformId)) {
       if (this.storageListener) {
         window.removeEventListener('storage', this.storageListener);
@@ -141,6 +180,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
         localStorage.setItem('userName', this.userName);
         localStorage.setItem('userEmail', this.userEmail);
         localStorage.setItem('userAvatar', this.userAvatar);
+        const userId = profile.id ?? profile._id;
+        if (userId) {
+          localStorage.setItem('userId', String(userId));
+        }
+        if (typeof (profile as any).orders === 'number') {
+          this.orderCount = (profile as any).orders;
+        }
+        if (typeof (profile as any).maps === 'number') {
+          this.savedMapCount = (profile as any).maps;
+        }
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
@@ -167,10 +216,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.userName = localStorage.getItem('userName') || 'Khách hàng';
       this.userEmail = localStorage.getItem('userEmail') || '';
       this.userAvatar = localStorage.getItem('userAvatar') || '';
+      this.favoriteCount = this.getFavoritesCount();
     } else {
       this.userName = '';
       this.userEmail = '';
       this.userAvatar = '';
+      this.voucherCount = 0;
+      this.orderCount = 0;
+      this.customOrderCount = 0;
+      this.savedMapCount = 0;
+      this.favoriteCount = 0;
+      this.reviewCount = 0;
+      this.blogCount = 0;
       this.notifications = [];
       this.notificationCount = 0;
       this.isNotificationOpen = false;
@@ -178,7 +235,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   // ================= NOTIFICATIONS =================
-  loadNotifications(): void {
+  loadNotifications(silent = false): void {
     if (!isPlatformBrowser(this.platformId)) return;
     const token = localStorage.getItem('authToken');
     if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
@@ -187,7 +244,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.notificationLoadError = '';
+    if (!silent) {
+      this.notificationLoadError = '';
+    }
     this.http.get<any>('/api/notifications/mine?page=1&limit=50', {
       headers: new HttpHeaders({ Authorization: `Bearer ${token}` })
     }).subscribe({
@@ -198,22 +257,37 @@ export class HeaderComponent implements OnInit, OnDestroy {
             ? response.notifications
             : [];
 
-        this.notifications = list.map((notif: any) => ({
+        const mapped = list.map((notif: any) => ({
           ...notif,
           desc: notif.message || notif.desc || '',
           time: this.formatNotificationTime(notif.createdAt || notif.updatedAt)
         }));
 
-        this.notificationCount = response?.unreadCount !== undefined
+        const newCount = response?.unreadCount !== undefined
           ? Number(response.unreadCount)
-          : this.notifications.filter(n => !n.isRead).length;
+          : mapped.filter((n: any) => !n.isRead).length;
 
+        // Nếu có thông báo mới khi người dùng đang online -> hiển thị Toast thông báo
+        if (silent && newCount > this.notificationCount && mapped.length > 0) {
+          const newest = mapped[0];
+          if (newest && !newest.isRead) {
+            const toastMsg = newest.title
+              ? `${newest.title}: ${newest.desc || ''}`
+              : (newest.desc || 'Bạn có thông báo mới từ Urii!');
+            this.toastNotification.info(toastMsg.slice(0, 120));
+          }
+        }
+
+        this.notifications = mapped;
+        this.notificationCount = newCount;
         this.changeDetectorRef.markForCheck();
       },
       error: (err) => {
-        console.error('Lỗi tải thông báo người dùng:', err);
-        this.notificationLoadError = 'Không thể tải thông báo.';
-        this.changeDetectorRef.markForCheck();
+        if (!silent) {
+          console.error('Lỗi tải thông báo người dùng:', err);
+          this.notificationLoadError = 'Không thể tải thông báo.';
+          this.changeDetectorRef.markForCheck();
+        }
       }
     });
   }
@@ -249,8 +323,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (url.startsWith('/blogs/')) {
       return url.replace('/blogs/', '/blog-detail/');
     }
-    if (url.startsWith('/vouchers')) {
-      return '/profile';
+    if (url.startsWith('/vouchers') || url.startsWith('/my-vouchers')) {
+      return '/my-vouchers';
     }
     if (url.startsWith('/chat')) {
       return '/support';
@@ -370,6 +444,153 @@ export class HeaderComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     this.isNotificationOpen = false;
     this.isAccountMenuOpen = !this.isAccountMenuOpen;
+    if (this.isAccountMenuOpen) {
+      this.loadUserVoucherCount();
+    }
+  }
+
+    private getFavoritesCount(): number {
+    if (!isPlatformBrowser(this.platformId)) return 0;
+    try {
+      const favs = JSON.parse(localStorage.getItem('favoriteProducts') || '[]');
+      return Array.isArray(favs) ? favs.length : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+    loadUserVoucherCount(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const token = localStorage.getItem('authToken');
+    if (localStorage.getItem('isLoggedIn') !== 'true' || !token) {
+      this.voucherCount = 0;
+      this.orderCount = 0;
+      this.customOrderCount = 0;
+      this.savedMapCount = 0;
+      this.favoriteCount = 0;
+      this.reviewCount = 0;
+      this.blogCount = 0;
+      return;
+    }
+
+    this.favoriteCount = this.getFavoritesCount();
+
+    // 1. Kho voucher
+    this.http.get<any[]>('/api/user-vouchers/mine', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (list) => {
+        if (Array.isArray(list)) {
+          this.voucherCount = list.filter((item) => !item.isUsed).length;
+          this.changeDetectorRef.markForCheck();
+        }
+      },
+      error: () => {},
+    });
+
+    // 2. Đơn hàng
+    this.http.get<any>('/api/orders/mine?page=1&limit=5', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (res) => {
+        if (typeof res?.total === 'number') {
+          this.orderCount = res.total;
+        } else if (Array.isArray(res)) {
+          this.orderCount = res.length;
+        } else if (Array.isArray(res?.orders)) {
+          this.orderCount = res.total ?? res.orders.length;
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: () => {},
+    });
+
+    // 3. Yêu cầu thiết kế
+    this.http.get<any>('/api/custom-orders/mine?page=1&limit=5', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (res) => {
+        if (typeof res?.total === 'number') {
+          this.customOrderCount = res.total;
+        } else if (typeof res?.activeCount === 'number') {
+          this.customOrderCount = res.activeCount;
+        } else if (Array.isArray(res?.orders)) {
+          this.customOrderCount = res.orders.length;
+        } else if (Array.isArray(res)) {
+          this.customOrderCount = res.length;
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: () => {},
+    });
+
+    // 4. Kho map đã lưu
+    this.http.get<any[]>('/api/saved-maps/mine', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (res) => {
+        if (Array.isArray(res)) {
+          this.savedMapCount = res.length;
+          this.changeDetectorRef.markForCheck();
+        }
+      },
+      error: () => {},
+    });
+
+    // 5. Sản phẩm yêu thích
+    this.http.get<any[]>('/api/liked-products/mine', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          this.favoriteCount = res.length;
+          this.changeDetectorRef.markForCheck();
+        }
+      },
+      error: () => {},
+    });
+
+    // 6. Đánh giá của tôi
+    this.http.get<any>('/api/reviews/mine', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (res) => {
+        if (Array.isArray(res)) {
+          this.reviewCount = res.length;
+        } else if (typeof res?.total === 'number') {
+          this.reviewCount = res.total;
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: () => {},
+    });
+
+    // 7. Bài viết của tôi
+    this.http.get<any>('/api/blogs?limit=100', {
+      headers: new HttpHeaders({ Authorization: 'Bearer ' + token }),
+    }).subscribe({
+      next: (res) => {
+        const userId = localStorage.getItem('userId');
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.blogs)
+            ? res.blogs
+            : Array.isArray(res?.data)
+              ? res.data
+              : [];
+        if (list.length > 0) {
+          const userBlogs = list.filter((b: any) => {
+            const bUserId = String(b?.userId?.$oid || b?.userId || '');
+            const bAuthor = String(b?.author || '');
+            return (userId && bUserId === String(userId)) ||
+                   ((this.userName || localStorage.getItem("userName")) && bAuthor.toLowerCase() === String(this.userName || localStorage.getItem("userName") || "").toLowerCase());
+          });
+          this.blogCount = userBlogs.length;
+          this.changeDetectorRef.markForCheck();
+        }
+      },
+      error: () => {},
+    });
   }
 
   toggleMobileProduct(): void {
@@ -398,6 +619,13 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.userName = '';
     this.userEmail = '';
     this.userAvatar = '';
+    this.voucherCount = 0;
+    this.orderCount = 0;
+    this.customOrderCount = 0;
+    this.savedMapCount = 0;
+    this.favoriteCount = 0;
+    this.reviewCount = 0;
+    this.blogCount = 0;
     this.isAccountMenuOpen = false;
     this.isLogoutModalOpen = false;
     this.isNotificationOpen = false;

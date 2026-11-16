@@ -25,6 +25,8 @@ const Notification = require('./models/Notification');
 const { prepareSavedMaps } = require('./utils/savedMaps');
 const { prepareLikedProducts } = require('./utils/likedProducts');
 const { prepareLikedBlogs } = require('./utils/likedBlogs');
+const { prepareSavedVouchers } = require('./utils/savedVouchers');
+const UserVoucher = require('./models/UserVoucher');
 const { prepareCartFixtures, prepareReviewFixtures, syncAllProductRatings } = require('./utils/commerceFixtures');
 const { isBcryptHash } = require('./utils/userPassword');
 
@@ -280,6 +282,16 @@ async function seed() {
       upsert: true
     }
   })), { ordered: true });
+    const savedVoucherFixtures = readJSON('saved_voucher.json') || readJSON('saved_vouchers.json');
+  const savedVouchers = prepareSavedVouchers(savedVoucherFixtures, commerceUsers, readJSON('vouchers.json').vouchers);
+  await UserVoucher.bulkWrite(savedVouchers.map((savedVoucher) => ({
+    updateOne: {
+      filter: { userId: savedVoucher.userId, voucherId: savedVoucher.voucherId },
+      update: { $set: savedVoucher },
+      upsert: true
+    }
+  })), { ordered: true });
+
   await insertMissing(CustomOrder, readJSON('custom_orders.json'), 'id');
 
   const chatSessions = fs.existsSync(path.join(__dirname, 'data', 'chat_sessions.json'))

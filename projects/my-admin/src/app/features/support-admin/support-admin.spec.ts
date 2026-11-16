@@ -3,6 +3,10 @@ import { SupportAdmin } from './support-admin';
 import { signal } from '@angular/core';
 import { afterEach, vi } from 'vitest';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { ActivatedRoute } from '@angular/router';
+import { EMPTY, of } from 'rxjs';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
+import { AdminRealtimeService } from '../../core/services/admin-realtime.service';
 
 describe('SupportAdmin', () => {
   let component: SupportAdmin;
@@ -12,7 +16,12 @@ describe('SupportAdmin', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ sessions: [] }))));
     await TestBed.configureTestingModule({
       imports: [SupportAdmin],
-      providers: [{ provide: AdminApiService, useValue: { token: signal('admin-jwt'), getLibraryMapImageUrl: (path: string) => '/api/' + path } }],
+      providers: [
+        { provide: AdminApiService, useValue: { token: signal('admin-jwt'), getLibraryMapImageUrl: (path: string) => '/api/' + path } },
+        { provide: ActivatedRoute, useValue: { queryParams: of({}) } },
+        { provide: AdminSocketService, useValue: { onChatUpdate: () => EMPTY, onCrudChange: () => EMPTY, joinChat: vi.fn() } },
+        { provide: AdminRealtimeService, useValue: { crudChanged$: EMPTY, chatMessage$: EMPTY } }
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SupportAdmin);
@@ -23,6 +32,25 @@ describe('SupportAdmin', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('merge: an older snapshot cannot replace a newer server revision', () => {
+    expect((component as any).acceptSnapshot('room', '2026-11-16T10:00:02Z')).toBe(true);
+    expect((component as any).acceptSnapshot('room', '2026-11-16T10:00:01Z')).toBe(false);
+    expect((component as any).acceptSnapshot('room', '2026-11-16T10:00:03Z')).toBe(true);
+  });
+
+  it('merge: late list responses are ignored without clearing retained local history', async () => {
+    let completeFirst!: (value: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise(resolve => { completeFirst = resolve; }));
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ sessions: [{ sessionId: 'room', status: 'active', userName: 'New', messages: [] }] })));
+    component.sessions = { legacy: { sessionId: 'legacy', messages: [{ text: 'Old local', sender: 'user' }] } };
+    component.loadSessions(true); component.loadSessions(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    completeFirst(new Response(JSON.stringify({ sessions: [{ sessionId: 'room', status: 'waiting', userName: 'Old', messages: [] }] })));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(component.sessions['room'].userName).toBe('New');
+    expect(component.sessions['legacy'].messages[0].text).toBe('Old local');
   });
 
   it('shows reaction controls only for server-confirmed messages and keeps the existing composer', () => {

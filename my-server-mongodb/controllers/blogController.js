@@ -188,11 +188,16 @@ exports.updateBlog = async (req, res) => {
 
 exports.deleteBlog = async (req, res) => {
   try {
-    const blog = await Blog.findOneAndDelete(blogFilter(req.params.id));
+    const blog = await Blog.findOne(blogFilter(req.params.id));
     if (!blog) {
       res.status(404).json({ message: 'Không tìm thấy bài viết.' });
       return;
     }
+    if (req.auth?.role !== 'admin' && (!blog.userId || String(blog.userId) !== String(req.auth?.id))) {
+      res.status(403).json({ message: 'Bạn không có quyền xóa bài viết này.' });
+      return;
+    }
+    await Blog.deleteOne({ _id: blog._id });
     emitCrudChange('blogs', 'deleted', blog._id);
     res.json({ message: 'Đã xóa bài viết.' });
   } catch (error) {

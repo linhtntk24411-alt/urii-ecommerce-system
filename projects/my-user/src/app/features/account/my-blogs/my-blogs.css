@@ -89,10 +89,10 @@
 }
 
 .my-blog-card {
-  display: grid;
-  grid-template-columns: 132px minmax(0, 1fr) 24px;
+  display: flex;
   align-items: center;
-  gap: 18px;
+  justify-content: space-between;
+  gap: 16px;
   padding: 14px;
   border: 1px solid #eee6e4;
   border-radius: 14px;
@@ -105,6 +105,66 @@
 .my-blog-card:hover {
   border-color: #e5bdb7;
   box-shadow: 0 8px 24px rgba(80, 20, 20, 0.08);
+}
+
+.my-blog-card-link {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.my-blog-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.my-blog-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #fbd5d5;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #c92a2a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.my-blog-delete-btn:hover:not(:disabled) {
+  background: #c92a2a;
+  color: #fff;
+  border-color: #c92a2a;
+}
+
+.my-blog-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-blog-delete-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.my-blog-arrow-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #a0a0a0;
+  text-decoration: none;
+}
+
+.my-blog-arrow-link:hover .my-blog-arrow {
+  color: #840001;
 }
 
 .my-blog-image {
@@ -165,6 +225,7 @@
 
 .my-blog-arrow {
   color: #a0a0a0;
+  transition: color 0.2s ease;
 }
 
 .my-blogs-empty,
@@ -202,9 +263,13 @@
   }
 
   .my-blog-card {
-    grid-template-columns: 88px minmax(0, 1fr) 18px;
-    gap: 12px;
+    gap: 10px;
     padding: 10px;
+  }
+
+  .my-blog-card-link {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 12px;
   }
 
   .my-blog-image {

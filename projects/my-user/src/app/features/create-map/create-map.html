@@ -1,0 +1,630 @@
+<main class="about-page create-map-page">
+  <div class="about-shell">
+    <!-- HERO SECTION (Theo phong cách About Urii) -->
+    <section class="about-hero" aria-labelledby="map-hero-title">
+      <div class="about-hero__content">
+        <p class="about-kicker"><i class="bi bi-stars" aria-hidden="true"></i> Công cụ sáng tạo Urii</p>
+        <h1 id="map-hero-title">Tạo Map Hạt Nhựa <em>Kèm Mã Màu</em></h1>
+        <p class="about-hero__description">
+          Chuyển đổi ảnh thành bản đồ hạt nhựa ủi (Perler/Fuse Beads) với <strong>mã ký hiệu màu chuẩn (H2, D3, B5...)</strong>
+          hiển thị trực tiếp trong từng ô, kẻ vạch phân khối 10×10 chuẩn theo chart nghệ nhân và tự động kết nối gói hạt Urii tương ứng.
+        </p>
+        <div class="about-actions">
+          <button class="about-btn about-btn--primary" type="button" (click)="triggerFileInput()">
+            <i class="bi bi-folder2-open" aria-hidden="true"></i> Mở thư mục chọn ảnh
+          </button>
+          <a class="about-btn about-btn--outline" routerLink="/sample-maps">
+            <i class="bi bi-collection-fill" aria-hidden="true"></i> Xem thư viện mẫu
+          </a>
+        </div>
+        <div class="about-hero__tags">
+          <span><i class="bi bi-tag-fill" aria-hidden="true"></i> Chuẩn 295 mã màu hạt nhựa ủi Perler</span>
+          <span><i class="bi bi-bag-check-fill" aria-hidden="true"></i> Gợi ý gói hạt bổ sung Urii có sẵn (A, B, C, F, G, H)</span>
+          <span><i class="bi bi-grid-3x3" aria-hidden="true"></i> Vạch cam 10×10 &amp; Tọa độ 4 cạnh</span>
+        </div>
+      </div>
+
+      <!-- VÙNG THẢ / TẢI LÊN / DÁN ẢNH (Theo chuẩn Mẫu 2) -->
+      <div class="about-hero__visual" aria-label="Khu vực thả ảnh hoặc mở thư mục">
+        <div
+          class="about-logo-card hero-upload-card-v2"
+          [class.dragging]="isDragging"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          (click)="triggerFileInput()"
+          title="Kéo thả ảnh vào đây hoặc nhấp để mở thư mục duyệt ảnh"
+        >
+          <input
+            #fileInput
+            type="file"
+            class="hidden-file-input"
+            accept="image/*"
+            (change)="onFileSelected($event)"
+          />
+
+          <!-- TIÊU ĐỀ THEO MẪU 2 -->
+          <h3 class="hero-v2-heading">Thả, Tải lên hoặc Dán ảnh</h3>
+          <p class="hero-v2-subheading">
+            Định dạng hỗ trợ: JPG, PNG, GIF, JFIF (JPEG), WEBP, SVG
+          </p>
+
+          <!-- NHÓM NÚT BROWSE + LINK THEO MẪU 2 -->
+          <div class="hero-v2-btn-group" (click)="$event.stopPropagation()">
+            <button type="button" class="btn-hero-browse" (click)="triggerFileInput($event)">
+              <i class="bi bi-arrow-up-short"></i> Duyệt ảnh
+            </button>
+            <button
+              type="button"
+              class="btn-hero-link"
+              (click)="pasteFromClipboard($event)"
+              title="Dán ảnh từ bộ nhớ tạm hoặc URL ảnh"
+            >
+              <i class="bi bi-link-45deg"></i>
+            </button>
+          </div>
+
+          <!-- GHI CHÚ TRẠNG THÁI -->
+          <div class="about-logo-card__note hero-v2-status-note">
+            <i class="bi bi-magic" aria-hidden="true"></i>
+            <span *ngIf="!imageFileName">Hỗ trợ dán trực tiếp bằng phím tắt Ctrl + V</span>
+            <span *ngIf="imageFileName">Đang chọn: <strong>{{ imageFileName }}</strong></span>
+          </div>
+        </div>
+
+        <span class="about-float-icon about-float-icon--heart" aria-hidden="true">
+          <i class="bi bi-suit-heart-fill"></i>
+        </span>
+        <span class="about-float-icon about-float-icon--star" aria-hidden="true">
+          <i class="bi bi-star-fill"></i>
+        </span>
+      </div>
+    </section>
+
+    <!-- WORKSPACE SECTION -->
+    <section class="create-map-workspace" aria-label="Khu vực tạo map">
+      <div class="workspace-grid">
+        <!-- BỘ ĐIỀU KHIỂN BÊN TRÁI -->
+        <div class="workspace-card controls-card">
+          <div class="card-header-styled">
+            <div class="header-icon-badge"><i class="bi bi-sliders"></i></div>
+            <div>
+              <h2>Bảng điều khiển</h2>
+              <p>Tinh chỉnh kích thước ô & số lượng màu sắc</p>
+            </div>
+          </div>
+
+          <!-- 3 MẪU CÓ SẴN THEO YÊU CẦU: Trái tim 1 màu (F6), Dâu 3 màu (F6, B5, A4), Sao 1 màu (A4) -->
+          <div class="sample-presets-block">
+            <label class="control-label">
+              <i class="bi bi-lightning-charge-fill"></i> 3 mẫu có sẵn chuẩn màu:
+            </label>
+            <div class="presets-row">
+              <button
+                *ngFor="let sample of samplePresets"
+                type="button"
+                class="preset-btn"
+                [class.active]="imageFileName.startsWith(sample.name)"
+                (click)="loadPreset(sample)"
+              >
+                <i class="bi" [ngClass]="sample.icon" [style.color]="sample.colorBadge"></i>
+                <span class="preset-name">{{ sample.name }}</span>
+                <span class="preset-color-badge" [style.background-color]="sample.colorBadge">
+                  {{ sample.label }}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- CẤU HÌNH KÍCH THƯỚC & TỶ LỆ MAP (HỖ TRỢ MỌI TỶ LỆ ẢNH NGANG / DỌC) -->
+          <div class="control-group">
+            <div class="control-label-row">
+              <label class="control-label">
+                <i class="bi bi-aspect-ratio-fill"></i> Kích thước &amp; Tỷ lệ map:
+              </label>
+              <div class="dimension-badges-row">
+                <span class="badge-value">{{ gridCols }} × {{ gridRows }}</span>
+                <span class="badge-ratio-tag">{{ getAspectLabel() }}</span>
+              </div>
+            </div>
+
+            <!-- CÁC PRESET QUY CÁCH BÀN PEGBOARD -->
+            <div class="board-presets-grid">
+              <button
+                type="button"
+                class="board-preset-chip"
+                [class.active]="keepAspectRatio"
+                (click)="setBoardPreset('original')"
+                title="Tự động giữ chuẩn tỷ lệ ảnh gốc, không bị biến dạng hình"
+              >
+                <i class="bi bi-magic"></i> Theo tỷ lệ ảnh gốc
+              </button>
+              <button
+                type="button"
+                class="board-preset-chip"
+                [class.active]="!keepAspectRatio && gridCols === 29 && gridRows === 29"
+                (click)="setBoardPreset('square29')"
+                title="Khung vuông 1 bàn pegboard tiêu chuẩn (29×29)"
+              >
+                1 bàn vuông (29×29)
+              </button>
+              <button
+                type="button"
+                class="board-preset-chip"
+                [class.active]="!keepAspectRatio && gridCols === 58 && gridRows === 29"
+                (click)="setBoardPreset('horiz2x1')"
+                title="Ghép 2 bàn vuông nằm ngang (58×29) - lý tưởng cho ảnh phong cảnh/ngang"
+              >
+                Ghép 2 bàn ngang (58×29)
+              </button>
+              <button
+                type="button"
+                class="board-preset-chip"
+                [class.active]="!keepAspectRatio && gridCols === 29 && gridRows === 58"
+                (click)="setBoardPreset('vert1x2')"
+                title="Ghép 2 bàn vuông đứng dọc (29×58) - lý tưởng cho ảnh chân dung/dọc"
+              >
+                Ghép 2 bàn dọc (29×58)
+              </button>
+              <button
+                type="button"
+                class="board-preset-chip"
+                [class.active]="!keepAspectRatio && gridCols === 58 && gridRows === 58"
+                (click)="setBoardPreset('square4x4')"
+                title="Ghép 4 bàn vuông lớn (58×58)"
+              >
+                Ghép 4 bàn (58×58)
+              </button>
+            </div>
+
+            <!-- THANH TRƯỢT KÍCH THƯỚC CHUNG (ĐỘ CHI TIẾT) -->
+            <div class="dimension-slider-block">
+              <div class="control-label-row">
+                <span class="sub-label"><i class="bi bi-arrows-angle-expand"></i> Độ chi tiết (Cạnh lớn nhất):</span>
+                <span class="sub-badge">{{ maxDimension }} ô</span>
+              </div>
+              <input
+                type="range"
+                class="slider-input"
+                min="12"
+                max="80"
+                [value]="maxDimension"
+                (input)="onMaxDimensionChange($event)"
+              />
+            </div>
+
+            <!-- ĐIỀU CHỈNH RIÊNG CỘT (NGANG) VÀ HÀNG (DỌC) KÈM NÚT KHÓA TỶ LỆ -->
+            <div class="dual-dimension-box">
+              <div class="dimension-input-col">
+                <label class="dim-label" for="colsRange">Cột (Ngang / Rộng):</label>
+                <div class="dim-field-wrap">
+                  <input
+                    id="colsRange"
+                    type="number"
+                    class="dim-number-input"
+                    min="8"
+                    max="100"
+                    [value]="gridCols"
+                    (input)="onGridColsChange($event)"
+                  />
+                  <span class="dim-unit">ô</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn-toggle-lock"
+                [class.locked]="keepAspectRatio"
+                (click)="toggleKeepAspectRatio()"
+                [title]="keepAspectRatio ? 'Đang khóa tỷ lệ theo ảnh gốc (Nhấp để mở khóa chỉnh tự do)' : 'Đang mở khóa chỉnh tự do (Nhấp để khóa tỷ lệ theo ảnh)'"
+              >
+                <i class="bi" [ngClass]="keepAspectRatio ? 'bi-link-45deg' : 'bi-slash-circle'"></i>
+                <span>{{ keepAspectRatio ? 'Khóa tỷ lệ' : 'Tự do' }}</span>
+              </button>
+
+              <div class="dimension-input-col">
+                <label class="dim-label" for="rowsRange">Hàng (Dọc / Cao):</label>
+                <div class="dim-field-wrap">
+                  <input
+                    id="rowsRange"
+                    type="number"
+                    class="dim-number-input"
+                    min="8"
+                    max="100"
+                    [value]="gridRows"
+                    (input)="onGridRowsChange($event)"
+                  />
+                  <span class="dim-unit">ô</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- THANH TRƯỢT SỐ MÀU -->
+          <div class="control-group">
+            <div class="control-label-row">
+              <label class="control-label" for="colorCountRange">
+                <i class="bi bi-palette"></i> Số màu hạt tối đa:
+              </label>
+              <span class="badge-value">{{ colorCount }} màu</span>
+            </div>
+            <input
+              id="colorCountRange"
+              type="range"
+              class="slider-input"
+              min="2"
+              max="32"
+              [value]="colorCount"
+              (input)="onColorCountChange($event)"
+            />
+            <div class="quick-presets">
+              <button type="button" class="chip-btn" [class.active]="colorCount === 8" (click)="setColorCount(8)">8 màu</button>
+              <button type="button" class="chip-btn chip-btn--recommend" [class.active]="colorCount === 16" (click)="setColorCount(16)">16 màu chuẩn</button>
+              <button type="button" class="chip-btn" [class.active]="colorCount === 24" (click)="setColorCount(24)">24 màu đa dạng</button>
+            </div>
+          </div>
+
+          <!-- ĐỘ RỰC RỠ & TƯƠNG PHẢN MÀU (GIÚP NHẬN DIỆN MÀU ĐẸP, CHỐNG PHAI XÁM) -->
+          <div class="control-group">
+            <div class="control-label-row">
+              <label class="control-label" for="vibrancyRange">
+                <i class="bi bi-brightness-high-fill"></i> Tăng độ tươi màu (Vibrancy):
+              </label>
+              <span class="badge-value">+{{ colorVibrancy }}%</span>
+            </div>
+            <input
+              id="vibrancyRange"
+              type="range"
+              class="slider-input"
+              min="-20"
+              max="60"
+              [value]="colorVibrancy"
+              (input)="onColorVibrancyChange($event)"
+            />
+            <div class="quick-presets">
+              <button type="button" class="chip-btn" [class.active]="colorVibrancy === 0" (click)="setColorVibrancy(0)">Tự nhiên (0%)</button>
+              <button type="button" class="chip-btn chip-btn--recommend" [class.active]="colorVibrancy === 20" (click)="setColorVibrancy(20)">Tươi tắn (+20%)</button>
+              <button type="button" class="chip-btn" [class.active]="colorVibrancy === 40" (click)="setColorVibrancy(40)">Rực rỡ (+40%)</button>
+            </div>
+          </div>
+
+          <!-- KIỂU DÁNG Ô & HIỂN THỊ MÃ MÀU -->
+          <div class="control-group">
+            <label class="control-label mb-2"><i class="bi bi-pencil-square"></i> Kiểu hiển thị Chart:</label>
+            <div class="toggles-grid">
+              <div class="shape-selector">
+                <button
+                  type="button"
+                  class="shape-btn"
+                  [class.active]="cellShape === 'square'"
+                  (click)="setCellShape('square')"
+                >
+                  <i class="bi bi-grid-3x3"></i>
+                  <span>Ô vuông Chart mẫu</span>
+                </button>
+                <button
+                  type="button"
+                  class="shape-btn"
+                  [class.active]="cellShape === 'realistic'"
+                  (click)="setCellShape('realistic')"
+                >
+                  <i class="bi bi-circle"></i>
+                  <span>Hạt ủi (có lỗ)</span>
+                </button>
+                <button
+                  type="button"
+                  class="shape-btn"
+                  [class.active]="cellShape === 'dot'"
+                  (click)="setCellShape('dot')"
+                >
+                  <i class="bi bi-record-circle-fill"></i>
+                  <span>Chấm tròn phẳng</span>
+                </button>
+              </div>
+
+              <!-- TÙY CHỌN BẬT TẮT -->
+              <div class="checkbox-options-card">
+                <label class="toggle-checkbox highlight-feature">
+                  <input type="checkbox" [checked]="preferUriiColors" (change)="togglePreferUriiColors()" />
+                  <span class="checkmark"></span>
+                  <div class="checkbox-label-block">
+                    <strong>Ưu tiên mã màu hạt Urii có sẵn (A, B, C, F, G, H)</strong>
+                    <span class="sub-tip">Ánh xạ màu vào các gói hạt lẻ 2.6mm hiện có sẵn tại cửa hàng Urii</span>
+                  </div>
+                </label>
+
+                <label class="toggle-checkbox highlight-feature">
+                  <input type="checkbox" [checked]="showColorLabels" (change)="toggleColorLabels()" />
+                  <span class="checkmark"></span>
+                  <div class="checkbox-label-block">
+                    <strong>Hiện mã màu trong từng ô (H2, D3, B5, F6...)</strong>
+                    <span class="sub-tip">Dễ dàng đối chiếu mã hạt khi xếp theo chart</span>
+                  </div>
+                </label>
+
+                <label class="toggle-checkbox">
+                  <input type="checkbox" [checked]="showGuideBlocks" (change)="toggleGuideBlocks()" />
+                  <span class="checkmark"></span>
+                  <span>Vạch cam phân khối 10×10 (như hình mẫu nghệ nhân)</span>
+                </label>
+
+                <label class="toggle-checkbox">
+                  <input type="checkbox" [checked]="showCoordinates" (change)="toggleCoordinates()" />
+                  <span class="checkmark"></span>
+                  <span>Hiện số tọa độ (1..N ở cả 4 cạnh)</span>
+                </label>
+
+                <label class="toggle-checkbox">
+                  <input type="checkbox" [checked]="showGridLines" (change)="toggleGridLines()" />
+                  <span class="checkmark"></span>
+                  <span>Hiện lưới pegboard</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- NÚT THAO TÁC -->
+          <div class="workspace-actions">
+            <button class="about-btn about-btn--primary flex-1" type="button" (click)="processImage()">
+              <i class="bi bi-magic"></i> Chuyển đổi lại
+            </button>
+            <button class="about-btn about-btn--outline" type="button" (click)="reset()" title="Đặt lại mặc định">
+              <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+            </button>
+          </div>
+        </div>
+
+        <!-- KHU VỰC KẾT QUẢ BÊN PHẢI -->
+        <div class="workspace-card preview-card">
+          <div class="card-header-styled">
+            <div class="header-icon-badge header-icon-badge--yellow"><i class="bi bi-image"></i></div>
+            <div class="flex-1">
+              <h2>Bản đồ Chart hạt nhựa</h2>
+              <p *ngIf="imageFileName">Đang hiển thị: <strong>{{ imageFileName }}</strong></p>
+              <p *ngIf="!imageFileName">Chưa có ảnh nào được chọn</p>
+            </div>
+            <button
+              class="about-btn about-btn--primary btn-download-quick"
+              type="button"
+              (click)="downloadResult()"
+              [disabled]="!hasImage"
+            >
+              <i class="bi bi-download"></i> Tải ảnh Chart (PNG)
+            </button>
+          </div>
+
+          <!-- THỐNG KÊ NHANH -->
+          <div class="stats-banner">
+            <div class="stat-item">
+              <span class="stat-number">{{ gridCols }} × {{ gridRows }}</span>
+              <span class="stat-label">Kích thước ô</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-number">{{ totalBeadCount }}</span>
+              <span class="stat-label">Tổng số hạt cần</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-number">{{ palette.length }}</span>
+              <span class="stat-label">Mã màu dùng</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-number">{{ getAspectLabel() }}</span>
+              <span class="stat-label">Tỷ lệ khung</span>
+            </div>
+          </div>
+
+          <!-- CANVAS HIỂN THỊ CHÍNH -->
+          <div class="canvas-viewport-wrapper">
+            <div class="canvas-scroll-box" [class.loading]="isProcessing">
+              <canvas #resultCanvas class="result-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- GỢI Ý THAO TÁC -->
+          <div class="tip-highlight-bar" *ngIf="palette.length > 0">
+            <i class="bi bi-lightbulb-fill"></i>
+            <span>
+              <strong>Mẹo:</strong> Nhấp vào bất kỳ mã màu nào trong bảng bên dưới để
+              <strong>làm nổi bật (highlight)</strong> tất cả vị trí hạt của màu đó trên chart!
+            </span>
+            <button *ngIf="selectedColorCode" class="btn-clear-filter" (click)="selectColorFilter(selectedColorCode)">
+              <i class="bi bi-x-circle-fill"></i> Bỏ lọc
+            </button>
+          </div>
+
+          <!-- SO SÁNH ẢNH GỐC (THUMBNAIL) -->
+          <div class="original-compare-bar">
+            <div class="compare-thumb" [style.aspect-ratio]="gridCols + '/' + gridRows">
+              <canvas #originalCanvas class="original-canvas"></canvas>
+            </div>
+            <div class="compare-info">
+              <strong>Ảnh gốc (pixel hóa {{ gridCols }}×{{ gridRows }})</strong>
+              <span>Tỷ lệ hiển thị {{ getAspectLabel() }} chuẩn xác không bị méo hình</span>
+            </div>
+          </div>
+
+          <!-- BẢNG MÃ MÀU VÀ SỐ LƯỢNG HẠT (CHART LEGEND) -->
+          <div class="palette-section" *ngIf="palette.length > 0">
+            <div class="palette-header">
+              <h3>
+                <i class="bi bi-palette-fill"></i> Bảng mã màu hạt (Chart Legend):
+              </h3>
+              <span class="palette-total">{{ palette.length }} mã màu / {{ totalBeadCount }} hạt</span>
+            </div>
+            <div class="palette-grid">
+              <div
+                *ngFor="let item of palette"
+                class="palette-pill"
+                [class.active-filter]="selectedColorCode === item.code"
+                (click)="selectColorFilter(item.code)"
+                [title]="'Nhấp để làm nổi bật vị trí màu ' + item.code + ' (' + item.name + ')'"
+              >
+                <!-- Badge mã màu như H2, D3, B5, F6, G1... -->
+                <div class="pill-badge-col">
+                  <span class="color-code-badge" [style.background-color]="item.hex" [style.color]="item.textColor">
+                    {{ item.code }}
+                  </span>
+                </div>
+
+                <!-- Thông tin tên màu, số hạt, và nhãn có sẵn Urii -->
+                <div class="color-details">
+                  <div class="color-top-line">
+                    <span class="color-name-text" [title]="item.name">{{ item.name }}</span>
+                    <span class="color-hex-text">{{ item.hex }}</span>
+                  </div>
+                  <div class="color-bottom-line">
+                    <span class="color-count-text">
+                      <strong>{{ item.count | number }}</strong> hạt <span class="pct-text">({{ item.percentage }}%)</span>
+                    </span>
+                    <span *ngIf="item.inStockUrii" class="badge-in-stock-tag" title="Mã màu này có sẵn hàng tại cửa hàng Urii">
+                      <i class="bi bi-check-circle-fill"></i> Urii có
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Nút Mua hạt (Chỉ hiển thị khi Urii CÓ biến thể này trong kho hàng) -->
+                <div class="pill-action-col" *ngIf="item.inStockUrii && item.productSlug">
+                  <a
+                    [routerLink]="['/product-detail', item.productSlug]"
+                    class="btn-buy-bead-pill"
+                    (click)="$event.stopPropagation()"
+                    [title]="'Xem và mua gói hạt mã ' + item.code.charAt(0) + ' (phân loại ' + item.code + ') tại Urii'"
+                  >
+                    <i class="bi bi-cart3"></i> Mua
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GỢI Ý SẢN PHẨM HẠT ỦI PHÙ HỢP TỪ CỬA HÀNG (products.json) -->
+          <div class="suggested-products-section" *ngIf="suggestedProducts.length > 0">
+            <div class="suggested-header">
+              <div class="suggested-title-block">
+                <h3><i class="bi bi-bag-check-fill"></i> Gói hạt nhựa ủi Urii phù hợp cho chart này:</h3>
+                <p>Tìm thấy các gói bổ sung hạt ủi 2.6mm chính hãng Urii có sẵn đúng phân loại màu cần dùng</p>
+              </div>
+              <a routerLink="/products" [queryParams]="{ category: 'bead' }" class="link-view-all-beads">
+                Xem tất cả hạt lẻ <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
+
+            <div class="suggested-products-grid">
+              <div *ngFor="let prod of suggestedProducts" class="suggested-product-card">
+                <div class="suggested-prod-img-wrap">
+                  <img [src]="prod.image" [alt]="prod.name" class="suggested-prod-img" onerror="this.src='assets/Urii-Logo.png'" />
+                  <span class="badge-prod-prefix">Mã {{ prod.prefix }}</span>
+                </div>
+                <div class="suggested-prod-info">
+                  <h4 class="suggested-prod-name" [title]="prod.name">{{ prod.name }}</h4>
+                  <div class="suggested-prod-price-row">
+                    <span class="suggested-prod-price">{{ prod.price | number }} ₫</span>
+                    <span class="suggested-prod-stock"><i class="bi bi-check-circle-fill"></i> Có sẵn</span>
+                  </div>
+
+                  <!-- DANH SÁCH MÃ MÀU CỤ THỂ CẦN DÙNG TRONG CHART -->
+                  <div class="suggested-prod-needed-block" *ngIf="prod.matchedVariants && prod.matchedVariants.length > 0">
+                    <span class="needed-title"><i class="bi bi-pin-angle-fill"></i> Cần dùng cho chart:</span>
+                    <div class="needed-chips-row">
+                      <span *ngFor="let v of prod.matchedVariants" class="needed-chip">
+                        <strong>{{ v.code }}</strong>: {{ v.count }} hạt
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- PHÂN LOẠI CỦA SẢN PHẨM NẾU CHƯA CÓ TRONG CHART -->
+                  <div class="suggested-prod-variants" *ngIf="!prod.matchedVariants || prod.matchedVariants.length === 0">
+                    <span *ngFor="let v of prod.variants.slice(0, 5)" class="variant-chip">{{ v }}</span>
+                    <span *ngIf="prod.variants.length > 5" class="variant-chip-more">+{{ prod.variants.length - 5 }}</span>
+                  </div>
+
+                  <a [routerLink]="['/product-detail', prod.slug]" class="btn-goto-product">
+                    <i class="bi bi-cart3"></i> Xem chi tiết &amp; Đặt mua
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CÁC BƯỚC HƯỚNG DẪN (Theo About Meaning Grid) -->
+    <section class="about-meaning" aria-labelledby="steps-title">
+      <div class="about-section__heading">
+        <h2 id="steps-title" class="steps-heading-single-line">3 Bước Tạo Chart Hạt <em>Chuẩn Nghệ Nhân</em></h2>
+        <p>Tự tay tạo bản đồ hạt có mã màu chuẩn xác để xếp hạt nhanh chóng, không sợ nhầm màu</p>
+      </div>
+      <div class="about-meaning__grid">
+        <article class="about-meaning-item">
+          <div class="about-icon-circle"><i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i></div>
+          <h3>1. Thả ảnh vào khung tải ở trên</h3>
+          <p>Kéo thả ảnh trực tiếp, nhấn nút Duyệt ảnh hoặc nhấn Ctrl + V để dán ảnh tức thì.</p>
+        </article>
+        <article class="about-meaning-item">
+          <div class="about-icon-circle"><i class="bi bi-tag-fill" aria-hidden="true"></i></div>
+          <h3>2. Gắn đúng mã màu hạt chuẩn</h3>
+          <p>Hệ thống tự động tra cứu mã màu 295 sắc (H2, D3, B5, A4, F6...) và hiển thị mã trong từng ô kèm vạch cam 10×10.</p>
+        </article>
+        <article class="about-meaning-item">
+          <div class="about-icon-circle"><i class="bi bi-printer-fill" aria-hidden="true"></i></div>
+          <h3>3. Mua hạt Urii &amp; Xếp tác phẩm</h3>
+          <p>Nhấp vào liên kết để mua các gói hạt tương ứng trên Urii, tải ảnh chart và tiến hành ủi nhiệt.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- MẸO HAY KHI TẠO MAP (Theo About Commitment Grid) -->
+    <section class="about-commitment" aria-labelledby="tips-title">
+      <div class="about-section__heading">
+        <h2 id="tips-title">Mẹo Đọc Chart &amp; Xếp Hạt Dễ Dàng</h2>
+        <p>Bí quyết từ cộng đồng hạt nhựa ủi Urii</p>
+      </div>
+      <div class="about-commitment__grid">
+        <article class="about-commit-item">
+          <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i>
+          <div>
+            <h3>Chia nhỏ theo ô 10×10</h3>
+            <p>Dựa vào các đường kẻ màu cam để xếp từng khối 10×10, tránh bị lệch hàng khi xếp các mẫu lớn.</p>
+          </div>
+        </article>
+        <article class="about-commit-item">
+          <i class="bi bi-tags-fill" aria-hidden="true"></i>
+          <div>
+            <h3>Đối chiếu mã màu (H2, D3, F6...)</h3>
+            <p>Mỗi màu đều có mã ký hiệu riêng trong ô giúp phân biệt rõ ràng ngay cả với các màu sắc gần giống nhau.</p>
+          </div>
+        </article>
+        <article class="about-commit-item">
+          <i class="bi bi-box-seam-fill" aria-hidden="true"></i>
+          <div>
+            <h3>Chuẩn bị hạt theo bảng màu</h3>
+            <p>Xem trước số lượng hạt từng mã ở bảng bên dưới để chuẩn bị sẵn ra khay đựng trước khi xếp.</p>
+          </div>
+        </article>
+        <article class="about-commit-item">
+          <i class="bi bi-fire" aria-hidden="true"></i>
+          <div>
+            <h3>Ủi nhiệt đều &amp; Chặn phẳng</h3>
+            <p>Sau khi ủi bằng giấy nến sáp, dùng sách hoặc vật nặng đè lên trong khi chờ nguội để tác phẩm không bị cong.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- CTA CUỐI TRANG (Theo About Final CTA) -->
+    <section class="about-final-cta" aria-labelledby="map-cta-title">
+      <div class="about-final-cta__copy">
+        <h2 id="map-cta-title">Cần chuẩn bị hạt nhựa và phụ kiện?</h2>
+        <p>Urii cung cấp đầy đủ các mã màu hạt nhựa 2.6mm và 5mm, bàn pegboard chống cong vênh và giấy ủi chuyên dụng!</p>
+      </div>
+      <a class="about-btn about-btn--cream" routerLink="/products">
+        <i class="bi bi-bag-heart-fill" aria-hidden="true"></i> Mua hạt nhựa &amp; Dụng cụ
+      </a>
+      <span class="about-final-cta__pixel" aria-hidden="true"><i class="bi bi-grid-3x3-gap-fill"></i></span>
+    </section>
+  </div>
+</main>

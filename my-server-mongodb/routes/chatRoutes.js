@@ -23,6 +23,9 @@ router.post('/sessions/:id/request-agent', optionalAuthenticate, c.chatIdentity,
 router.get('/sessions/:id', optionalAuthenticate, c.chatIdentity, c.requireChatOwner, c.getSessionById);
 router.post('/sessions', optionalAuthenticate, c.chatIdentity, c.createOrUpdateSession);
 router.post('/sessions/:id/messages', optionalAuthenticate, c.chatIdentity, c.requireChatOwner, c.addMessage);
+router.post('/sessions/:id/cancel-agent', optionalAuthenticate, c.chatIdentity, c.requireChatOwner, c.cancelAgent);
+router.delete('/sessions/:id/messages', optionalAuthenticate, c.chatIdentity, c.requireChatOwner, c.clearSessionMessages);
+router.delete('/sessions/:id', optionalAuthenticate, c.chatIdentity, c.requireChatOwner, c.deleteSession);
 
 // Admin-only endpoints (dành cho SupportAdmin / Quản trị viên)
 router.post('/faqs', authenticate, requireAdmin, c.createFaq);
@@ -33,6 +36,5 @@ router.get('/sessions', authenticate, requireAdmin, c.getAllSessions);
 router.put('/sessions/:id', authenticate, requireAdmin, c.updateSession);
 router.patch('/sessions/:id', authenticate, requireAdmin, c.updateSession);
 router.put('/sessions/:id/status', authenticate, requireAdmin, c.updateStatus);
-router.delete('/sessions/:id', authenticate, requireAdmin, c.deleteSession);
 
 module.exports = router;

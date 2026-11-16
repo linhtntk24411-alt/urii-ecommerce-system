@@ -1,0 +1,413 @@
+<section class="account-page vouchers-page">
+  <header class="account-page__header vouchers-header">
+    <div class="vouchers-header__info">
+      <p class="account-page__eyebrow">BỘ SƯU TẬP ƯU ĐÃI CỦA BẠN</p>
+      <h1>Kho voucher của tôi</h1>
+      <p>Quản lý mã giảm giá, voucher freeship và ưu đãi cá nhân. Sao chép mã hoặc dùng ngay khi đặt hàng.</p>
+    </div>
+    @if (!requiresLogin && !isLoading && totalCount > 0) {
+      <div class="vouchers-header__summary">
+        <span class="vouchers-summary-badge">
+          <span class="material-symbols-outlined" aria-hidden="true">loyalty</span>
+          <strong>{{ availableCount }}</strong> voucher khả dụng
+        </span>
+      </div>
+    }
+  </header>
+
+  @if (isLoading) {
+    <div class="account-state" role="status">
+      <div class="spinner"></div>
+      <p>Đang tải kho voucher của bạn...</p>
+    </div>
+  } @else if (requiresLogin) {
+    <div class="account-state">
+      <span class="material-symbols-outlined" aria-hidden="true">account_circle</span>
+      <h2>Đăng nhập để xem voucher</h2>
+      <p>Kho voucher được liên kết và bảo mật theo tài khoản của bạn.</p>
+      <a routerLink="/login" [queryParams]="{ returnUrl: '/my-vouchers' }">Đăng nhập ngay</a>
+    </div>
+  } @else if (errorMessage) {
+    <div class="account-state account-state--error" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">error</span>
+      <h2>Có lỗi xảy ra</h2>
+      <p>{{ errorMessage }}</p>
+      <button class="retry-button" type="button" (click)="loadVouchers()">Thử lại</button>
+    </div>
+  } @else {
+    <!-- Form kiểm tra mã khuyến mãi -->
+    <div class="voucher-claim-bar voucher-check-bar">
+      <form class="claim-form check-form" (ngSubmit)="checkVoucherCode()">
+        <div class="claim-input-wrap">
+          <span class="material-symbols-outlined" aria-hidden="true">confirmation_number</span>
+          <input
+            type="text"
+            name="voucherCode"
+            placeholder="Nhập mã voucher (vd: FREESHIP, SALE15)..."
+            [(ngModel)]="inputVoucherCode"
+            [disabled]="isChecking"
+            maxlength="30"
+            autocomplete="off" />
+        </div>
+        <button class="claim-submit-btn check-submit-btn" type="submit" [disabled]="isChecking || !inputVoucherCode.trim()">
+          @if (isChecking) {
+            <span class="spinner-small"></span> Đang kiểm tra...
+          } @else {
+            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+            Kiểm tra mã
+          }
+        </button>
+      </form>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="order-tabs" aria-label="Phân loại voucher">
+      <button
+        class="order-tabs__item"
+        [class.order-tabs__item--active]="activeTab === 'all'"
+        type="button"
+        (click)="activeTab = 'all'">
+        Tất cả ({{ totalCount }})
+      </button>
+      <button
+        class="order-tabs__item"
+        [class.order-tabs__item--active]="activeTab === 'available'"
+        type="button"
+        (click)="activeTab = 'available'">
+        Khả dụng ({{ availableCount }})
+      </button>
+      <button
+        class="order-tabs__item"
+        [class.order-tabs__item--active]="activeTab === 'used'"
+        type="button"
+        (click)="activeTab = 'used'">
+        Đã sử dụng ({{ usedCount }})
+      </button>
+      <button
+        class="order-tabs__item"
+        [class.order-tabs__item--active]="activeTab === 'expired'"
+        type="button"
+        (click)="activeTab = 'expired'">
+        Hết hạn ({{ expiredCount }})
+      </button>
+    </nav>
+
+    <!-- Toolbar: Search & Type filters -->
+    <div class="vouchers-toolbar">
+      <div class="search-box">
+        <span class="material-symbols-outlined" aria-hidden="true">search</span>
+        <input
+          type="search"
+          placeholder="Tìm theo tên hoặc mã voucher..."
+          [(ngModel)]="searchQuery"
+          aria-label="Tìm kiếm voucher" />
+        @if (searchQuery) {
+          <button class="clear-search" type="button" (click)="searchQuery = ''" aria-label="Xóa tìm kiếm">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        }
+      </div>
+
+      <div class="filter-chips" role="group" aria-label="Lọc theo hình thức">
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'all'"
+          type="button"
+          (click)="typeFilter = 'all'">
+          Tất cả loại
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'shipping'"
+          type="button"
+          (click)="typeFilter = 'shipping'">
+          <span class="material-symbols-outlined">local_shipping</span>
+          Freeship
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'percent'"
+          type="button"
+          (click)="typeFilter = 'percent'">
+          <span class="material-symbols-outlined">percent</span>
+          Giảm %
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'fixed'"
+          type="button"
+          (click)="typeFilter = 'fixed'">
+          <span class="material-symbols-outlined">payments</span>
+          Giảm tiền mặt
+        </button>
+        <button
+          class="filter-chip"
+          [class.filter-chip--active]="typeFilter === 'birthday'"
+          type="button"
+          (click)="typeFilter = 'birthday'">
+          <span class="material-symbols-outlined">cake</span>
+          Sinh nhật
+        </button>
+      </div>
+    </div>
+
+    <!-- Danh sách Voucher -->
+    @if (filteredVouchers.length === 0) {
+      <div class="account-state account-state--empty">
+        <span class="material-symbols-outlined" aria-hidden="true">sentiment_dissatisfied</span>
+        <h2>Không tìm thấy voucher phù hợp</h2>
+        @if (searchQuery || typeFilter !== 'all' || activeTab !== 'all') {
+          <p>Không có voucher nào khớp với bộ lọc hiện tại của bạn.</p>
+          <button class="reset-filter-btn" type="button" (click)="activeTab = 'all'; typeFilter = 'all'; searchQuery = ''">
+            Đặt lại bộ lọc
+          </button>
+        } @else {
+          <p>Kho voucher của bạn đang trống. Hãy kiểm tra các mã khuyến mãi để sử dụng khi mua sắm!</p>
+          <a routerLink="/products">Khám phá sản phẩm</a>
+        }
+      </div>
+    } @else {
+      <div class="voucher-grid">
+        @for (item of filteredVouchers; track item._id || item.voucherId + item.code) {
+          <article
+            class="voucher-card"
+            [class.voucher-card--used]="getStatus(item) === 'used'"
+            [class.voucher-card--expired]="getStatus(item) === 'expired'"
+            [class.voucher-card--shipping]="item.voucher?.type === 'shipping'"
+            [class.voucher-card--birthday]="item.source === 'birthday' || item.voucherId === 'voucher-bd50'">
+
+            <!-- Cột trái: Giá trị ưu đãi & Biểu tượng -->
+            <div class="voucher-card__stub">
+              <div class="voucher-card__stub-icon">
+                @if (item.source === 'birthday' || item.voucherId === 'voucher-bd50') {
+                  <span class="material-symbols-outlined">cake</span>
+                } @else if (item.voucher?.type === 'shipping') {
+                  <span class="material-symbols-outlined">local_shipping</span>
+                } @else if (item.voucher?.type === 'percent') {
+                  <span class="material-symbols-outlined">percent</span>
+                } @else {
+                  <span class="material-symbols-outlined">savings</span>
+                }
+              </div>
+              <strong class="voucher-card__stub-value">
+                {{ formatDiscount(item.voucher) }}
+              </strong>
+              <span class="voucher-card__stub-tag">
+                @if (item.source === 'birthday' || item.voucherId === 'voucher-bd50') {
+                  SINH NHẬT
+                } @else if (item.voucher?.type === 'shipping') {
+                  VẬN CHUYỂN
+                } @else {
+                  ĐƠN HÀNG
+                }
+              </span>
+            </div>
+
+            <!-- Răng cưa chia tách vé -->
+            <div class="voucher-card__divider" aria-hidden="true">
+              <div class="notch notch--top"></div>
+              <div class="dashed-line"></div>
+              <div class="notch notch--bottom"></div>
+            </div>
+
+            <!-- Cột phải: Thông tin chi tiết & Hành động -->
+            <div class="voucher-card__body">
+              <div class="voucher-card__meta-top">
+                <div class="voucher-code-badge" [title]="'Mã: ' + (item.code || item.voucher?.code)">
+                  <span class="code-text">{{ item.code || item.voucher?.code }}</span>
+                  <button
+                    class="copy-code-btn"
+                    type="button"
+                    (click)="copyCode(item.code || item.voucher?.code || '')"
+                    [attr.aria-label]="'Sao chép mã ' + (item.code || item.voucher?.code)">
+                    <span class="material-symbols-outlined" aria-hidden="true">
+                      {{ copiedCode === (item.code || item.voucher?.code) ? 'done' : 'content_copy' }}
+                    </span>
+                    <span class="copy-tooltip">
+                      {{ copiedCode === (item.code || item.voucher?.code) ? 'Đã sao chép!' : 'Sao chép' }}
+                    </span>
+                  </button>
+                </div>
+
+                <span class="voucher-status-pill" [attr.data-status]="getStatus(item)">
+                  {{ getStatusLabel(item) }}
+                </span>
+              </div>
+
+              <h2 class="voucher-card__title">
+                {{ item.voucher?.name || ('Ưu đãi ' + item.code) }}
+              </h2>
+
+              @if (item.voucher?.description) {
+                <p class="voucher-card__desc">{{ item.voucher?.description }}</p>
+              }
+
+              <div class="voucher-card__conditions">
+                <span class="condition-item">
+                  <span class="material-symbols-outlined" aria-hidden="true">shopping_basket</span>
+                  {{ formatMinOrder(item.voucher?.minOrder) }}
+                </span>
+                @if (item.voucher?.maxDiscount) {
+                  <span class="condition-item">
+                    <span class="material-symbols-outlined" aria-hidden="true">attach_money</span>
+                    {{ formatMaxDiscount(item.voucher?.maxDiscount) }}
+                  </span>
+                }
+              </div>
+
+              <footer class="voucher-card__footer">
+                <div class="voucher-card__expiry">
+                  <span class="material-symbols-outlined" aria-hidden="true">event</span>
+                  <span>HSD: {{ item.voucher?.endDate || 'Vô thời hạn' }}</span>
+                </div>
+
+                <div class="voucher-card__cta">
+                  @if (getStatus(item) === 'available') {
+                    <button class="use-btn" type="button" (click)="useVoucher(item)">
+                      Dùng ngay
+                      <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                    </button>
+                  } @else if (getStatus(item) === 'used') {
+                    <button class="status-btn" type="button" disabled>
+                      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                      Đã sử dụng
+                    </button>
+                  } @else {
+                    <button class="status-btn status-btn--expired" type="button" disabled>
+                      <span class="material-symbols-outlined" aria-hidden="true">timer_off</span>
+                      Hết hiệu lực
+                    </button>
+                  }
+                </div>
+              </footer>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  }
+
+  <!-- Modal Popup kết quả kiểm tra mã voucher -->
+  @if (showResultModal && checkResult) {
+    <div class="voucher-modal-backdrop" (click)="closeResultModal()" role="dialog" aria-modal="true" aria-labelledby="voucherModalTitle">
+      <div class="voucher-modal-card" (click)="$event.stopPropagation()">
+        <button class="voucher-modal-close" type="button" aria-label="Đóng popup" (click)="closeResultModal()">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+
+        @if (checkResult.valid) {
+          <!-- POP THÀNH CÔNG: Mã hợp lệ -->
+          <div class="voucher-modal-header voucher-modal-header--success">
+            <div class="voucher-modal-icon-wrap voucher-modal-icon-wrap--success">
+              <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+            </div>
+            <span class="voucher-modal-badge voucher-modal-badge--success">HỢP LỆ • THÀNH CÔNG</span>
+            <h2 id="voucherModalTitle" class="voucher-modal-title">Mã voucher hợp lệ!</h2>
+            <p class="voucher-modal-subtitle">
+              Mã <strong>{{ checkResult.code || checkResult.voucher?.code }}</strong> hoàn toàn hợp lệ và sẵn sàng áp dụng.
+            </p>
+          </div>
+
+          @if (checkResult.voucher; as v) {
+            <div class="voucher-modal-body">
+              <div class="voucher-result-ticket">
+                <div class="ticket-cut ticket-cut--left" aria-hidden="true"></div>
+                <div class="ticket-cut ticket-cut--right" aria-hidden="true"></div>
+                
+                <div class="ticket-top">
+                  <div class="ticket-code-group">
+                    <span class="ticket-code-label">MÃ ƯU ĐÃI</span>
+                    <span class="ticket-code-value">{{ v.code }}</span>
+                  </div>
+                  <button class="ticket-copy-btn" type="button" (click)="copyCode(v.code)">
+                    <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                    {{ copiedCode === v.code ? 'Đã sao chép' : 'Sao chép mã' }}
+                  </button>
+                </div>
+
+                <div class="ticket-content">
+                  <h3 class="ticket-name">{{ v.name }}</h3>
+                  @if (v.description) {
+                    <p class="ticket-desc">{{ v.description }}</p>
+                  }
+
+                  <div class="ticket-meta-grid">
+                    <div class="ticket-meta-item">
+                      <span class="meta-label">Mức giảm:</span>
+                      <strong class="meta-value highlight">{{ formatDiscount(v) }}</strong>
+                    </div>
+                    <div class="ticket-meta-item">
+                      <span class="meta-label">Đơn tối thiểu:</span>
+                      <strong class="meta-value">{{ formatMinOrder(v.minOrder) }}</strong>
+                    </div>
+                    @if (v.maxDiscount) {
+                      <div class="ticket-meta-item">
+                        <span class="meta-label">Giảm tối đa:</span>
+                        <strong class="meta-value">{{ formatMaxDiscount(v.maxDiscount) }}</strong>
+                      </div>
+                    }
+                    <div class="ticket-meta-item">
+                      <span class="meta-label">Hạn sử dụng:</span>
+                      <strong class="meta-value">{{ v.endDate || 'Vô thời hạn' }}</strong>
+                    </div>
+                    @if (v.quantity !== undefined && v.quantity !== null) {
+                      <div class="ticket-meta-item">
+                        <span class="meta-label">Lượt còn lại:</span>
+                        <strong class="meta-value">{{ (v.quantity - (v.used || 0)) | number }} lượt</strong>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="voucher-modal-actions">
+              <button type="button" class="btn-action-primary" (click)="useVoucher(v)">
+                <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+                Dùng ngay khi đặt hàng
+              </button>
+              <button type="button" class="btn-action-secondary" (click)="closeResultModal()">
+                Đóng
+              </button>
+            </div>
+          }
+        } @else {
+          <!-- POP KHÔNG THÀNH CÔNG: Mã không hợp lệ -->
+          <div class="voucher-modal-header voucher-modal-header--error">
+            <div class="voucher-modal-icon-wrap voucher-modal-icon-wrap--error">
+              <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+            </div>
+            <span class="voucher-modal-badge voucher-modal-badge--error">KHÔNG HỢP LỆ • KHÔNG THÀNH CÔNG</span>
+            <h2 id="voucherModalTitle" class="voucher-modal-title">Mã voucher không hợp lệ!</h2>
+            <p class="voucher-modal-subtitle">
+              Tiếc quá, chúng tớ không tìm thấy, cậu hãy nhập lại nữa nhé
+            </p>
+          </div>
+
+          <div class="voucher-modal-body">
+            <div class="voucher-invalid-info">
+              <div class="invalid-code-box">
+                <span class="invalid-label">Mã đã nhập:</span>
+                <span class="invalid-code">{{ checkResult.code || inputVoucherCode }}</span>
+              </div>
+              <div class="invalid-reason-box">
+                <span class="material-symbols-outlined" aria-hidden="true">sentiment_dissatisfied</span>
+                <p>Tiếc quá, chúng tớ không tìm thấy, cậu hãy nhập lại nữa nhé</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="voucher-modal-actions">
+            <button type="button" class="btn-action-primary btn-action-primary--retry" (click)="retryCheck()">
+              <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>
+              Thử mã khác
+            </button>
+            <button type="button" class="btn-action-secondary" (click)="closeResultModal()">
+              Đóng
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</section>

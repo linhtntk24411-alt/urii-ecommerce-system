@@ -29,8 +29,10 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.2",
     "nodemailer": "^10.4.0",
+    "sharp": "^0.35.5",
     "socket.io": "^4.8.4",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14",

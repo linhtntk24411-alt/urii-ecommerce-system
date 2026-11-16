@@ -1,3 +1,44 @@
+<ng-template #attachmentContent let-msg>
+    @if (attachment(msg); as file) {
+        @if (file.mime === 'image/png' || file.mime === 'image/jpeg') {
+            <button type="button" class="chat-image-button" (click)="openAttachment(msg)" [disabled]="!attachmentImage(msg)" aria-label="Xem ảnh lớn">
+                @if (attachmentImage(msg); as url) { <img [src]="url" [alt]="file.name" class="chat-attachment-image"> } @else { <span>Đang tải ảnh…</span> }
+            </button>
+        } @else {
+            <button type="button" class="chat-file-button" (click)="openAttachment(msg)"><span aria-hidden="true">📄</span><span class="chat-file-name">{{ file.name }}</span><small>{{ fileSize(file.size) }}</small><span>Tải xuống</span></button>
+        }
+    }
+</ng-template>
+@if (attachmentViewer) {
+    <div class="attachment-lightbox" role="dialog" aria-modal="true" aria-label="Xem ảnh" (click)="attachmentViewer = ''">
+        <button type="button" (click)="attachmentViewer = ''" aria-label="Đóng ảnh">×</button><img [src]="attachmentViewer" alt="Ảnh đính kèm" (click)="$event.stopPropagation()">
+    </div>
+}
+<ng-template #reactionControls let-msg>
+    @if (canReact(msg)) {
+        <div class="reaction-toolbar" [class.reaction-toolbar-open]="reactionPicker === msg.messageId || recallMenu === msg.messageId">
+            <button type="button" class="reaction-trigger" aria-label="Thả cảm xúc" [attr.aria-expanded]="reactionPicker === msg.messageId" (click)="openReaction(msg, $event)"><span class="material-symbols-outlined" aria-hidden="true">mood</span></button>
+            @if (canRecall(msg)) { <button type="button" class="reaction-trigger recall-trigger" aria-label="Tùy chọn tin nhắn" [attr.aria-expanded]="recallMenu === msg.messageId" (click)="openRecall(msg, $event)"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button> }
+        </div>
+        @if (recallMenu === msg.messageId && canRecall(msg)) {
+            <div class="recall-menu" role="group" aria-label="Tùy chọn tin nhắn" (click)="$event.stopPropagation()">
+                <button type="button" [disabled]="recallBusy" (click)="recall(msg, $event)">{{ recallBusy ? 'Đang thu hồi…' : 'Thu hồi tin nhắn' }}</button>
+                @if (recallError) { <span class="reaction-error" role="alert">{{ recallError }}</span> }
+            </div>
+        }
+        @if (reactionPicker === msg.messageId) {
+                <div class="reaction-picker" role="group" aria-label="Chọn cảm xúc" (click)="$event.stopPropagation()">
+                    @for (emoji of reactionEmojis; track emoji) { <button type="button" [disabled]="reactionBusy" [attr.aria-label]="'Thả hoặc bỏ cảm xúc ' + emoji" (click)="react(msg, emoji, $event)">{{ emoji }}</button> }
+                    @if (reactionError) { <span class="reaction-error" role="alert">{{ reactionError }}</span> }
+                </div>
+        }
+        @if (reactionState[msg.messageId]?.length) {
+            <div class="reaction-badge" aria-label="Cảm xúc tin nhắn">
+                @for (r of reactionState[msg.messageId]; track r.actor) { <button type="button" [class.reaction-own]="r.actor === reactionActor" [attr.aria-label]="r.actor === reactionActor ? 'Đổi hoặc bỏ cảm xúc của bạn' : 'Cảm xúc của người khác'" (click)="openReaction(msg, $event)">{{ r.emoji }}</button> }
+            </div>
+        }
+    }
+</ng-template>
 <div class="chatbot-wrapper">
     <section id="chat-window" class="chat-window" [class.hidden]="!isChatOpen">
 
@@ -82,21 +123,24 @@
             <main id="chat-body" class="chat-body">
                 <div class="date-separator"><span>Hôm nay</span></div>
 
-                @for (msg of messages; track msg.timestamp) {
+                @for (msg of messages; track msg.messageId || msg.clientRequestId || $index) {
                     @if (msg.sender === 'bot' || msg.sender === 'admin') {
                         <article class="message bot-message">
                             <img src="/assets/chatbotai.png" class="bot-avatar-chat" alt="Bot">
                             <div class="message-content-wrapper">
-                                <div class="message-bubble" [class.message-bubble--warning]="msg.isWarning">
-                                    <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
-                                    @if (msg.targetUrl && msg.targetLabel) {
+                                <div class="message-bubble" [class.sticker-bubble]="isSticker(msg)" [class.message-bubble--warning]="msg.isWarning">
+                                    <ng-container *ngTemplateOutlet="reactionControls; context: { $implicit: msg }"></ng-container>
+                                    @if (isForwarded(msg)) { <div class="timestamp">Đã chuyển tiếp</div> }
+                                    @if (attachment(msg)) { <ng-container *ngTemplateOutlet="attachmentContent; context: { $implicit: msg }"></ng-container> }
+                                    @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)" [innerHTML]="messageText(msg).replace('\n', '<br>')"></p> }
+                                    @if (canShowContent(msg) && msg.targetUrl && msg.targetLabel) {
                                         <button class="chat-navigation-action" (click)="navigateToAction(msg.targetUrl)">
                                             <span>{{ msg.targetLabel }}</span>
                                             <span class="material-symbols-outlined nav-icon">arrow_forward</span>
                                         </button>
                                     }
                                 </div>
-                                @if (msg.chips && msg.chips.length > 0) {
+                                @if (canShowContent(msg) && msg.chips && msg.chips.length > 0) {
                                     <div class="suggested-chips">
                                         @for (chip of msg.chips; track chip.label) {
                                             <button class="chip" (click)="handleChipClick(chip.action)">{{ chip.label }}</button>
@@ -110,7 +154,10 @@
                         <article class="message user-message">
                             <div class="user-avatar-chat"><span class="material-symbols-outlined">person</span></div>
                             <div class="message-content-wrapper">
-                                <div class="message-bubble"><p>{{ msg.text }}</p></div>
+                                <div class="message-bubble" [class.sticker-bubble]="isSticker(msg)"><ng-container *ngTemplateOutlet="reactionControls; context: { $implicit: msg }"></ng-container>
+                                    @if (attachment(msg)) { <ng-container *ngTemplateOutlet="attachmentContent; context: { $implicit: msg }"></ng-container> }
+                                    @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)">{{ messageText(msg) }}</p> }
+                                </div>
                                 <time class="timestamp">{{ formatTime(msg.timestamp) }}</time>
                             </div>
                         </article>
@@ -127,11 +174,31 @@
             </main>
 
             <footer class="chat-footer">
+                @if (selectedAttachment; as file) {
+                    <div class="attachment-preview">
+                        @if (attachmentPreview) { <img [src]="attachmentPreview" alt="Ảnh đã chọn"> }
+                        <span class="chat-file-name">{{ file.name }} <small>{{ fileSize(file.size) }}</small></span>
+                        <button type="button" [disabled]="attachmentBusy" (click)="sendAttachment()">{{ attachmentBusy ? 'Đang gửi…' : 'Gửi' }}</button><button type="button" [disabled]="attachmentBusy" (click)="cancelAttachment()">Hủy</button>
+                    </div>
+                }
+                @if (attachmentError) { <small class="attachment-error" role="alert">{{ attachmentError }}</small> }
                 <div class="input-container" style="position: relative;">
-                    <button id="btn-plus" class="icon-btn" (click)="triggerFileInput()"><span class="material-symbols-outlined">add_circle</span></button>
-                    <input type="file" id="chat-file-input" style="display: none;" multiple>
+                    <button type="button" id="btn-plus" class="icon-btn" [disabled]="attachmentBusy" (click)="toggleAttachmentMenu($event)" aria-label="Gửi ảnh hoặc file" [attr.aria-expanded]="attachmentMenu"><span class="material-symbols-outlined">add_circle</span></button>
+                    <input #attachmentInput type="file" id="chat-file-input" hidden [disabled]="attachmentBusy" (change)="pickAttachment($event)">
+                    @if (attachmentMenu) {
+                        <div class="attachment-menu" (click)="$event.stopPropagation()"><button type="button" (click)="chooseAttachment('image', attachmentInput)">Gửi ảnh</button><button type="button" (click)="chooseAttachment('file', attachmentInput)">Gửi file</button></div>
+                    }
                     
                     <button id="btn-emoji" class="icon-btn" (click)="toggleEmojiPicker($event)"><span class="material-symbols-outlined">mood</span></button>
+                    <button type="button" id="btn-sticker" class="icon-btn" (click)="toggleStickerPicker($event)" [attr.aria-expanded]="isStickerPickerOpen" aria-label="Gửi icon cảm xúc" title="Gửi icon cảm xúc"><span class="material-symbols-outlined">sticky_note_2</span></button>
+                    @if (isStickerPickerOpen) {
+                        <div class="sticker-picker" (click)="$event.stopPropagation()" aria-label="Chọn icon cảm xúc">
+                            @for (icon of stickerIcons; track icon) {
+                                <button type="button" [disabled]="stickerBusy" (click)="sendSticker(icon)" [attr.aria-label]="'Gửi icon ' + icon">{{ icon }}</button>
+                            }
+                            @if (stickerError) { <small class="sticker-error" role="alert">{{ stickerError }}</small> }
+                        </div>
+                    }
                     
                     <div id="emoji-picker" class="emoji-picker" [class.hidden]="!isEmojiPickerOpen">
                         @for (emo of emojis; track emo) {

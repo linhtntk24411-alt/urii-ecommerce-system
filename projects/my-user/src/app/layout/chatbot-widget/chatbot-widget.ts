@@ -1,12 +1,20 @@
 import { DialogService } from '../../core/services/dialog.service';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, HostListener, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, delay, finalize, map, Observable, of } from 'rxjs';
+import { catchError, delay, finalize, map, Observable, of, firstValueFrom } from 'rxjs';
+import { StorageService } from '../../core/services/storage.service';
 
 interface ChatMessage {
+  type?: 'text' | 'sticker' | 'image' | 'file';
+  attachment?: { name: string; mime: string; size: number };
+  messageId?: string;
+  clientRequestId?: string;
+  senderId?: string;
+  forwarded?: boolean;
+  serverSessionId?: string;
   targetUrl?: string;
   targetLabel?: string;
   isWarning?: boolean;
@@ -68,6 +76,368 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   private pendingBotReplies = 0;
   private readonly http = inject(HttpClient);
   private readonly dialogService = inject(DialogService);
+  private readonly authStorage = inject(StorageService);
+  reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+  reactionState: Record<string, { actor: string; emoji: string }[]> = {};
+  reactionActor = '';
+  reactionPicker: string | null = null;
+  reactionBusy = false;
+  reactionError = '';
+  private reactionLoading = false;
+  private reactionIdentityKey = '';
+  private reactionPreparation: Promise<unknown> = Promise.resolve();
+  private reactionSessions = new Map<string, Promise<{ serverId: string; actor: string }>>();
+  recallMenu: string | null = null;
+  recallBusy = false;
+  recallError = '';
+  private verifiedMessages = new Map<string, any>();
+  private unverifiedMessages = new Set<string>();
+  private verificationIdentity = '';
+  stickerIcons = ['🥰', '🥹', '😭', '😍', '😘', '🫶', '💗', '🎉', '👍', '👋'];
+  isStickerPickerOpen = false;
+  stickerBusy = false;
+  stickerError = '';
+  private pendingSticker: { localId: string; icon: string; requestId: string } | null = null;
+  attachmentMenu = false;
+  attachmentKind: 'image' | 'file' = 'image';
+  selectedAttachment: File | null = null;
+  attachmentPreview = '';
+  attachmentBusy = false;
+  attachmentError = '';
+  attachmentViewer = '';
+  private attachmentRequestId = '';
+  private attachmentSessionId = '';
+  private attachmentUrls = new Map<string, string>();
+  private attachmentLoading = new Set<string>();
+  private attachmentGeneration = 0;
+
+  toggleAttachmentMenu(event: Event): void { event.stopPropagation(); this.attachmentMenu = !this.attachmentMenu; }
+  chooseAttachment(kind: 'image' | 'file', input: HTMLInputElement): void {
+    this.attachmentKind = kind; this.attachmentMenu = false;
+    input.accept = kind === 'image' ? '.jpg,.jpeg,.png' : '.pdf,.docx,.xlsx,.txt'; input.value = ''; input.click();
+  }
+  pickAttachment(event: Event): void {
+    if (this.attachmentBusy) return;
+    const input = event.target as HTMLInputElement; const file = input.files?.[0]; this.cancelAttachment();
+    if (!file) return;
+    const allowed = this.attachmentKind === 'image' ? /\.(jpe?g|png)$/i : /\.(pdf|docx|xlsx|txt)$/i;
+    if (!allowed.test(file.name) || !file.size || file.size > 10 * 1024 * 1024) { this.attachmentError = 'Chọn đúng loại file, tối đa 10 MB.'; return; }
+    this.selectedAttachment = file; this.attachmentSessionId = this.currentSessionId; this.attachmentRequestId = crypto.randomUUID();
+    if (this.attachmentKind === 'image') this.attachmentPreview = URL.createObjectURL(file);
+  }
+  cancelAttachment(): void {
+    if (this.attachmentBusy) return;
+    if (this.attachmentPreview) URL.revokeObjectURL(this.attachmentPreview);
+    this.selectedAttachment = null; this.attachmentPreview = ''; this.attachmentError = ''; this.attachmentRequestId = '';
+  }
+  fileSize(bytes: number): string { return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.ceil(bytes / 1024) + ' KB'; }
+  attachment(message: ChatMessage): any {
+    const verified = this.verifiedMessage(message);
+    return verified && !verified.recalledAt && ['image', 'file'].includes(verified.type) ? verified.attachment : null;
+  }
+  attachmentImage(message: ChatMessage): string | undefined {
+    if (!this.attachment(message) || this.verifiedMessage(message).type !== 'image') return undefined;
+    const key = (this.authStorage.getToken() || 'guest') + ':' + message.serverSessionId + ':' + message.messageId;
+    if (!this.attachmentUrls.has(key) && !this.attachmentLoading.has(key)) { this.attachmentLoading.add(key); void this.fetchAttachment(message, true, key); }
+    return this.attachmentUrls.get(key);
+  }
+  private async fetchAttachment(message: ChatMessage, image: boolean, key = ''): Promise<string | undefined> {
+    const localId = this.currentSessionId; const identity = this.authStorage.getToken(); const generation = this.attachmentGeneration;
+    try {
+      const blob = await firstValueFrom(this.http.get(`/api/chat/sessions/${encodeURIComponent(message.serverSessionId!)}/messages/${encodeURIComponent(message.messageId!)}/attachment`, { responseType: 'blob' }));
+      if (localId !== this.currentSessionId || generation !== this.attachmentGeneration || identity !== this.authStorage.getToken() || !this.attachment(message)) return;
+      if (image && !['image/png', 'image/jpeg'].includes(blob.type)) throw new Error('Ảnh không hợp lệ.');
+      const url = URL.createObjectURL(blob); if (image) this.attachmentUrls.set(key, url); return url;
+    } catch { this.attachmentError = 'Không thể tải file hoặc tin đã thu hồi.'; return; }
+    finally { this.cdr.markForCheck(); }
+  }
+  async openAttachment(message: ChatMessage): Promise<void> {
+    const file = this.attachment(message); if (!file) return;
+    if (this.verifiedMessage(message).type === 'image') { this.attachmentViewer = this.attachmentImage(message) || ''; return; }
+    const url = await this.fetchAttachment(message, false); if (!url) return;
+    const link = document.createElement('a'); link.href = url; link.download = file.name; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  private clearAttachmentUrls(): void {
+    this.attachmentGeneration++;
+    for (const url of this.attachmentUrls.values()) URL.revokeObjectURL(url);
+    this.attachmentUrls.clear(); this.attachmentLoading.clear(); this.attachmentViewer = '';
+  }
+  @HostListener('document:click') closeAttachmentMenu(): void { this.attachmentMenu = false; }
+  @HostListener('document:keydown.escape') closeAttachmentViewer(): void { this.attachmentViewer = ''; this.attachmentMenu = false; }
+
+  async sendAttachment(): Promise<void> {
+    const file = this.selectedAttachment; const localId = this.attachmentSessionId;
+    if (!file || this.attachmentBusy) return;
+    if (localId !== this.currentSessionId) { this.attachmentError = 'Hãy chọn lại file trong hội thoại hiện tại.'; return; }
+    this.attachmentBusy = true; this.attachmentError = '';
+    const identityToken = this.authStorage.getToken();
+    try {
+      this.getCurrentSession();
+      const identity = await this.prepareReactionSession(localId);
+      const data = await firstValueFrom(this.http.post<any>(`/api/chat/sessions/${encodeURIComponent(identity.serverId)}/attachments`, file, {
+        headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name), 'X-File-Kind': this.attachmentKind, 'X-Client-Request-Id': this.attachmentRequestId }
+      }));
+      if (!data.acceptedMessage?.messageId) throw new Error('Chưa thể xác nhận file.');
+      if (identityToken !== this.authStorage.getToken()) return;
+      this.rememberMessages(identity.serverId, [data.acceptedMessage]);
+      const sessions = this.getSessions(); const session = sessions[localId];
+      if (session && !session.messages.some(m => m.messageId === data.acceptedMessage.messageId)) {
+        session.messages.push({ ...data.acceptedMessage, serverSessionId: identity.serverId });
+        session.lastMessageTime = Date.now(); this.saveSessions(sessions);
+      }
+      this.attachmentBusy = false; this.cancelAttachment();
+      if (localId === this.currentSessionId) { this.messages = this.visibleMessages(session.messages); await this.loadReactions(); this.scrollToBottom(); }
+    } catch (error: any) { this.attachmentError = error.error?.message || error.message || 'Không thể gửi file.'; }
+    finally { this.attachmentBusy = false; this.cdr.markForCheck(); }
+  }
+
+  toggleStickerPicker(event: Event): void {
+    event.stopPropagation(); this.stickerError = ''; this.isStickerPickerOpen = !this.isStickerPickerOpen;
+  }
+
+  @HostListener('document:click') closeStickerPicker(): void { this.isStickerPickerOpen = false; }
+  @HostListener('document:keydown.escape') closeStickerPickerOnEscape(): void { this.isStickerPickerOpen = false; }
+
+  isSticker(message: ChatMessage): boolean {
+    const verified = this.verifiedMessage(message);
+    return Boolean(verified?.type === 'sticker' && !verified.recalledAt && this.stickerIcons.includes(verified.text));
+  }
+
+  async sendSticker(icon: string): Promise<void> {
+    if (this.stickerBusy || !this.stickerIcons.includes(icon)) return;
+    this.stickerBusy = true; this.stickerError = '';
+    const session = this.getCurrentSession();
+    const localId = session.sessionId;
+    const retry = this.pendingSticker?.localId === localId && this.pendingSticker.icon === icon ? this.pendingSticker : null;
+    const requestId = retry?.requestId || crypto.randomUUID();
+    this.pendingSticker = { localId, icon, requestId };
+    const existing = session.messages.find(m => m.clientRequestId === requestId);
+    const message: ChatMessage = { ...existing, type: 'sticker', text: icon, sender: 'user', timestamp: existing?.timestamp || Date.now(), clientRequestId: requestId };
+    if (!existing) {
+      session.messages.push(message);
+      session.lastMessageTime = Date.now();
+      if (session.status === 'active' || session.status === 'waiting') session.unreadCount = (session.unreadCount || 0) + 1;
+      const sessions = this.getSessions(); sessions[localId] = session; this.saveSessions(sessions);
+    }
+    this.messages = this.visibleMessages(session.messages);
+    this.cdr.markForCheck(); this.scrollToBottom();
+    try {
+      if (await this.persistUserMessage(message, localId)) { this.pendingSticker = null; this.isStickerPickerOpen = false; }
+      else this.stickerError = this.reactionError || 'Chưa thể xác nhận icon. Bạn có thể thử lại.';
+    } finally { this.stickerBusy = false; this.cdr.markForCheck(); }
+  }
+
+  private rememberMessages(serverId: string, messages: any[]): void {
+    const identity = this.authStorage.getToken() || 'guest';
+    if (this.verificationIdentity !== identity) { this.clearAttachmentUrls(); this.verifiedMessages.clear(); this.unverifiedMessages.clear(); this.verificationIdentity = identity; }
+    for (const message of messages) {
+      if (!message.messageId) continue;
+      const key = serverId + ':' + message.messageId;
+      const previous = this.verifiedMessages.get(key);
+      this.unverifiedMessages.delete(key);
+      if (!previous?.recalledAt || message.recalledAt) this.verifiedMessages.set(key, message);
+      if (this.verifiedMessages.get(key)?.recalledAt) {
+        if (!previous?.recalledAt) this.clearAttachmentUrls();
+        this.reactionState = { ...this.reactionState, [message.messageId]: [] };
+        if (this.reactionPicker === message.messageId) this.reactionPicker = null;
+        if (this.recallMenu === message.messageId) this.recallMenu = null;
+      }
+    }
+  }
+
+  private verifiedMessage(message: ChatMessage): any {
+    if (this.verificationIdentity !== (this.authStorage.getToken() || 'guest')) return undefined;
+    const key = message.serverSessionId + ':' + message.messageId;
+    const verified = this.verifiedMessages.get(key);
+    return verified?.recalledAt || !this.unverifiedMessages.has(key) ? verified : undefined;
+  }
+
+  messageText(message: ChatMessage): string {
+    if (!message.messageId) return message.type === 'sticker' ? 'Đang xác nhận icon…' : message.text;
+    const verified = this.verifiedMessage(message);
+    return verified?.recalledAt ? 'Tin nhắn đã được thu hồi' : verified?.text ?? 'Đang xác minh tin nhắn…';
+  }
+
+  isRecalled(message: ChatMessage): boolean { return Boolean(this.verifiedMessage(message)?.recalledAt); }
+
+  isForwarded(message: ChatMessage): boolean {
+    const verified = this.verifiedMessage(message);
+    return Boolean(verified?.forwarded && !verified.recalledAt);
+  }
+
+  canShowContent(message: ChatMessage): boolean {
+    return !message.messageId || Boolean(this.verifiedMessage(message) && !this.isRecalled(message));
+  }
+
+  private visibleMessages(messages: ChatMessage[]): ChatMessage[] {
+    return messages.map(message => {
+      if (!message.messageId) return message;
+      const visible = { ...message, text: this.messageText(message) };
+      if (!this.canShowContent(message)) { visible.chips = undefined; visible.targetUrl = undefined; visible.targetLabel = undefined; }
+      return visible;
+    });
+  }
+
+  canRecall(message: ChatMessage): boolean {
+    const verified = this.verifiedMessage(message);
+    return Boolean(message.messageId && message.serverSessionId && verified && !verified.isSystemLog && !verified.recalledAt &&
+      verified.sender === 'user' && verified.senderId && verified.senderId === this.reactionActor);
+  }
+
+  openRecall(message: ChatMessage, event: Event): void {
+    event.stopPropagation(); this.recallError = ''; this.reactionPicker = null;
+    this.recallMenu = this.recallMenu === message.messageId ? null : message.messageId || null;
+  }
+
+  async recall(message: ChatMessage, event: Event): Promise<void> {
+    event.stopPropagation();
+    if (!this.canRecall(message) || this.recallBusy) return;
+    const localId = this.currentSessionId;
+    const identity = this.authStorage.getToken() || 'guest';
+    this.recallBusy = true; this.recallError = '';
+    try {
+      const confirmed = await this.dialogService.confirm('Bạn có chắc muốn thu hồi tin nhắn này?', 'Thu hồi tin nhắn', 'Thu hồi', 'Hủy');
+      if (!confirmed || localId !== this.currentSessionId || identity !== (this.authStorage.getToken() || 'guest')) return;
+      const data = await firstValueFrom(this.http.post<any>(`/api/chat/sessions/${encodeURIComponent(message.serverSessionId!)}/messages/${encodeURIComponent(message.messageId!)}/recall`, {}));
+      if (identity !== (this.authStorage.getToken() || 'guest')) return;
+      this.rememberMessages(message.serverSessionId!, [data.message]);
+      this.messages = this.visibleMessages(this.messages);
+      this.recallMenu = null;
+    } catch (error: any) { this.recallError = error.error?.message || 'Không thể thu hồi tin nhắn.'; }
+    finally { this.recallBusy = false; this.cdr.markForCheck(); }
+  }
+
+  @HostListener('document:click') closeRecall(): void { this.recallMenu = null; }
+  @HostListener('document:keydown.escape') closeRecallOnEscape(): void { this.recallMenu = null; }
+
+  private async prepareReactionSession(localId: string): Promise<{ serverId: string; actor: string }> {
+    const authKey = this.authStorage.getToken() || 'guest';
+    const key = authKey + ':' + localId;
+    const existing = this.reactionSessions.get(key);
+    if (existing) return existing;
+    const pending = this.reactionPreparation.catch(() => undefined).then(async () => {
+      const local = this.getSessions()[localId];
+      let serverId = local?.messages.find(m => m.serverSessionId)?.serverSessionId || localId;
+      const prepare = () => firstValueFrom(this.http.post<{ actor: string }>(`/api/chat/sessions/${encodeURIComponent(serverId)}/reaction-identity`, {
+        userName: this.getCurrentUserName() || 'Khách vãng lai', userEmail: this.getCurrentUserEmail()
+      }));
+      let identity: { actor: string };
+      try { identity = await prepare(); }
+      catch (error: any) {
+        if (error.status !== 403) throw error;
+        // Preserve the old local history; new records use a separately owned server session.
+        serverId = crypto.randomUUID();
+        identity = await prepare();
+      }
+      return { serverId, actor: identity.actor };
+    });
+    this.reactionPreparation = pending;
+    this.reactionSessions.set(key, pending);
+    try { return await pending; }
+    catch (error) { this.reactionSessions.delete(key); throw error; }
+  }
+
+  private async persistUserMessage(message: ChatMessage, localId: string): Promise<boolean> {
+    try {
+      const identity = await this.prepareReactionSession(localId);
+      const sessions = this.getSessions();
+      const pending = sessions[localId]?.messages.find(m => m.clientRequestId === message.clientRequestId);
+      if (!pending) return false;
+      pending.senderId = identity.actor;
+      pending.serverSessionId = identity.serverId;
+      this.saveSessions(sessions);
+      const data = await firstValueFrom(this.http.post<any>(`/api/chat/sessions/${encodeURIComponent(identity.serverId)}/messages`, {
+        text: message.text, sender: 'user', clientRequestId: message.clientRequestId, ...(message.type === 'sticker' ? { type: 'sticker' } : {})
+      }));
+      const fresh = this.getSessions();
+      const localMessage = fresh[localId]?.messages.find(m => m.clientRequestId === message.clientRequestId);
+      if (localMessage && data.acceptedMessage?.clientRequestId === message.clientRequestId) {
+        localMessage.messageId = data.acceptedMessage.messageId;
+        localMessage.senderId = data.acceptedMessage.senderId;
+        localMessage.serverSessionId = identity.serverId;
+        if (message.type === 'sticker') localMessage.type = data.acceptedMessage.type;
+        this.saveSessions(fresh);
+      }
+      if (localId === this.currentSessionId) { this.messages = this.visibleMessages(fresh[localId].messages); await this.loadReactions(); }
+      this.cdr.markForCheck();
+      return Boolean(localMessage?.messageId);
+    } catch (error: any) {
+      this.reactionError = error.error?.message || 'Tin nhắn chưa được server xác nhận; chưa thể thả cảm xúc.';
+    }
+    this.cdr.markForCheck();
+    return false;
+  }
+
+  async loadReactions(): Promise<void> {
+    const localId = this.currentSessionId;
+    const authKey = this.authStorage.getToken() || 'guest';
+    const identityKey = authKey + ':' + localId;
+    if (this.reactionIdentityKey !== identityKey) {
+      this.reactionState = {}; this.reactionPicker = null; this.reactionActor = ''; this.reactionIdentityKey = identityKey;
+    }
+    if (this.reactionLoading) return;
+    const local = this.getSessions()[localId];
+    const known = this.reactionSessions.get(identityKey);
+    const savedId = local?.messages.find(m => m.serverSessionId)?.serverSessionId;
+    if (!known && !savedId) return;
+    this.reactionLoading = true;
+    try {
+      const serverId = known ? (await known).serverId : savedId!;
+      const data = await firstValueFrom(this.http.get<any>(`/api/chat/sessions/${encodeURIComponent(serverId)}/reactions`));
+      if (localId !== this.currentSessionId || authKey !== (this.authStorage.getToken() || 'guest')) return;
+      this.reactionState = data.reactions || {};
+      this.reactionActor = data.actor;
+      this.rememberMessages(serverId, data.messages || []);
+      const sessions = this.getSessions();
+      const session = sessions[localId];
+      if (!session) return;
+      let changed = false;
+      for (const incoming of data.messages || []) {
+        if (incoming.isSystemLog) continue;
+        const own = session.messages.find(m => m.messageId === incoming.messageId ||
+          (m.clientRequestId && m.clientRequestId === incoming.clientRequestId && m.senderId === incoming.senderId));
+        if (!own) {
+          const { recalledAt, recalledBy, ...cached } = incoming;
+          session.messages.push({ ...cached, serverSessionId: serverId }); changed = true;
+        }
+        else if (!own.messageId) { own.messageId = incoming.messageId; own.serverSessionId = serverId; changed = true; }
+      }
+      if (session.status !== data.status) { session.status = data.status; changed = true; }
+      if (changed) this.saveSessions(sessions);
+      this.messages = this.visibleMessages(session.messages);
+      this.updateHeaderStatus(session.status);
+      this.cdr.markForCheck();
+    } catch { /* No ownership or network access: retain local history without enabling reactions. */ }
+    finally { this.reactionLoading = false; }
+  }
+
+  canReact(message: ChatMessage): boolean {
+    return Boolean(!this.isRecalled(message) && message.messageId && Object.hasOwn(this.reactionState, message.messageId));
+  }
+
+  openReaction(message: ChatMessage, event: Event): void {
+    this.recallMenu = null;
+    event.stopPropagation(); this.reactionError = '';
+    this.reactionPicker = this.reactionPicker === message.messageId ? null : message.messageId || null;
+  }
+
+  async react(message: ChatMessage, emoji: string, event: Event): Promise<void> {
+    event.stopPropagation();
+    if (!this.canReact(message) || !message.serverSessionId || this.reactionBusy) return;
+    const localId = this.currentSessionId;
+    const previous = this.reactionState[message.messageId!]?.find(r => r.actor === this.reactionActor);
+    this.reactionBusy = true;
+    try {
+      const data = await firstValueFrom(this.http.put<any>(`/api/chat/sessions/${encodeURIComponent(message.serverSessionId)}/messages/${encodeURIComponent(message.messageId!)}/reaction`, { emoji: previous?.emoji === emoji ? null : emoji }));
+      if (localId === this.currentSessionId && !this.isRecalled(message)) this.reactionState = { ...this.reactionState, [message.messageId!]: data.reactions };
+      this.reactionPicker = null;
+    } catch (error: any) { this.reactionError = error.error?.message || 'Không thể lưu cảm xúc.'; }
+    finally { this.reactionBusy = false; this.cdr.markForCheck(); }
+  }
+
+  @HostListener('document:click') closeReaction(): void { this.reactionPicker = null; }
+  @HostListener('document:keydown.escape') closeReactionOnEscape(): void { this.reactionPicker = null; }
 
   constructor(
     private router: Router,
@@ -92,6 +462,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
+    this.clearAttachmentUrls(); this.attachmentBusy = false; this.cancelAttachment();
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
     }
@@ -154,17 +525,23 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   switchSession(sessionId: string): void {
+    this.clearAttachmentUrls(); this.cancelAttachment(); this.attachmentMenu = false;
     const sessions = this.getSessions();
     if (!sessions[sessionId]) return;
 
     this.currentSessionId = sessionId;
+    this.recallMenu = null;
+    for (const message of sessions[sessionId].messages || []) {
+      if (message.messageId) this.unverifiedMessages.add(message.serverSessionId + ':' + message.messageId);
+    }
     const userEmail = this.getCurrentUserEmail();
     const cleanEmail = userEmail ? userEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'guest';
     this.safeSetItem(`urii_chat_session_id_${cleanEmail}`, sessionId);
 
-    this.messages = [...(sessions[sessionId].messages || [])];
+    this.messages = this.visibleMessages(sessions[sessionId].messages || []);
     this.updateHeaderStatus(sessions[sessionId].status || 'ai');
     this.isHistoryViewOpen = false;
+    void this.loadReactions();
     this.cdr.detectChanges();
     setTimeout(() => this.scrollToBottom(), 100);
   }
@@ -197,7 +574,8 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   getSessionPreview(session: ChatSession): string {
     if (!session.messages || session.messages.length === 0) return 'Chưa có tin nhắn';
     const last = session.messages[session.messages.length - 1];
-    return last.text.slice(0, 50) + (last.text.length > 50 ? '...' : '');
+    const text = this.messageText(last);
+    return text.slice(0, 50) + (text.length > 50 ? '...' : '');
   }
 
   onInputKeyDown(event: KeyboardEvent, inputEl?: HTMLInputElement): void {
@@ -307,7 +685,13 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private saveSessions(sessions: { [key: string]: ChatSession }): void {
     try {
-      this.safeSetItem('urii_chat_sessions', JSON.stringify(sessions));
+      this.safeSetItem('urii_chat_sessions', JSON.stringify(sessions, (_key, value) => {
+        if (value && typeof value === 'object' && ['sticker', 'image', 'file'].includes(value.type)) {
+          const { type, text, attachment, ...metadata } = value;
+          return { ...metadata, text: type === 'sticker' ? '[Icon cảm xúc]' : '[Tệp đính kèm]' };
+        }
+        return value;
+      }));
     } catch (e) {}
   }
 
@@ -338,8 +722,9 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   loadChatHistory(): void {
     const session = this.getCurrentSession();
     if (session.messages && session.messages.length > 0) {
-      this.messages = [...session.messages];
+      this.messages = this.visibleMessages(session.messages);
       this.updateHeaderStatus(session.status);
+      void this.loadReactions();
     } else {
       this.pendingBotReplies += 1;
       this.isTyping = true;
@@ -363,7 +748,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
             sessions[currentSession.sessionId] = currentSession;
             this.saveSessions(sessions);
           }
-          this.messages = [...currentSession.messages];
+          this.messages = this.visibleMessages(currentSession.messages);
           this.updateHeaderStatus(currentSession.status);
           this.cdr.detectChanges();
           this.scrollToBottom();
@@ -399,9 +784,10 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   syncChatUI(): void {
+    void this.loadReactions();
     const session = this.getCurrentSession();
     if (session && session.messages && session.messages.length !== this.messages.length) {
-      this.messages = [...session.messages];
+      this.messages = this.visibleMessages(session.messages);
       this.cdr.detectChanges();
     }
   }
@@ -428,7 +814,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     const userMsg: ChatMessage = {
       text: text,
       sender: 'user',
-      timestamp: Date.now()
+      timestamp: Date.now(), clientRequestId: crypto.randomUUID()
     };
     session.messages.push(userMsg);
     session.lastMessageTime = Date.now();
@@ -441,9 +827,10 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     sessions[session.sessionId] = session;
     this.saveSessions(sessions);
 
-    this.messages = [...session.messages];
+    this.messages = this.visibleMessages(session.messages);
     this.cdr.detectChanges(); 
     this.scrollToBottom();
+    void this.persistUserMessage(userMsg, session.sessionId);
 
     const normQuery = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
     if (['admin', 'tu van vien', 'gap nguoi', 'nhan vien', 'chat voi admin'].some(kw => normQuery.includes(kw)) && session.status === 'ai') {
@@ -498,7 +885,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     this.saveSessions(currentSessions);
 
     if (sessionId === this.currentSessionId) {
-      this.messages = [...freshSession.messages];
+      this.messages = this.visibleMessages(freshSession.messages);
       this.cdr.detectChanges();
       this.scrollToBottom();
     }
@@ -681,21 +1068,19 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     sessions[session.sessionId] = session;
     this.saveSessions(sessions);
 
-    this.messages = [...session.messages];
+    this.messages = this.visibleMessages(session.messages);
     this.updateHeaderStatus('waiting');
     this.cdr.detectChanges();
     this.scrollToBottom();
 
     // Gửi yêu cầu lên backend tạo notification cho Admin
-    this.http.post('/api/chat/request-agent', {
-      sessionId: session.sessionId,
+    this.prepareReactionSession(session.sessionId).then(identity => firstValueFrom(this.http.post('/api/chat/request-agent', {
+      sessionId: identity.serverId,
       userName: session.userName,
       userEmail: session.userEmail,
       message: 'Khách hàng yêu cầu nhân viên tư vấn/admin hỗ trợ trực tiếp.'
-    }).subscribe({
-      next: () => console.log('Đã gửi thông báo cho admin'),
-      error: (err) => console.warn('Lỗi gửi thông báo admin:', err)
-    });
+    }))).then(() => console.log('Đã gửi thông báo cho admin'))
+      .catch(err => console.warn('Lỗi gửi thông báo admin:', err));
   }
 
   handleChipClick(action: string): void {

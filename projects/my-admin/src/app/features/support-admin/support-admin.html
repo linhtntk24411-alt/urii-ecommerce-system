@@ -1,3 +1,69 @@
+<ng-template #attachmentContent let-msg>
+    @if (attachment(msg); as file) {
+        @if (file.mime === 'image/png' || file.mime === 'image/jpeg') {
+            <button type="button" class="chat-image-button" (click)="openAttachment(msg)" [disabled]="!attachmentImage(msg)" aria-label="Xem ảnh lớn">
+                @if (attachmentImage(msg); as url) { <img [src]="url" [alt]="file.name" class="chat-attachment-image"> } @else { <span>Đang tải ảnh…</span> }
+            </button>
+        } @else {
+            <button type="button" class="chat-file-button" (click)="openAttachment(msg)"><span aria-hidden="true">📄</span><span class="chat-file-name">{{ file.name }}</span><small>{{ fileSize(file.size) }}</small><span>Tải xuống</span></button>
+        }
+    }
+</ng-template>
+@if (attachmentViewer) {
+    <div class="attachment-lightbox" role="dialog" aria-modal="true" aria-label="Xem ảnh" (click)="attachmentViewer = ''">
+        <button type="button" (click)="attachmentViewer = ''" aria-label="Đóng ảnh">×</button><img [src]="attachmentViewer" alt="Ảnh đính kèm" (click)="$event.stopPropagation()">
+    </div>
+}
+<ng-template #reactionControls let-msg>
+    @if (canReact(msg)) {
+        <div class="reaction-toolbar" [class.reaction-toolbar-open]="reactionPicker === msg.messageId || recallMenu === msg.messageId">
+            <button type="button" class="reaction-trigger" aria-label="Thả cảm xúc" [attr.aria-expanded]="reactionPicker === msg.messageId" (click)="openReaction(msg, $event)"><i class="bi bi-emoji-smile" aria-hidden="true"></i></button>
+            @if (canForward(msg)) { <button type="button" class="reaction-trigger forward-trigger" aria-label="Chuyển tiếp tin nhắn" (click)="openForward(msg, $event)"><i class="bi bi-forward" aria-hidden="true"></i></button> }
+            @if (canRecall(msg)) { <button type="button" class="reaction-trigger recall-trigger" aria-label="Tùy chọn tin nhắn" [attr.aria-expanded]="recallMenu === msg.messageId" (click)="openRecall(msg, $event)"><i class="bi bi-three-dots" aria-hidden="true"></i></button> }
+        </div>
+        @if (recallMenu === msg.messageId && canRecall(msg)) {
+            <div class="recall-menu" role="group" aria-label="Tùy chọn tin nhắn" (click)="$event.stopPropagation()">
+                <button type="button" [disabled]="recallBusy" (click)="recall(msg, $event)">{{ recallBusy ? 'Đang thu hồi…' : 'Thu hồi tin nhắn' }}</button>
+                @if (recallError) { <span class="reaction-error" role="alert">{{ recallError }}</span> }
+            </div>
+        }
+        @if (reactionPicker === msg.messageId) {
+                <div class="reaction-picker" role="group" aria-label="Chọn cảm xúc" (click)="$event.stopPropagation()">
+                    @for (emoji of reactionEmojis; track emoji) { <button type="button" [disabled]="reactionBusy" [attr.aria-label]="'Thả hoặc bỏ cảm xúc ' + emoji" (click)="react(msg, emoji, $event)">{{ emoji }}</button> }
+                    @if (reactionError) { <span class="reaction-error" role="alert">{{ reactionError }}</span> }
+                </div>
+        }
+        @if (reactionState[msg.messageId]?.length) {
+            <div class="reaction-badge" aria-label="Cảm xúc tin nhắn">
+                @for (r of reactionState[msg.messageId]; track r.actor) { <button type="button" [class.reaction-own]="r.actor === reactionActor" [attr.aria-label]="r.actor === reactionActor ? 'Đổi hoặc bỏ cảm xúc của bạn' : 'Cảm xúc của người khác'" (click)="openReaction(msg, $event)">{{ r.emoji }}</button> }
+            </div>
+        }
+    }
+</ng-template>
+@if (forwardSource) {
+    <div class="forward-backdrop" (click)="cancelForward()">
+        <section class="forward-popup" role="dialog" aria-modal="true" aria-labelledby="forward-title" (click)="$event.stopPropagation()">
+            <h3 id="forward-title">Chuyển tiếp tin nhắn</h3>
+            <input class="form-control form-control-sm" type="search" [(ngModel)]="forwardSearch" [disabled]="forwardBusy" placeholder="Tìm tên, email hoặc mã hội thoại..." aria-label="Tìm hội thoại đích">
+            <div class="forward-targets" role="group" aria-label="Chọn hội thoại đích">
+                @if (forwardLoading) { <p role="status">Đang tải hội thoại…</p> }
+                @else {
+                    @for (s of getForwardTargets(); track s.sessionId) {
+                        <button type="button" class="forward-target" [class.forward-selected]="forwardTargetId === s.sessionId" [attr.aria-pressed]="forwardTargetId === s.sessionId" [disabled]="forwardBusy" (click)="forwardTargetId = s.sessionId">
+                            <strong>{{ s.userName }}</strong><small>{{ s.userEmail || s.sessionId }}</small>
+                            @if (forwardTargetId === s.sessionId) { <span>✓ Đã chọn</span> }
+                        </button>
+                    } @empty { <p>Không có hội thoại phù hợp.</p> }
+                }
+            </div>
+            @if (forwardError) { <p class="reaction-error" role="alert">{{ forwardError }}</p> }
+            <div class="forward-actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="forwardBusy" (click)="cancelForward()">Hủy</button>
+                <button type="button" class="btn btn-sm btn-danger" [disabled]="forwardBusy || forwardLoading || !forwardTargetId" (click)="forward()">{{ forwardBusy ? 'Đang chuyển tiếp…' : 'Xác nhận chuyển tiếp' }}</button>
+            </div>
+        </section>
+    </div>
+}
 <div style="width: 100%; max-width: 1400px; margin: 0 auto; height: 100%;">
     
     <!-- Page Title -->
@@ -122,15 +188,18 @@
 
                 <!-- Chat Messages Body -->
                 <div class="flex-grow-1 p-3 overflow-y-auto bg-light-subtle d-flex flex-column gap-3 custom-scrollbar" style="background-color: #fcfbfa; position: relative;">
-                    @for (msg of currentSession.messages; track msg.timestamp) {
+                    @for (msg of currentSession.messages; track msg.messageId || msg.clientRequestId || $index) {
                         @if (msg.isSystemLog) {
                             <div class="system-log-row">
-                                <div class="system-log-bubble">{{ msg.text }}</div>
+                                <div class="system-log-bubble">{{ messageText(msg) }}</div>
                             </div>
                         } @else if (msg.sender === 'user') {
                             <div class="chat-message-row customer-msg">
-                                <div class="message-bubble">
-                                    <p>{{ msg.text }}</p>
+                                <div class="message-bubble" [class.sticker-bubble]="isSticker(msg)">
+                                    <ng-container *ngTemplateOutlet="reactionControls; context: { $implicit: msg }"></ng-container>
+                                    @if (isForwarded(msg)) { <div class="forwarded-label">Đã chuyển tiếp</div> }
+                                    @if (attachment(msg)) { <ng-container *ngTemplateOutlet="attachmentContent; context: { $implicit: msg }"></ng-container> }
+                                    @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)">{{ messageText(msg) }}</p> }
                                     <div class="message-meta">
                                         <span>{{ formatTime(msg.timestamp) }}</span>
                                     </div>
@@ -138,8 +207,11 @@
                             </div>
                         } @else {
                             <div class="chat-message-row shop-msg" [class.bot-msg]="msg.sender === 'bot'">
-                                <div class="message-bubble">
-                                    <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
+                                <div class="message-bubble" [class.sticker-bubble]="isSticker(msg)">
+                                    <ng-container *ngTemplateOutlet="reactionControls; context: { $implicit: msg }"></ng-container>
+                                    @if (isForwarded(msg)) { <div class="forwarded-label">Đã chuyển tiếp</div> }
+                                    @if (attachment(msg)) { <ng-container *ngTemplateOutlet="attachmentContent; context: { $implicit: msg }"></ng-container> }
+                                    @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)" [innerHTML]="messageText(msg).replace('\n', '<br>')"></p> }
                                     <div class="message-meta">
                                         <span class="chat-sender-badge" [ngClass]="msg.sender === 'bot' ? 'bot-badge' : 'admin-badge'">{{ msg.sender === 'bot' ? 'AI' : 'ADMIN' }}</span>
                                         <span>{{ formatTime(msg.timestamp) }}</span>
@@ -153,8 +225,31 @@
                 </div>
 
                 <!-- Chat Input Footer -->
-                <div class="p-3 border-top bg-white">
+                <div class="p-3 border-top bg-white forward-footer">
+                    <input #attachmentInput type="file" hidden [disabled]="attachmentBusy" (change)="pickAttachment($event)">
+                    @if (attachmentMenu) {
+                        <div class="attachment-menu" (click)="$event.stopPropagation()"><button type="button" (click)="chooseAttachment('image', attachmentInput)">Gửi ảnh</button><button type="button" (click)="chooseAttachment('file', attachmentInput)">Gửi file</button></div>
+                    }
+                    @if (selectedAttachment; as file) {
+                        <div class="attachment-preview">
+                            @if (attachmentPreview) { <img [src]="attachmentPreview" alt="Ảnh đã chọn"> }
+                            <span class="chat-file-name">{{ file.name }} <small>{{ fileSize(file.size) }}</small></span>
+                            <button type="button" [disabled]="attachmentBusy" (click)="sendAttachment()">{{ attachmentBusy ? 'Đang gửi…' : 'Gửi' }}</button><button type="button" [disabled]="attachmentBusy" (click)="cancelAttachment()">Hủy</button>
+                        </div>
+                    }
+                    @if (attachmentError) { <small class="attachment-error" role="alert">{{ attachmentError }}</small> }
+                    @if (isStickerPickerOpen) {
+                        <div class="sticker-picker" (click)="$event.stopPropagation()" aria-label="Chọn icon cảm xúc">
+                            @for (icon of stickerIcons; track icon) {
+                                <button type="button" [disabled]="stickerBusy" (click)="sendAdminMessage(icon)" [attr.aria-label]="'Gửi icon ' + icon">{{ icon }}</button>
+                            }
+                            @if (stickerError) { <small class="sticker-error" role="alert">{{ stickerError }}</small> }
+                        </div>
+                    }
+                    @if (forwardNotice) { <span class="forward-notice" role="status">{{ forwardNotice }}</span> }
                     <div class="input-group shadow-sm rounded-4 border overflow-hidden p-1 bg-light">
+                        <button type="button" class="attachment-toggle btn" [disabled]="attachmentBusy" (click)="toggleAttachmentMenu($event)" aria-label="Gửi ảnh hoặc file" [attr.aria-expanded]="attachmentMenu">+</button>
+                        <button type="button" class="sticker-toggle btn" (click)="toggleStickerPicker($event)" [attr.aria-expanded]="isStickerPickerOpen" aria-label="Gửi icon cảm xúc" title="Gửi icon cảm xúc"><i class="bi bi-sticky"></i></button>
                         <textarea [(ngModel)]="adminReplyText" (keydown.enter)="$event.preventDefault(); sendAdminMessage()" class="form-control border-0 bg-transparent custom-scrollbar py-2" rows="1" placeholder="Nhập tin nhắn phản hồi..." style="resize: none; outline: none; box-shadow: none; font-size: 14px;"></textarea>
                         <button class="btn btn-danger px-4 rounded-4 fw-bold shadow-sm d-flex align-items-center justify-content-center" (click)="sendAdminMessage()" type="button" style="width: 50px; height: 42px; margin-top: auto; margin-bottom: auto;">
                             <i class="bi bi-send-fill fs-5"></i>

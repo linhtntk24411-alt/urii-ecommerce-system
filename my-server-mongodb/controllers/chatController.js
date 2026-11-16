@@ -3,14 +3,358 @@ const ChatSession = require('../models/ChatSession');
 const ChatbotFaq = require('../models/ChatbotFaq');
 const User = require('../models/User');
 const mongoose = require('mongoose');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, randomBytes, createHash } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
 const { generateAiReply } = require('../services/aiChatService');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const sharp = require('sharp');
+const yauzl = require('yauzl');
+
+const CHAT_FILE_DIR = path.join(__dirname, '..', 'private', 'chat-attachments');
+const MAX_CHAT_FILE = 10 * 1024 * 1024;
+let attachmentRequests = 0;
+
+exports.attachmentSlot = (req, res, next) => {
+  if (attachmentRequests >= 2) return res.status(429).json({ message: 'Đang xử lý file khác. Vui lòng thử lại.' });
+  attachmentRequests++;
+  let released = false;
+  const release = () => { if (!released) { released = true; attachmentRequests--; } };
+  res.once('finish', release); res.once('close', release);
+  next();
+};
+
+// Inspect OOXML in memory, never extract client-controlled paths onto disk.
+function inspectOffice(buffer, extension) {
+  return new Promise((resolve, reject) => {
+    let zip; let settled = false; let count = 0; let expanded = 0;
+    const names = new Set(); const xml = new Map();
+    const finish = error => { if (settled) return; settled = true; clearTimeout(timer); zip?.close(); error ? reject(error) : resolve(); };
+    const timer = setTimeout(() => finish(new Error('Kiểm tra tài liệu quá thời gian.')), 5000);
+    yauzl.fromBuffer(buffer, { lazyEntries: true, validateEntrySizes: true, strictFileNames: true }, (error, archive) => {
+      if (settled) { archive?.close(); return; }
+      if (error) return finish(new Error('Tài liệu Office không hợp lệ.'));
+      zip = archive;
+      zip.on('error', () => finish(new Error('Không thể đọc cấu trúc tài liệu.')));
+      zip.on('entry', entry => {
+        if (settled) return;
+        const name = entry.fileName;
+        if (++count > 1000 || names.has(name.toLowerCase()) || /(^\/|\\|:|(?:^|\/)\.\.(?:\/|$))/.test(name) ||
+            (entry.generalPurposeBitFlag & 1) || ![0, 8].includes(entry.compressionMethod) ||
+            entry.uncompressedSize > MAX_CHAT_FILE || expanded + entry.uncompressedSize > 50 * 1024 * 1024 ||
+            /(?:vba|activex|embeddings|externallinks|connections\.xml|\.(?:exe|dll|com|scr|bat|cmd|msi|js|vbs|ps1|html?|hta|jar|zip|bin)$)/i.test(name)) {
+          return finish(new Error('Tài liệu có nội dung nhúng, mã hóa hoặc vượt giới hạn kiểm tra.'));
+        }
+        names.add(name.toLowerCase());
+        if (name.endsWith('/')) { zip.readEntry(); return; }
+        zip.openReadStream(entry, (error, stream) => {
+          if (settled) { stream?.destroy(); return; }
+          if (error) return finish(new Error('Không thể giải nén tài liệu.'));
+          let bytes = 0; const chunks = []; const isXml = /\.(?:xml|rels)$/i.test(name);
+          stream.on('data', chunk => {
+            bytes += chunk.length; expanded += chunk.length;
+            if (bytes > MAX_CHAT_FILE || expanded > 50 * 1024 * 1024) { stream.destroy(); finish(new Error('Tài liệu giải nén vượt giới hạn.')); return; }
+            if (isXml) chunks.push(chunk);
+          });
+          stream.on('error', () => finish(new Error('Dữ liệu nén bị lỗi.')));
+          stream.on('end', () => {
+            if (settled) return;
+            if (isXml) {
+              let text;
+              try { text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)); }
+              catch { return finish(new Error('XML tài liệu không được hỗ trợ.')); }
+              // Conservative screening, not an XML sanitizer or malware scanner.
+              if (!text.trim().startsWith('<') || /<!DOCTYPE|<!ENTITY|TargetMode\s*=\s*["']External|DDEAUTO|DDELINK|macroEnabled|vbaProject|<\s*(?:\w+:)?(?:oleObject|altChunk)\b/i.test(text)) {
+                return finish(new Error('Tài liệu có liên kết ngoài hoặc nội dung chủ động không hỗ trợ.'));
+              }
+              if (['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'xl/workbook.xml'].includes(name)) xml.set(name, text);
+            }
+            zip.readEntry();
+          });
+        });
+      });
+      zip.on('end', () => {
+        const main = extension === 'docx' ? 'word/document.xml' : 'xl/workbook.xml';
+        const expected = extension === 'docx' ? 'wordprocessingml.document.main+xml' : 'spreadsheetml.sheet.main+xml';
+        if (!xml.has(main) || !xml.has('_rels/.rels') || !xml.get('[Content_Types].xml')?.includes(expected)) return finish(new Error('Không đúng cấu trúc DOCX/XLSX.'));
+        finish();
+      });
+      zip.readEntry();
+    });
+  });
+}
+
+async function validateAttachment(buffer, name, kind) {
+  const ext = name.split('.').pop().toLowerCase();
+  const allowed = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', txt: 'text/plain' };
+  if (!allowed[ext] || !['image', 'file'].includes(kind) || (kind === 'image') !== ['jpg', 'jpeg', 'png'].includes(ext)) throw new Error('Loại file không được hỗ trợ.');
+  let output = buffer;
+  if (kind === 'image') {
+    const image = sharp(buffer, { limitInputPixels: 20000000, failOn: 'warning', pages: 1 });
+    const meta = await image.metadata();
+    if ((ext === 'png' ? meta.format !== 'png' : meta.format !== 'jpeg') || (meta.pages || 1) !== 1) throw new Error('Nội dung không đúng định dạng ảnh.');
+    output = await (ext === 'png' ? image.png() : image.jpeg({ quality: 90 })).timeout({ seconds: 5 }).toBuffer();
+  } else if (ext === 'txt') {
+    new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    if (buffer.includes(0) || buffer.some(byte => byte < 32 && ![9, 10, 13].includes(byte))) throw new Error('TXT chứa dữ liệu nhị phân.');
+  } else if (ext === 'pdf') {
+    const text = buffer.toString('latin1');
+    if (!/^%PDF-1\.[0-7]\b|^%PDF-2\.0\b/.test(text) || !/%%EOF\s*$/.test(text) || !/\b(?:xref|startxref)\b/.test(text) ||
+        /\/(?:Encrypt|JavaScript|JS|Launch|OpenAction|AA|EmbeddedFile|RichMedia|XFA)\b/.test(text)) throw new Error('PDF không hợp lệ hoặc chứa nội dung chủ động không hỗ trợ.');
+  } else await inspectOffice(buffer, ext);
+  if (output.length > MAX_CHAT_FILE) throw new Error('File sau xử lý vượt 10 MB.');
+  return { buffer: output, mime: allowed[ext] };
+}
+
+exports.uploadAttachment = async (req, res) => {
+  let temporary; let stored; let databaseAttempted = false;
+  const discard = file => file ? fs.unlink(file).catch(() => {}) : Promise.resolve();
+  try {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ message: 'Cần gửi một file binary.' });
+    if (req.body.length > MAX_CHAT_FILE) return res.status(413).json({ message: 'File vượt 10 MB.' });
+    const requestId = req.get('X-Client-Request-Id'); const kind = req.get('X-File-Kind');
+    const rawName = decodeURIComponent(req.get('X-File-Name') || '');
+    if (!requestId || !/^[a-zA-Z0-9-]{16,100}$/.test(requestId) || !rawName || rawName.length > 180 || /[\\/:\x00-\x1f\x7f]/.test(rawName)) throw new Error('Tên file hoặc mã yêu cầu không hợp lệ.');
+    const name = rawName.normalize('NFC'); const sourceHash = createHash('sha256').update(req.body).digest('hex');
+    const same = message => message.type === kind && message.attachment?.sourceHash === sourceHash && message.attachment?.name === name;
+    const session = await ChatSession.findOne({ sessionId: req.params.id }).select('+messages.attachment.storageKey +messages.attachment.sourceHash');
+    if (!session) return res.status(404).json({ message: 'Không tìm thấy hội thoại.' });
+    const previous = session.messages.find(m => m.clientRequestId === requestId && m.senderId === req.reactionActor);
+    if (previous) return res.status(same(previous) ? 200 : 409).json(same(previous) ? { acceptedMessage: publicMessage(previous), duplicate: true } : { message: 'Mã yêu cầu đã dùng cho nội dung khác.' });
+    const validated = await validateAttachment(req.body, name, kind);
+    await fs.mkdir(CHAT_FILE_DIR, { recursive: true });
+    const storageKey = randomUUID() + '.bin'; stored = path.join(CHAT_FILE_DIR, storageKey); temporary = stored + '.part';
+    await fs.writeFile(temporary, validated.buffer, { flag: 'wx', mode: 0o600 });
+    await fs.rename(temporary, stored); temporary = undefined;
+    const sender = req.auth?.role === 'admin' ? 'admin' : 'user';
+    const message = { messageId: randomUUID(), clientRequestId: requestId, senderId: req.reactionActor, sender,
+      type: kind, text: kind === 'image' ? '[Ảnh]' : '[File đính kèm]', timestamp: Date.now(), isSystemLog: false,
+      attachment: { name, mime: validated.mime, size: validated.buffer.length, sourceHash, storageKey } };
+    databaseAttempted = true;
+    const result = await ChatSession.findOneAndUpdate({ sessionId: req.params.id, messages: { $not: { $elemMatch: { clientRequestId: requestId, senderId: req.reactionActor } } } }, {
+      $push: { messages: message }, $set: { lastMessageTime: message.timestamp, ...(sender === 'admin' ? { status: 'active', unreadCount: 0 } : {}) },
+      ...(sender === 'user' ? { $inc: { unreadCount: 1 } } : {})
+    }, { new: true, runValidators: true });
+    if (!result) {
+      const fresh = await ChatSession.findOne({ sessionId: req.params.id }).select('+messages.attachment.sourceHash');
+      const accepted = fresh?.messages.find(m => m.clientRequestId === requestId && m.senderId === req.reactionActor);
+      await discard(stored); stored = undefined;
+      if (!accepted || !same(accepted)) return res.status(409).json({ message: 'Mã yêu cầu đã dùng cho nội dung khác.' });
+      return res.json({ acceptedMessage: publicMessage(accepted), duplicate: true });
+    }
+    emitCrudChange('chat', 'message', req.params.id);
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ acceptedMessage: publicMessage(result.messages.find(m => m.messageId === message.messageId)) });
+  } catch (error) {
+    // An ambiguous MongoDB outcome may already have committed: retain the final file.
+    if (!databaseAttempted) await discard(stored);
+    res.status(databaseAttempted ? 503 : 400).json({ message: databaseAttempted ? 'Chưa xác nhận được kết quả. Hãy gửi lại cùng file để đối chiếu.' : error.message || 'Không thể nhận file.' });
+  } finally { await discard(temporary); }
+};
+
+exports.getAttachment = async (req, res, next) => {
+  try {
+    const session = await ChatSession.findOne({ sessionId: req.params.id }).select('+messages.attachment.storageKey');
+    const message = session?.messages.find(m => m.messageId === req.params.messageId);
+    const file = message?.attachment;
+    if (!message || message.recalledAt || !['image', 'file'].includes(message.type) || !file || !/^[a-f0-9-]{36}\.bin$/.test(file.storageKey || '')) return res.status(404).json({ message: 'File không còn khả dụng.' });
+    res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox", 'Content-Type': file.mime });
+    res.set('Content-Disposition', `${message.type === 'image' ? 'inline' : 'attachment'}; filename="download"; filename*=UTF-8''${encodeURIComponent(file.name).replace(/'/g, '%27')}`);
+    res.sendFile(path.join(CHAT_FILE_DIR, file.storageKey), error => {
+      if (error && !res.headersSent) res.status(404).json({ message: 'Không tìm thấy file.' });
+      else if (error) next(error);
+    });
+  } catch (error) { next(error); }
+};
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
+
+const reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+const stickerIcons = ['🥰', '🥹', '😭', '😍', '😘', '🫶', '💗', '🎉', '👍', '👋'];
+
+function publicMessage(value) {
+  const message = value.toObject ? value.toObject() : { ...value };
+  delete message.reactions;
+  delete message.forwardRequestKey;
+  delete message.forwardSourceKey;
+  if (message.attachment) {
+    const { name, mime, size } = message.attachment;
+    message.attachment = { name, mime, size };
+  }
+  if (!message.recalledAt) return message;
+  // Keep the database record for audit, but never return the original content.
+  return {
+    messageId: message.messageId, clientRequestId: message.clientRequestId,
+    senderId: message.senderId, sender: message.sender, timestamp: message.timestamp,
+    isSystemLog: message.isSystemLog, recalledAt: message.recalledAt,
+    recalledBy: message.recalledBy, text: 'Tin nhắn đã được thu hồi'
+  };
+}
+
+exports.recallMessage = async (req, res) => {
+  const messageId = req.params.messageId;
+  const message = req.chatSession.messages.find(m => m.messageId === messageId);
+  const sender = req.auth?.role === 'admin' ? 'admin' : 'user';
+  if (!message || !messageId || message.isSystemLog || message.sender !== sender || message.senderId !== req.reactionActor) {
+    return res.status(403).json({ message: 'Bạn chỉ được thu hồi tin nhắn của chính mình có mã server hợp lệ.' });
+  }
+  if (message.recalledAt) return res.json({ message: publicMessage(message) });
+  const session = await ChatSession.findOneAndUpdate({ sessionId: req.params.id, messages: { $elemMatch: {
+    messageId, senderId: req.reactionActor, sender, isSystemLog: { $ne: true }, recalledAt: null
+  } } }, { $set: { 'messages.$.recalledAt': Date.now(), 'messages.$.recalledBy': req.reactionActor } }, { new: true, runValidators: true });
+  // A concurrent repeat must return the same tombstone, without changing its time.
+  const saved = session || await ChatSession.findOne({ sessionId: req.params.id });
+  const recalled = saved?.messages.find(m => m.messageId === messageId && m.senderId === req.reactionActor && m.sender === sender);
+  if (!recalled?.recalledAt) return res.status(409).json({ message: 'Không thể xác nhận trạng thái thu hồi. Vui lòng tải lại.' });
+  if (session) emitCrudChange('chat', 'recall', req.params.id);
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ message: publicMessage(recalled) });
+};
+
+// A session ID or a submitted email is never proof of ownership.
+exports.chatIdentity = (req, res, next) => {
+  const cookie = /(?:^|;\s*)urii_reaction_guest=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '');
+  req.reactionGuestHash = cookie ? createHash('sha256').update(cookie[1]).digest('hex') : '';
+  req.reactionActor = req.auth?.id ? `account:${req.auth.id}` : (req.reactionGuestHash ? `guest:${req.reactionGuestHash}` : '');
+  next();
+};
+
+function ownsChat(req, session) {
+  if (req.auth?.role === 'admin') return true;
+  if (session.reactionOwnerId) return session.reactionOwnerId === req.reactionActor;
+  if (session.userId) return String(session.userId) === String(req.auth?.id || '');
+  return Boolean(session.reactionGuestHash && session.reactionGuestHash === req.reactionGuestHash);
+}
+
+exports.requireChatOwner = async (req, res, next) => {
+  try {
+    const id = req.params.id || req.body?.sessionId;
+    const session = await ChatSession.findOne({ sessionId: id }).select('+reactionOwnerId +reactionGuestHash');
+    if (!session) return res.status(404).json({ message: 'Không tìm thấy phiên trò chuyện.' });
+    if (!req.reactionActor || !ownsChat(req, session)) return res.status(403).json({ message: 'Bạn không có quyền truy cập phiên trò chuyện này.' });
+    req.chatSession = session;
+    next();
+  } catch (error) { next(error); }
+};
+
+exports.prepareReactionSession = async (req, res) => {
+  const id = req.params.id;
+  if (!id || id.length > 150) return res.status(400).json({ message: 'Mã phiên không hợp lệ.' });
+  if (!req.reactionActor) {
+    const secret = randomBytes(32).toString('hex');
+    req.reactionGuestHash = createHash('sha256').update(secret).digest('hex');
+    req.reactionActor = `guest:${req.reactionGuestHash}`;
+    res.cookie('urii_reaction_guest', secret, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', path: '/api', maxAge: 365 * 86400000 });
+  }
+  // Atomic set-on-insert preserves legacy records and never claims them.
+  const session = await ChatSession.findOneAndUpdate({ sessionId: id }, { $setOnInsert: {
+    sessionId: id, userName: String(req.body?.userName || 'Khách vãng lai').slice(0, 100),
+    userEmail: String(req.body?.userEmail || '').slice(0, 254),
+    ...(req.auth?.id ? { userId: req.auth.id, reactionOwnerId: req.reactionActor } : { reactionGuestHash: req.reactionGuestHash }),
+    messages: [], status: 'ai', unreadCount: 0, lastMessageTime: Date.now()
+  } }, { upsert: true, new: true, runValidators: true }).select('+reactionOwnerId +reactionGuestHash');
+  if (!ownsChat(req, session)) return res.status(403).json({ message: 'Phiên cũ chưa có bằng chứng quyền sở hữu; lịch sử được giữ nguyên.' });
+  res.json({ actor: req.reactionActor });
+};
+
+exports.getReactions = async (req, res) => {
+  const session = await ChatSession.findOne({ sessionId: req.params.id }).select('+messages.reactions').lean();
+  if (!session) return res.status(404).json({ message: 'Không tìm thấy phiên trò chuyện.' });
+  const reactions = {};
+  const messages = (session.messages || []).filter(m => m.messageId).map(m => {
+    reactions[m.messageId] = m.recalledAt ? [] : m.reactions || [];
+    return publicMessage(m);
+  });
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ actor: req.reactionActor, reactions, messages, status: session.status });
+};
+
+exports.setReaction = async (req, res) => {
+  const { emoji } = req.body || {};
+  if (emoji !== null && !reactionEmojis.includes(emoji)) return res.status(400).json({ message: 'Cảm xúc không hợp lệ.' });
+  const messageId = req.params.messageId;
+  // Update only the current actor within the matched message, atomically.
+  const retained = { $filter: { input: { $ifNull: ['$$m.reactions', []] }, as: 'r', cond: { $ne: ['$$r.actor', req.reactionActor] } } };
+  const session = await ChatSession.findOneAndUpdate({ sessionId: req.params.id, messages: { $elemMatch: { messageId, isSystemLog: { $ne: true }, recalledAt: null } } }, [{ $set: {
+    messages: { $map: { input: '$messages', as: 'm', in: { $cond: [
+      { $and: [{ $eq: ['$$m.messageId', messageId] }, { $eq: [{ $ifNull: ['$$m.recalledAt', null] }, null] }] },
+      { $mergeObjects: ['$$m', { reactions: { $concatArrays: [retained, emoji === null ? [] : [{ actor: req.reactionActor, emoji }]] } }] }, '$$m'
+    ] } } }
+  } }], { new: true, updatePipeline: true }).select('+messages.reactions');
+  if (!session) return res.status(req.chatSession.messages.some(m => m.messageId === messageId) ? 409 : 404).json({ message: 'Tin nhắn chưa có mã server, đã thu hồi hoặc không hỗ trợ reaction.' });
+  emitCrudChange('chat', 'reaction', req.params.id);
+  res.json({ messageId, reactions: session.messages.find(m => m.messageId === messageId).reactions || [] });
+};
+
+exports.forwardMessage = async (req, res) => {
+  const { targetSessionId, clientRequestId } = req.body || {};
+  const sourceId = req.params.id;
+  const messageId = req.params.messageId;
+  if (req.auth?.role !== 'admin' || !req.auth.id || req.reactionActor !== `account:${req.auth.id}`) return res.status(403).json({ message: 'Chỉ Admin được chuyển tiếp tin nhắn.' });
+  if (typeof targetSessionId !== 'string' || !targetSessionId || targetSessionId.length > 150 || targetSessionId === sourceId ||
+      typeof clientRequestId !== 'string' || !/^[a-zA-Z0-9-]{16,100}$/.test(clientRequestId)) {
+    return res.status(400).json({ message: 'Hội thoại đích hoặc mã yêu cầu không hợp lệ.' });
+  }
+  const fail = (status, message) => Object.assign(new Error(message), { status });
+  const requestKey = createHash('sha256').update(JSON.stringify([req.reactionActor, clientRequestId])).digest('hex');
+  const sourceKey = createHash('sha256').update(JSON.stringify([sourceId, messageId, targetSessionId])).digest('hex');
+  let transaction;
+  let result;
+  let duplicate = false;
+  try {
+    // Check the actual deployment, not merely whether Mongoose exposes a session API.
+    const hello = await mongoose.connection.db?.admin().command({ hello: 1 });
+    const supported = hello?.logicalSessionTimeoutMinutes != null &&
+      ((hello.setName && hello.maxWireVersion >= 7) || (hello.msg === 'isdbgrid' && hello.maxWireVersion >= 8));
+    if (!supported) throw fail(503, 'MongoDB chưa xác nhận hỗ trợ transaction. Chuyển tiếp đã bị dừng, không có dữ liệu nào được ghi.');
+    transaction = await mongoose.startSession();
+    await transaction.withTransaction(async () => {
+      result = undefined; duplicate = false;
+      const target = await ChatSession.findOne({ sessionId: targetSessionId }).session(transaction)
+        .select('+reactionOwnerId +reactionGuestHash +messages.forwardRequestKey +messages.forwardSourceKey');
+      if (!target) throw fail(404, 'Không tìm thấy hội thoại đích.');
+      if (!ownsChat(req, target)) throw fail(403, 'Không có quyền truy cập hội thoại đích.');
+      const previous = target.messages.find(m => m.forwardRequestKey === requestKey);
+      if (previous) {
+        if (previous.forwardSourceKey !== sourceKey) throw fail(409, 'Mã yêu cầu đã được dùng cho một thao tác khác.');
+        result = publicMessage(previous); duplicate = true; return;
+      }
+      // A real write lock serializes this operation against recall. Only the session
+      // version changes: original messages, unread, status and conversation time stay intact.
+      const source = await ChatSession.findOneAndUpdate({ sessionId: sourceId, messages: { $elemMatch: {
+        messageId, sender: { $in: ['admin', 'user'] }, type: { $in: [null, 'text'] }, isSystemLog: { $ne: true }, recalledAt: null
+      } } }, { $inc: { __v: 1 } }, { new: true, session: transaction, timestamps: false })
+        .select('+reactionOwnerId +reactionGuestHash');
+      if (!source) throw fail(409, 'Tin nhắn nguồn chưa lưu trên server, đã thu hồi hoặc không được phép chuyển tiếp.');
+      if (!ownsChat(req, source)) throw fail(403, 'Không có quyền truy cập hội thoại nguồn.');
+      const original = source.messages.find(m => m.messageId === messageId);
+      const message = {
+        messageId: randomUUID(), clientRequestId: `forward-${clientRequestId}`, sender: 'admin', senderId: req.reactionActor,
+        text: original.text, type: 'text', timestamp: Date.now(), isSystemLog: false, forwarded: true,
+        forwardRequestKey: requestKey, forwardSourceKey: sourceKey
+      };
+      const updated = await ChatSession.findOneAndUpdate({ sessionId: targetSessionId, messages: { $not: { $elemMatch: { forwardRequestKey: requestKey } } } }, {
+        $push: { messages: message }, $set: { lastMessageTime: message.timestamp }
+      }, { new: true, runValidators: true, session: transaction });
+      // Forwarding is neither a takeover nor a read receipt.
+      if (!updated) throw fail(409, 'Hội thoại đích đã thay đổi. Vui lòng thử lại cùng yêu cầu.');
+      result = publicMessage(message);
+    }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } });
+    if (!duplicate) emitCrudChange('chat', 'message', targetSessionId);
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ message: result, duplicate });
+  } catch (error) {
+    const unsupported = error.code === 20 || error.codeName === 'IllegalOperation';
+    res.status(error.status || 503).json({ message: error.status ? error.message : unsupported
+      ? 'Database không hỗ trợ transaction cho thao tác này. Chuyển tiếp đã bị dừng.'
+      : 'Không thể hoàn tất transaction chuyển tiếp. Vui lòng thử lại cùng yêu cầu.' });
+  } finally { if (transaction) await transaction.endSession(); }
+};
 
 function faqFilter(value) {
   const filters = [{ id: value }];
@@ -34,6 +378,11 @@ async function enrichSessions(sessions) {
       userEmail: session.userEmail || user?.email || '',
       avatar: session.avatar || user?.avatar || 'images/avatar_user.jpeg'
     };
+  }).map(session => {
+    delete session.reactionOwnerId;
+    delete session.reactionGuestHash;
+    session.messages = (session.messages || []).map(publicMessage);
+    return session;
   });
 }
 
@@ -65,6 +414,7 @@ exports.getAllSessions = async (req, res) => {
       sessionMap[s.sessionId] = s;
     }
 
+    res.set('Cache-Control', 'private, no-store');
     res.json({
       success: true,
       count: sessions.length,
@@ -85,6 +435,7 @@ exports.getSessionById = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy phiên trò chuyện.' });
     }
     const [enriched] = await enrichSessions([session]);
+    res.set('Cache-Control', 'private, no-store');
     res.json(enriched);
   } catch (error) {
     console.error('Lỗi lấy phiên chat:', error);
@@ -105,8 +456,7 @@ exports.updateSession = async (req, res) => {
     'avatar',
     'status',
     'unreadCount',
-    'lastMessageTime',
-    'messages'
+    'lastMessageTime'
   ];
   const updates = Object.fromEntries(
     allowedFields
@@ -143,47 +493,10 @@ exports.updateSession = async (req, res) => {
 
 // Tạo mới hoặc cập nhật một phiên chat
 exports.createOrUpdateSession = async (req, res) => {
-  try {
-    const { sessionId, userId, userName, userEmail, avatar, status, message } = req.body;
-    const id = sessionId || `cs_${Date.now()}`;
-
-    let session = await ChatSession.findOne({ sessionId: id });
-
-    if (!session) {
-      session = new ChatSession({
-        sessionId: id,
-        ...(userId && mongoose.isValidObjectId(userId) ? { userId } : {}),
-        userName: userName || (userId ? undefined : 'Khách vãng lai'),
-        userEmail: userEmail || '',
-        avatar: avatar || 'images/avatar_user.jpeg',
-        status: status || 'ai',
-        unreadCount: 1,
-        lastMessageTime: Date.now(),
-        messages: []
-      });
-    }
-
-    if (message) {
-      session.messages.push({
-        text: message.text,
-        sender: message.sender || 'user',
-        timestamp: message.timestamp || Date.now(),
-        isSystemLog: Boolean(message.isSystemLog)
-      });
-      session.lastMessageTime = Date.now();
-      if (message.sender === 'user') {
-        session.unreadCount += 1;
-      }
-    }
-
-    await session.save();
-    emitCrudChange('chat', 'update', session.sessionId);
-    const [enriched] = await enrichSessions([session.toObject()]);
-    res.status(200).json(enriched);
-  } catch (error) {
-    console.error('Lỗi tạo/cập nhật phiên chat:', error);
-    res.status(500).json({ message: 'Không thể lưu phiên chat.' });
-  }
+  // Preserve the endpoint while preventing arbitrary sender/owner injection.
+  req.params.id = req.body?.sessionId || `cs_${randomUUID()}`;
+  if (req.body?.message) return res.status(400).json({ message: 'Gửi tin nhắn qua API messages để nhận messageId.' });
+  return exports.prepareReactionSession(req, res);
 };
 
 // Gửi tin nhắn vào phiên chat
@@ -191,38 +504,46 @@ exports.addMessage = async (req, res) => {
   try {
     const { id } = req.params;
     const { text, sender, isSystemLog } = req.body;
+    const type = req.body.type === undefined ? 'text' : req.body.type;
+    // Older admin callers can still send once without supplying a retry key.
+    const clientRequestId = req.body.clientRequestId || (req.auth?.role === 'admin' ? randomUUID() : undefined);
 
-    if (!text || !text.trim()) {
+    if (typeof text !== 'string' || !text.trim() || text.length > 10000 || typeof clientRequestId !== 'string' || !/^[a-zA-Z0-9-]{16,100}$/.test(clientRequestId)) {
       return res.status(400).json({ message: 'Nội dung tin nhắn không được để trống.' });
     }
+    if (!['text', 'sticker'].includes(type) || (type === 'sticker' && !stickerIcons.includes(text))) {
+      return res.status(400).json({ message: 'Sticker không thuộc bộ 10 icon được hỗ trợ hoặc loại tin nhắn không hợp lệ.' });
+    }
 
-    const session = await ChatSession.findOne({ sessionId: id });
+    const session = req.chatSession;
     if (!session) {
       return res.status(404).json({ message: 'Không tìm thấy phiên chat.' });
     }
 
-    const msgSender = sender || 'user';
-    session.messages.push({
-      text: text.trim(),
+    const msgSender = req.auth?.role === 'admin' ? 'admin' : 'user';
+    if ((sender && sender !== msgSender) || isSystemLog) return res.status(403).json({ message: 'Không được giả mạo người gửi.' });
+    const message = {
+      messageId: randomUUID(), clientRequestId, senderId: req.reactionActor,
+      text: text.trim(), type,
       sender: msgSender,
       timestamp: Date.now(),
-      isSystemLog: Boolean(isSystemLog)
-    });
+      isSystemLog: false
+    };
 
-    session.lastMessageTime = Date.now();
-
-    // Nếu admin gửi tin nhắn, reset unread và chuyển trạng thái sang 'active'
-    if (msgSender === 'admin') {
-      session.unreadCount = 0;
-      session.status = 'active';
-    } else if (msgSender === 'user') {
-      session.unreadCount += 1;
-    }
-
-    await session.save();
-    emitCrudChange('chat', 'message', session.sessionId);
-    const [enriched] = await enrichSessions([session.toObject()]);
-    res.json(enriched);
+    // The conditional push makes retries and concurrent copies idempotent.
+    const result = await ChatSession.findOneAndUpdate({ sessionId: id, messages: { $not: { $elemMatch: { clientRequestId, senderId: req.reactionActor } } } }, {
+      $push: { messages: message },
+      $set: { lastMessageTime: Date.now(), ...(msgSender === 'admin' ? { status: 'active', unreadCount: 0 } : {}) },
+      ...(msgSender === 'user' ? { $inc: { unreadCount: 1 } } : {})
+    }, { new: true, runValidators: true });
+    const saved = result || await ChatSession.findOne({ sessionId: id });
+    const accepted = saved?.messages.find(m => m.clientRequestId === clientRequestId && m.senderId === req.reactionActor);
+    if (!accepted) return res.status(409).json({ message: 'Không thể xác nhận tin nhắn.' });
+    if (accepted.text !== text.trim() || (accepted.type || 'text') !== type) return res.status(409).json({ message: 'Mã yêu cầu đã được dùng cho tin nhắn khác hoặc khác loại.' });
+    if (result) emitCrudChange('chat', 'message', id);
+    const [enriched] = await enrichSessions([saved.toObject()]);
+    const acceptedMessage = publicMessage(accepted);
+    res.json({ ...enriched, acceptedMessage });
   } catch (error) {
     console.error('Lỗi gửi tin nhắn:', error);
     res.status(500).json({ message: 'Không thể gửi tin nhắn.' });

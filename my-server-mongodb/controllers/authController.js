@@ -11,6 +11,9 @@ const { emitCrudChange } = require('../realtime');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_BYTES = 72;
+const adminResetSending = new Set();
+const resetPurpose = req => req.passwordResetRole === 'admin' ? 'admin-reset-password' : 'reset-password';
+const adminOtpHash = (email, otp) => crypto.createHmac('sha256', process.env.JWT_SECRET).update('admin-reset:' + email + ':' + otp).digest('hex');
 const PROFILE_GENDERS = new Set(['', 'male', 'female', 'other', 'prefer_not_to_say']);
 
 function isValidBirthDate(value) {
@@ -210,6 +213,8 @@ exports.resendOtp = async (req, res) => {
 
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body || {};
+  let locked = false;
+  const adminOnly = req.passwordResetRole === 'admin';
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
   if (!EMAIL_PATTERN.test(normalizedEmail)) {
@@ -218,43 +223,63 @@ exports.forgotPassword = async (req, res) => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail }).lean();
+    if (adminOnly && user?.role !== 'admin') return res.status(403).json({ message: 'Email không thuộc tài khoản Admin.' });
     if (!user) {
       return res.status(404).json({ message: 'Email này chưa được đăng ký tài khoản tại Urii.' });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await Otp.deleteMany({ email: normalizedEmail, purpose: 'reset-password' });
+    if (adminOnly) {
+      if (!process.env.JWT_SECRET) return res.status(503).json({ message: 'Chức năng khôi phục mật khẩu chưa sẵn sàng.' });
+      if (adminResetSending.has(normalizedEmail)) return res.status(429).json({ message: 'Vui lòng chờ yêu cầu gửi mã hiện tại hoàn tất.' });
+      adminResetSending.add(normalizedEmail); locked = true;
+    }
+    const previous = adminOnly ? await Otp.findOne({ email: normalizedEmail, purpose: resetPurpose(req) }).sort({ createdAt: -1 }) : null;
+    if (previous && Date.now() - previous.createdAt.getTime() < 60000) return res.status(429).json({ message: 'Vui lòng chờ 60 giây trước khi gửi lại mã.' });
+    const otp = adminOnly ? crypto.randomInt(100000, 1000000).toString() : Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.deleteMany({ email: normalizedEmail, purpose: resetPurpose(req) });
 
-    await Otp.create({
+    const created = await Otp.create({
       email: normalizedEmail,
       name: user.name || '',
-      otp,
-      purpose: 'reset-password',
+      otp: adminOnly ? adminOtpHash(normalizedEmail, otp) : otp,
+      ...(adminOnly ? { attempts: 0 } : {}),
+      purpose: resetPurpose(req),
       createdAt: new Date()
     });
 
-    await sendOtpEmail(normalizedEmail, user.name, otp, 'reset-password');
+    try {
+      await sendOtpEmail(normalizedEmail, user.name, otp, 'reset-password', { strict: adminOnly });
+    } catch (error) {
+      if (adminOnly) await Otp.deleteOne({ _id: created._id });
+      throw error;
+    }
 
     return res.status(200).json({
       message: 'Mã xác thực OTP đã được gửi đến email của bạn. Mã có hiệu lực trong 60 giây.'
     });
   } catch (error) {
-    console.error('Lỗi yêu cầu đặt lại mật khẩu:', error);
+    console.error('Password recovery operation failed.');
     return res.status(500).json({ message: 'Không thể xử lý yêu cầu quên mật khẩu lúc này.' });
-  }
+  } finally { if (locked) adminResetSending.delete(normalizedEmail); }
 };
 
 exports.verifyResetOtp = async (req, res) => {
   const { email, otp } = req.body || {};
+  const adminOnly = req.passwordResetRole === 'admin';
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
   const trimmedOtp = typeof otp === 'string' ? otp.trim() : '';
 
-  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp) {
+  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp || (adminOnly && !/^\d{6}$/.test(trimmedOtp))) {
     return res.status(400).json({ message: 'Vui lòng cung cấp email và mã OTP.' });
   }
 
   try {
-    const record = await Otp.findOne({ email: normalizedEmail, purpose: 'reset-password' }).sort({ createdAt: -1 });
+    if (adminOnly) {
+      const account = await User.findOne({ email: normalizedEmail, role: 'admin' }).lean();
+      if (!account) return res.status(403).json({ message: 'Email không thuộc tài khoản Admin.' });
+      if (!process.env.JWT_SECRET) return res.status(503).json({ message: 'Chức năng khôi phục mật khẩu chưa sẵn sàng.' });
+    }
+    const record = await Otp.findOne({ email: normalizedEmail, purpose: resetPurpose(req) }).sort({ createdAt: -1 });
     if (!record) {
       return res.status(400).json({
         message: 'Không tìm thấy yêu cầu đặt lại mật khẩu hoặc mã đã hết hạn. Vui lòng bấm gửi lại mã.'
@@ -268,29 +293,38 @@ exports.verifyResetOtp = async (req, res) => {
       });
     }
 
-    if (record.otp !== trimmedOtp) {
+    if (adminOnly && (record.attempts || 0) >= 5) return res.status(429).json({ message: 'Nhập sai quá nhiều lần. Vui lòng gửi lại mã mới.' });
+    if (record.otp !== (adminOnly ? adminOtpHash(normalizedEmail, trimmedOtp) : trimmedOtp)) {
+      if (adminOnly) await Otp.updateOne({ _id: record._id, attempts: { $lt: 5 } }, { $inc: { attempts: 1 } });
       return res.status(400).json({
         message: 'Mã xác thực OTP không chính xác. Vui lòng kiểm tra lại.'
       });
     }
 
+    if (adminOnly) {
+      const verified = await Otp.findOneAndUpdate({ _id: record._id, otp: adminOtpHash(normalizedEmail, trimmedOtp), attempts: { $lt: 5 }, createdAt: { $gte: new Date(Date.now() - 60000) } }, { $set: { verifiedAt: new Date() } });
+      if (!verified) return res.status(400).json({ message: 'Mã OTP hết hạn hoặc không còn hợp lệ.' });
+    }
     return res.status(200).json({
       message: 'Xác thực mã OTP thành công. Vui lòng nhập mật khẩu mới.'
     });
   } catch (error) {
-    console.error('Lỗi xác thực mã reset OTP:', error);
+    console.error('Password recovery operation failed.');
     return res.status(500).json({ message: 'Không thể xác thực OTP lúc này.' });
   }
 };
 
 exports.resetPassword = async (req, res) => {
   const { email, otp, password } = req.body || {};
+  const adminOnly = req.passwordResetRole === 'admin';
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
   const trimmedOtp = typeof otp === 'string' ? otp.trim() : '';
 
-  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp) {
+  if (!EMAIL_PATTERN.test(normalizedEmail) || !trimmedOtp || (adminOnly && !/^\d{6}$/.test(trimmedOtp))) {
     return res.status(400).json({ message: 'Thông tin xác thực không hợp lệ.' });
   }
+
+  if (adminOnly && password !== req.body.confirmPassword) return res.status(400).json({ message: 'Mật khẩu xác nhận không khớp.' });
 
   if (typeof password !== 'string'
     || password.length < PASSWORD_MIN_LENGTH
@@ -304,7 +338,12 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
-    const record = await Otp.findOne({ email: normalizedEmail, purpose: 'reset-password' }).sort({ createdAt: -1 });
+    if (adminOnly) {
+      const account = await User.findOne({ email: normalizedEmail, role: 'admin' }).lean();
+      if (!account) return res.status(403).json({ message: 'Email không thuộc tài khoản Admin.' });
+      if (!process.env.JWT_SECRET) return res.status(503).json({ message: 'Chức năng khôi phục mật khẩu chưa sẵn sàng.' });
+    }
+    const record = await Otp.findOne({ email: normalizedEmail, purpose: resetPurpose(req) }).sort({ createdAt: -1 });
     if (!record) {
       return res.status(400).json({
         message: 'Phiên xác thực đã hết hạn hoặc không tồn tại. Vui lòng thực hiện lại từ đầu.'
@@ -318,15 +357,22 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
-    if (record.otp !== trimmedOtp) {
+    if (adminOnly && (record.attempts || 0) >= 5) return res.status(429).json({ message: 'Nhập sai quá nhiều lần. Vui lòng gửi lại mã mới.' });
+    if (record.otp !== (adminOnly ? adminOtpHash(normalizedEmail, trimmedOtp) : trimmedOtp)) {
+      if (adminOnly) await Otp.updateOne({ _id: record._id, attempts: { $lt: 5 } }, { $inc: { attempts: 1 } });
       return res.status(400).json({
         message: 'Mã xác thực OTP không hợp lệ.'
       });
     }
 
+    if (adminOnly && !record.verifiedAt) return res.status(400).json({ message: 'Vui lòng xác minh OTP trước khi đặt lại mật khẩu.' });
     const hashedPassword = await bcrypt.hash(password, 12);
+    if (adminOnly) {
+      const consumed = await Otp.findOneAndDelete({ _id: record._id, email: normalizedEmail, purpose: resetPurpose(req), otp: adminOtpHash(normalizedEmail, trimmedOtp), attempts: { $lt: 5 }, verifiedAt: { $ne: null }, createdAt: { $gte: new Date(Date.now() - 300000) } });
+      if (!consumed) return res.status(400).json({ message: 'OTP đã sử dụng hoặc phiên đặt lại mật khẩu đã hết hạn.' });
+    }
     const user = await User.findOneAndUpdate(
-      { email: normalizedEmail },
+      { email: normalizedEmail, ...(adminOnly ? { role: 'admin' } : {}) },
       { $set: { password: hashedPassword } }
     );
 
@@ -334,13 +380,13 @@ exports.resetPassword = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy người dùng để cập nhật mật khẩu.' });
     }
 
-    await Otp.deleteMany({ email: normalizedEmail, purpose: 'reset-password' });
+    if (!adminOnly) await Otp.deleteMany({ email: normalizedEmail, purpose: resetPurpose(req) });
 
     return res.status(200).json({
       message: 'Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập với mật khẩu mới.'
     });
   } catch (error) {
-    console.error('Lỗi đặt lại mật khẩu:', error);
+    console.error('Password recovery operation failed.');
     return res.status(500).json({ message: 'Không thể đặt lại mật khẩu lúc này.' });
   }
 };

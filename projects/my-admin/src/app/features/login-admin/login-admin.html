@@ -1,4 +1,39 @@
 
+@if (resetOpen) {
+  <div class="reset-overlay">
+    <section class="auth-card reset-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+      <h2 id="reset-title" class="auth-title">Quên mật khẩu Admin</h2>
+      @if (resetStep === 'email') {
+        <p>Nhập email đã đăng ký tài khoản quản trị để nhận mã OTP.</p>
+        <form (ngSubmit)="sendResetOtp()">
+          <label class="field-label" for="reset-email">Email Admin</label>
+          <input id="reset-email" class="field-input" name="resetEmail" [(ngModel)]="resetEmail" type="email" autocomplete="email" required [disabled]="resetBusy">
+          <button class="primary-button" type="submit" [disabled]="resetBusy">{{ resetBusy ? 'Đang gửi…' : 'Gửi mã OTP' }}</button>
+        </form>
+      } @else if (resetStep === 'otp') {
+        <p>Mã OTP đã gửi đến {{ resetEmail }}. Có hiệu lực 60 giây.</p>
+        <form (ngSubmit)="verifyResetOtp()">
+          <label class="field-label" for="reset-otp">Mã OTP</label>
+          <input id="reset-otp" class="field-input" name="resetOtp" [(ngModel)]="resetOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required [disabled]="resetBusy">
+          <button class="primary-button" type="submit" [disabled]="resetBusy || resetCountdown <= 0">{{ resetBusy ? 'Đang xử lý…' : 'Xác minh OTP' }}</button>
+          <button class="text-link reset-link" type="button" [disabled]="resetBusy || resetCountdown > 0" (click)="sendResetOtp()">{{ resetCountdown > 0 ? 'Gửi lại mã sau ' + resetCountdown + ' giây' : 'Gửi lại mã OTP' }}</button>
+        </form>
+      } @else if (resetStep === 'password') {
+        <p>Đặt mật khẩu mới cho {{ resetEmail }}. Hoàn tất trong 5 phút từ lúc gửi OTP.</p>
+        <form (ngSubmit)="submitResetPassword()">
+          <label class="field-label" for="reset-password">Mật khẩu mới</label>
+          <input id="reset-password" class="field-input" name="resetPassword" [(ngModel)]="resetPassword" type="password" autocomplete="new-password" minlength="8" required [disabled]="resetBusy">
+          <label class="field-label" for="reset-confirm">Xác nhận mật khẩu mới</label>
+          <input id="reset-confirm" class="field-input" name="resetConfirm" [(ngModel)]="resetConfirm" type="password" autocomplete="new-password" minlength="8" required [disabled]="resetBusy">
+          <button class="primary-button" type="submit" [disabled]="resetBusy">{{ resetBusy ? 'Đang cập nhật…' : 'Đặt lại mật khẩu' }}</button>
+        </form>
+      }
+      @if (resetError) { <p class="login-error" role="alert">{{ resetError }}</p> }
+      @if (resetNotice) { <p class="reset-notice" role="status">{{ resetNotice }}</p> }
+      <button class="text-link reset-link" type="button" [disabled]="resetBusy" (click)="closePasswordReset()">{{ resetStep === 'success' ? 'Quay về đăng nhập' : 'Hủy và quay về đăng nhập' }}</button>
+    </section>
+  </div>
+}
 <main class="auth-page">
   <section class="auth-card" aria-label="Đăng nhập Urii Admin">
 
@@ -36,7 +71,7 @@
           <label class="field-label" for="login-password">
             Mật khẩu
           </label>
-          <span class="text-link">Quên mật khẩu?</span>
+          <button type="button" class="text-link reset-link" [disabled]="isLoading" (click)="openPasswordReset(emailInput.value)">Quên mật khẩu?</button>
         </div>
 
         <div class="password-field">

@@ -115,7 +115,7 @@
                         <td>{{ o.date }}</td>
                         <td>{{ o.product }}</td>
                         <td class="order-total">{{ (o.total || 0).toLocaleString('vi-VN') }}đ</td>
-                        <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ statusMap[o.status]?.text }}</span></td>
+                        <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ getStatusLabel(o) }}</span></td>
                         <td class="pe-4">
                             <div class="action-btn-group">
                                 <button class="btn-action-icon" (click)="openOrderDetail(o)" title="Xem chi tiết"><i class="bi bi-eye"></i></button>
@@ -277,7 +277,7 @@
                         </td>
                         <td>{{ o.product }}</td>
                         <td><span class="badge bg-info bg-opacity-10 text-info">{{ objectKeys(o.customDetails).length }} yêu cầu</span></td>
-                        <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ statusMap[o.status]?.text }}</span></td>
+                        <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ getStatusLabel(o) }}</span></td>
                         <td class="pe-4">
                             <div class="action-btn-group">
                                 <button class="btn-action-icon" (click)="openCustomOrderForm(o)" title="Xem form yêu cầu"><i class="bi bi-file-text"></i></button>
@@ -349,7 +349,7 @@
                         <h5 class="fw-bold border-bottom pb-2 mb-3">Chi tiết đơn hàng</h5>
                         <div class="mb-3 text-dark"><span class="text-muted me-1">Sản phẩm:</span> <strong>{{ selectedOrder?.product }}</strong></div>
                         <div class="mb-3 text-dark"><span class="text-muted me-1">Ngày đặt:</span> <span>{{ selectedOrder?.date }}</span></div>
-                        <div class="mb-3 d-flex align-items-center"><span class="text-muted me-2">Trạng thái:</span> <span class="badge-status" [ngClass]="statusMap[selectedOrder?.status]?.class">{{ statusMap[selectedOrder?.status]?.text }}</span></div>
+                        <div class="mb-3 d-flex align-items-center"><span class="text-muted me-2">Trạng thái:</span> <span class="badge-status" [ngClass]="statusMap[selectedOrder?.status]?.class">{{ getStatusLabel(selectedOrder) }}</span></div>
                         <div class="mb-4 text-dark"><span class="text-muted me-1">Tổng tiền:</span> <strong class="text-danger fs-5">{{ (selectedOrder?.total || 0).toLocaleString('vi-VN') }}đ</strong></div>
                         <h5 class="fw-bold border-bottom pb-2 mb-3 mt-5">Ghi chú của khách</h5>
                         <div class="bg-light p-3 rounded-3 text-dark" style="min-height: 80px;">{{ selectedOrder?.customerNote || 'Giao hàng nhanh giúp mình, mình cần gấp.' }}</div>
@@ -420,7 +420,7 @@
                         <h6 class="fw-bold border-bottom pb-2">Sản phẩm</h6>
                         <p><strong>Tên:</strong> {{ selectedOrder.product }}</p>
                         <p><strong>Ngày đặt:</strong> {{ selectedOrder.date }}</p>
-                        <p><strong>Trạng thái:</strong> <span class="badge-status" [ngClass]="statusMap[selectedOrder.status]?.class">{{ statusMap[selectedOrder.status]?.text }}</span></p>
+                        <p><strong>Trạng thái:</strong> <span class="badge-status" [ngClass]="statusMap[selectedOrder.status]?.class">{{ getStatusLabel(selectedOrder) }}</span></p>
                     </div>
                     <div class="col-12">
                         <h6 class="fw-bold border-bottom pb-2">Chi tiết yêu cầu Custom</h6>

@@ -16,6 +16,7 @@ import { Router } from '@angular/router';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 import {
   AdminApiService,
+  formatAdminOrderTotal,
   AdminBlog,
   AdminOrder,
   AdminProduct,
@@ -525,12 +526,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   formatOrderTotal(order: any): string {
-    if (!order) return '0đ';
-    if (order.total && typeof order.total === 'string' && order.total.trim()) {
-      return order.total.includes('đ') ? order.total : `${order.total}đ`;
-    }
-    const amt = Number(order.totalAmount ?? order.total ?? order.pricing?.finalTotal ?? 0);
-    return amt > 0 ? `${amt.toLocaleString('vi-VN')}đ` : '0đ';
+    return formatAdminOrderTotal(order);
   }
 
   showToast(type: 'success' | 'danger' | 'warning' | 'info', message: string): void {

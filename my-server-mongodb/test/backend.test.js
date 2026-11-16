@@ -14,6 +14,129 @@ const Voucher = require('../models/Voucher');
 const UserVoucher = require('../models/UserVoucher');
 const ChatSession = require('../models/ChatSession');
 const mongoose = require('mongoose');
+const Otp = require('../models/Otp');
+const nodemailer = require('nodemailer');
+
+function passwordResetFixture(t, role = 'admin', mailFailure = false) {
+  const envKeys = ['EMAIL_USER', 'EMAIL_APP_PASSWORD'];
+  const previous = envKeys.map(key => process.env[key]);
+  process.env.EMAIL_USER = 'smtp@example.test'; process.env.EMAIL_APP_PASSWORD = 'test-only';
+  t.after(() => envKeys.forEach((key, i) => { if (previous[i] === undefined) delete process.env[key]; else process.env[key] = previous[i]; }));
+  const account = { _id: '507f1f77bcf86cd799439011', email: 'admin@example.test', role, name: 'Test', password: '' };
+  let records = []; let code = ''; let mails = 0; let writes = 0;
+  const match = (record, filter) => record && (!filter.email || filter.email === record.email) && (!filter.purpose || filter.purpose === record.purpose) && (!filter._id || String(filter._id) === String(record._id));
+  t.mock.method(User, 'findOne', filter => reactionQuery(filter.email === account.email && (!filter.role || filter.role === account.role) ? account : null));
+  t.mock.method(User, 'findOneAndUpdate', async (filter, update) => {
+    if (filter.email !== account.email || (filter.role && filter.role !== account.role)) return null;
+    account.password = update.$set.password; writes++; return account;
+  });
+  t.mock.method(Otp, 'findOne', filter => ({ sort: async () => records.find(record => match(record, filter)) || null }));
+  t.mock.method(Otp, 'create', async value => { const record = { ...value, _id: new mongoose.Types.ObjectId() }; records.push(record); return record; });
+  t.mock.method(Otp, 'deleteMany', async filter => { records = records.filter(record => !match(record, filter)); });
+  t.mock.method(Otp, 'deleteOne', async filter => { records = records.filter(record => !match(record, filter)); });
+  t.mock.method(Otp, 'updateOne', async filter => { const record = records.find(record => match(record, filter)); if (record && record.attempts < 5) record.attempts++; });
+  t.mock.method(Otp, 'findOneAndUpdate', async (filter, update) => {
+    const record = records.find(record => match(record, filter) && record.otp === filter.otp && record.attempts < 5 && record.createdAt >= filter.createdAt.$gte);
+    if (!record) return null; Object.assign(record, update.$set); return record;
+  });
+  t.mock.method(Otp, 'findOneAndDelete', async filter => {
+    const record = records.find(record => match(record, filter) && record.otp === filter.otp && record.verifiedAt && record.attempts < 5 && record.createdAt >= filter.createdAt.$gte);
+    if (!record) return null; records = records.filter(item => item !== record); return record;
+  });
+  t.mock.method(nodemailer, 'createTransport', () => ({ sendMail: async message => {
+    mails++; code = /\b\d{6}\b/.exec(message.subject)[0];
+    if (mailFailure) throw new Error('SMTP failed');
+    return { messageId: 'mock-email' };
+  } }));
+  return { account, get records() { return records; }, get code() { return code; }, get mails() { return mails; }, get writes() { return writes; } };
+}
+
+function resetRequest(endpoint, payload, admin = true) {
+  return fetch(`${baseUrl}/api/auth/${admin ? 'admin/' : ''}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+}
+
+test('admin reset: sends through existing mail service, verifies, hashes password and prevents reuse', async t => {
+  const fixture = passwordResetFixture(t); const email = fixture.account.email;
+  assert.equal((await resetRequest('forgot-password', { email })).status, 200);
+  assert.equal(fixture.mails, 1); assert.equal(fixture.records[0].purpose, 'admin-reset-password');
+  assert.notEqual(fixture.records[0].otp, fixture.code);
+  const payload = { email, otp: fixture.code, password: 'NewPassword123', confirmPassword: 'NewPassword123' };
+  assert.equal((await resetRequest('reset-password', payload)).status, 400);
+  assert.equal((await resetRequest('verify-reset-otp', { email, otp: fixture.code })).status, 200);
+  assert.equal((await resetRequest('reset-password', { ...payload, confirmPassword: 'Different123' })).status, 400);
+  assert.equal((await resetRequest('reset-password', payload)).status, 200);
+  assert.equal(await require('bcryptjs').compare(payload.password, fixture.account.password), true);
+  assert.equal((await resetRequest('reset-password', payload)).status, 400);
+  assert.equal(fixture.writes, 1); assert.equal(fixture.records.length, 0);
+  const login = await fetch(`${baseUrl}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: payload.password }) });
+  assert.equal(login.status, 200); assert.equal((await login.json()).user.role, 'admin');
+});
+
+test('admin reset: backend rejects User accounts on all three endpoints regardless of client role', async t => {
+  const fixture = passwordResetFixture(t, 'user'); const email = fixture.account.email;
+  for (const endpoint of ['forgot-password', 'verify-reset-otp', 'reset-password']) {
+    assert.equal((await resetRequest(endpoint, { email, role: 'admin', otp: '123456', password: 'Password123', confirmPassword: 'Password123' })).status, 403);
+  }
+  assert.equal(fixture.mails, 0); assert.equal(fixture.writes, 0);
+});
+
+test('admin reset: expiry, wrong codes, attempt limit, resend cooldown and reset deadline are enforced', async t => {
+  const fixture = passwordResetFixture(t); const email = fixture.account.email;
+  await resetRequest('forgot-password', { email });
+  assert.equal((await resetRequest('forgot-password', { email })).status, 429);
+  const wrong = fixture.code === '000000' ? '111111' : '000000';
+  for (let i = 0; i < 5; i++) assert.equal((await resetRequest('verify-reset-otp', { email, otp: wrong })).status, 400);
+  assert.equal((await resetRequest('verify-reset-otp', { email, otp: fixture.code })).status, 429);
+  fixture.records[0].createdAt = new Date(Date.now() - 61000);
+  assert.equal((await resetRequest('verify-reset-otp', { email, otp: fixture.code })).status, 400);
+  assert.equal((await resetRequest('forgot-password', { email })).status, 200);
+  const payload = { email, otp: fixture.code, password: 'Password123', confirmPassword: 'Password123' };
+  assert.equal((await resetRequest('verify-reset-otp', payload)).status, 200);
+  fixture.records[0].createdAt = new Date(Date.now() - 301000);
+  assert.equal((await resetRequest('reset-password', payload)).status, 400); assert.equal(fixture.writes, 0);
+});
+
+test('admin reset: concurrent resets consume a verified challenge once and SMTP errors do not report success', async t => {
+  const fixture = passwordResetFixture(t); const email = fixture.account.email;
+  await resetRequest('forgot-password', { email });
+  const payload = { email, otp: fixture.code, password: 'Password123', confirmPassword: 'Password123' };
+  await resetRequest('verify-reset-otp', payload);
+  const responses = await Promise.all([1, 2].map(() => resetRequest('reset-password', payload)));
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 400]); assert.equal(fixture.writes, 1);
+});
+
+test('admin reset: mail failure invalidates the unsent challenge; User endpoints remain compatible and isolated', async t => {
+  const fixture = passwordResetFixture(t, 'admin', true); const email = fixture.account.email;
+  assert.equal((await resetRequest('forgot-password', { email })).status, 500);
+  assert.equal(fixture.records.length, 0); assert.equal(fixture.writes, 0);
+});
+
+test('admin reset: existing User recovery still uses its original OTP purpose and payload', async t => {
+  const fixture = passwordResetFixture(t, 'user'); const email = fixture.account.email;
+  assert.equal((await resetRequest('forgot-password', { email }, false)).status, 200);
+  assert.equal(fixture.records[0].purpose, 'reset-password'); assert.equal(fixture.records[0].otp, fixture.code);
+  assert.equal((await resetRequest('verify-reset-otp', { email, otp: fixture.code }, false)).status, 200);
+  assert.equal((await resetRequest('reset-password', { email, otp: fixture.code, password: 'Password123' }, false)).status, 200);
+  assert.equal(await require('bcryptjs').compare('Password123', fixture.account.password), true);
+});
+
+test('admin reset: User recovery cannot consume Admin challenges and secrets are not logged', async t => {
+  const fixture = passwordResetFixture(t); const email = fixture.account.email;
+  const logs = t.mock.method(console, 'log', () => {});
+  await resetRequest('forgot-password', { email }); const otp = fixture.code;
+  assert.equal((await resetRequest('verify-reset-otp', { email, otp }, false)).status, 400);
+  assert.equal((await resetRequest('reset-password', { email, otp, password: 'Password123' }, false)).status, 400);
+  assert.equal(fixture.records[0].purpose, 'admin-reset-password'); assert.equal(fixture.writes, 0);
+  assert.equal((await resetRequest('verify-reset-otp', { email, otp })).status, 200);
+  assert.ok(!JSON.stringify(logs.mock.calls.map(call => call.arguments)).includes(otp));
+});
+
+test('admin reset: missing SMTP configuration fails closed and does not claim an email was sent', async t => {
+  const fixture = passwordResetFixture(t);
+  delete process.env.EMAIL_USER; delete process.env.EMAIL_APP_PASSWORD;
+  assert.equal((await resetRequest('forgot-password', { email: fixture.account.email })).status, 500);
+  assert.equal(fixture.mails, 0); assert.equal(fixture.records.length, 0);
+});
 
 let server;
 let io;

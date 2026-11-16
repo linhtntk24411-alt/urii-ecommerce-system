@@ -45,7 +45,7 @@
   border-radius: 20px !important;
   font-size: 12px !important;
   font-weight: 600 !important;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: var(--urii-font, 'Nunito Sans', sans-serif);
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;

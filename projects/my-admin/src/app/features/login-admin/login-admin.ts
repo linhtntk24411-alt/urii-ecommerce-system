@@ -3,6 +3,8 @@ import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
+import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 declare const google: any;
 
 interface LoginResponse {
@@ -17,7 +19,7 @@ interface LoginResponse {
 }
 
 @Component({
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   selector: 'app-login-admin',
   standalone: true,
   styleUrl: './login-admin.css',
@@ -36,6 +38,87 @@ export class LoginAdmin implements OnInit, OnDestroy {
   isLoading = false;
   loginError = '';
   showPassword = false;
+  resetOpen = false;
+  resetStep: 'email' | 'otp' | 'password' | 'success' = 'email';
+  resetEmail = '';
+  resetOtp = '';
+  resetPassword = '';
+  resetConfirm = '';
+  resetBusy = false;
+  resetError = '';
+  resetNotice = '';
+  resetCountdown = 0;
+  private resetTimer?: ReturnType<typeof setInterval>;
+  private resetRequest?: Subscription;
+
+  openPasswordReset(email = ''): void {
+    if (this.isLoading || this.resetBusy) return;
+    this.stopResetTimer();
+    this.resetOpen = true; this.resetStep = 'email'; this.resetEmail = email.trim();
+    this.resetOtp = ''; this.resetPassword = ''; this.resetConfirm = ''; this.resetError = ''; this.resetNotice = '';
+  }
+
+  closePasswordReset(): void {
+    if (this.resetBusy) return;
+    this.stopResetTimer(); this.resetOpen = false;
+    this.resetOtp = ''; this.resetPassword = ''; this.resetConfirm = ''; this.resetError = ''; this.resetNotice = '';
+  }
+
+  private stopResetTimer(): void {
+    if (this.resetTimer) clearInterval(this.resetTimer);
+    this.resetTimer = undefined; this.resetCountdown = 0;
+  }
+
+  private startResetTimer(): void {
+    this.stopResetTimer(); this.resetCountdown = 60;
+    this.resetTimer = setInterval(() => {
+      this.resetCountdown--;
+      if (this.resetCountdown <= 0) this.stopResetTimer();
+      this.cdr.markForCheck();
+    }, 1000);
+  }
+
+  sendResetOtp(): void {
+    if (this.resetBusy || (this.resetStep === 'otp' && this.resetCountdown > 0)) return;
+    this.resetError = ''; this.resetNotice = '';
+    const email = this.resetEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.resetError = 'Vui lòng nhập email hợp lệ.'; return; }
+    this.resetEmail = email; this.resetBusy = true;
+    this.resetRequest = this.http.post<{ message: string }>('/api/auth/admin/forgot-password', { email }).subscribe({
+      next: data => { this.resetBusy = false; this.resetStep = 'otp'; this.resetOtp = ''; this.resetNotice = data.message; this.startResetTimer(); this.cdr.markForCheck(); },
+      error: error => this.resetFailed(error)
+    });
+  }
+
+  verifyResetOtp(): void {
+    if (this.resetBusy || this.resetStep !== 'otp') return;
+    this.resetError = ''; this.resetNotice = '';
+    if (!/^\d{6}$/.test(this.resetOtp.trim()) || this.resetCountdown <= 0) { this.resetError = 'Nhập mã OTP 6 chữ số còn hạn hoặc gửi lại mã mới.'; return; }
+    this.resetOtp = this.resetOtp.trim(); this.resetBusy = true;
+    this.resetRequest = this.http.post<{ message: string }>('/api/auth/admin/verify-reset-otp', { email: this.resetEmail, otp: this.resetOtp }).subscribe({
+      next: data => { this.resetBusy = false; this.resetStep = 'password'; this.resetNotice = data.message; this.stopResetTimer(); this.cdr.markForCheck(); },
+      error: error => this.resetFailed(error)
+    });
+  }
+
+  submitResetPassword(): void {
+    if (this.resetBusy || this.resetStep !== 'password') return;
+    this.resetError = ''; this.resetNotice = '';
+    if (this.resetPassword !== this.resetConfirm) { this.resetError = 'Mật khẩu xác nhận không khớp.'; return; }
+    if (this.resetPassword.length < 8 || new TextEncoder().encode(this.resetPassword).length > 72 || !/[A-Z]/.test(this.resetPassword) || !/[a-z]/.test(this.resetPassword) || !/[0-9]/.test(this.resetPassword)) {
+      this.resetError = 'Mật khẩu cần ít nhất 8 ký tự, có chữ hoa, chữ thường, chữ số và không quá 72 byte.'; return;
+    }
+    this.resetBusy = true;
+    this.resetRequest = this.http.post<{ message: string }>('/api/auth/admin/reset-password', { email: this.resetEmail, otp: this.resetOtp, password: this.resetPassword, confirmPassword: this.resetConfirm }).subscribe({
+      next: data => { this.resetBusy = false; this.resetStep = 'success'; this.resetNotice = data.message; this.resetOtp = ''; this.resetPassword = ''; this.resetConfirm = ''; this.cdr.markForCheck(); },
+      error: error => this.resetFailed(error)
+    });
+  }
+
+  private resetFailed(error: any): void {
+    this.resetBusy = false; this.resetError = error.error?.message || 'Không thể xử lý yêu cầu. Vui lòng thử lại.';
+    this.cdr.markForCheck();
+  }
 
   private proxyApiUrl = '/api/auth';
   private directApiUrl = 'http://localhost:3002/api/auth';
@@ -138,6 +221,7 @@ export class LoginAdmin implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopResetTimer(); this.resetRequest?.unsubscribe();
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('message', this.facebookMessageHandler);
     }

@@ -30,17 +30,11 @@ function createTransporter() {
  * @param {string} otp Mã OTP 6 chữ số
  * @param {'register' | 'reset-password'} purpose Mục đích xác thực
  */
-async function sendOtpEmail(toEmail, name, otp, purpose = 'register') {
+async function sendOtpEmail(toEmail, name, otp, purpose = 'register', options = {}) {
   const transporter = createTransporter();
 
-  console.log('\n======================================================');
-  console.log(`[URII OTP EMAIL] Mục đích: ${purpose === 'reset-password' ? 'ĐẶT LẠI MẬT KHẨU' : 'ĐĂNG KÝ TÀI KHOẢN'}`);
-  console.log(`[URII OTP EMAIL] Đang gửi OTP tới: ${toEmail}`);
-  console.log(`[URII OTP EMAIL] Mã OTP xác thực: ${otp} (Thời hạn 60 giây)`);
-  console.log('======================================================\n');
-
   if (!transporter) {
-    console.log('[URII OTP EMAIL] Lưu ý: Chưa cấu hình EMAIL_USER và EMAIL_APP_PASSWORD trong .env nên mã OTP được in ra terminal ở trên để kiểm thử.');
+    if (options.strict) throw new Error('Email delivery is not configured.');
     return { success: true, simulated: true };
   }
 
@@ -99,7 +93,8 @@ async function sendOtpEmail(toEmail, name, otp, purpose = 'register') {
     console.log('[URII OTP EMAIL] Email đã được gửi thành công. MessageId:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[URII OTP EMAIL] Lỗi gửi email qua SMTP:', error);
+    console.error('OTP email delivery failed.');
+    if (options.strict) throw new Error('Email delivery failed.');
     return { success: true, error: error.message };
   }
 }

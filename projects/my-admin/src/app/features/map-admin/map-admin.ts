@@ -40,7 +40,7 @@ export class MapAdmin implements OnInit {
   mapName: string = '';
   mapAuthor: string = '';
   mapImage: string = '';
-  mapDifficulty: string = 'Dá»…';
+  mapDifficulty: string = 'Dễ';
   mapGridSize: string = '';
   mapTotalBeads: number | null = null;
   mapBeadType: string = 'Midi 5mm';
@@ -77,8 +77,8 @@ export class MapAdmin implements OnInit {
             : null;
 
         if (!mapList) {
-          this.mapLoadError = 'MĂ¡y chá»§ tráº£ vá» dá»¯ liá»‡u máº«u khĂ´ng há»£p lá»‡.';
-          console.error('API thÆ° viá»‡n map tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡:', response);
+          this.mapLoadError = 'Máy chủ trả về dữ liệu mẫu không hợp lệ.';
+          console.error('API thư viện map trả về dữ liệu không hợp lệ:', response);
         } else {
           this.maps = mapList;
           this.currentPage = 1;
@@ -86,7 +86,7 @@ export class MapAdmin implements OnInit {
           try {
             localStorage.setItem('library_maps', JSON.stringify(mapList));
           } catch (error) {
-            console.error('KhĂ´ng thá»ƒ lÆ°u cache thÆ° viá»‡n map:', error);
+            console.error('Không thể lưu cache thư viện map:', error);
           }
         }
 
@@ -94,8 +94,8 @@ export class MapAdmin implements OnInit {
         this.changeDetectorRef.markForCheck();
       },
       error: (error) => {
-        console.error('Lá»—i táº£i thÆ° viá»‡n map:', error);
-        this.mapLoadError = 'KhĂ´ng thá»ƒ táº£i danh sĂ¡ch máº«u. Vui lĂ²ng thá»­ láº¡i sau.';
+        console.error('Lỗi tải thư viện map:', error);
+        this.mapLoadError = 'Không thể tải danh sách mẫu. Vui lòng thử lại sau.';
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       }
@@ -109,9 +109,9 @@ export class MapAdmin implements OnInit {
 
       const maps = JSON.parse(cached);
       if (Array.isArray(maps)) return maps;
-      console.error('Cache thÆ° viá»‡n map khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng.');
+      console.error('Cache thư viện map không đúng định dạng.');
     } catch (error) {
-      console.error('KhĂ´ng thá»ƒ Ä‘á»c cache thÆ° viá»‡n map:', error);
+      console.error('Không thể đọc cache thư viện map:', error);
     }
 
     return [];
@@ -187,9 +187,10 @@ export class MapAdmin implements OnInit {
   }
 
   getDifficultyBadgeClass(diff: string): string {
-    if (diff === 'Dá»…') return 'bg-success';
-    if (diff === 'Trung bĂ¬nh') return 'bg-warning text-dark';
-    if (diff === 'KhĂ³') return 'bg-danger';
+    const normalized = String(diff || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('vi-VN');
+    if (normalized === 'dễ') return 'bg-success';
+    if (normalized === 'trung bình') return 'bg-warning text-dark';
+    if (normalized === 'khó') return 'bg-danger';
     return 'bg-secondary';
   }
 
@@ -198,14 +199,14 @@ export class MapAdmin implements OnInit {
     const modalTitleEl = document.getElementById('modalTitle');
 
     if (id) {
-      if (modalTitleEl) modalTitleEl.innerText = "Chá»‰nh sá»­a máº«u";
+      if (modalTitleEl) modalTitleEl.innerText = "Chỉnh sửa mẫu";
       const m = this.maps.find(item => item.map_id === id);
       if (m) {
         this.mapIdInput = m.map_id;
         this.mapName = m.map_name || '';
-        this.mapAuthor = m.author || 'Urii Thiáº¿t káº¿';
+        this.mapAuthor = m.author || 'Urii Thiết kế';
         this.mapImage = m.main_image || '';
-        this.mapDifficulty = m.difficulty || 'Dá»…';
+        this.mapDifficulty = m.difficulty || 'Dễ';
         this.mapGridSize = m.grid_size || '';
         this.mapTotalBeads = m.total_beads || null;
         this.mapBeadType = m.bead_type || 'Midi 5mm';
@@ -213,12 +214,12 @@ export class MapAdmin implements OnInit {
         this.mapDesc = m.description || '';
       }
     } else {
-      if (modalTitleEl) modalTitleEl.innerText = "ThĂªm máº«u má»›i";
+      if (modalTitleEl) modalTitleEl.innerText = "Thêm mẫu mới";
       this.mapIdInput = '';
       this.mapName = '';
       this.mapAuthor = '';
       this.mapImage = '';
-      this.mapDifficulty = 'Dá»…';
+      this.mapDifficulty = 'Dễ';
       this.mapGridSize = '';
       this.mapTotalBeads = null;
       this.mapBeadType = 'Midi 5mm';
@@ -234,13 +235,13 @@ export class MapAdmin implements OnInit {
 
   saveMap() {
     if (!this.mapName.trim()) {
-      alert("Vui lĂ²ng Ä‘iá»n tĂªn máº«u!");
+      alert("Vui lòng điền tên mẫu!");
       return;
     }
 
     let difficultyClass = 'badge-easy';
-    if (this.mapDifficulty === 'Trung bĂ¬nh') difficultyClass = 'badge-medium';
-    else if (this.mapDifficulty === 'KhĂ³') difficultyClass = 'badge-hard';
+    if (this.mapDifficulty === 'Trung bình') difficultyClass = 'badge-medium';
+    else if (this.mapDifficulty === 'Khó') difficultyClass = 'badge-hard';
 
     if (this.editingId) {
       const index = this.maps.findIndex(m => m.map_id === this.editingId);
@@ -248,7 +249,7 @@ export class MapAdmin implements OnInit {
         this.maps[index] = {
           ...this.maps[index],
           map_name: this.mapName.trim(),
-          author: this.mapAuthor.trim() || 'Urii Thiáº¿t káº¿',
+          author: this.mapAuthor.trim() || 'Urii Thiết kế',
           main_image: this.mapImage.trim(),
           difficulty: this.mapDifficulty,
           difficultyClass,
@@ -256,7 +257,7 @@ export class MapAdmin implements OnInit {
           total_beads: Number(this.mapTotalBeads) || 0,
           bead_type: this.mapBeadType.trim(),
           description: this.mapDesc.trim(),
-          time: this.mapTime.trim() || '15-20 phĂºt'
+          time: this.mapTime.trim() || '15-20 phút'
         };
       }
     } else {

@@ -3,6 +3,26 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, firstValueFrom, from, map, mergeMap, switchMap, tap, timeout, toArray } from 'rxjs';
 
+// Display-only normalization; never writes order amounts back to the API.
+export function getAdminOrderAmount(order: any): number {
+  for (const value of [order?.totalAmount, order?.total, order?.pricing?.finalTotal]) {
+    if (value === null || value === undefined || value === '') continue;
+    if (typeof value === 'number') { if (Number.isFinite(value)) return value; else continue; }
+    let text = String(value).replace(/[^0-9.,+-]/g, '');
+    if (!text || !/[0-9]/.test(text)) continue;
+    if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(text)) text = text.replace(/\./g, '').replace(',', '.');
+    else if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(text)) text = text.replace(/,/g, '');
+    else if (/^[+-]?\d+,\d+$/.test(text)) text = text.replace(',', '.');
+    const amount = Number(text);
+    if (Number.isFinite(amount)) return amount;
+  }
+  return 0;
+}
+
+export function formatAdminOrderTotal(order: any): string {
+  return `${getAdminOrderAmount(order).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}đ`;
+}
+
 export interface AdminUser {
   _id: string;
   name: string;
@@ -339,7 +359,7 @@ const FALLBACK_ORDERS: AdminOrder[] = [
     date: '20/05/2024',
     status: 'Chá» xĂ¡c nháº­n',
     statusType: 'pending',
-    total: '15.000Ä‘',
+    total: '15.000đ',
     items: [
       {
         productId: '1075483767',
@@ -358,7 +378,7 @@ const FALLBACK_ORDERS: AdminOrder[] = [
     date: '25/05/2024',
     status: 'Chá» xĂ¡c nháº­n',
     statusType: 'pending',
-    total: '58.000Ä‘',
+    total: '58.000đ',
     items: [
       {
         productId: '1075486180',
@@ -377,7 +397,7 @@ const FALLBACK_ORDERS: AdminOrder[] = [
     date: '01/06/2024',
     status: 'Chá» láº¥y hĂ ng',
     statusType: 'processing',
-    total: '68.000Ä‘',
+    total: '68.000đ',
     items: [
       {
         productId: '1075486180',
@@ -396,7 +416,7 @@ const FALLBACK_ORDERS: AdminOrder[] = [
     date: '03/07/2024',
     status: 'ÄĂ£ giao',
     statusType: 'completed',
-    total: '61.200Ä‘',
+    total: '61.200đ',
     items: [
       {
         productId: '1075486180',
@@ -415,7 +435,7 @@ const FALLBACK_ORDERS: AdminOrder[] = [
     date: '11/07/2024',
     status: 'ÄĂ£ giao',
     statusType: 'completed',
-    total: '68.000Ä‘',
+    total: '68.000đ',
     items: [
       {
         productId: '1075486180',
@@ -1024,11 +1044,8 @@ export class AdminApiService {
 
       if (list.length > 0) {
         const normalizedList = list.map((item: any) => {
-          const amt = Number(item.totalAmount ?? item.total ?? item.pricing?.finalTotal ?? 0);
-          const totalStr = typeof item.total === 'string' && item.total.includes('Ä‘')
-            ? item.total
-            : (amt > 0 ? `${amt.toLocaleString('vi-VN')}Ä‘` : '0Ä‘');
-          return { ...item, total: totalStr, totalAmount: amt };
+          const amt = getAdminOrderAmount(item);
+          return { ...item, total: formatAdminOrderTotal(item), totalAmount: amt };
         });
         this.setCached('urii_admin_orders', normalizedList);
         return normalizedList;

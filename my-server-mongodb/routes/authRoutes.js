@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+const adminPasswordReset = (req, res, next) => { req.passwordResetRole = 'admin'; next(); };
+
+router.post('/admin/forgot-password', adminPasswordReset, authController.forgotPassword);
+router.post('/admin/verify-reset-otp', adminPasswordReset, authController.verifyResetOtp);
+router.post('/admin/reset-password', adminPasswordReset, authController.resetPassword);
 
 router.post('/register', authController.register);
 router.post('/verify-otp', authController.verifyOtp);

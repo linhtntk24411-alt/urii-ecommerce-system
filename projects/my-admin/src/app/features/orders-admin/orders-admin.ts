@@ -22,7 +22,7 @@ export class OrdersAdmin implements OnInit {
     private changeDetectorRef: ChangeDetectorRef,
     private route: ActivatedRoute
   ) {}
-  // --- THĂM ÄOáº N NĂ€Y Äá»‚ FIX Lá»–I DROPDOWN ---
+  // --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI DROPDOWN ---
   activeDropdownId: string | null = null;
 
   toggleDropdown(id: string, event: Event) {
@@ -32,11 +32,11 @@ export class OrdersAdmin implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event) {
-    this.activeDropdownId = null; // Click ra ngoĂ i tá»± Ä‘Ă³ng menu
+    this.activeDropdownId = null; // Click ra ngoài tự đóng menu
   }
   // ------------------------------------------
   Math = Math;
-  // ThĂªm láº¡i hĂ m MathMin cho file HTML sá»­ dá»¥ng
+  // Thêm lại hàm MathMin cho file HTML sử dụng
   MathMin(a: number, b: number) { return Math.min(a, b); }
 
   // --- Data ---
@@ -73,15 +73,22 @@ export class OrdersAdmin implements OnInit {
 
   // --- Status Map ---
   statusMap: { [key: string]: any } = {
-    "pending": { text: "Chá» xĂ¡c nháº­n", class: "badge-status-pending" },
-    "approved": { text: "ÄĂ£ xĂ¡c nháº­n", class: "badge-status-approved" },
-    "quoted": { text: "ÄĂ£ bĂ¡o giĂ¡", class: "badge-status-approved" },
-    "completed": { text: "HoĂ n thĂ nh", class: "badge-status-completed" },
-    "cancelled": { text: "ÄĂ£ há»§y", class: "badge-status-cancelled" },
-    "pending_approval": { text: "Chá» duyá»‡t", class: "badge-status-pending_approval" },
-    "waiting_quote": { text: "Chá» bĂ¡o giĂ¡", class: "badge-status-waiting_quote" },
-    "processing": { text: "Äang gia cĂ´ng", class: "badge-status-processing" }
+    "pending": { text: "Chờ xác nhận", class: "badge-status-pending" },
+    "approved": { text: "Đã xác nhận", class: "badge-status-approved" },
+    "quoted": { text: "Đã báo giá", class: "badge-status-approved" },
+    "completed": { text: "Hoàn thành", class: "badge-status-completed" },
+    "cancelled": { text: "Đã hủy", class: "badge-status-cancelled" },
+    "pending_approval": { text: "Chờ duyệt", class: "badge-status-pending_approval" },
+    "waiting_quote": { text: "Chờ báo giá", class: "badge-status-waiting_quote" },
+    "processing": { text: "Đang gia công", class: "badge-status-processing" },
+    "shipping": { text: "Đang giao", class: "badge-status-approved" },
+    "returned": { text: "Trả hàng", class: "badge-status-cancelled" }
   };
+
+  getStatusLabel(order: any): string {
+    if (order?.status === 'processing' && !order.isCustomOrder) return 'Chờ lấy hàng';
+    return this.statusMap[order?.status]?.text || order?.status || '';
+  }
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe(params => {
@@ -198,7 +205,7 @@ export class OrdersAdmin implements OnInit {
             ? response.orders
             : null;
         if (!orderList) {
-          console.error('API Ä‘Æ¡n hĂ ng tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡:', response);
+          console.error('API đơn hàng trả về dữ liệu không hợp lệ:', response);
           return;
         }
 
@@ -208,8 +215,8 @@ export class OrdersAdmin implements OnInit {
             ? customResponse.customOrders
             : null;
         if (!customOrderList) {
-          this.orderLoadError = 'MĂ¡y chá»§ tráº£ vá» danh sĂ¡ch Ä‘Æ¡n hĂ ng custom khĂ´ng há»£p lá»‡.';
-          console.error('API Ä‘Æ¡n hĂ ng custom tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡:', customResponse);
+          this.orderLoadError = 'Máy chủ trả về danh sách đơn hàng custom không hợp lệ.';
+          console.error('API đơn hàng custom trả về dữ liệu không hợp lệ:', customResponse);
           return;
         }
 
@@ -217,7 +224,7 @@ export class OrdersAdmin implements OnInit {
           const orderItems = Array.isArray(item.items)
             ? item.items.map((orderItem: any) => this.normalizeOrderItem(orderItem, products))
             : [];
-          const name = item.userName || item.address?.name || 'KhĂ¡ch hĂ ng';
+          const name = item.userName || item.address?.name || 'Khách hàng';
           const customerImage = item.customerImage
             || item.userAvatar
             || this.customerAvatars.get(this.normalizeCustomerName(name))
@@ -232,27 +239,34 @@ export class OrdersAdmin implements OnInit {
 
           const statusAliases: { [key: string]: string } = {
             'pending': 'pending',
-            'chá» xĂ¡c nháº­n': 'pending',
+            'chờ xác nhận': 'pending',
             'approved': 'approved',
-            'Ä‘Ă£ xĂ¡c nháº­n': 'approved',
+            'đã xác nhận': 'approved',
             'completed': 'completed',
-            'hoĂ n thĂ nh': 'completed',
+            'hoàn thành': 'completed',
             'cancelled': 'cancelled',
             'canceled': 'cancelled',
-            'Ä‘Ă£ há»§y': 'cancelled',
+            'đã hủy': 'cancelled',
             'quoted': 'approved',
-            'Ä‘Ă£ bĂ¡o giĂ¡': 'approved',
+            'đã báo giá': 'approved',
             'pending_approval': 'pending_approval',
-            'chá» duyá»‡t': 'pending_approval',
+            'chờ duyệt': 'pending_approval',
             'waiting_quote': 'waiting_quote',
-            'chá» bĂ¡o giĂ¡': 'waiting_quote',
+            'chờ báo giá': 'waiting_quote',
             'processing': 'processing',
-            'Ä‘ang gia cĂ´ng': 'processing'
+            'đang gia công': 'processing',
+            'chờ lấy hàng': 'processing',
+            'shipping': 'shipping',
+            'đang giao': 'shipping',
+            'chờ giao hàng': 'shipping',
+            'đã giao': 'completed',
+            'returned': 'returned',
+            'trả hàng': 'returned'
           };
           const cancellationStatusAliases: { [key: string]: string } = {
             pending_approval: 'pending_approval',
-            'chá» duyá»‡t': 'pending_approval',
-            'chá» shop xĂ¡c nháº­n': 'pending_approval',
+            'chờ duyệt': 'pending_approval',
+            'chờ shop xác nhận': 'pending_approval',
             approved: 'approved',
             rejected: 'rejected'
           };
@@ -298,10 +312,10 @@ export class OrdersAdmin implements OnInit {
         this.changeDetectorRef.markForCheck();
       },
       error: (err: any) => {
-        console.error('Lá»—i táº£i Ä‘Æ¡n hĂ ng:', err);
+        console.error('Lỗi tải đơn hàng:', err);
         this.orderLoadError = err.status === 401 || err.status === 403
-          ? 'PhiĂªn Ä‘Äƒng nháº­p khĂ´ng há»£p lá»‡ hoáº·c Ä‘Ă£ háº¿t háº¡n. Vui lĂ²ng Ä‘Äƒng nháº­p láº¡i Ä‘á»ƒ xem Ä‘Æ¡n hĂ ng.'
-          : 'KhĂ´ng thá»ƒ táº£i Ä‘Æ¡n hĂ ng. Vui lĂ²ng thá»­ láº¡i sau.';
+          ? 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại để xem đơn hàng.'
+          : 'Không thể tải đơn hàng. Vui lòng thử lại sau.';
         this.originalOrders = [];
         this.orders = [];
         this.changeDetectorRef.markForCheck();
@@ -319,7 +333,7 @@ export class OrdersAdmin implements OnInit {
 
     return {
       ...orderItem,
-      name: orderItem.name || orderItem.productName || product?.name || `Sáº£n pháº©m #${orderItem.productId || ''}`,
+      name: orderItem.name || orderItem.productName || product?.name || `Sản phẩm #${orderItem.productId || ''}`,
       price: orderItem.price ?? orderItem.unitPrice ?? variant?.price ?? 0,
       image: orderItem.image || variant?.image || product?.image || '',
       variantName: orderItem.variantName || variant?.name || ''
@@ -366,19 +380,19 @@ export class OrdersAdmin implements OnInit {
       ...item,
       id: String(item.id || item._id || ''),
       isCustomOrder: true,
-      customerName: item.fullName || 'KhĂ¡ch hĂ ng',
+      customerName: item.fullName || 'Khách hàng',
       customerImage: this.customerAvatars.get(
         this.normalizeCustomerName(item.fullName || '')
       ) || 'images/avatar-non.jpg',
       phone: item.phone || '',
       email: item.email || '',
       date,
-      product: item.requestName || 'YĂªu cáº§u thiáº¿t káº¿ custom',
+      product: item.requestName || 'Yêu cầu thiết kế custom',
       customDetails: Object.fromEntries(Object.entries({
-        'TĂªn máº«u yĂªu cáº§u': item.requestName || '',
-        'KĂ­ch thÆ°á»›c': item.size || '',
-        'Loáº¡i háº¡t': item.beadType || '',
-        'MĂ£ máº«u tham kháº£o': item.mapId || ''
+        'Tên mẫu yêu cầu': item.requestName || '',
+        'Kích thước': item.size || '',
+        'Loại hạt': item.beadType || '',
+        'Mã mẫu tham khảo': item.mapId || ''
       }).filter(([, value]) => Boolean(value))),
       customerNote: item.description || '',
       status: statusAliases[rawStatus] || 'waiting_quote'
@@ -391,7 +405,7 @@ export class OrdersAdmin implements OnInit {
     this.setCustomerAvatars(this.adminApi.getInitialUsers());
     this.adminApi.getUsers()
       .then(users => this.setCustomerAvatars(users))
-      .catch(error => console.error('Lá»—i táº£i áº£nh Ä‘áº¡i diá»‡n khĂ¡ch hĂ ng:', error));
+      .catch(error => console.error('Lỗi tải ảnh đại diện khách hàng:', error));
   }
 
   private setCustomerAvatars(users: AdminUser[]): void {
@@ -492,10 +506,10 @@ export class OrdersAdmin implements OnInit {
       return;
     }
     const statusPayloadMap: Record<string, { statusId: string; status: string; statusType: string }> = {
-    pending: { statusId: 'pending', status: 'Chá» xĂ¡c nháº­n', statusType: 'pending' },
-    approved: { statusId: 'processing', status: 'ÄĂ£ xĂ¡c nháº­n', statusType: 'approved' },
-    completed: { statusId: 'completed', status: 'ÄĂ£ giao', statusType: 'completed' },
-    cancelled: { statusId: 'cancelled', status: 'ÄĂ£ há»§y', statusType: 'cancelled' }
+    pending: { statusId: 'pending', status: 'Chờ xác nhận', statusType: 'pending' },
+    approved: { statusId: 'processing', status: 'Đã xác nhận', statusType: 'approved' },
+    completed: { statusId: 'completed', status: 'Đã giao', statusType: 'completed' },
+    cancelled: { statusId: 'cancelled', status: 'Đã hủy', statusType: 'cancelled' }
   };
   const payload = statusPayloadMap[newStatus] || { statusType: newStatus };
   this.adminApi.updateOrder(id, payload).subscribe({
@@ -508,8 +522,8 @@ export class OrdersAdmin implements OnInit {
       this.activeDropdownId = null;
     },
     error: (err) => {
-      console.error('Lá»—i cáº­p nháº­t tráº¡ng thĂ¡i:', err);
-      alert('KhĂ´ng thá»ƒ cáº­p nháº­t tráº¡ng thĂ¡i Ä‘Æ¡n hĂ ng!');
+      console.error('Lỗi cập nhật trạng thái:', err);
+      alert('Không thể cập nhật trạng thái đơn hàng!');
     }
   });
  }
@@ -537,12 +551,12 @@ export class OrdersAdmin implements OnInit {
         this.showDeleteConfirm = false;
         this.deletingOrderId = null;
         this.isDeletingOrder = false;
-        alert('ÄĂ£ xĂ³a Ä‘Æ¡n hĂ ng!');
+        alert('Đã xóa đơn hàng!');
       },
       error: (err) => {
-        console.error('Lá»—i xĂ³a Ä‘Æ¡n hĂ ng:', err);
+        console.error('Lỗi xóa đơn hàng:', err);
         this.isDeletingOrder = false;
-        alert('KhĂ´ng thá»ƒ xĂ³a Ä‘Æ¡n hĂ ng!');
+        alert('Không thể xóa đơn hàng!');
       }
     });
   }
@@ -551,15 +565,15 @@ export class OrdersAdmin implements OnInit {
     const order = this.originalOrders.find(o => o.id === id);
 
     if (!order) {
-      alert('KhĂ´ng tĂ¬m tháº¥y Ä‘Æ¡n hĂ ng!');
+      alert('Không tìm thấy đơn hàng!');
       return;
     }
 
     const newStatus = isApproved ? 'cancelled' : 'pending';
 
     const confirmMessage = isApproved
-      ? `Báº¡n cĂ³ cháº¯c cháº¯n muá»‘n duyá»‡t há»§y Ä‘Æ¡n hĂ ng #${id}?`
-      : `Báº¡n cĂ³ cháº¯c cháº¯n muá»‘n tá»« chá»‘i yĂªu cáº§u há»§y Ä‘Æ¡n #${id}?`;
+      ? `Bạn có chắc chắn muốn duyệt hủy đơn hàng #${id}?`
+      : `Bạn có chắc chắn muốn từ chối yêu cầu hủy đơn #${id}?`;
 
     if (!confirm(confirmMessage)) return;
 
@@ -574,13 +588,13 @@ export class OrdersAdmin implements OnInit {
 
         alert(
           isApproved
-            ? 'ÄĂ£ duyá»‡t yĂªu cáº§u há»§y Ä‘Æ¡n hĂ ng!'
-            : 'ÄĂ£ tá»« chá»‘i yĂªu cáº§u há»§y Ä‘Æ¡n hĂ ng!'
+            ? 'Đã duyệt yêu cầu hủy đơn hàng!'
+            : 'Đã từ chối yêu cầu hủy đơn hàng!'
         );
       },
       error: (err) => {
-        console.error('Lá»—i xá»­ lĂ½ yĂªu cáº§u há»§y Ä‘Æ¡n:', err);
-        alert('KhĂ´ng thá»ƒ cáº­p nháº­t yĂªu cáº§u há»§y Ä‘Æ¡n. Vui lĂ²ng thá»­ láº¡i!');
+        console.error('Lỗi xử lý yêu cầu hủy đơn:', err);
+        alert('Không thể cập nhật yêu cầu hủy đơn. Vui lòng thử lại!');
       }
     });
   }
@@ -613,7 +627,7 @@ export class OrdersAdmin implements OnInit {
 
   submitQuote() {
     if (!this.quotePrice || this.quotePrice <= 0) {
-      alert('Vui lĂ²ng nháº­p giĂ¡ bĂ¡o há»£p lá»‡!'); return;
+      alert('Vui lòng nhập giá báo hợp lệ!'); return;
     }
     const order = this.originalOrders.find(o => o.id === this.selectedOrder.id);
     if (order) {
@@ -633,13 +647,13 @@ export class OrdersAdmin implements OnInit {
       });
       this.saveOrders();
       bootstrap.Modal.getInstance(document.getElementById('quoteModal')).hide();
-      alert(`ÄĂ£ gá»­i bĂ¡o giĂ¡ thĂ nh cĂ´ng!`);
+      alert(`Đã gửi báo giá thành công!`);
     }
   }
 
   editQuote(order: any) {
     if (!order.quotedPrice || order.quotedPrice <= 0) {
-      alert('ÄÆ¡n hĂ ng nĂ y chÆ°a cĂ³ bĂ¡o giĂ¡. Vui lĂ²ng bĂ¡o giĂ¡ trÆ°á»›c!'); return;
+      alert('Đơn hàng này chưa có báo giá. Vui lòng báo giá trước!'); return;
     }
     this.selectedOrder = order;
     this.editQuotePrice = order.quotedPrice;
@@ -650,7 +664,7 @@ export class OrdersAdmin implements OnInit {
 
   updateQuote() {
     if (!this.editQuotePrice || this.editQuotePrice <= 0) {
-      alert('Vui lĂ²ng nháº­p giĂ¡ má»›i há»£p lá»‡!'); return;
+      alert('Vui lòng nhập giá mới hợp lệ!'); return;
     }
     const order = this.originalOrders.find(o => o.id === this.selectedOrder.id);
     if (order) {
@@ -668,7 +682,7 @@ export class OrdersAdmin implements OnInit {
       });
       this.saveOrders();
       bootstrap.Modal.getInstance(document.getElementById('editQuoteModal')).hide();
-      alert(`ÄĂ£ cáº­p nháº­t bĂ¡o giĂ¡ thĂ nh cĂ´ng!`);
+      alert(`Đã cập nhật báo giá thành công!`);
     }
   }
 }

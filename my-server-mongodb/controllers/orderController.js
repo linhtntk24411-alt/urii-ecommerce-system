@@ -26,6 +26,7 @@ const mongoose = require('mongoose');
 const { randomInt } = require('node:crypto');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const { createAdminNotification } = require('./notificationController');
 const { createUserNotification } = require('../utils/userNotificationHelper');
 const paymentLifecycleService = require('../services/paymentLifecycleService');
 
@@ -485,6 +486,10 @@ exports.createOrder = async (req, res) => {
       }
     }
     emitCrudChange('orders', 'created', order._id, { userId: order.userId, status: order.status });
+    await createAdminNotification({ typeId: 'ADMIN_ORDER_NEW', eventId: String(order._id),
+      reference: { orderId: String(order.id || order._id) },
+      title: 'Đơn hàng mới #' + (order.id || order._id),
+      message: 'Có đơn hàng mới cần xử lý.' });
     const [enriched] = await enrichOrders([order.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {
@@ -648,6 +653,7 @@ exports.requestCancelOrder = async (req, res) => {
     const slaHours = reason.slaHours || orderReasons.waitingPolicies?.awaiting_cancel_approval?.slaHours || 24;
     const deadlineIso = addHoursIso(nowIso, slaHours);
 
+    const cancellationEvent = `${order._id}:${order.timeline?.length || 0}`;
     order.statusId = 'cancel_requested';
     order.cancellationReasonId = reason.id;
     order.cancellationNote = typeof note === 'string' ? note.trim() : '';
@@ -669,6 +675,12 @@ exports.requestCancelOrder = async (req, res) => {
 
     await order.save();
     emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
+    if (req.auth?.role !== 'admin') {
+      await createAdminNotification({ typeId: 'ADMIN_ORDER_CANCEL_REQUEST', eventId: cancellationEvent,
+        reference: { orderId: String(order.id || order._id) },
+        title: 'Yêu cầu hủy đơn #' + (order.id || order._id),
+        message: 'Khách hàng yêu cầu hủy đơn, cần Admin xem xét.' });
+    }
     const [enriched] = await enrichOrders([order.toObject()]);
     res.json(enriched);
   } catch (error) {

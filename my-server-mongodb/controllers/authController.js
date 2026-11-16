@@ -7,6 +7,7 @@ const Otp = require('../models/Otp');
 const { sendOtpEmail } = require('../services/emailService');
 const oauthProviders = require('../services/oauthProviders');
 const { emitCrudChange } = require('../realtime');
+const { createAdminNotification } = require('./notificationController');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
@@ -159,6 +160,9 @@ exports.verifyOtp = async (req, res) => {
       joinDate: new Date().toLocaleDateString('vi-VN')
     });
 
+    await createAdminNotification({ typeId: 'ADMIN_USER_NEW_REGISTERED', eventId: String(user._id),
+      actorUserId: user._id, reference: { actorUserId: String(user._id) },
+      title: 'Thành viên mới', message: 'Có thành viên mới vừa đăng ký tài khoản.' });
     await Otp.deleteMany({ email: normalizedEmail });
 
     return res.status(201).json({
@@ -956,6 +960,9 @@ exports.googleLogin = async (req, res) => {
         authProviders: ['google'],
         oauthAccounts: [{ provider: 'google', providerUserId: googleId }]
       });
+      await createAdminNotification({ typeId: 'ADMIN_USER_NEW_REGISTERED', eventId: String(user._id),
+        actorUserId: user._id, reference: { actorUserId: String(user._id) },
+        title: 'Thành viên mới', message: 'Có thành viên mới vừa đăng ký tài khoản.' });
     } else {
       // 5. Nếu tài khoản đã tồn tại, kiểm tra và liên kết Google ID
       const linkedOtherUser = await User.findOne({

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
+const { createAdminNotification } = require('./notificationController');
 const { formatRelativeTime } = require('../utils/time');
 
 function isRecord(value) {
@@ -148,6 +149,11 @@ exports.createComment = async (req, res) => {
     });
     await syncBlogCommentsCount(blogId);
     emitCrudChange('comments', 'created', comment._id);
+    if (req.auth?.role !== 'admin') {
+      await createAdminNotification({ typeId: 'ADMIN_COMMENT_NEW', eventId: String(comment._id || comment.id),
+        reference: { commentId: String(comment.id), blogId: Number(blogId) },
+        title: 'Bình luận Blog mới', message: 'Khách hàng vừa gửi bình luận trong bài Blog.' });
+    }
     const [enriched] = await enrichComments([comment.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {

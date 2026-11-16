@@ -10,6 +10,31 @@ const { emitCrudChange } = require('../realtime');
 
 const fallbackReadMap = new Map();
 
+// Admin events use the same private collection as the Topbar. Notification
+// failures must never turn an already committed business operation into a retry.
+exports.createAdminNotification = async ({ typeId, eventId, reference = {}, title, message, actorUserId }) => {
+  try {
+    if (!mongoose.connection.db || !typeId || !eventId) return false;
+    const id = `admin:${typeId}:${eventId}`;
+    const now = new Date();
+    const result = await mongoose.connection.db.collection('admin_notifications').updateOne(
+      { _id: id },
+      { $setOnInsert: { id, audience: 'admin', typeId, reference, title, message,
+        ...(actorUserId ? { actorUserId: String(actorUserId) } : {}),
+        isRead: false, createdAt: now, updatedAt: now } },
+      { upsert: true }
+    );
+    if (result.upsertedCount === 1 || result.upsertedId) {
+      emitCrudChange('notifications', 'created', id);
+      return true;
+    }
+  } catch (error) {
+    // Concurrent upserts of the same deterministic _id are the same event.
+    if (error?.code !== 11000) console.warn('Không thể lưu thông báo Admin.');
+  }
+  return false;
+};
+
 const categoriesById = new Map(
   (notificationTypesData.notificationCategories || []).map((c) => [c.id, c])
 );
@@ -271,6 +296,24 @@ exports.getAdminNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const id = req.params.id;
+    const adminIdFilters = [{ id }, { _id: id },
+      ...(mongoose.isValidObjectId(id) ? [{ _id: new mongoose.Types.ObjectId(id) }] : [])];
+    if (mongoose.connection.db) {
+      const adminNotifications = mongoose.connection.db.collection('admin_notifications');
+      const adminFilter = { audience: 'admin', $or: adminIdFilters };
+      if (req.auth?.role === 'admin') {
+        const adminNotif = await adminNotifications.findOneAndUpdate(adminFilter,
+          { $set: { isRead: true }, $min: { readAt: new Date() } },
+          { returnDocument: 'after', includeResultMetadata: false });
+        if (adminNotif) {
+          emitCrudChange('notifications', 'updated', adminNotif.id || adminNotif._id);
+          const [enriched] = await enrichNotifications([adminNotif]);
+          return res.json(enriched);
+        }
+      } else if (await adminNotifications.findOne(adminFilter, { projection: { _id: 1 } })) {
+        return res.status(403).json({ message: 'Bạn không có quyền cập nhật thông báo này.' });
+      }
+    }
     const filter = mongoose.isValidObjectId(id)
       ? { _id: id }
       : { id };

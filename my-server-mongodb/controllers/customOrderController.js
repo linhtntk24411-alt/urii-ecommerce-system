@@ -7,6 +7,7 @@ const { getPagination } = require('../utils/pagination');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const { isDataImageUrl, saveDataUrlImage } = require('../utils/imageUpload');
 const { emitCrudChange } = require('../realtime');
+const { createAdminNotification } = require('./notificationController');
 const { createUserNotification } = require('../utils/userNotificationHelper');
 
 const CUSTOM_ORDER_STATUSES = ['pending', 'quoted', 'processing', 'completed', 'cancelled'];
@@ -214,6 +215,9 @@ exports.createCustomOrder = async (req, res) => {
     }
 
     const customOrder = await CustomOrder.create(payload);
+    await createAdminNotification({ typeId: 'ADMIN_CUSTOM_ORDER_NEW', eventId: String(customOrder._id || customOrder.id),
+      reference: { customOrderId: String(customOrder.id) },
+      title: 'Yêu cầu Custom mới', message: 'Có yêu cầu thiết kế Custom mới từ khách hàng.' });
     emitCrudChange('customOrders', 'created', customOrder.id, { userId: customOrder.userId, status: customOrder.status });
     const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
     res.status(201).json(enriched);

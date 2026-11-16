@@ -8,6 +8,7 @@ const { isValidImageUrl } = require('../utils/imageUrl');
 const { getPagination } = require('../utils/pagination');
 const { syncProductRating } = require('../utils/commerceFixtures');
 const { emitCrudChange } = require('../realtime');
+const { createAdminNotification } = require('./notificationController');
 
 function buildProductLookupFilter(value) {
   const normalized = String(value || '').trim();
@@ -298,6 +299,9 @@ exports.createReview = async (req, res) => {
       replies: []
     });
 
+    await createAdminNotification({ typeId: 'ADMIN_REVIEW_NEW', eventId: String(review._id || review.id),
+      reference: { reviewId: String(review.id), productId: String(resolvedProductId) },
+      title: 'Đánh giá sản phẩm mới', message: 'Khách hàng vừa gửi đánh giá sản phẩm.' });
     const ratingStats = await syncProductRating(resolvedProductId, {
       ReviewModel: Review,
       ProductModel: Product

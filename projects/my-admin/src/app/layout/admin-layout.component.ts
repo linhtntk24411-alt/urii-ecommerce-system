@@ -182,17 +182,20 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   notificationLoadError = '';
   isLoadingNotifications = false;
   private isMarkingNotificationsRead = false;
+  private notificationRequestVersion = 0;
+  private readonly pendingNotificationReads = new Set<string>();
 
   loadNotifications(silent = false): void {
+    if (this.isMarkingNotificationsRead || this.pendingNotificationReads.size) return;
+    const version = ++this.notificationRequestVersion;
     if (!silent) {
       this.notificationLoadError = '';
       this.isLoadingNotifications = true;
     }
     this.adminApi.getAdminNotifications().subscribe({
       next: (response: any) => {
-        if (!silent) {
-          this.isLoadingNotifications = false;
-        }
+        if (version !== this.notificationRequestVersion) return;
+        this.isLoadingNotifications = false;
         const notificationList = Array.isArray(response)
           ? response
           : Array.isArray(response?.notifications)
@@ -223,8 +226,9 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
           : this.notifications.filter(notification => !notification.isRead).length;
       },
       error: (error) => {
+        if (version !== this.notificationRequestVersion) return;
+        this.isLoadingNotifications = false;
         if (!silent) {
-          this.isLoadingNotifications = false;
           console.error('Lỗi tải thông báo quản trị:', error);
           this.notificationLoadError = 'Không thể tải thông báo. Vui lòng thử lại sau.';
           this.notifications = [];
@@ -286,9 +290,11 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     }
 
     if (typeId === 'ADMIN_REVIEW_NEW' || typeId === 'ADMIN_COMMENT_NEW' || ref.commentId) {
+      const targetId = typeId === 'ADMIN_REVIEW_NEW' && ref.reviewId
+        ? `review:${ref.reviewId}` : ref.commentId;
       return {
         route: '/comments',
-        queryParams: ref.commentId ? { searchType: 'comment', searchId: String(ref.commentId) } : undefined
+        queryParams: targetId ? { searchType: 'comment', searchId: String(targetId) } : undefined
       };
     }
 
@@ -364,17 +370,31 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     }
 
     // Đánh dấu đã đọc nếu chưa đọc
-    if (!notif.isRead) {
-      notif.isRead = true;
-      if (this.unreadCount > 0) {
-        this.unreadCount--;
-      }
-      const notifId = notif.id || notif._id;
-      if (notifId) {
-        this.adminApi.markNotificationAsRead(String(notifId)).subscribe({
-          error: (err) => console.error('Lỗi khi đánh dấu thông báo đã đọc:', err)
-        });
-      }
+    const notifId = String(notif.id || notif._id || '');
+    if (!notif.isRead && notifId && !this.isMarkingNotificationsRead && !this.pendingNotificationReads.has(notifId)) {
+      this.pendingNotificationReads.add(notifId);
+      ++this.notificationRequestVersion;
+      this.isLoadingNotifications = false;
+      this.adminApi.markNotificationAsRead(notifId).subscribe({
+        next: () => {
+          this.pendingNotificationReads.delete(notifId);
+          ++this.notificationRequestVersion;
+          const current = this.notifications.find(item => String(item.id || item._id) === notifId);
+          if (current && !current.isRead) {
+            current.isRead = true;
+            this.unreadCount = Math.max(0, this.unreadCount - 1);
+          }
+          notif.isRead = true;
+          this.notificationLoadError = '';
+          this.loadNotifications(true);
+        },
+        error: () => {
+          this.pendingNotificationReads.delete(notifId);
+          ++this.notificationRequestVersion;
+          this.notificationLoadError = 'Không thể đánh dấu thông báo đã đọc. Vui lòng thử lại.';
+          this.loadNotifications(true);
+        }
+      });
     }
 
     // Đóng dropdown thông báo
@@ -388,20 +408,27 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   }
 
   clearAllNotifications(): void {
-    if (this.isMarkingNotificationsRead || this.unreadCount === 0) return;
+    if (this.isMarkingNotificationsRead || this.pendingNotificationReads.size || this.unreadCount === 0) return;
 
     this.isMarkingNotificationsRead = true;
+    ++this.notificationRequestVersion;
+    this.isLoadingNotifications = false;
     this.adminApi.markAllNotificationsAsRead().subscribe({
       next: () => {
         this.unreadCount = 0;
         this.notifications.forEach(notification => notification.isRead = true);
         this.isNotificationOpen = false;
         this.isMarkingNotificationsRead = false;
+        ++this.notificationRequestVersion;
+        this.notificationLoadError = '';
+        this.loadNotifications(true);
       },
       error: (error) => {
         console.error('Lỗi đánh dấu đã đọc tất cả thông báo:', error);
         this.notificationLoadError = 'Không thể đánh dấu đã đọc thông báo. Vui lòng thử lại.';
         this.isMarkingNotificationsRead = false;
+        ++this.notificationRequestVersion;
+        this.loadNotifications(true);
       }
     });
   }

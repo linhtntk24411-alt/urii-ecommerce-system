@@ -8,6 +8,7 @@ const { sendOtpEmail } = require('../services/emailService');
 const oauthProviders = require('../services/oauthProviders');
 const { emitCrudChange } = require('../realtime');
 const { createAdminNotification } = require('./notificationController');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN_LENGTH = 8;
@@ -386,6 +387,17 @@ exports.resetPassword = async (req, res) => {
 
     if (!adminOnly) await Otp.deleteMany({ email: normalizedEmail, purpose: resetPurpose(req) });
 
+    if (user._id) {
+      await createUserNotification({
+        userId: user._id,
+        userEmail: user.email,
+        typeId: 'USER_PASSWORD_CHANGED',
+        title: 'Đổi mật khẩu thành công',
+        message: 'Mật khẩu tài khoản Urii của bạn vừa được cập nhật qua xác thực OTP Gmail.',
+        actionUrl: '/profile'
+      });
+    }
+
     return res.status(200).json({
       message: 'Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập với mật khẩu mới.'
     });
@@ -521,6 +533,22 @@ exports.updateMe = async (req, res) => {
       res.status(400).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự và không vượt quá 72 byte.' });
       return;
     }
+    if (req.body.currentPassword !== undefined) {
+      if (typeof req.body.currentPassword !== 'string' || !req.body.currentPassword.length) {
+        res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại.' });
+        return;
+      }
+      const existingUser = await User.findById(userId).select('+password');
+      if (!existingUser) {
+        res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+        return;
+      }
+      const isCurrentMatch = existingUser.password && await bcrypt.compare(req.body.currentPassword, existingUser.password);
+      if (!isCurrentMatch) {
+        res.status(400).json({ message: 'Mật khẩu hiện tại không chính xác. Nếu quên mật khẩu cũ, hãy chọn xác thực bằng mã OTP qua Gmail.' });
+        return;
+      }
+    }
     updates.password = await bcrypt.hash(updates.password, 12);
   }
 
@@ -534,6 +562,16 @@ exports.updateMe = async (req, res) => {
       return;
     }
     emitCrudChange('users', 'updated', user._id);
+    if (updates.password !== undefined) {
+      await createUserNotification({
+        userId: user._id,
+        userEmail: user.email,
+        typeId: 'USER_PASSWORD_CHANGED',
+        title: 'Đổi mật khẩu thành công',
+        message: 'Mật khẩu tài khoản Urii của bạn vừa được thay đổi an toàn.',
+        actionUrl: '/profile'
+      });
+    }
     res.json(formatAuthUser(user));
   } catch (error) {
     if (error.name === 'ValidationError') {

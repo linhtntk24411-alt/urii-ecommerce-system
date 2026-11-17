@@ -392,13 +392,21 @@
       </section>
     } @else if (!displayedOrders.length) {
       <section class="orders-message orders-message--empty">
-        <span class="material-symbols-outlined" aria-hidden="true">
-          {{ selectedStatus === 'unreviewed' ? 'verified' : 'receipt_long' }}
-        </span>
-        <h2>{{ selectedStatus === 'unreviewed' ? 'Không có đơn hàng nào chờ đánh giá' : 'Chưa có đơn hàng' }}</h2>
+        <div class="orders-empty-icon">
+          <span class="material-symbols-outlined" aria-hidden="true">
+            {{ selectedStatus === 'unreviewed' ? 'verified' : 'receipt_long' }}
+          </span>
+        </div>
+        <h2>{{ selectedStatus === 'unreviewed' ? 'Không có đơn hàng nào chờ đánh giá' : 'Chưa có đơn hàng nào' }}</h2>
         @if (selectedStatus === 'unreviewed') {
           <p>Tất cả sản phẩm đã nhận đều đã được bạn đánh giá. Cảm ơn bạn!</p>
           <a class="orders-button orders-button--secondary" routerLink="/myreview">Xem lịch sử đánh giá của tôi</a>
+        } @else {
+          <p>Hãy khám phá các bộ Kit DIY, hạt nhựa ủi Perler và mẫu móc khóa xinh xắn tại Urii để đặt đơn hàng đầu tiên của bạn nhé!</p>
+          <a class="orders-button orders-button--primary" routerLink="/products">
+            <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+            <span>Khám phá sản phẩm ngay</span>
+          </a>
         }
       </section>
     } @else {

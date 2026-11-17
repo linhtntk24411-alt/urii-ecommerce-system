@@ -108,6 +108,7 @@ export class SavedMaps implements OnInit {
         this.pendingMapIds.delete(map.id);
         this.cancelEdit();
         this.actionMessage = 'Đã cập nhật tên map.';
+        this.dialogService.alert('Đã cập nhật tên map thành công!', 'Kho map đã lưu', 'success');
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => this.handleActionError(error, map.id, 'cập nhật'),
@@ -134,6 +135,7 @@ export class SavedMaps implements OnInit {
         this.maps = this.maps.filter((savedMap) => savedMap.id !== map.id);
         this.pendingMapIds.delete(map.id);
         this.actionMessage = `Đã bỏ "${map.title}" khỏi kho map.`;
+        this.dialogService.alert(this.actionMessage, 'Kho map đã lưu', 'success');
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => this.handleActionError(error, map.id, 'xóa'),

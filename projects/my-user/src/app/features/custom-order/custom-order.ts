@@ -178,6 +178,7 @@ export class CustomOrderComponent {
       await firstValueFrom(this.http.post<unknown>('/api/custom-orders', payload, { headers }));
       this.hasSubmitted = true;
       this.successMessage = 'Đã gửi yêu cầu đơn đặt hàng thành công. Admin sẽ liên hệ với bạn sau khi tiếp nhận yêu cầu.';
+      this.dialogService.alert(this.successMessage, 'Đặt làm theo yêu cầu', 'success');
       this.customOrderForm.reset({ beadType: 'Hạt Perler 5mm (Midi Beads)' });
       this.currentStep = 1;
       this.selectedImage = null;
@@ -195,6 +196,9 @@ export class CustomOrderComponent {
       } else {
         console.error('Lỗi gửi yêu cầu Custom:', error);
         this.errorMessage = 'Không thể gửi yêu cầu lúc này. Vui lòng thử lại sau.';
+      }
+      if (this.errorMessage) {
+        this.dialogService.alert(this.errorMessage, 'Lỗi gửi yêu cầu', 'error');
       }
     } finally {
       this.isSubmitting = false;

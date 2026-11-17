@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 
+const commentReactionSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  emoji: { type: String, enum: ['👍', '❤️', '😂', '😮', '😢'], required: true }
+}, { _id: false });
+
 const commentReplySchema = new mongoose.Schema({
   id: { type: String, required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -10,7 +15,8 @@ const commentReplySchema = new mongoose.Schema({
   time: { type: String, default: 'Vừa xong' },
   role: { type: String, enum: ['user', 'admin', 'author'], default: 'user' },
   replyTo: { type: String, trim: true },
-  replyToAuthor: { type: String, trim: true }
+  replyToAuthor: { type: String, trim: true },
+  reactions: { type: [commentReactionSchema], default: [] }
 }, { _id: false });
 
 const commentSchema = new mongoose.Schema({
@@ -22,6 +28,7 @@ const commentSchema = new mongoose.Schema({
   content: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   time: String,
+  reactions: { type: [commentReactionSchema], default: [] },
   replies: { type: [commentReplySchema], default: [] }
 }, { timestamps: true });
 

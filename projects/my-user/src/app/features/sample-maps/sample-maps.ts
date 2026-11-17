@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MapService, SampleMap } from '../../core/services/map.service';
 import { DialogService } from '../../core/services/dialog.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-sample-maps',
@@ -22,6 +23,7 @@ export class SampleMapsComponent implements OnInit {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly dialogService = inject(DialogService);
+  private readonly toast = inject(ToastService);
 
   allMaps: SampleMap[] = [];
 
@@ -188,6 +190,7 @@ export class SampleMapsComponent implements OnInit {
         this.saveMessage = alreadySaved
           ? `Đã bỏ lưu "${map.title}".`
           : `Đã lưu "${map.title}" vào bộ sưu tập.`;
+        this.toast.show(this.saveMessage, 'success', 'Kho map mẫu');
         this.pendingSaveIds.delete(map.id);
         this.changeDetectorRef.markForCheck();
       },
@@ -196,6 +199,7 @@ export class SampleMapsComponent implements OnInit {
         this.saveMessage = error instanceof HttpErrorResponse && error.status === 401
           ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
           : 'Không thể cập nhật bộ sưu tập map. Vui lòng thử lại.';
+        this.toast.show(this.saveMessage, 'error', 'Lỗi lưu map mẫu');
         this.pendingSaveIds.delete(map.id);
         this.changeDetectorRef.markForCheck();
       },

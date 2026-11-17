@@ -218,6 +218,17 @@ exports.createCustomOrder = async (req, res) => {
     await createAdminNotification({ typeId: 'ADMIN_CUSTOM_ORDER_NEW', eventId: String(customOrder._id || customOrder.id),
       reference: { customOrderId: String(customOrder.id) },
       title: 'Yêu cầu Custom mới', message: 'Có yêu cầu thiết kế Custom mới từ khách hàng.' });
+    if (customOrder.userId || customOrder.email) {
+      await createUserNotification({
+        userId: customOrder.userId,
+        userEmail: customOrder.email,
+        typeId: 'USER_CUSTOM_ORDER_CREATED',
+        reference: { customOrderId: String(customOrder.id) },
+        title: `Đã gửi yêu cầu thiết kế #${customOrder.id}`,
+        message: `Yêu cầu thiết kế "${customOrder.requestName || customOrder.id}" đã được gửi tới xưởng Urii để báo giá.`,
+        actionUrl: '/account/custom-orders'
+      });
+    }
     emitCrudChange('customOrders', 'created', customOrder.id, { userId: customOrder.userId, status: customOrder.status });
     const [enriched] = await enrichCustomOrders([customOrder.toObject()]);
     res.status(201).json(enriched);

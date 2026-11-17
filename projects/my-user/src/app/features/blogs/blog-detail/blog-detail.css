@@ -655,3 +655,136 @@
   line-height: 1.5;
   word-break: break-word;
 }
+
+/* ==================== BỘ REACTIONS BÌNH LUẬN BLOG (TRỪ PHẪN NỘ) ==================== */
+.comment-actions-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.comment-actions-bar--reply {
+  margin-top: 6px;
+}
+
+.comment-reaction-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-comment-react {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid #ecd8d5;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #6b5b57;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-comment-react:hover {
+  background: #fff2f2;
+  border-color: #c93b48;
+  color: #840001;
+}
+
+.btn-comment-react--active {
+  background: #fff0f0;
+  border-color: #840001;
+  color: #840001;
+}
+
+.btn-comment-react--sub {
+  padding: 2px 8px;
+  font-size: 11.5px;
+}
+
+.react-current-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.comment-reaction-picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: #ffffff;
+  border: 1px solid #ecd8d5;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(45, 20, 20, 0.16);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.comment-reaction-option {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.comment-reaction-option:hover {
+  transform: scale(1.25) translateY(-2px);
+  background: #fff5f5;
+}
+
+.comment-reaction-option--selected {
+  background: #ffe4e6;
+}
+
+.comment-reaction-pills {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.comment-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #eee2df;
+  background: #faf6f5;
+  color: #4b3e3c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.comment-reaction-pill:hover {
+  border-color: #c93b48;
+  background: #fff2f2;
+}
+
+.comment-reaction-pill--mine {
+  background: #ffe8e8;
+  border-color: #840001;
+  color: #840001;
+}
+
+.comment-reaction-count {
+  font-size: 11px;
+}

@@ -494,6 +494,16 @@ exports.createOrder = async (req, res) => {
       reference: { orderId: String(order.id || order._id) },
       title: 'Đơn hàng mới #' + (order.id || order._id),
       message: 'Có đơn hàng mới cần xử lý.' });
+    if (order.userId) {
+      await createUserNotification({
+        userId: order.userId,
+        typeId: 'USER_ORDER_CREATED',
+        reference: { orderId: String(order.id || order._id) },
+        title: `Đặt hàng thành công #${order.id || order._id}`,
+        message: `Đơn hàng #${order.id || order._id} của bạn đã được ghi nhận và đang chờ Urii xác nhận.`,
+        actionUrl: `/orders/${encodeURIComponent(order.id || order._id)}`
+      });
+    }
     const [enriched] = await enrichOrders([order.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {

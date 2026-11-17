@@ -4,17 +4,26 @@
       <span class="toast-icon" aria-hidden="true">
         @switch (message.kind) {
           @case ('success') { ✓ }
-          @case ('error') { ! }
-          @default { i }
+          @case ('error') { ✕ }
+          @case ('warning') { ⏳ }
+          @default { ⏳ }
         }
       </span>
-      <span class="toast-message">{{ message.message }}</span>
+      <div class="toast-body">
+        @if (message.title) {
+          <strong class="toast-title">{{ message.title }}</strong>
+        }
+        <span class="toast-message">{{ message.message }}</span>
+      </div>
       <button
         type="button"
         class="toast-close"
         aria-label="Đóng thông báo"
         (click)="toast.dismiss(message.id)"
       >×</button>
+      <div class="toast-progress">
+        <div class="toast-progress-bar" [style.animation-duration.ms]="message.durationMs"></div>
+      </div>
     </div>
   }
 </div>

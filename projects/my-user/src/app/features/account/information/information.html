@@ -140,6 +140,152 @@
             </div>
           }
         </form>
+
+        <!-- KHỐI BẢO MẬT & ĐỔI MẬT KHẨU -->
+        <section class="profile-card profile-card--details" aria-labelledby="security-title">
+          <div class="profile-section-heading">
+            <div>
+              <h2 id="security-title">Bảo mật &amp; Đổi mật khẩu</h2>
+              <p>Xác thực bằng mật khẩu hiện tại hoặc mã OTP gửi về Gmail ({{ profile.email }}).</p>
+            </div>
+            @if (!isChangingPassword) {
+              <button class="profile-change-avatar-btn" type="button" (click)="openChangePassword('old-password')">
+                <span class="material-symbols-outlined" aria-hidden="true">lock_reset</span>
+                <span>Đổi mật khẩu</span>
+              </button>
+            }
+          </div>
+
+          @if (passwordSuccess && !isChangingPassword) {
+            <p class="profile-feedback profile-feedback--success" role="status">{{ passwordSuccess }}</p>
+          }
+
+          @if (isChangingPassword) {
+            <div class="password-auth-tabs" role="tablist" aria-label="Chọn phương thức xác thực đổi mật khẩu">
+              <button
+                type="button"
+                role="tab"
+                class="password-auth-tab"
+                [class.password-auth-tab--active]="passwordAuthMode === 'old-password'"
+                [attr.aria-selected]="passwordAuthMode === 'old-password'"
+                (click)="switchPasswordAuthMode('old-password')">
+                <span class="material-symbols-outlined" aria-hidden="true">key</span>
+                <span>Dùng mật khẩu hiện tại</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="password-auth-tab"
+                [class.password-auth-tab--active]="passwordAuthMode === 'otp'"
+                [attr.aria-selected]="passwordAuthMode === 'otp'"
+                (click)="switchPasswordAuthMode('otp')">
+                <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+                <span>Xác thực OTP qua Gmail</span>
+              </button>
+            </div>
+
+            @if (passwordSuccess) {
+              <p class="profile-feedback profile-feedback--success" role="status">{{ passwordSuccess }}</p>
+            }
+            @if (passwordError) {
+              <p class="profile-feedback profile-feedback--error" role="alert">{{ passwordError }}</p>
+            }
+
+            <form class="profile-fields" (ngSubmit)="submitChangePassword()">
+              @if (passwordAuthMode === 'old-password') {
+                <div class="profile-field profile-field--full">
+                  <div class="password-label-row">
+                    <label for="current-password">Mật khẩu hiện tại <span>*</span></label>
+                    <button type="button" class="password-switch-link" (click)="switchPasswordAuthMode('otp')">
+                      Quên mật khẩu cũ? Xác thực bằng OTP Gmail
+                    </button>
+                  </div>
+                  <div class="password-input-wrap">
+                    <input
+                      id="current-password"
+                      name="currentPassword"
+                      [type]="showCurrentPassword ? 'text' : 'password'"
+                      [(ngModel)]="currentPassword"
+                      placeholder="Nhập mật khẩu đang sử dụng"
+                      autocomplete="current-password" />
+                    <button type="button" class="password-eye-btn" (click)="showCurrentPassword = !showCurrentPassword" aria-label="Ẩn hoặc hiện mật khẩu hiện tại">
+                      <span class="material-symbols-outlined">{{ showCurrentPassword ? 'visibility_off' : 'visibility' }}</span>
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="profile-field profile-field--full">
+                  <div class="password-label-row">
+                    <label for="password-otp">Mã xác thực OTP (6 chữ số gửi về {{ profile.email }}) <span>*</span></label>
+                    @if (otpCountdown > 0) {
+                      <span class="otp-countdown-badge">Hiệu lực: {{ formatOtpCountdown() }}</span>
+                    }
+                  </div>
+                  <div class="otp-input-row">
+                    <input
+                      id="password-otp"
+                      name="passwordOtp"
+                      type="text"
+                      maxlength="6"
+                      [(ngModel)]="passwordOtp"
+                      placeholder="Nhập mã OTP 6 số"
+                      autocomplete="one-time-code" />
+                    <button
+                      type="button"
+                      class="profile-button profile-button--secondary otp-send-btn"
+                      [disabled]="isSendingOtp || otpCountdown > 0"
+                      (click)="sendPasswordOtp()">
+                      {{ isSendingOtp ? 'Đang gửi...' : (otpCountdown > 0 ? 'Gửi lại (' + formatOtpCountdown() + ')' : (otpSent ? 'Gửi lại mã OTP' : 'Nhận mã OTP')) }}
+                    </button>
+                  </div>
+                  <small>Kiểm tra hộp thư đến Gmail của bạn để lấy mã xác thực 6 chữ số.</small>
+                </div>
+              }
+
+              <div class="profile-field">
+                <label for="new-password">Mật khẩu mới <span>*</span></label>
+                <div class="password-input-wrap">
+                  <input
+                    id="new-password"
+                    name="newPassword"
+                    [type]="showNewPassword ? 'text' : 'password'"
+                    [(ngModel)]="newPassword"
+                    placeholder="Tối thiểu 8 ký tự (Hoa, thường, số)"
+                    autocomplete="new-password" />
+                  <button type="button" class="password-eye-btn" (click)="showNewPassword = !showNewPassword" aria-label="Ẩn hoặc hiện mật khẩu mới">
+                    <span class="material-symbols-outlined">{{ showNewPassword ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="profile-field">
+                <label for="confirm-new-password">Xác nhận mật khẩu mới <span>*</span></label>
+                <div class="password-input-wrap">
+                  <input
+                    id="confirm-new-password"
+                    name="confirmNewPassword"
+                    [type]="showConfirmPassword ? 'text' : 'password'"
+                    [(ngModel)]="confirmNewPassword"
+                    placeholder="Nhập lại mật khẩu mới"
+                    autocomplete="new-password" />
+                  <button type="button" class="password-eye-btn" (click)="showConfirmPassword = !showConfirmPassword" aria-label="Ẩn hoặc hiện xác nhận mật khẩu">
+                    <span class="material-symbols-outlined">{{ showConfirmPassword ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="profile-field--full profile-form-actions">
+                <small style="color: #867a77; font-size: 11px;">Mật khẩu mới cần có ít nhất 8 ký tự, gồm chữ in hoa, chữ thường và chữ số.</small>
+                <div class="profile-form-actions__right">
+                  <button class="profile-button profile-button--secondary" type="button" [disabled]="isSavingPassword" (click)="cancelChangePassword()">Hủy</button>
+                  <button class="profile-button profile-button--primary" type="submit" [disabled]="isSavingPassword">
+                    {{ isSavingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}
+                  </button>
+                </div>
+              </div>
+            </form>
+          }
+        </section>
     </div>
   }
 

@@ -24,24 +24,24 @@ export class SupportComponent implements OnInit, OnDestroy {
   private queryParamsSubscription?: Subscription;
   faqs: FaqItem[] = [
     {
-      question: 'TĂ´i cĂ³ thá»ƒ Ä‘áº·t hĂ ng nhÆ° tháº¿ nĂ o?',
-      answer: 'Báº¡n cĂ³ thá»ƒ Ä‘áº·t hĂ ng trá»±c tiáº¿p trĂªn website báº±ng cĂ¡ch chá»n sáº£n pháº©m, thĂªm vĂ o giá» hĂ ng vĂ  tiáº¿n hĂ nh thanh toĂ¡n. Náº¿u cáº§n há»— trá»£, hĂ£y gá»i hotline 1900 1234.',
+      question: 'Tôi có thể đặt hàng như thế nào?',
+      answer: 'Bạn có thể đặt hàng trực tiếp trên website bằng cách chọn sản phẩm, thêm vào giỏ hàng và tiến hành thanh toán. Nếu cần hỗ trợ, hãy gọi hotline 1900 1234.',
     },
     {
-      question: 'Thá»i gian giao hĂ ng lĂ  bao lĂ¢u?',
-      answer: 'Thá»i gian giao hĂ ng ná»™i thĂ nh TP.HCM lĂ  1-2 ngĂ y, cĂ¡c tá»‰nh thĂ nh khĂ¡c tá»« 3-5 ngĂ y lĂ m viá»‡c.',
+      question: 'Thời gian giao hàng là bao lâu?',
+      answer: 'Thời gian giao hàng nội thành TP.HCM là 1-2 ngày, các tỉnh thành khác từ 3-5 ngày làm việc.',
     },
     {
-      question: 'PhĂ­ váº­n chuyá»ƒn Ä‘Æ°á»£c tĂ­nh nhÆ° tháº¿ nĂ o?',
-      answer: 'PhĂ­ váº­n chuyá»ƒn Ä‘Æ°á»£c tĂ­nh dá»±a trĂªn trá»ng lÆ°á»£ng Ä‘Æ¡n hĂ ng vĂ  Ä‘á»‹a chá»‰ giao hĂ ng. Miá»…n phĂ­ ship cho Ä‘Æ¡n hĂ ng tá»« 500.000Ä‘.',
+      question: 'Phí vận chuyển được tính như thế nào?',
+      answer: 'Phí vận chuyển được tính dựa trên trọng lượng đơn hàng và địa chỉ giao hàng. Miễn phí ship cho đơn hàng từ 500.000đ.',
     },
     {
-      question: 'TĂ´i cĂ³ thá»ƒ há»§y Ä‘Æ¡n hĂ ng khĂ´ng?',
-      answer: 'Báº¡n cĂ³ thá»ƒ há»§y Ä‘Æ¡n hĂ ng trong vĂ²ng 2 giá» sau khi Ä‘áº·t náº¿u Ä‘Æ¡n hĂ ng chÆ°a Ä‘Æ°á»£c xá»­ lĂ½.',
+      question: 'Tôi có thể hủy đơn hàng không?',
+      answer: 'Bạn có thể hủy đơn hàng trong vòng 2 giờ sau khi đặt nếu đơn hàng chưa được xử lý.',
     },
     {
-      question: 'Sáº£n pháº©m cĂ³ Ä‘Æ°á»£c báº£o hĂ nh khĂ´ng?',
-      answer: 'ChĂºng tĂ´i báº£o hĂ nh 1 Ä‘á»•i 1 trong vĂ²ng 3 ngĂ y náº¿u sáº£n pháº©m bá»‹ lá»—i tá»« nhĂ  sáº£n xuáº¥t.',
+      question: 'Sản phẩm có được bảo hành không?',
+      answer: 'Chúng tôi bảo hành 1 đổi 1 trong vòng 3 ngày nếu sản phẩm bị lỗi từ nhà sản xuất.',
     },
   ];
 

@@ -171,7 +171,7 @@ interface LoginResponse {
 const FALLBACK_USERS: AdminUser[] = [
   {
     _id: 'u1',
-    name: 'Nguyá»…n Minh Anh',
+    name: 'Nguyễn Minh Anh',
     joinDate: '15/03/2024',
     avatar: 'images/avatar_user.jpeg',
     orders: 6,
@@ -179,13 +179,13 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0901 234 567',
     email: 'minhanh.uri@gmail.com',
     birth: '12/08/1998',
-    address: '123 ÄÆ°á»ng Nguyá»…n Huá»‡, PhÆ°á»ng Báº¿n NghĂ©, Quáº­n 1, TP. Há»“ ChĂ­ Minh',
+    address: '123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
     role: 'user',
     status: 'active'
   },
   {
     _id: 'u2',
-    name: 'Tráº§n Thá»‹ Báº£o Ngá»c',
+    name: 'Trần Thị Bảo Ngọc',
     joinDate: '10/05/2024',
     avatar: 'images/avatar_user1.jpeg',
     orders: 6,
@@ -193,13 +193,13 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0912 345 678',
     email: 'baongoc.uri@gmail.com',
     birth: '25/03/1999',
-    address: '45 LĂª Lá»£i, PhÆ°á»ng Báº¿n ThĂ nh, Quáº­n 1, TP. Há»“ ChĂ­ Minh',
+    address: '45 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh',
     role: 'user',
     status: 'active'
   },
   {
     _id: 'u3',
-    name: 'LĂª HoĂ ng Nam',
+    name: 'Lê Hoàng Nam',
     joinDate: '12/04/2024',
     avatar: 'images/avatar_user3.jpeg',
     orders: 6,
@@ -207,13 +207,13 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0987 654 321',
     email: 'hoangnam.uri@gmail.com',
     birth: '07/11/1997',
-    address: '78 Nguyá»…n TrĂ£i, PhÆ°á»ng 3, Quáº­n 5, TP. Há»“ ChĂ­ Minh',
+    address: '78 Nguyễn Trãi, Phường 3, Quận 5, TP. Hồ Chí Minh',
     role: 'user',
     status: 'pending_verify'
   },
   {
     _id: 'u4',
-    name: 'Pháº¡m Thu HĂ ',
+    name: 'Phạm Thu Hà',
     joinDate: '20/03/2024',
     avatar: 'images/avatar_user2.jpeg',
     orders: 6,
@@ -221,13 +221,13 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0938 111 222',
     email: 'thuha.uri@gmail.com',
     birth: '18/06/2000',
-    address: '12 Phan XĂ­ch Long, PhÆ°á»ng 2, Quáº­n PhĂº Nhuáº­n, TP. Há»“ ChĂ­ Minh',
+    address: '12 Phan Xích Long, Phường 2, Quận Phú Nhuận, TP. Hồ Chí Minh',
     role: 'user',
     status: 'active'
   },
   {
     _id: 'u5',
-    name: 'Äá»— Quang Huy',
+    name: 'Đỗ Quang Huy',
     joinDate: '05/02/2024',
     avatar: 'images/avatar-non.jpg',
     orders: 6,
@@ -235,13 +235,13 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0967 888 999',
     email: 'quanghuy.uri@gmail.com',
     birth: '30/09/1996',
-    address: '256 CĂ¡ch Máº¡ng ThĂ¡ng 8, PhÆ°á»ng 10, Quáº­n 3, TP. Há»“ ChĂ­ Minh',
+    address: '256 Cách Mạng Tháng 8, Phường 10, Quận 3, TP. Hồ Chí Minh',
     role: 'user',
     status: 'locked'
   },
   {
     _id: 'u6',
-    name: 'VÅ© KhĂ¡nh Linh',
+    name: 'Vũ Khánh Linh',
     joinDate: '01/05/2024',
     avatar: 'images/avatar-non.jpg',
     orders: 6,
@@ -249,7 +249,7 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0909 333 444',
     email: 'khanhlinh.uri@gmail.com',
     birth: '14/02/2001',
-    address: '88 HoĂ ng Diá»‡u, PhÆ°á»ng 6, Quáº­n 4, TP. Há»“ ChĂ­ Minh',
+    address: '88 Hoàng Diệu, Phường 6, Quận 4, TP. Hồ Chí Minh',
     role: 'user',
     status: 'active'
   },
@@ -263,7 +263,7 @@ const FALLBACK_USERS: AdminUser[] = [
     phone: '0909 888 777',
     email: 'admin@gmail.com',
     birth: '15/05/1990',
-    address: 'Sá»‘ 1, ÄÆ°á»ng Nguyá»…n Du, PhÆ°á»ng Báº¿n ThĂ nh, Quáº­n 1, TP. Há»“ ChĂ­ Minh',
+    address: 'Số 1, Đường Nguyễn Du, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh',
     role: 'admin',
     status: 'active'
   }
@@ -274,8 +274,8 @@ const FALLBACK_PROMOTIONS: Promotion[] = [
     _id: 'v1',
     id: 'FREESHIP',
     code: 'FREESHIP',
-    name: 'Miá»…n phĂ­ váº­n chuyá»ƒn',
-    description: 'Giáº£m tá»‘i Ä‘a 30.000Ä‘ phĂ­ váº­n chuyá»ƒn cho Ä‘Æ¡n tá»« 100.000Ä‘',
+    name: 'Miễn phí vận chuyển',
+    description: 'Giảm tối đa 30.000đ phí vận chuyển cho đơn từ 100.000đ',
     type: 'shipping',
     discountValue: 30000,
     minOrder: 100000,
@@ -290,8 +290,8 @@ const FALLBACK_PROMOTIONS: Promotion[] = [
     _id: 'v2',
     id: 'WELCOME10',
     code: 'WELCOME10',
-    name: 'ChĂ o má»«ng thĂ nh viĂªn má»›i',
-    description: 'Giáº£m 10% cho Ä‘Æ¡n Ä‘áº§u tiĂªn, tá»‘i Ä‘a 20.000Ä‘ (Ä‘Æ¡n tá»« 50.000Ä‘)',
+    name: 'Chào mừng thành viên mới',
+    description: 'Giảm 10% cho đơn đầu tiên, tối đa 20.000đ (đơn từ 50.000đ)',
     type: 'percent',
     discountValue: 10,
     minOrder: 50000,
@@ -306,8 +306,8 @@ const FALLBACK_PROMOTIONS: Promotion[] = [
     _id: 'v3',
     id: 'GIAM10K',
     code: 'GIAM10K',
-    name: 'Giáº£m ngay 10.000Ä‘',
-    description: 'Giáº£m 10.000Ä‘ cho Ä‘Æ¡n tá»« 50.000Ä‘',
+    name: 'Giảm ngay 10.000đ',
+    description: 'Giảm 10.000đ cho đơn từ 50.000đ',
     type: 'fixed',
     discountValue: 10000,
     minOrder: 50000,
@@ -322,8 +322,8 @@ const FALLBACK_PROMOTIONS: Promotion[] = [
     _id: 'v4',
     id: 'SALE15',
     code: 'SALE15',
-    name: 'Sale 15% toĂ n bá»™',
-    description: 'Giáº£m 15% tá»‘i Ä‘a 30.000Ä‘ cho Ä‘Æ¡n tá»« 70.000Ä‘',
+    name: 'Sale 15% toàn bộ',
+    description: 'Giảm 15% tối đa 30.000đ cho đơn từ 70.000đ',
     type: 'percent',
     discountValue: 15,
     minOrder: 70000,
@@ -338,8 +338,8 @@ const FALLBACK_PROMOTIONS: Promotion[] = [
     _id: 'v5',
     id: 'HAPPYDAY',
     code: 'HAPPYDAY',
-    name: 'NgĂ y vui giáº£m 30k',
-    description: 'Giáº£m 30.000Ä‘ cho Ä‘Æ¡n tá»« 200.000Ä‘',
+    name: 'Ngày vui giảm 30k',
+    description: 'Giảm 30.000đ cho đơn từ 200.000đ',
     type: 'fixed',
     discountValue: 30000,
     minOrder: 200000,
@@ -355,105 +355,105 @@ const FALLBACK_PROMOTIONS: Promotion[] = [
 const FALLBACK_ORDERS: AdminOrder[] = [
   {
     id: 'UR-82901',
-    userName: 'Nguyá»…n Minh Anh',
+    userName: 'Nguyễn Minh Anh',
     date: '20/05/2024',
-    status: 'Chá» xĂ¡c nháº­n',
+    status: 'Chờ xác nhận',
     statusType: 'pending',
     total: '15.000đ',
     items: [
       {
         productId: '1075483767',
-        name: 'BĂºt Äáº·t Háº¡t Tá»± Äá»™ng 2.6mm',
+        name: 'Bút Đặt Hạt Tự Động 2.6mm',
         price: 15000,
         quantity: 1,
         image: 'https://cdn.hstatic.net/products/200001193910/sg-11134201-81zut-mmzv8ahrn6kg08_310c94be477d4ca4a635bb252881a2f8.webp'
       }
     ],
-    payment: { method: 'Thanh toĂ¡n khi nháº­n hĂ ng (COD)', status: 'ChÆ°a thanh toĂ¡n' },
-    address: { name: 'Nguyá»…n Minh Anh', phone: '0901 234 567', address: '123 ÄÆ°á»ng Nguyá»…n Huá»‡, Q.1, TP.HCM' }
+    payment: { method: 'Thanh toán khi nhận hàng (COD)', status: 'Chưa thanh toán' },
+    address: { name: 'Nguyễn Minh Anh', phone: '0901 234 567', address: '123 Đường Nguyễn Huệ, Q.1, TP.HCM' }
   },
   {
     id: 'UR-82906',
-    userName: 'VÅ© KhĂ¡nh Linh',
+    userName: 'Vũ Khánh Linh',
     date: '25/05/2024',
-    status: 'Chá» xĂ¡c nháº­n',
+    status: 'Chờ xác nhận',
     statusType: 'pending',
     total: '58.000đ',
     items: [
       {
         productId: '1075486180',
-        name: 'Bá»™ Háº¡t Xáº¿p HĂ¬nh - Combo Handmade DIY Nháºµn Má»‹n',
+        name: 'Bộ Hạt Xếp Hình - Combo Handmade DIY Nhẵn Mịn',
         price: 68000,
         quantity: 1,
         image: 'https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030756_fc41e98c92554127b69b389763080b5f.png'
       }
     ],
-    payment: { method: 'Chuyá»ƒn khoáº£n ngĂ¢n hĂ ng', status: 'ÄĂ£ thanh toĂ¡n' },
-    address: { name: 'VÅ© KhĂ¡nh Linh', phone: '0909 333 444', address: '88 HoĂ ng Diá»‡u, Q.4, TP.HCM' }
+    payment: { method: 'Chuyển khoản ngân hàng', status: 'Đã thanh toán' },
+    address: { name: 'Vũ Khánh Linh', phone: '0909 333 444', address: '88 Hoàng Diệu, Q.4, TP.HCM' }
   },
   {
     id: 'UR-83011',
-    userName: 'Nguyá»…n Minh Anh',
+    userName: 'Nguyễn Minh Anh',
     date: '01/06/2024',
-    status: 'Chá» láº¥y hĂ ng',
+    status: 'Chờ lấy hàng',
     statusType: 'processing',
     total: '68.000đ',
     items: [
       {
         productId: '1075486180',
-        name: 'Bá»™ Háº¡t Xáº¿p HĂ¬nh - Combo Handmade DIY Nháºµn Má»‹n',
+        name: 'Bộ Hạt Xếp Hình - Combo Handmade DIY Nhẵn Mịn',
         price: 68000,
         quantity: 1,
         image: 'https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030756_fc41e98c92554127b69b389763080b5f.png'
       }
     ],
-    payment: { method: 'Chuyá»ƒn khoáº£n ngĂ¢n hĂ ng', status: 'ÄĂ£ thanh toĂ¡n' },
-    address: { name: 'Nguyá»…n Minh Anh', phone: '0901 234 567', address: '123 ÄÆ°á»ng Nguyá»…n Huá»‡, Q.1, TP.HCM' }
+    payment: { method: 'Chuyển khoản ngân hàng', status: 'Đã thanh toán' },
+    address: { name: 'Nguyễn Minh Anh', phone: '0901 234 567', address: '123 Đường Nguyễn Huệ, Q.1, TP.HCM' }
   },
   {
     id: 'UR-83022',
-    userName: 'Tráº§n Thá»‹ Báº£o Ngá»c',
+    userName: 'Trần Thị Bảo Ngọc',
     date: '03/07/2024',
-    status: 'ÄĂ£ giao',
+    status: 'Đã giao',
     statusType: 'completed',
     total: '61.200đ',
     items: [
       {
         productId: '1075486180',
-        name: 'Bá»™ Háº¡t Xáº¿p HĂ¬nh - Combo Handmade DIY Nháºµn Má»‹n',
+        name: 'Bộ Hạt Xếp Hình - Combo Handmade DIY Nhẵn Mịn',
         price: 68000,
         quantity: 1,
         image: 'https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030756_fc41e98c92554127b69b389763080b5f.png'
       }
     ],
-    payment: { method: 'Chuyá»ƒn khoáº£n ngĂ¢n hĂ ng', status: 'ÄĂ£ thanh toĂ¡n' },
-    address: { name: 'Tráº§n Thá»‹ Báº£o Ngá»c', phone: '0912 345 678', address: '45 LĂª Lá»£i, Q.1, TP.HCM' }
+    payment: { method: 'Chuyển khoản ngân hàng', status: 'Đã thanh toán' },
+    address: { name: 'Trần Thị Bảo Ngọc', phone: '0912 345 678', address: '45 Lê Lợi, Q.1, TP.HCM' }
   },
   {
     id: 'UR-83026',
-    userName: 'VÅ© KhĂ¡nh Linh',
+    userName: 'Vũ Khánh Linh',
     date: '11/07/2024',
-    status: 'ÄĂ£ giao',
+    status: 'Đã giao',
     statusType: 'completed',
     total: '68.000đ',
     items: [
       {
         productId: '1075486180',
-        name: 'Bá»™ Háº¡t Xáº¿p HĂ¬nh - Combo Handmade DIY Nháºµn Má»‹n',
+        name: 'Bộ Hạt Xếp Hình - Combo Handmade DIY Nhẵn Mịn',
         price: 68000,
         quantity: 1,
         image: 'https://cdn.hstatic.net/products/200001193910/screenshot_2026-07-09_030756_fc41e98c92554127b69b389763080b5f.png'
       }
     ],
-    payment: { method: 'Thanh toĂ¡n khi nháº­n hĂ ng (COD)', status: 'ÄĂ£ thanh toĂ¡n' },
-    address: { name: 'VÅ© KhĂ¡nh Linh', phone: '0909 333 444', address: '88 HoĂ ng Diá»‡u, Q.4, TP.HCM' }
+    payment: { method: 'Thanh toán khi nhận hàng (COD)', status: 'Đã thanh toán' },
+    address: { name: 'Vũ Khánh Linh', phone: '0909 333 444', address: '88 Hoàng Diệu, Q.4, TP.HCM' }
   }
 ];
 
 const FALLBACK_PRODUCTS: AdminProduct[] = [
   {
     id: '1075483768',
-    name: 'DIY KIT Rainbow 48 MĂ u',
+    name: 'DIY KIT Rainbow 48 Màu',
     slug: 'products-kit',
     category: 'KIT',
     image: 'https://cdn.hstatic.net/products/200001193910/set_h_t_nh_a_urii_rainbow_48_m_u_4ce5db5cf38d45a68edca10c15bf227e.png',
@@ -462,7 +462,7 @@ const FALLBACK_PRODUCTS: AdminProduct[] = [
   },
   {
     id: '1075486161',
-    name: 'MĂ´ HĂ¬nh Háº¡t Nhá»±a á»¦i ThĂ nh Pháº©m Sakabooon',
+    name: 'Mô Hình Hạt Nhựa Ủi Thành Phẩm Sakabooon',
     slug: 'mo-hinh-hat-nhua-ui-thuc-pham-sakabooon',
     category: 'TP',
     image: 'https://cdn.hstatic.net/products/200001193910/12_ea1aea881164402a91baa18fb750921b.jpg',
@@ -471,7 +471,7 @@ const FALLBACK_PRODUCTS: AdminProduct[] = [
   },
   {
     id: '1075483767',
-    name: 'BĂºt Äáº·t Háº¡t Tá»± Äá»™ng 2.6mm (Pro)',
+    name: 'Bút Đặt Hạt Tự Động 2.6mm (Pro)',
     slug: 'products-but',
     category: 'DC',
     image: 'https://cdn.hstatic.net/products/200001193910/sg-11134201-81zut-mmzv8ahrn6kg08_310c94be477d4ca4a635bb252881a2f8.webp',
@@ -483,37 +483,37 @@ const FALLBACK_PRODUCTS: AdminProduct[] = [
 const FALLBACK_BLOGS: AdminBlog[] = [
   {
     id: 1,
-    title: 'Chiá»u cuá»‘i tuáº§n trá»‘n tháº¿ giá»›i bĂªn gĂ³c bĂ n nhá»',
+    title: 'Chiều cuối tuần trốn thế giới bên góc bàn nhỏ',
     slug: 'chieu-cuoi-tuan-tron-the-gioi-ben-goc-ban-nho',
     image: 'images/index/stcd1.png',
     author: 'Minh Anh',
     avatar: 'images/avatar_user.jpeg',
-    date: '24 ThĂ¡ng 5, 2024',
-    category: 'HÆ°á»›ng dáº«n DIY',
+    date: '24 Tháng 5, 2024',
+    category: 'Hướng dẫn DIY',
     views: 1024,
     likes: 128
   },
   {
     id: 2,
-    title: 'Em cĂ¡o cam siĂªu chá»¯a lĂ nh cho ngĂ y má»‡t má»i',
+    title: 'Em cáo cam siêu chữa lành cho ngày mệt mỏi',
     slug: 'em-cao-cam-sieu-chua-lanh-cho-ngay-met-moi',
     image: 'images/index/stcd2.png',
     author: 'Minh Anh',
     avatar: 'images/avatar_user.jpeg',
-    date: '22 ThĂ¡ng 5, 2024',
-    category: 'Ă tÆ°á»Ÿng thiáº¿t káº¿',
+    date: '22 Tháng 5, 2024',
+    category: 'Ý tưởng thiết kế',
     views: 512,
     likes: 86
   },
   {
     id: 3,
-    title: 'Khi báº¡n khĂ³c nhÆ°ng trĂ´ng váº«n... buá»“n cÆ°á»i',
+    title: 'Khi bạn khóc nhưng trông vẫn... buồn cười',
     slug: 'khi-ban-khoc-nhung-trong-van-buon-cuoi',
     image: 'images/index/stcd3.png',
-    author: 'Äá»— Quang Huy',
+    author: 'Đỗ Quang Huy',
     avatar: 'images/avatar-non.jpg',
-    date: '20 ThĂ¡ng 5, 2024',
-    category: 'GĂ³c nghá»‡ thuáº­t',
+    date: '20 Tháng 5, 2024',
+    category: 'Góc nghệ thuật',
     views: 2048,
     likes: 215
   }
@@ -528,7 +528,7 @@ export class AdminApiService {
 
   readonly token = signal<string | null>(null);
 
-  // Token Ä‘Æ°á»£c truyá»n trá»±c tiáº¿p tá»« trang Ä‘Äƒng nháº­p
+  // Token được truyền trực tiếp từ trang đăng nhập
   private currentAuthToken = '';
 
   private productsSubject = new BehaviorSubject<any[]>([]);
@@ -538,14 +538,14 @@ export class AdminApiService {
     private http: HttpClient,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
-    // Hiá»ƒn thá»‹ dá»¯ liá»‡u cache trÆ°á»›c Ä‘á»ƒ giao diá»‡n khĂ´ng bá»‹ trá»‘ng
+    // Hiển thị dữ liệu cache trước để giao diện không bị trống
     this.productsSubject.next(this.readCachedProducts());
 
-    // KhĂ´i phá»¥c phiĂªn Ä‘Äƒng nháº­p; dá»¯ liá»‡u chá»‰ Ä‘Æ°á»£c táº£i khi trang cáº§n.
+    // Khôi phục phiên đăng nhập; dữ liệu chỉ được tải khi trang cần.
     this.restoreSession();
   }
 
-  // --- 1. QUáº¢N LĂ TOKEN VĂ€ ÄÄ‚NG NHáº¬P ---
+  // --- 1. QUẢN LÝ TOKEN VÀ ĐĂNG NHẬP ---
 
   public setToken(token: string): void {
     this.currentAuthToken = token;
@@ -592,7 +592,7 @@ export class AdminApiService {
     );
 
     if (response.user.role !== 'admin') {
-      throw new Error('TĂ i khoáº£n nĂ y khĂ´ng cĂ³ quyá»n quáº£n trá»‹.');
+      throw new Error('Tài khoản này không có quyền quản trị.');
     }
 
     this.setToken(response.token);
@@ -617,7 +617,7 @@ export class AdminApiService {
     }
   }
 
-  // --- 2. Há»– TRá»¢ ÄÆ¯á»œNG DáºªN HĂŒNH áº¢NH ---
+  // --- 2. HỖ TRỢ ĐƯỜNG DẪN HÌNH ẢNH ---
 
   resolveImageUrl(
     imagePath?: string | null,
@@ -675,10 +675,10 @@ export class AdminApiService {
     return `/${normalized}`;
   }
 
-  // --- 3. QUáº¢N LĂ Sáº¢N PHáº¨M ---
+  // --- 3. QUẢN LÝ SẢN PHẨM ---
 
   public loadProducts(): void {
-    // KhĂ´ng truy cáº­p localStorage khi cháº¡y SSR
+    // Không truy cập localStorage khi chạy SSR
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
@@ -692,7 +692,7 @@ export class AdminApiService {
           : res?.products;
 
         if (!Array.isArray(productList)) {
-          console.error('API sáº£n pháº©m tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡:', res);
+          console.error('API sản phẩm trả về dữ liệu không hợp lệ:', res);
           return;
         }
 
@@ -704,11 +704,11 @@ export class AdminApiService {
             JSON.stringify(productList)
           );
         } catch (error) {
-          console.error('KhĂ´ng thá»ƒ lÆ°u cache sáº£n pháº©m:', error);
+          console.error('Không thể lưu cache sản phẩm:', error);
         }
       },
       error: (err) => {
-        console.error('Lá»—i táº£i sáº£n pháº©m:', err);
+        console.error('Lỗi tải sản phẩm:', err);
         this.productsSubject.next(this.readCachedProducts());
       }
     });
@@ -732,9 +732,9 @@ export class AdminApiService {
         return products;
       }
 
-      console.error('Cache sáº£n pháº©m khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng.');
+      console.error('Cache sản phẩm không đúng định dạng.');
     } catch (error) {
-      console.error('KhĂ´ng thá»ƒ Ä‘á»c cache sáº£n pháº©m:', error);
+      console.error('Không thể đọc cache sản phẩm:', error);
     }
 
     return [];
@@ -805,7 +805,7 @@ export class AdminApiService {
           }
         }
       } catch {
-        // DĂ¹ng dá»¯ liá»‡u fallback náº¿u cache lá»—i
+        // Dùng dữ liệu fallback nếu cache lỗi
       }
     }
 
@@ -817,7 +817,7 @@ export class AdminApiService {
       try {
         localStorage.setItem(key, JSON.stringify(data));
       } catch {
-        // KhĂ´ng lĂ m giĂ¡n Ä‘oáº¡n chá»©c nÄƒng chĂ­nh náº¿u khĂ´ng lÆ°u Ä‘Æ°á»£c cache
+        // Không làm gián đoạn chức năng chính nếu không lưu được cache
       }
     }
   }
@@ -930,7 +930,7 @@ export class AdminApiService {
     );
   }
 
-  // --- 5. API Sáº¢N PHáº¨M Dáº NG PROMISE ---
+  // --- 5. API SẢN PHẨM DẠNG PROMISE ---
 
   async getProducts(): Promise<AdminProduct[]> {
     try {
@@ -948,7 +948,7 @@ export class AdminApiService {
         return list;
       }
     } catch (error) {
-      console.error('Lá»—i táº£i sáº£n pháº©m tá»« API, sá»­ dá»¥ng dá»¯ liá»‡u cache:', error);
+      console.error('Lỗi tải sản phẩm từ API, sử dụng dữ liệu cache:', error);
     }
 
     return this.getInitialProducts();
@@ -964,7 +964,7 @@ export class AdminApiService {
     );
   }
 
-  // --- 6. QUáº¢N LĂ ÄÆ N HĂ€NG ---
+  // --- 6. QUẢN LÝ ĐÆ N HÀNG ---
 
   public getOrders(): Observable<any> {
     let authToken = this.currentAuthToken || this.token() || '';
@@ -1076,14 +1076,14 @@ export class AdminApiService {
         return normalizedList;
       }
     } catch {
-      // Tráº£ vá» cache náº¿u API lá»—i
+      // Trả về cache nếu API lỗi
     }
 
     return this.getInitialOrders();
   }
 
-  // --- 7. QUáº¢N LĂ THÆ¯ VIá»†N MAP MáºªU ---
-  // Táº¡m giá»¯ endpoint /maps theo code hiá»‡n táº¡i sau khi Pull.
+  // --- 7. QUẢN LÝ THƯ VIỆN MAP MẪU ---
+  // Tạm giữ endpoint /maps theo code hiện tại sau khi Pull.
 
   public getLibraryMaps(): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/maps`, {
@@ -1134,7 +1134,7 @@ export class AdminApiService {
         return stats;
       }
     } catch {
-      // Tráº£ vá» dá»¯ liá»‡u cache náº¿u API lá»—i
+      // Trả về dữ liệu cache nếu API lỗi
     }
 
     return this.getInitialDashboard();
@@ -1158,9 +1158,9 @@ export class AdminApiService {
         return list;
       }
 
-      console.error('API bĂ i viáº¿t tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡:', data);
+      console.error('API bài viết trả về dữ liệu không hợp lệ:', data);
     } catch (error) {
-      console.error('Lá»—i táº£i bĂ i viáº¿t tá»« API, sá»­ dá»¥ng dá»¯ liá»‡u cache:', error);
+      console.error('Lỗi tải bài viết từ API, sử dụng dữ liệu cache:', error);
     }
 
     return this.getInitialBlogs();
@@ -1178,7 +1178,7 @@ export class AdminApiService {
     await this.requestWithFallback<void>('DELETE', `/api/blogs/${encodeURIComponent(String(id))}`);
   }
 
-  // --- 10. QUáº¢N LĂ NGÆ¯á»œI DĂ™NG ---
+  // --- 10. QUẢN LÝ NGƯỜI DÙNG ---
 
   async getUsers(): Promise<AdminUser[]> {
     try {
@@ -1196,7 +1196,7 @@ export class AdminApiService {
         return list;
       }
     } catch {
-      // Tráº£ vá» cache náº¿u API lá»—i
+      // Trả về cache nếu API lỗi
     }
 
     return this.getInitialUsers();
@@ -1228,7 +1228,7 @@ export class AdminApiService {
     );
   }
 
-  // --- 11. QUáº¢N LĂ KHUYáº¾N MĂƒI ---
+  // --- 11. QUẢN LÝ KHUYẾN MÃI ---
 
   async getPromotions(): Promise<Promotion[]> {
     try {
@@ -1261,7 +1261,7 @@ export class AdminApiService {
           return list;
         }
       } catch {
-        // Tráº£ vá» cache náº¿u cáº£ hai API lá»—i
+        // Trả về cache nếu cả hai API lỗi
       }
     }
 

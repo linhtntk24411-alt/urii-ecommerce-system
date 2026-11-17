@@ -134,6 +134,25 @@
                                     @if (isForwarded(msg)) { <div class="timestamp">Đã chuyển tiếp</div> }
                                     @if (attachment(msg)) { <ng-container *ngTemplateOutlet="attachmentContent; context: { $implicit: msg }"></ng-container> }
                                     @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)" [innerHTML]="formatBotHtml(messageText(msg))"></p> }
+                                    @if (canShowContent(msg) && msg.mediaCards && msg.mediaCards.length > 0) {
+                                        <div class="chat-media-cards" role="list" aria-label="Danh sách sản phẩm và map mẫu gợi ý">
+                                            @for (card of msg.mediaCards; track card.url) {
+                                                <div class="chat-media-card" role="listitem" (click)="navigateToAction(card.url)">
+                                                    @if (card.image) {
+                                                        <div class="chat-media-card-thumb" (click)="$event.stopPropagation(); attachmentViewer = card.image">
+                                                            <img [src]="card.image" [alt]="card.title" loading="lazy">
+                                                            @if (card.badge) { <span class="chat-media-card-badge">{{ card.badge }}</span> }
+                                                        </div>
+                                                    }
+                                                    <div class="chat-media-card-body">
+                                                        <div class="chat-media-card-title">{{ card.title }}</div>
+                                                        @if (card.subtitle) { <div class="chat-media-card-subtitle">{{ card.subtitle }}</div> }
+                                                    </div>
+                                                    <span class="material-symbols-outlined chat-media-card-arrow">chevron_right</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
                                     @if (canShowContent(msg) && msg.targetUrl && msg.targetLabel) {
                                         <button class="chat-navigation-action" (click)="navigateToAction(msg.targetUrl)">
                                             <span>{{ msg.targetLabel }}</span>

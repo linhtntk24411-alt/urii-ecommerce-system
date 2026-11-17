@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
 const { emitCrudChange } = require('../realtime');
 const { createAdminNotification } = require('./notificationController');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 const { formatRelativeTime } = require('../utils/time');
 
 function isRecord(value) {
@@ -59,7 +60,8 @@ async function enrichComments(comments) {
         createdAt: replyCreatedAt,
         time: formatRelativeTime(replyCreatedAt),
         replyTo: reply.replyTo,
-        replyToAuthor: reply.replyToAuthor
+        replyToAuthor: reply.replyToAuthor,
+        reactions: Array.isArray(reply.reactions) ? reply.reactions : []
       };
     });
 
@@ -69,6 +71,7 @@ async function enrichComments(comments) {
       avatar: comment.avatar || user?.avatar || 'images/avatar-non.jpg',
       createdAt,
       time: dynamicTime,
+      reactions: Array.isArray(comment.reactions) ? comment.reactions : [],
       replies: enrichedReplies
     };
   });
@@ -154,6 +157,17 @@ exports.createComment = async (req, res) => {
         reference: { commentId: String(comment.id), blogId: Number(blogId) },
         title: 'Bình luận Blog mới', message: 'Khách hàng vừa gửi bình luận trong bài Blog.' });
     }
+    const blogDoc = await Blog.findOne({ id: Number(blogId) }).select('userId title slug').lean();
+    if (blogDoc?.userId && String(blogDoc.userId) !== String(resolvedUserId || '')) {
+      await createUserNotification({
+        userId: blogDoc.userId,
+        typeId: 'USER_BLOG_NEW_COMMENT',
+        reference: { commentId: String(comment.id), blogId: Number(blogId) },
+        title: 'Bình luận mới trong bài viết của bạn',
+        message: `Có người vừa bình luận vào bài viết "${blogDoc.title || '#' + blogId}".`,
+        actionUrl: blogDoc.slug ? `/blog-detail/${encodeURIComponent(blogDoc.slug)}` : '/blog-list'
+      });
+    }
     const [enriched] = await enrichComments([comment.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {
@@ -221,6 +235,18 @@ exports.createCommentReply = async (req, res) => {
     comment.replies.push(newReply);
     await comment.save();
 
+    if (comment.userId && String(comment.userId) !== String(resolvedUserId || '')) {
+      const targetBlog = await Blog.findOne({ id: comment.blogId }).select('slug title').lean();
+      await createUserNotification({
+        userId: comment.userId,
+        typeId: 'USER_COMMENT_REPLIED',
+        reference: { commentId: String(comment.id), replyId },
+        title: role === 'admin' ? 'Quản trị viên đã phản hồi bình luận của bạn' : 'Có phản hồi mới cho bình luận của bạn',
+        message: newReply.content.slice(0, 120),
+        actionUrl: targetBlog?.slug ? `/blog-detail/${encodeURIComponent(targetBlog.slug)}` : '/blog-list'
+      });
+    }
+
     emitCrudChange('comments', 'updated', comment._id);
     const [enriched] = await enrichComments([comment.toObject()]);
     res.status(201).json(enriched);
@@ -278,6 +304,61 @@ exports.updateComment = async (req, res) => {
     }
     console.error('Lỗi cập nhật bình luận:', error);
     res.status(500).json({ message: 'Không thể cập nhật bình luận.' });
+  }
+};
+
+const ALLOWED_COMMENT_REACTIONS = new Set(['👍', '❤️', '😂', '😮', '😢']);
+
+exports.reactComment = async (req, res) => {
+  const { emoji, replyId } = req.body || {};
+  if (emoji !== null && !ALLOWED_COMMENT_REACTIONS.has(emoji)) {
+    res.status(400).json({ message: 'Biểu tượng cảm xúc không hợp lệ (chỉ hỗ trợ 👍, ❤️, 😂, 😮, 😢).' });
+    return;
+  }
+
+  const userId = String(req.auth?.id || '').trim();
+  if (!userId) {
+    res.status(401).json({ message: 'Vui lòng đăng nhập để thả cảm xúc.' });
+    return;
+  }
+
+  try {
+    const comment = await Comment.findOne(commentFilter(req.params.id));
+    if (!comment) {
+      res.status(404).json({ message: 'Không tìm thấy bình luận.' });
+      return;
+    }
+
+    if (replyId) {
+      const targetReply = (comment.replies || []).find((r) => String(r.id) === String(replyId));
+      if (!targetReply) {
+        res.status(404).json({ message: 'Không tìm thấy phản hồi.' });
+        return;
+      }
+      const existing = Array.isArray(targetReply.reactions) ? targetReply.reactions : [];
+      const currentMine = existing.find((r) => String(r.userId) === userId);
+      const filtered = existing.filter((r) => String(r.userId) !== userId);
+      if (emoji && currentMine?.emoji !== emoji) {
+        filtered.push({ userId, emoji });
+      }
+      targetReply.reactions = filtered;
+    } else {
+      const existing = Array.isArray(comment.reactions) ? comment.reactions : [];
+      const currentMine = existing.find((r) => String(r.userId) === userId);
+      const filtered = existing.filter((r) => String(r.userId) !== userId);
+      if (emoji && currentMine?.emoji !== emoji) {
+        filtered.push({ userId, emoji });
+      }
+      comment.reactions = filtered;
+    }
+
+    await comment.save();
+    emitCrudChange('comments', 'updated', comment._id);
+    const [enriched] = await enrichComments([comment.toObject()]);
+    res.json(enriched);
+  } catch (error) {
+    console.error('Lỗi thả cảm xúc bình luận:', error);
+    res.status(500).json({ message: 'Không thể cập nhật cảm xúc bình luận.' });
   }
 };
 

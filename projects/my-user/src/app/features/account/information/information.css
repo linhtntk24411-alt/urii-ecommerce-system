@@ -721,3 +721,128 @@
   border-top: 1px solid #f2e9e6;
   background: #faf6f5;
 }
+
+/* Khối Đổi mật khẩu (Xác thực bằng mật khẩu cũ hoặc OTP Gmail) */
+.password-auth-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: #f6efed;
+  border-radius: 10px;
+}
+
+.password-auth-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b5b57;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.password-auth-tab .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.password-auth-tab--active {
+  background: #920000;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(146, 0, 0, 0.22);
+}
+
+.password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.password-switch-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #920000;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.password-switch-link:hover {
+  color: #6b0000;
+}
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap input {
+  padding-right: 36px;
+}
+
+.password-eye-btn {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7c6d69;
+  cursor: pointer;
+}
+
+.password-eye-btn:hover {
+  background: #f5eeec;
+  color: #920000;
+}
+
+.password-eye-btn .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.otp-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.otp-input-row input {
+  flex: 1;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.otp-send-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.otp-countdown-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #fff0ed;
+  border: 1px solid #f0c2b8;
+  color: #920000;
+  font-size: 11px;
+  font-weight: 700;
+}

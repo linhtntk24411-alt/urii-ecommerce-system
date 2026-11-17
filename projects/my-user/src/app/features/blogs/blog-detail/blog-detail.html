@@ -106,8 +106,50 @@
               </div>
               <p class="blog-detail-comments__text">{{ comment.content }}</p>
 
-              <!-- Hàng hành động: Nút Trả lời và Nút Xem câu trả lời -->
+              <!-- Hàng hành động: Thả cảm xúc (trừ phẫn nộ), Nút Trả lời và Nút Xem câu trả lời -->
               <div class="comment-actions-bar">
+                <div class="comment-reaction-wrap">
+                  <button
+                    type="button"
+                    class="btn-comment-react"
+                    [class.btn-comment-react--active]="!!getMyReaction(comment.reactions)"
+                    (click)="toggleCommentReactionPicker('c-' + comment.id, $event)"
+                    title="Thả cảm xúc">
+                    <span class="react-current-emoji">{{ getMyReaction(comment.reactions) || '😊' }}</span>
+                    <span>{{ getMyReaction(comment.reactions) ? 'Đã thích' : 'Thích' }}</span>
+                  </button>
+
+                  @if (openReactionTargetKey === 'c-' + comment.id) {
+                    <div class="comment-reaction-picker" role="group" aria-label="Chọn cảm xúc bình luận" (click)="$event.stopPropagation()">
+                      @for (item of commentReactionEmojis; track item.emoji) {
+                        <button
+                          type="button"
+                          class="comment-reaction-option"
+                          [class.comment-reaction-option--selected]="getMyReaction(comment.reactions) === item.emoji"
+                          [title]="item.label"
+                          (click)="reactToComment(comment, item.emoji, undefined, $event)">
+                          {{ item.emoji }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (getReactionGroups(comment.reactions).length > 0) {
+                  <div class="comment-reaction-pills">
+                    @for (grp of getReactionGroups(comment.reactions); track grp.emoji) {
+                      <button
+                        type="button"
+                        class="comment-reaction-pill"
+                        [class.comment-reaction-pill--mine]="grp.isMine"
+                        (click)="reactToComment(comment, grp.emoji, undefined, $event)">
+                        <span>{{ grp.emoji }}</span>
+                        <span class="comment-reaction-count">{{ grp.count }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+
                 <button
                   type="button"
                   class="btn-reply-toggle"
@@ -188,14 +230,58 @@
                   <span class="reply-to-tag" *ngIf="reply.replyToAuthor">@{{ reply.replyToAuthor }} </span>{{ reply.content }}
                 </p>
 
-                <!-- Nút Trả lời trong từng reply (Reply có thể tạo trong reply) -->
-                <button
-                  type="button"
-                  class="btn-reply-toggle btn-reply-toggle--sub"
-                  (click)="openReplyToReplyForm(comment, reply)"
-                >
-                  <i class="bi bi-reply-fill"></i> Trả lời
-                </button>
+                <!-- Hàng cảm xúc & Nút Trả lời trong từng reply -->
+                <div class="comment-actions-bar comment-actions-bar--reply">
+                  <div class="comment-reaction-wrap">
+                    <button
+                      type="button"
+                      class="btn-comment-react btn-comment-react--sub"
+                      [class.btn-comment-react--active]="!!getMyReaction(reply.reactions)"
+                      (click)="toggleCommentReactionPicker('r-' + comment.id + '-' + reply.id, $event)"
+                      title="Thả cảm xúc">
+                      <span class="react-current-emoji">{{ getMyReaction(reply.reactions) || '😊' }}</span>
+                      <span>{{ getMyReaction(reply.reactions) ? 'Đã thích' : 'Thích' }}</span>
+                    </button>
+
+                    @if (openReactionTargetKey === 'r-' + comment.id + '-' + reply.id) {
+                      <div class="comment-reaction-picker" role="group" aria-label="Chọn cảm xúc phản hồi" (click)="$event.stopPropagation()">
+                        @for (item of commentReactionEmojis; track item.emoji) {
+                          <button
+                            type="button"
+                            class="comment-reaction-option"
+                            [class.comment-reaction-option--selected]="getMyReaction(reply.reactions) === item.emoji"
+                            [title]="item.label"
+                            (click)="reactToComment(comment, item.emoji, reply.id, $event)">
+                            {{ item.emoji }}
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  @if (getReactionGroups(reply.reactions).length > 0) {
+                    <div class="comment-reaction-pills">
+                      @for (grp of getReactionGroups(reply.reactions); track grp.emoji) {
+                        <button
+                          type="button"
+                          class="comment-reaction-pill"
+                          [class.comment-reaction-pill--mine]="grp.isMine"
+                          (click)="reactToComment(comment, grp.emoji, reply.id, $event)">
+                          <span>{{ grp.emoji }}</span>
+                          <span class="comment-reaction-count">{{ grp.count }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  <button
+                    type="button"
+                    class="btn-reply-toggle btn-reply-toggle--sub"
+                    (click)="openReplyToReplyForm(comment, reply)"
+                  >
+                    <i class="bi bi-reply-fill"></i> Trả lời
+                  </button>
+                </div>
               </div>
             </div>
           </div>

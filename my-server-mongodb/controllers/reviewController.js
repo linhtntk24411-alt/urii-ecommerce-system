@@ -9,6 +9,7 @@ const { getPagination } = require('../utils/pagination');
 const { syncProductRating } = require('../utils/commerceFixtures');
 const { emitCrudChange } = require('../realtime');
 const { createAdminNotification } = require('./notificationController');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 
 function buildProductLookupFilter(value) {
   const normalized = String(value || '').trim();
@@ -309,6 +310,14 @@ exports.createReview = async (req, res) => {
     await createAdminNotification({ typeId: 'ADMIN_REVIEW_NEW', eventId: String(review._id || review.id),
       reference: { reviewId: String(review.id), productId: String(resolvedProductId) },
       title: 'Đánh giá sản phẩm mới', message: 'Khách hàng vừa gửi đánh giá sản phẩm.' });
+    await createUserNotification({
+      userId,
+      typeId: 'USER_REVIEW_SUBMITTED',
+      reference: { reviewId: String(review.id), orderId: String(order.id || cleanOrderId), productId: String(resolvedProductId) },
+      title: 'Đã gửi đánh giá sản phẩm',
+      message: `Cảm ơn bạn đã đánh giá ${review.rating} sao cho sản phẩm trong đơn #${order.id || cleanOrderId}.`,
+      actionUrl: '/myreview'
+    });
     const ratingStats = await syncProductRating(resolvedProductId, {
       ReviewModel: Review,
       ProductModel: Product
@@ -373,6 +382,17 @@ exports.createReviewReply = async (req, res) => {
     review.replies = review.replies || [];
     review.replies.push(newReply);
     await review.save();
+
+    if (role === 'admin' && review.userId) {
+      await createUserNotification({
+        userId: review.userId,
+        typeId: 'USER_REVIEW_ADMIN_REPLIED',
+        reference: { reviewId: String(review.id), productId: String(review.productId) },
+        title: 'Urii đã phản hồi đánh giá của bạn',
+        message: newReply.content.slice(0, 120),
+        actionUrl: '/myreview'
+      });
+    }
 
     emitCrudChange('reviews', 'updated', review._id);
     res.status(201).json(review);

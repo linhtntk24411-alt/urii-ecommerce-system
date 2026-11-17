@@ -5,6 +5,7 @@ import { combineLatest, map } from 'rxjs';
 import { MapService, SampleMap } from '../../core/services/map.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DialogService } from '../../core/services/dialog.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-sample-maps-detail',
@@ -19,6 +20,7 @@ export class SampleMapsDetailComponent implements OnInit {
   private readonly mapService = inject(MapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly dialogService = inject(DialogService);
+  private readonly toast = inject(ToastService);
 
   mapDetail: SampleMap | null = null;
   isSaved = false;
@@ -245,11 +247,17 @@ export class SampleMapsDetailComponent implements OnInit {
       next: () => {
         this.isSaved = !alreadySaved;
         this.pendingSave = false;
+        this.toast.show(
+          alreadySaved ? `Đã bỏ lưu "${map.title}".` : `Đã lưu "${map.title}" vào kho map mẫu!`,
+          'success',
+          'Kho map mẫu'
+        );
         this.changeDetectorRef.markForCheck();
       },
       error: (error: unknown) => {
         console.error('Không thể cập nhật bộ sưu tập map:', error);
         this.pendingSave = false;
+        this.toast.show('Không thể lưu map mẫu. Vui lòng thử lại.', 'error', 'Lỗi lưu map mẫu');
         if (error instanceof HttpErrorResponse && error.status === 401) {
           void this.router.navigate(['/login'], {
             queryParams: { returnUrl: `/sample-maps-detail/${encodeURIComponent(map.slug)}` },

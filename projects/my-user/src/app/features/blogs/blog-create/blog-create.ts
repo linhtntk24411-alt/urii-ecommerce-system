@@ -309,6 +309,7 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       this.successMessage = 'Đăng bài thành công!';
       this.autoSaveMessage = 'Bài viết đã được đăng';
+      this.dialogService.alert(`Đã đăng bài viết "${title}" thành công!`, 'Đăng bài viết', 'success');
       void this.router.navigate(['/blog-detail', createdBlog.slug]);
     } catch (error: unknown) {
       console.error('Lỗi đăng bài viết:', error);
@@ -325,6 +326,9 @@ export class BlogCreateComponent implements OnInit, AfterViewInit, OnDestroy {
         this.errorMessage = error.error.message;
       } else {
         this.errorMessage = 'Không thể đăng bài viết. Vui lòng thử lại.';
+      }
+      if (this.errorMessage) {
+        this.dialogService.alert(this.errorMessage, 'Lỗi đăng bài viết', 'error');
       }
     } finally {
       this.isPublishing = false;

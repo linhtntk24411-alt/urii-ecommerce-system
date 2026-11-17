@@ -181,8 +181,10 @@ export class BlogListComponent implements OnInit {
     }
     if (this.bookmarks[blogId]) {
       delete this.bookmarks[blogId];
+      this.dialogService.alert('Đã bỏ lưu bài viết khỏi danh sách quan tâm.', 'Blog cộng đồng', 'success');
     } else {
       this.bookmarks[blogId] = true;
+      this.dialogService.alert('Đã lưu bài viết vào danh sách quan tâm!', 'Blog cộng đồng', 'success');
     }
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem('bookmarks', JSON.stringify(this.bookmarks));

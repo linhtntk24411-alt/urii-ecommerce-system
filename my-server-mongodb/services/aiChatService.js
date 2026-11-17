@@ -243,6 +243,38 @@ function searchProducts(query) {
   return results.slice(0, 3).map(r => r.item);
 }
 
+function toMediaUrl(url) {
+  if (!url) return '';
+  const s = String(url).trim();
+  if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('/')) return s;
+  return '/' + s;
+}
+
+function toProductCard(p) {
+  if (!p) return null;
+  const priceStr = p.currentPrice ? (p.currentPrice.toLocaleString('vi-VN') + 'đ') : 'Giá ưu đãi';
+  return {
+    type: 'product',
+    title: p.name,
+    subtitle: priceStr,
+    badge: p.category || 'Sản phẩm',
+    image: toMediaUrl(p.image || (Array.isArray(p.images) ? p.images[0] : '')),
+    url: `/product-detail/${p.slug || p.id}`
+  };
+}
+
+function toMapCard(m) {
+  if (!m) return null;
+  return {
+    type: 'map',
+    title: (m.map_name || '').replace('Map mẫu: ', ''),
+    subtitle: `${m.grid_size || '32x32 ô'} · Hạt ${m.bead_type || 'Midi 5mm'}`,
+    badge: `${m.map_id} · ${m.difficulty || 'Dễ'}`,
+    image: toMediaUrl(m.main_image),
+    url: `/sample-maps-detail?id=${m.map_id}`
+  };
+}
+
 /**
  * Fallback AI trả lời súc tích, thông minh, đúng trọng tâm và đúng đường dẫn
  */
@@ -354,10 +386,16 @@ function getFallbackReply(userMessage, context = {}) {
     const topTarget = matchedProds.length > 0 ? `/product-detail/${matchedProds[0].slug}` : '/sample-maps';
     const topLabel = matchedProds.length > 0 ? `Xem ${matchedProds[0].name}` : 'Xem thư viện map';
 
+    const mediaCards = [
+      ...matchedProds.map(toProductCard),
+      ...matchedMaps.map(toMapCard)
+    ].filter(Boolean).slice(0, 3);
+
     return {
       reply,
       targetUrl: topTarget,
       targetLabel: topLabel,
+      mediaCards,
       chips: [
         { label: 'Xem sản phẩm', action: '/products' },
         { label: 'Thư viện map mẫu', action: '/sample-maps' },
@@ -369,6 +407,8 @@ function getFallbackReply(userMessage, context = {}) {
 
   // --- TRƯỜNG HỢP 1B: HỎI VỀ SỐ LƯỢNG MÀU / BẢNG MÀU CỦA HẠT ỦI ---
   if (isColorCatalogInquiry && !isAskingPrice) {
+    const beadSample = productsData.find(p => p.category === 'HN');
+    const kitSample = productsData.find(p => p.category === 'KIT');
     const alsoAskedMaps = (norm.includes('map') || norm.includes('chart')) ? searchGallery(userMessage) : [];
     if (alsoAskedMaps.length > 0) {
       const topMap = alsoAskedMaps[0];
@@ -376,6 +416,7 @@ function getFallbackReply(userMessage, context = {}) {
         reply: `Dạ Urii có đủ cả 2 bạn nhé! ✨\n- **Bảng màu hạt ủi:** Hơn **72 mã màu** (cơ bản, pastel, dạ quang, nhũ) theo gói lẻ 10g hoặc bộ Kit 24–72 màu.\n- **${topMap.map_name}:** Mã **${topMap.map_id}** (Độ khó: ${topMap.difficulty || 'Dễ'}, Hạt ${topMap.bead_type || 'Midi 5mm'}). 🌸`,
         targetUrl: `/sample-maps-detail?id=${topMap.map_id}`,
         targetLabel: `Xem chi tiết map ${topMap.map_name.replace('Map mẫu: ', '')}`,
+        mediaCards: [toMapCard(topMap), toProductCard(beadSample), toProductCard(kitSample)].filter(Boolean),
         chips: [
           { label: `Xem map ${topMap.map_id}`, action: `/sample-maps-detail?id=${topMap.map_id}` },
           { label: 'Xem bảng màu hạt cườm', action: '/products?category=BEADS' },
@@ -388,6 +429,7 @@ function getFallbackReply(userMessage, context = {}) {
       reply: 'Dạ bảng màu hạt ủi Perler beads tại Urii có hơn **72 mã màu** phong phú (gồm tone cơ bản, pastel, dạ quang và nhũ)! ✨\n- **Theo bộ Kit DIY:** Có sẵn các set **24 màu**, **48 màu** và **72 màu** (kèm đầy đủ khay cắm, nhíp, giấy ủi).\n- **Gói bổ sung hạt lẻ (10g ~ 1000 hạt):** Đầy đủ các mã màu từ Bảng A đến H với cả 2 kích thước 2.6mm và 5mm.\nBạn có thể ghé danh mục Hạt cườm để xem chi tiết từng mã màu nhé! 🌸',
       targetUrl: '/products?category=BEADS',
       targetLabel: 'Xem bảng màu hạt cườm',
+      mediaCards: [...productsData.filter(p => p.category === 'HN').slice(0, 2).map(toProductCard), toProductCard(kitSample)].filter(Boolean),
       chips: [
         { label: 'Xem mã màu hạt lẻ', action: '/products?category=BEADS' },
         { label: 'Bộ Kit 24 - 72 màu', action: '/products?category=KIT' },
@@ -482,6 +524,7 @@ function getFallbackReply(userMessage, context = {}) {
         reply: replyText,
         targetUrl: `/sample-maps-detail?id=${topMap.map_id}`,
         targetLabel: `Xem chi tiết map ${topMap.map_name.replace('Map mẫu: ', '')}`,
+        mediaCards: foundMaps.slice(0, 3).map(toMapCard).filter(Boolean),
         chips: [
           { label: `Xem map ${topMap.map_id}`, action: `/sample-maps-detail?id=${topMap.map_id}` },
           { label: 'Thư viện map mẫu', action: '/sample-maps' },
@@ -497,6 +540,7 @@ function getFallbackReply(userMessage, context = {}) {
         reply: 'Dạ hiện tại trên Thư viện mẫu sẵn chưa có mẫu này ạ. Tuy nhiên bạn hoàn toàn có thể gửi yêu cầu tại trang Đặt làm riêng để xưởng Urii vẽ map và thiết kế theo ý bạn nhé! ✨',
         targetUrl: '/custom-order',
         targetLabel: 'Đặt thiết kế map theo yêu cầu',
+        mediaCards: galleryData.slice(0, 2).map(toMapCard).filter(Boolean),
         chips: [
           { label: 'Đặt làm theo yêu cầu', action: '/custom-order' },
           { label: 'Xem kho map có sẵn', action: '/sample-maps' },
@@ -510,6 +554,7 @@ function getFallbackReply(userMessage, context = {}) {
       reply: 'Dạ Thư viện Urii có hơn 60 map mẫu miễn phí từ cấp độ Dễ đến Nâng cao (Hello Kitty, Doraemon, Capybara, Shin, hoa lá, động vật...). Bạn có thể vào xem và tải chart bất cứ lúc nào nhé! 💖',
       targetUrl: '/sample-maps',
       targetLabel: 'Khám phá Thư viện map mẫu',
+      mediaCards: galleryData.slice(0, 3).map(toMapCard).filter(Boolean),
       chips: [
         { label: 'Xem thư viện map mẫu', action: '/sample-maps' },
         { label: 'Bộ Kit tự làm hạt ủi', action: '/products?category=KIT' },
@@ -592,6 +637,7 @@ function getFallbackReply(userMessage, context = {}) {
       reply: 'Dạ hiện tại Urii có dòng sản phẩm nổi bật là 🌸 BST Ươm Hoa (Hoa Bạch Tuyết, Hoa Cẩm Tú Cầu, Hoa Hồng Đỏ, Hoa Lài...) đồng giá 65.000đ/sản phẩm và BST World Cup thể thao. Bạn ghé xem các mẫu nhé! ✨',
       targetUrl: '/products?category=BST',
       targetLabel: 'Khám phá BST Ươm Hoa',
+      mediaCards: productsData.filter(p => p.category === 'BST').slice(0, 3).map(toProductCard).filter(Boolean),
       chips: [
         { label: 'Xem BST Ươm Hoa', action: '/products?category=BST' },
         { label: 'Đặt làm theo yêu cầu', action: '/custom-order' },
@@ -609,6 +655,7 @@ function getFallbackReply(userMessage, context = {}) {
       reply: `Dạ Urii CÓ sản phẩm này bạn nhé! ✨\n- **${topProd.name}** (Giá: ${priceStr}).\nBạn có thể bấm bên dưới để xem chi tiết hoặc đặt mua sản phẩm nha!`,
       targetUrl: `/product-detail/${topProd.slug}`,
       targetLabel: `Xem chi tiết ${topProd.name}`,
+      mediaCards: foundProducts.slice(0, 3).map(toProductCard).filter(Boolean),
       chips: [
         { label: 'Xem chi tiết sản phẩm', action: `/product-detail/${topProd.slug}` },
         { label: 'Đến giỏ hàng', action: '/cart' },
@@ -663,6 +710,7 @@ function getFallbackReply(userMessage, context = {}) {
       reply: 'Dạ Urii có đủ phụ kiện hạt ủi Perler: Bàn ủi nhiệt mini, giấy ủi nhiệt, nhíp gắp hạt inox và khay cắm hạt vuông/tròn đa năng. Bạn ghé danh mục dụng cụ xem nhé! ✨',
       targetUrl: '/products?category=TOOLS',
       targetLabel: 'Xem dụng cụ làm hạt',
+      mediaCards: productsData.filter(p => p.category === 'DC').slice(0, 3).map(toProductCard).filter(Boolean),
       chips: [
         { label: 'Xem dụng cụ', action: '/products?category=TOOLS' },
         { label: 'Chat với Admin', action: 'Chat với Admin' }
@@ -676,6 +724,7 @@ function getFallbackReply(userMessage, context = {}) {
       reply: 'Dạ Urii có sẵn rất nhiều bộ Kit DIY từ 24 đến 72 màu (kèm khay cắm, nhíp, giấy ủi và chart mẫu), rất phù hợp cho người mới bắt đầu. Bạn ghé xem các bộ Kit nha! 🌸',
       targetUrl: '/products?category=KIT',
       targetLabel: 'Xem bộ sưu tập Kit DIY',
+      mediaCards: productsData.filter(p => p.category === 'KIT').slice(0, 3).map(toProductCard).filter(Boolean),
       chips: [
         { label: 'Bộ Kit DIY', action: '/products?category=KIT' },
         { label: 'Hạt lẻ nhiều màu', action: '/products?category=BEADS' },
@@ -810,10 +859,15 @@ async function generateAiReply({ message, history = [], context = {}, apiKey }) 
       chips.push({ label: 'Chat với Admin', action: 'Chat với Admin' });
     }
 
+    const fallbackData = getFallbackReply(message, context);
+
     return {
       reply: parsed.reply,
-      targetUrl: parsed.targetUrl || undefined,
-      targetLabel: parsed.targetLabel || undefined,
+      targetUrl: parsed.targetUrl || fallbackData.targetUrl || undefined,
+      targetLabel: parsed.targetLabel || fallbackData.targetLabel || undefined,
+      mediaCards: Array.isArray(parsed.mediaCards) && parsed.mediaCards.length > 0
+        ? parsed.mediaCards
+        : fallbackData.mediaCards,
       chips
     };
   } catch (err) {

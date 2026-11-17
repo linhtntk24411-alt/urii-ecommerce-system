@@ -9,10 +9,10 @@
           Chúng tôi không chỉ bán sản phẩm — chúng tôi truyền cảm hứng.
         </p>
         <div class="about-actions" aria-label="Khám phá Urii">
-          <button class="about-btn about-btn--primary" type="button">
+          <button class="about-btn about-btn--primary" type="button" (click)="exploreProducts()">
             <i class="bi bi-bag-plus" aria-hidden="true"></i> Khám phá sản phẩm
           </button>
-          <button class="about-btn about-btn--outline" type="button">
+          <button class="about-btn about-btn--outline" type="button" (click)="scrollToStory()">
             <i class="bi bi-arrow-down" aria-hidden="true"></i> Câu chuyện của chúng tôi
           </button>
         </div>
@@ -124,7 +124,7 @@
         <h2 id="about-cta-title">Sẵn sàng bắt đầu hành trình sáng tạo?</h2>
         <p>Hãy khám phá bộ sưu tập hạt nhựa và các mẫu thiết kế độc đáo tại Urii.</p>
       </div>
-      <button class="about-btn about-btn--cream" type="button">
+      <button class="about-btn about-btn--cream" type="button" (click)="exploreProducts()">
         <i class="bi bi-arrow-right" aria-hidden="true"></i> Khám phá ngay
       </button>
       <span class="about-final-cta__pixel" aria-hidden="true"><i class="bi bi-grid-3x3-gap-fill"></i></span>

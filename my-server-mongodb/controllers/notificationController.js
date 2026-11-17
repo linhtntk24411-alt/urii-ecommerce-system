@@ -124,14 +124,19 @@ exports.getMyNotifications = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
     const isAdmin = req.auth?.role === 'admin';
+    const userIdStr = String(req.auth?.id || '');
+    const userIdVariants = [
+      userIdStr,
+      ...(mongoose.isValidObjectId(userIdStr) ? [new mongoose.Types.ObjectId(userIdStr)] : [])
+    ];
     const filter = isAdmin
       ? {
           audience: 'admin',
-          $or: [{ recipientUserId: null }, { recipientUserId: req.auth.id }]
+          $or: [{ recipientUserId: null }, { recipientUserId: { $in: userIdVariants } }]
         }
       : {
           audience: 'user',
-          recipientUserId: req.auth.id
+          recipientUserId: { $in: userIdVariants }
         };
 
     if (typeof req.query.isRead === 'string') {
@@ -173,7 +178,7 @@ exports.getMyNotifications = async (req, res) => {
         const userNotifsColl = mongoose.connection.db.collection('user_notifications');
         const rawFilter = {
           audience: 'user',
-          recipientUserId: String(req.auth.id)
+          recipientUserId: { $in: userIdVariants }
         };
         if (typeof req.query.isRead === 'string') {
           rawFilter.isRead = req.query.isRead === 'true';
@@ -214,22 +219,6 @@ exports.getMyNotifications = async (req, res) => {
       });
 
       let matched = allFixtures.filter((n) => String(n.recipientUserId) === String(req.auth.id));
-
-      // If user has no notifications in fixtures, provide sample notifications from fixtures
-      if (matched.length === 0) {
-        matched = allFixtures.slice(0, 10).map((n, idx) => {
-          const customId = `${n.id}-${String(req.auth.id).slice(-4)}`;
-          const readInfo = fallbackReadMap.get(customId);
-          return {
-            ...n,
-            id: customId,
-            _id: customId,
-            recipientUserId: req.auth.id,
-            isRead: readInfo ? readInfo.isRead : idx > 3,
-            readAt: readInfo ? readInfo.readAt : (idx > 3 ? n.readAt : null)
-          };
-        });
-      }
 
       if (typeof req.query.isRead === 'string') {
         const isReadBool = req.query.isRead === 'true';

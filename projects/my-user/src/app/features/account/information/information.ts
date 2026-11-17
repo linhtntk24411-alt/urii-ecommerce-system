@@ -1,9 +1,10 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { ChangeDetectorRef, Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
 
 interface UserProfile {
   id: string;
@@ -63,16 +64,17 @@ function birthDateValidator(control: AbstractControl): ValidationErrors | null {
 }
 
 @Component({
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   selector: 'app-information',
   styleUrl: './information.css',
   templateUrl: './information.html',
 })
-export class Information implements OnInit {
+export class Information implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly profileForm = this.formBuilder.nonNullable.group({
@@ -99,8 +101,30 @@ export class Information implements OnInit {
   isSavingAvatar = false;
   avatarModalError = '';
 
+  // Đổi mật khẩu (xác thực bằng mật khẩu cũ hoặc OTP gửi về Gmail)
+  isChangingPassword = false;
+  passwordAuthMode: 'old-password' | 'otp' = 'old-password';
+  currentPassword = '';
+  newPassword = '';
+  confirmNewPassword = '';
+  passwordOtp = '';
+  isSendingOtp = false;
+  isSavingPassword = false;
+  otpSent = false;
+  otpCountdown = 0;
+  private otpTimer: ReturnType<typeof setInterval> | null = null;
+  passwordError = '';
+  passwordSuccess = '';
+  showCurrentPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
+
   ngOnInit(): void {
     if (this.isBrowser) this.loadProfile();
+  }
+
+  ngOnDestroy(): void {
+    this.clearOtpTimer();
   }
 
   loadProfile(): void {
@@ -229,6 +253,7 @@ export class Information implements OnInit {
         this.setProfile(profile);
         this.isEditing = false;
         this.successMessage = 'Đã cập nhật hồ sơ thành công.';
+        this.toast.show('Đã cập nhật hồ sơ thành công!', 'success', 'Hồ sơ cá nhân');
         if (this.isBrowser) {
           localStorage.setItem('userName', profile.name);
           localStorage.setItem('userEmail', profile.email);
@@ -241,6 +266,7 @@ export class Information implements OnInit {
         this.errorMessage = error instanceof HttpErrorResponse && error.error?.message
           ? error.error.message
           : 'Không thể cập nhật hồ sơ. Vui lòng thử lại.';
+        this.toast.show(this.errorMessage, 'error', 'Lỗi cập nhật hồ sơ');
       },
     });
   }
@@ -346,6 +372,7 @@ export class Information implements OnInit {
           }
 
           this.successMessage = 'Đã cập nhật ảnh đại diện thành công.';
+          this.toast.show('Đã cập nhật ảnh đại diện thành công!', 'success', 'Ảnh đại diện');
           this.closeAvatarModal(true);
         },
         error: (error: unknown) => {
@@ -353,6 +380,7 @@ export class Information implements OnInit {
           this.avatarModalError = error instanceof HttpErrorResponse && error.error?.message
             ? error.error.message
             : 'Không thể cập nhật ảnh đại diện. Vui lòng thử lại.';
+          this.toast.show(this.avatarModalError, 'error', 'Lỗi ảnh đại diện');
         }
       });
     };
@@ -375,6 +403,201 @@ export class Information implements OnInit {
     } else {
       executePatch(this.avatarPreview);
     }
+  }
+
+  openChangePassword(mode: 'old-password' | 'otp' = 'old-password'): void {
+    this.isChangingPassword = true;
+    this.passwordAuthMode = mode;
+    this.currentPassword = '';
+    this.newPassword = '';
+    this.confirmNewPassword = '';
+    this.passwordOtp = '';
+    this.passwordError = '';
+    this.passwordSuccess = '';
+  }
+
+  cancelChangePassword(): void {
+    if (this.isSavingPassword) return;
+    this.isChangingPassword = false;
+    this.currentPassword = '';
+    this.newPassword = '';
+    this.confirmNewPassword = '';
+    this.passwordOtp = '';
+    this.passwordError = '';
+    this.clearOtpTimer();
+    this.otpSent = false;
+    this.otpCountdown = 0;
+  }
+
+  switchPasswordAuthMode(mode: 'old-password' | 'otp'): void {
+    this.passwordAuthMode = mode;
+    this.passwordError = '';
+    this.passwordSuccess = '';
+    if (mode === 'otp' && !this.otpSent && !this.isSendingOtp) {
+      this.sendPasswordOtp();
+    }
+  }
+
+  formatOtpCountdown(): string {
+    const minutes = Math.floor(this.otpCountdown / 60);
+    const seconds = this.otpCountdown % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  private clearOtpTimer(): void {
+    if (this.otpTimer) {
+      clearInterval(this.otpTimer);
+      this.otpTimer = null;
+    }
+  }
+
+  private startOtpCountdown(seconds = 60): void {
+    this.clearOtpTimer();
+    this.otpCountdown = seconds;
+    this.otpTimer = setInterval(() => {
+      if (this.otpCountdown > 0) {
+        this.otpCountdown -= 1;
+      } else {
+        this.clearOtpTimer();
+      }
+      this.changeDetectorRef.markForCheck();
+    }, 1000);
+  }
+
+  sendPasswordOtp(): void {
+    if (!this.profile?.email || this.isSendingOtp || this.otpCountdown > 0) return;
+    this.isSendingOtp = true;
+    this.passwordError = '';
+    this.passwordSuccess = '';
+    this.toast.show(`Đang gửi mã OTP đến ${this.profile.email}...`, 'warning', 'Đang chờ gửi mã');
+
+    this.http.post<{ message?: string }>('/api/auth/forgot-password', {
+      email: this.profile.email,
+    }).pipe(
+      finalize(() => {
+        this.isSendingOtp = false;
+        this.changeDetectorRef.markForCheck();
+      }),
+    ).subscribe({
+      next: (res) => {
+        this.otpSent = true;
+        this.startOtpCountdown(60);
+        this.passwordSuccess = res?.message || `Đã gửi mã OTP 6 chữ số đến Gmail ${this.profile?.email}.`;
+        this.toast.show(this.passwordSuccess, 'success', 'Đã gửi mã OTP');
+      },
+      error: (error: unknown) => {
+        this.passwordError = error instanceof HttpErrorResponse && error.error?.message
+          ? error.error.message
+          : 'Không thể gửi mã OTP lúc này. Vui lòng thử lại.';
+        this.toast.show(this.passwordError, 'error', 'Lỗi gửi OTP');
+      },
+    });
+  }
+
+  submitChangePassword(): void {
+    if (this.isSavingPassword || !this.profile) return;
+    this.passwordError = '';
+    this.passwordSuccess = '';
+
+    const nextPass = this.newPassword;
+    if (
+      nextPass.length < 8
+      || !/[A-Z]/.test(nextPass)
+      || !/[a-z]/.test(nextPass)
+      || !/[0-9]/.test(nextPass)
+    ) {
+      this.passwordError = 'Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số.';
+      this.toast.show(this.passwordError, 'error', 'Mật khẩu chưa hợp lệ');
+      return;
+    }
+
+    if (nextPass !== this.confirmNewPassword) {
+      this.passwordError = 'Mật khẩu xác nhận không khớp với mật khẩu mới.';
+      this.toast.show(this.passwordError, 'error', 'Mật khẩu không khớp');
+      return;
+    }
+
+    if (this.passwordAuthMode === 'old-password') {
+      if (!this.currentPassword) {
+        this.passwordError = 'Vui lòng nhập mật khẩu hiện tại để xác thực.';
+        this.toast.show(this.passwordError, 'warning', 'Thiếu mật khẩu hiện tại');
+        return;
+      }
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        this.requiresLogin = true;
+        return;
+      }
+
+      this.isSavingPassword = true;
+      this.toast.show('Đang xác thực và cập nhật mật khẩu...', 'warning', 'Đang xử lý');
+      this.http.patch<unknown>('/api/auth/me', {
+        currentPassword: this.currentPassword,
+        password: nextPass,
+      }, {
+        headers: this.authorizationHeaders(token),
+      }).pipe(
+        finalize(() => {
+          this.isSavingPassword = false;
+          this.changeDetectorRef.markForCheck();
+        }),
+      ).subscribe({
+        next: () => {
+          this.isChangingPassword = false;
+          this.currentPassword = '';
+          this.newPassword = '';
+          this.confirmNewPassword = '';
+          this.passwordSuccess = 'Đã đổi mật khẩu thành công!';
+          this.toast.show('Đã đổi mật khẩu thành công!', 'success', 'Bảo mật tài khoản');
+        },
+        error: (error: unknown) => {
+          this.passwordError = error instanceof HttpErrorResponse && error.error?.message
+            ? error.error.message
+            : 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu cũ.';
+          this.toast.show(this.passwordError, 'error', 'Đổi mật khẩu thất bại');
+        },
+      });
+      return;
+    }
+
+    // Chế độ xác thực bằng OTP gửi về Gmail
+    const otpCode = this.passwordOtp.trim();
+    if (!/^\d{6}$/.test(otpCode)) {
+      this.passwordError = 'Vui lòng nhập đúng mã OTP 6 chữ số đã gửi về Gmail của bạn.';
+      this.toast.show(this.passwordError, 'warning', 'Chưa nhập đủ mã OTP');
+      return;
+    }
+
+    this.isSavingPassword = true;
+    this.toast.show('Đang xác thực mã OTP và đổi mật khẩu...', 'warning', 'Đang xử lý');
+    this.http.post<{ message?: string }>('/api/auth/reset-password', {
+      email: this.profile.email,
+      otp: otpCode,
+      password: nextPass,
+    }).pipe(
+      finalize(() => {
+        this.isSavingPassword = false;
+        this.changeDetectorRef.markForCheck();
+      }),
+    ).subscribe({
+      next: (res) => {
+        this.isChangingPassword = false;
+        this.passwordOtp = '';
+        this.newPassword = '';
+        this.confirmNewPassword = '';
+        this.clearOtpTimer();
+        this.otpSent = false;
+        this.otpCountdown = 0;
+        this.passwordSuccess = res?.message || 'Đã xác thực OTP và đổi mật khẩu mới thành công!';
+        this.toast.show(this.passwordSuccess, 'success', 'Đổi mật khẩu thành công');
+      },
+      error: (error: unknown) => {
+        this.passwordError = error instanceof HttpErrorResponse && error.error?.message
+          ? error.error.message
+          : 'Mã xác thực OTP không hợp lệ hoặc đã hết hạn.';
+        this.toast.show(this.passwordError, 'error', 'Xác thực OTP thất bại');
+      },
+    });
   }
 
   private setProfile(profile: UserProfile): void {

@@ -5,6 +5,8 @@ const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
 const { isDataImageUrl, saveDataUrlImage } = require('../utils/imageUpload');
 const { emitCrudChange } = require('../realtime');
+const { createAdminNotification } = require('./notificationController');
+const { createUserNotification } = require('../utils/userNotificationHelper');
 
 const blogCategoriesById = new Map(
   (blogData.categories || []).map((category) => [category.id, category])
@@ -131,6 +133,25 @@ exports.createBlog = async (req, res) => {
       isFeatured: req.auth?.role === 'admin' ? Boolean(req.body.isFeatured) : false
     });
     emitCrudChange('blogs', 'created', blog._id);
+    if (req.auth?.role !== 'admin') {
+      await createAdminNotification({
+        typeId: 'ADMIN_BLOG_NEW',
+        eventId: String(blog._id || blog.id),
+        reference: { blogId: String(blog.id), slug: blog.slug },
+        title: `Bài viết Blog mới: ${blog.title}`,
+        message: 'Khách hàng vừa đăng tải bài viết mới lên Góc Cộng Đồng.'
+      });
+    }
+    if (resolvedUserId) {
+      await createUserNotification({
+        userId: resolvedUserId,
+        typeId: 'USER_BLOG_PUBLISHED',
+        reference: { blogId: String(blog.id), slug: blog.slug },
+        title: 'Đăng bài viết thành công!',
+        message: `Bài viết "${blog.title}" của bạn đã được xuất bản trên Góc Cộng Đồng Urii.`,
+        actionUrl: `/blog-detail/${encodeURIComponent(blog.slug)}`
+      });
+    }
     const [enriched] = await enrichBlogs([blog.toObject()]);
     res.status(201).json(enriched);
   } catch (error) {

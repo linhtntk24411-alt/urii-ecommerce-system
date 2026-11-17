@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { ToastKind, ToastService } from './toast.service';
 
 export type DialogType = 'info' | 'success' | 'warning' | 'error';
 
@@ -23,24 +24,21 @@ export class DialogService {
   readonly currentDialog = signal<DialogOptions | null>(null);
   readonly currentLoginPrompt = signal<LoginPromptOptions | null>(null);
 
+  private readonly toast = inject(ToastService);
   private currentResolver: ((value: boolean) => void) | null = null;
 
   alert(
     message: string,
     title = 'Thông báo',
     type: DialogType = 'info',
-    confirmText = 'Đồng ý'
+    _confirmText = 'Đồng ý'
   ): Promise<void> {
-    return new Promise<void>((resolve) => {
-      this.currentResolver = () => resolve();
-      this.currentDialog.set({
-        type,
-        title,
-        message,
-        isConfirm: false,
-        confirmText,
-      });
-    });
+    const kind: ToastKind =
+      type === 'success' ? 'success'
+      : type === 'error' ? 'error'
+      : 'warning';
+    this.toast.show(message, kind, title !== 'Thông báo' ? title : undefined, 5000);
+    return Promise.resolve();
   }
 
   confirm(

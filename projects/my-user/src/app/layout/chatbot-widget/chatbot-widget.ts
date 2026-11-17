@@ -8,6 +8,15 @@ import { Router } from '@angular/router';
 import { catchError, delay, finalize, map, Observable, of, firstValueFrom, Subscription } from 'rxjs';
 import { StorageService } from '../../core/services/storage.service';
 
+interface ChatMediaCard {
+  type: 'product' | 'map';
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  image?: string;
+  url: string;
+}
+
 interface ChatMessage {
   type?: 'text' | 'sticker' | 'image' | 'file';
   attachment?: { name: string; mime: string; size: number };
@@ -18,6 +27,7 @@ interface ChatMessage {
   serverSessionId?: string;
   targetUrl?: string;
   targetLabel?: string;
+  mediaCards?: ChatMediaCard[];
   isWarning?: boolean;
   text: string;
   sender: 'user' | 'bot' | 'admin';
@@ -39,6 +49,7 @@ interface ChatSession {
 interface ChatbotReply {
   targetUrl?: string;
   targetLabel?: string;
+  mediaCards?: ChatMediaCard[];
   isWarning?: boolean;
   text: string;
   chips?: { label: string; action: string }[];
@@ -295,7 +306,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     return messages.map(message => {
       if (!message.messageId) return message;
       const visible = { ...message, text: this.messageText(message) };
-      if (!this.canShowContent(message)) { visible.chips = undefined; visible.targetUrl = undefined; visible.targetLabel = undefined; }
+      if (!this.canShowContent(message)) { visible.chips = undefined; visible.targetUrl = undefined; visible.targetLabel = undefined; visible.mediaCards = undefined; }
       return visible;
     });
   }
@@ -946,6 +957,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       chips: reply.chips,
       targetUrl: reply.targetUrl,
       targetLabel: reply.targetLabel,
+      mediaCards: reply.mediaCards,
       isWarning: reply.isWarning,
     });
     freshSession.lastMessageTime = Date.now();
@@ -976,6 +988,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
       reply: string;
       targetUrl?: string;
       targetLabel?: string;
+      mediaCards?: ChatMediaCard[];
       isWarning?: boolean;
       chips?: { label: string; action: string }[];
     }>('/api/chat/ai', {
@@ -988,6 +1001,7 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
         text: res.reply,
         targetUrl: res.targetUrl || undefined,
         targetLabel: res.targetLabel || undefined,
+        mediaCards: res.mediaCards && res.mediaCards.length > 0 ? res.mediaCards : undefined,
         isWarning: res.isWarning,
         chips: res.chips && res.chips.length > 0 ? res.chips : undefined,
       })),

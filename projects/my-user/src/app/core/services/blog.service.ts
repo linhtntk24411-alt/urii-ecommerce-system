@@ -24,6 +24,11 @@ export interface BlogPost {
   tags: string[];
 }
 
+export interface BlogCommentReaction {
+  userId: string;
+  emoji: string;
+}
+
 export interface BlogCommentReply {
   id: string;
   author: string;
@@ -34,6 +39,7 @@ export interface BlogCommentReply {
   role?: 'user' | 'admin' | 'author';
   replyTo?: string;
   replyToAuthor?: string;
+  reactions?: BlogCommentReaction[];
 }
 
 export interface BlogComment {
@@ -44,6 +50,7 @@ export interface BlogComment {
   content: string;
   createdAt: string;
   time: string;
+  reactions?: BlogCommentReaction[];
   replies?: BlogCommentReply[];
 }
 
@@ -71,7 +78,7 @@ export class BlogService {
     }).pipe(
       map((response) => {
         const createdPost = this.parseBlogs(response)[0];
-        if (!createdPost) throw new Error('API táº¡o bĂ i viáº¿t tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡.');
+        if (!createdPost) throw new Error('API tạo bài viết trả về dữ liệu không hợp lệ.');
         return createdPost;
       }),
     );
@@ -83,13 +90,25 @@ export class BlogService {
     });
   }
 
+  reactComment(commentId: string | number, emoji: string | null, token: string, replyId?: string): Observable<BlogComment> {
+    return this.http.post<unknown>(`/api/comments/${commentId}/reactions`, { emoji, ...(replyId ? { replyId } : {}) }, {
+      headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
+    }).pipe(
+      map((response) => {
+        const updated = this.parseComments(response)[0];
+        if (!updated) throw new Error('API thả cảm xúc bình luận trả về dữ liệu không hợp lệ.');
+        return updated;
+      }),
+    );
+  }
+
   createComment(comment: Pick<BlogComment, 'blogId' | 'content'>, token: string): Observable<BlogComment> {
     return this.http.post<unknown>('/api/comments', comment, {
       headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
     }).pipe(
       map((response) => {
         const createdComment = this.parseComments(response)[0];
-        if (!createdComment) throw new Error('API táº¡o bĂ¬nh luáº­n tráº£ vá» dá»¯ liá»‡u khĂ´ng há»£p lá»‡.');
+        if (!createdComment) throw new Error('API tạo bình luận trả về dữ liệu không hợp lệ.');
         return createdComment;
       }),
     );
@@ -182,8 +201,8 @@ export class BlogService {
         date,
         image: this.normalizeImagePath(rawImage) || 'assets/gallery_assets/mau-ca-heo.webp',
         imageAvailable: typeof rawImage === 'string' && Boolean(rawImage.trim()),
-        category: category || 'KhĂ¡c',
-        categorySlug: this.toText(record['categorySlug'] ?? record['category_slug']) || this.slugify(category || 'KhĂ¡c'),
+        category: category || 'Khác',
+        categorySlug: this.toText(record['categorySlug'] ?? record['category_slug']) || this.slugify(category || 'Khác'),
         likes: this.toNumber(record['likes']),
         comments: this.toNumber(record['comments']),
         views: this.toNumber(record['views']),
@@ -231,26 +250,38 @@ export class BlogService {
         if (!replyContent) return [];
         return [{
           id: this.toText(r['id']) || String(Date.now()),
-          author: this.toText(r['author']) || 'KhĂ¡ch hĂ ng',
+          author: this.toText(r['author']) || 'Khách hàng',
           avatar: this.normalizeImagePath(r['avatar']) || 'assets/avatar-non.jpg',
           content: replyContent,
           createdAt: this.toText(r['createdAt']),
-          time: this.toText(r['time']) || 'Vá»«a xong',
+          time: this.toText(r['time']) || 'Vừa xong',
           role: (r['role'] as any) || 'user',
-          replyToAuthor: this.toText(r['replyToAuthor']) || undefined
+          replyToAuthor: this.toText(r['replyToAuthor']) || undefined,
+          reactions: this.parseReactions(r['reactions'])
         }];
       });
 
       return [{
         id: id || `${blogId}-${createdAt}-${content.slice(0, 20)}`,
         blogId,
-        author: this.toText(record['author']) || 'KhĂ¡ch hĂ ng',
+        author: this.toText(record['author']) || 'Khách hàng',
         avatar: avatar || 'assets/avatar-non.jpg',
         content,
         createdAt,
         time: this.toText(record['time']),
+        reactions: this.parseReactions(record['reactions']),
         replies
       }];
+    });
+  }
+
+  private parseReactions(value: unknown): BlogCommentReaction[] {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item): BlogCommentReaction[] => {
+      if (!this.isRecord(item)) return [];
+      const userId = this.toText(item['userId']);
+      const emoji = this.toText(item['emoji']);
+      return userId && emoji ? [{ userId, emoji }] : [];
     });
   }
 
@@ -317,7 +348,7 @@ export class BlogService {
     return value
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[Ä‘Ä]/g, 'd')
+      .replace(/[đĐ]/g, 'd')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')

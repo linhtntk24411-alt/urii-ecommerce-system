@@ -10,7 +10,7 @@
 
         <div class="header-logo">
             <a routerLink="/">
-                <img src="assets/Urii-Logo.png" alt="Urii Logo" class="logo-img" />
+                <img src="assets/Urii-Logo.png" alt="Urii Logo" class="logo-img" width="120" height="56" />
             </a>
         </div>
 
@@ -315,7 +315,7 @@
 <div class="modal-overlay" [class.active]="isLogoutModalOpen" (click)="closeLogoutModal()"></div>
 <div class="modal" [class.active]="isLogoutModalOpen" [attr.aria-hidden]="!isLogoutModalOpen" (click)="$event.stopPropagation()">
     <div class="modal-content modal-content--logout">
-        <h3 class="modal-title">Bạn có chắc chắn muốn đăng xuất?</h3>
+        <p class="modal-title" role="heading" aria-level="2">Bạn có chắc chắn muốn đăng xuất?</p>
         <div class="modal-actions">
             <button class="modal-btn modal-btn--cancel" type="button" (click)="closeLogoutModal()">Hủy</button>
             <button class="modal-btn modal-btn--danger" type="button" (click)="confirmLogout()">Đăng xuất</button>

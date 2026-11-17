@@ -2,7 +2,7 @@
     <div class="footer-main">
         <div class="footer-brand">
             <a routerLink="/" class="footer-logo">
-                <img src="assets/Urii-Logo.png" alt="Urii Logo">
+                <img src="assets/Urii-Logo.png" alt="Urii Logo" width="150" height="150">
             </a>
             <p class="footer-desc">
                 Nơi khơi nguồn đam mê sáng tạo Pixel Art với những hạt ủi nhiệt Perler Beads chất lượng nhất.
@@ -21,7 +21,7 @@
         </div>
 
         <div class="footer-col" [class.active]="activeCol === 'kham-pha'" (click)="toggleAccordion('kham-pha')">
-            <h4>Khám phá</h4>
+            <h3>Khám phá</h3>
             <div class="footer-content">
                 <ul>
                     <li><a routerLink="/about">Về Urii</a></li>
@@ -33,7 +33,7 @@
         </div>
 
         <div class="footer-col" [class.active]="activeCol === 'ho-tro'" (click)="toggleAccordion('ho-tro')">
-            <h4>Hỗ trợ khách hàng</h4>
+            <h3>Hỗ trợ khách hàng</h3>
             <div class="footer-content">
                 <ul>
                     <li><a routerLink="/support/support-center">Trung tâm hỗ trợ</a></li>
@@ -45,7 +45,7 @@
         </div>
 
         <div class="footer-col" [class.active]="activeCol === 'lien-he'" (click)="toggleAccordion('lien-he')">
-            <h4>Liên hệ</h4>
+            <h3>Liên hệ</h3>
             <div class="footer-content">
                 <div class="footer-contact">
                     <div class="contact-item">

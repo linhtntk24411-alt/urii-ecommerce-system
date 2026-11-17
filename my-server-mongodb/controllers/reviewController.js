@@ -215,15 +215,22 @@ exports.getEligibleOrders = async (req, res) => {
 };
 
 exports.createReview = async (req, res) => {
+  const { orderId, productId, rating, content = '', media = [] } = req.body || {};
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
+    || !orderId || !productId
+    || !Number.isInteger(rating) || rating < 1 || rating > 5
+    || typeof content !== 'string' || content.trim().length > 1000
+    || !Array.isArray(media) || media.length > 5
+    || media.some((item) => !item || typeof item !== 'object' || Array.isArray(item)
+      || !['image', 'video'].includes(item.type)
+      || !isValidImageUrl(item.url))) {
+    res.status(400).json({ message: 'Thông tin đánh giá không hợp lệ.' });
+    return;
+  }
+
   try {
     const userId = await getCustomerId(req, res);
     if (!userId) return;
-
-    const { orderId, productId, rating, content = '', media = [] } = req.body;
-    if (!orderId || !productId || !rating) {
-      res.status(400).json({ message: 'Thiếu thông tin đơn hàng, sản phẩm hoặc số sao đánh giá.' });
-      return;
-    }
 
     const cleanOrderId = String(orderId).trim();
     const cleanProductId = String(productId).trim();

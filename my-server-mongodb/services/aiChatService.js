@@ -369,6 +369,21 @@ function getFallbackReply(userMessage, context = {}) {
 
   // --- TRƯỜNG HỢP 1B: HỎI VỀ SỐ LƯỢNG MÀU / BẢNG MÀU CỦA HẠT ỦI ---
   if (isColorCatalogInquiry && !isAskingPrice) {
+    const alsoAskedMaps = (norm.includes('map') || norm.includes('chart')) ? searchGallery(userMessage) : [];
+    if (alsoAskedMaps.length > 0) {
+      const topMap = alsoAskedMaps[0];
+      return {
+        reply: `Dạ Urii có đủ cả 2 bạn nhé! ✨\n- **Bảng màu hạt ủi:** Hơn **72 mã màu** (cơ bản, pastel, dạ quang, nhũ) theo gói lẻ 10g hoặc bộ Kit 24–72 màu.\n- **${topMap.map_name}:** Mã **${topMap.map_id}** (Độ khó: ${topMap.difficulty || 'Dễ'}, Hạt ${topMap.bead_type || 'Midi 5mm'}). 🌸`,
+        targetUrl: `/sample-maps-detail?id=${topMap.map_id}`,
+        targetLabel: `Xem chi tiết map ${topMap.map_name.replace('Map mẫu: ', '')}`,
+        chips: [
+          { label: `Xem map ${topMap.map_id}`, action: `/sample-maps-detail?id=${topMap.map_id}` },
+          { label: 'Xem bảng màu hạt cườm', action: '/products?category=BEADS' },
+          { label: 'Bộ Kit 24 - 72 màu', action: '/products?category=KIT' },
+          { label: 'Chat với Admin', action: 'Chat với Admin' }
+        ]
+      };
+    }
     return {
       reply: 'Dạ bảng màu hạt ủi Perler beads tại Urii có hơn **72 mã màu** phong phú (gồm tone cơ bản, pastel, dạ quang và nhũ)! ✨\n- **Theo bộ Kit DIY:** Có sẵn các set **24 màu**, **48 màu** và **72 màu** (kèm đầy đủ khay cắm, nhíp, giấy ủi).\n- **Gói bổ sung hạt lẻ (10g ~ 1000 hạt):** Đầy đủ các mã màu từ Bảng A đến H với cả 2 kích thước 2.6mm và 5mm.\nBạn có thể ghé danh mục Hạt cườm để xem chi tiết từng mã màu nhé! 🌸',
       targetUrl: '/products?category=BEADS',

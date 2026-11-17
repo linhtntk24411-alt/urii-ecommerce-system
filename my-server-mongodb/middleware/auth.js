@@ -61,4 +61,14 @@ function requireCustomer(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, optionalAuthenticate, requireAdmin, requireCustomer };
+// Chỉ dành cho tài khoản khách hàng thực sự (không chấp nhận admin),
+// dùng cho các nghiệp vụ gắn với lịch sử mua hàng như đánh giá sản phẩm.
+function requireCustomerOnly(req, res, next) {
+  if (req.auth?.role !== 'user') {
+    res.status(403).json({ message: 'Chỉ khách hàng mới có thể thực hiện thao tác này.' });
+    return;
+  }
+  next();
+}
+
+module.exports = { authenticate, optionalAuthenticate, requireAdmin, requireCustomer, requireCustomerOnly };

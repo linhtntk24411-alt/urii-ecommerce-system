@@ -844,65 +844,75 @@ exports.askAi = async (req, res) => {
     const trimmedMsg = message.trim();
     const msgNorm = removeVietnameseTones(trimmedMsg);
 
-    // Ưu tiên tra cứu trực tiếp các kịch bản FAQ do Admin cấu hình trong Database
-    try {
-      const faqs = await ChatbotFaq.find().lean();
-      let bestFaq = null;
-      let highestScore = 0;
+    // Ưu tiên bộ xử lý thông minh trong aiChatService cho các truy vấn cụ thể (màu sắc, map mẫu, bảng màu, kích thước, đặt riêng, sản phẩm...)
+    // Chỉ khớp nhanh FAQ trong DB khi không phải là câu hỏi tìm kiếm cụ thể
+    const isSpecificAiQuery =
+      /\b(map|chart|so do|bang mau|ma mau|bao nhieu mau|so luong mau|may mau|mau hong|mau do|mau xanh|mau vang|mau tim|mau cam|mau den|mau trang|pastel|bach tuoc|kitty|doraemon|doremon|capybara|shin|ca heo|ca map|buom|banh kem|qua bo|bo hoa|moc khoa|dat lam|theo yeu cau|custom|thiet ke|bo suu tap|bst|uom hoa|gia|bao nhieu tien)\b/.test(msgNorm);
 
-      for (const faq of faqs) {
-        let score = 0;
-        for (const kw of faq.keywords || []) {
-          const kwNorm = removeVietnameseTones(kw);
-          if (msgNorm === kwNorm) {
-            score += 15;
-          } else if (msgNorm.includes(kwNorm)) {
-            score += kwNorm.length >= 4 ? kwNorm.length : 3;
+    // Ưu tiên tra cứu trực tiếp các kịch bản FAQ do Admin cấu hình trong Database
+    if (!isSpecificAiQuery) {
+      try {
+        const faqs = await ChatbotFaq.find().lean();
+        let bestFaq = null;
+        let highestScore = 0;
+
+        for (const faq of faqs) {
+          let score = 0;
+          for (const kw of faq.keywords || []) {
+            const kwNorm = removeVietnameseTones(kw);
+            if (!kwNorm) continue;
+            if (msgNorm === kwNorm) {
+              score += 15;
+            } else if (kwNorm !== 'hat ui' && kwNorm !== 'perler beads' && msgNorm.includes(kwNorm)) {
+              score += kwNorm.length >= 4 ? kwNorm.length : 3;
+            } else if ((kwNorm === 'hat ui' || kwNorm === 'perler beads') && (msgNorm === kwNorm || msgNorm.includes('cach ui') || msgNorm.includes('huong dan'))) {
+              score += 10;
+            }
+          }
+          if (score > highestScore) {
+            highestScore = score;
+            bestFaq = faq;
           }
         }
-        if (score > highestScore) {
-          highestScore = score;
-          bestFaq = faq;
+
+        if (bestFaq && highestScore >= 6) {
+          const chips = (bestFaq.quickReplies || []).map((r) => {
+            const label = typeof r === 'string' ? r : (r.label || '');
+            const action = typeof r === 'string' ? r : (r.action || r.label || '');
+            return { label, action };
+          });
+
+          let targetUrl = '';
+          let targetLabel = '';
+          if (bestFaq.intent === 'order_tracking') {
+            targetUrl = '/orders';
+            targetLabel = 'Đơn hàng của tôi';
+          } else if (bestFaq.intent === 'colors_catalog') {
+            targetUrl = '/products?category=BEADS';
+            targetLabel = 'Xem bảng màu hạt';
+          } else if (bestFaq.intent === 'custom_order') {
+            targetUrl = '/custom-order';
+            targetLabel = 'Đặt làm theo yêu cầu';
+          } else if (bestFaq.intent === 'vouchers') {
+            targetUrl = '/vouchers';
+            targetLabel = 'Kho voucher của tôi';
+          } else if (bestFaq.intent === 'perler_guide') {
+            targetUrl = '/sample-maps';
+            targetLabel = 'Thư viện map mẫu';
+          }
+
+          return res.json({
+            success: true,
+            reply: bestFaq.response,
+            targetUrl,
+            targetLabel,
+            isWarning: false,
+            chips
+          });
         }
+      } catch (faqErr) {
+        console.warn('Lỗi tra cứu ChatbotFaq trong askAi:', faqErr.message);
       }
-
-      if (bestFaq && highestScore >= 6) {
-        const chips = (bestFaq.quickReplies || []).map((r) => {
-          const label = typeof r === 'string' ? r : (r.label || '');
-          const action = typeof r === 'string' ? r : (r.action || r.label || '');
-          return { label, action };
-        });
-
-        let targetUrl = '';
-        let targetLabel = '';
-        if (bestFaq.intent === 'order_tracking') {
-          targetUrl = '/orders';
-          targetLabel = 'Đơn hàng của tôi';
-        } else if (bestFaq.intent === 'colors_catalog') {
-          targetUrl = '/products?category=BEADS';
-          targetLabel = 'Xem bảng màu hạt';
-        } else if (bestFaq.intent === 'custom_order') {
-          targetUrl = '/custom-order';
-          targetLabel = 'Đặt làm theo yêu cầu';
-        } else if (bestFaq.intent === 'vouchers') {
-          targetUrl = '/vouchers';
-          targetLabel = 'Kho voucher của tôi';
-        } else if (bestFaq.intent === 'perler_guide') {
-          targetUrl = '/sample-maps';
-          targetLabel = 'Thư viện map mẫu';
-        }
-
-        return res.json({
-          success: true,
-          reply: bestFaq.response,
-          targetUrl,
-          targetLabel,
-          isWarning: false,
-          chips
-        });
-      }
-    } catch (faqErr) {
-      console.warn('Lỗi tra cứu ChatbotFaq trong askAi:', faqErr.message);
     }
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '';

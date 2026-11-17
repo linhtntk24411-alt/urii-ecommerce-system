@@ -133,7 +133,7 @@
                                     <ng-container *ngTemplateOutlet="reactionControls; context: { $implicit: msg }"></ng-container>
                                     @if (isForwarded(msg)) { <div class="timestamp">Đã chuyển tiếp</div> }
                                     @if (attachment(msg)) { <ng-container *ngTemplateOutlet="attachmentContent; context: { $implicit: msg }"></ng-container> }
-                                    @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)" [innerHTML]="messageText(msg).replace('\n', '<br>')"></p> }
+                                    @else { <p [class.sticker-icon]="isSticker(msg)" [class.recalled-message]="isRecalled(msg)" [innerHTML]="formatBotHtml(messageText(msg))"></p> }
                                     @if (canShowContent(msg) && msg.targetUrl && msg.targetLabel) {
                                         <button class="chat-navigation-action" (click)="navigateToAction(msg.targetUrl)">
                                             <span>{{ msg.targetLabel }}</span>

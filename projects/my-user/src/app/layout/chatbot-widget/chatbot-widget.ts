@@ -270,6 +270,16 @@ export class ChatbotWidgetComponent implements OnInit, AfterViewInit, OnDestroy 
     return verified?.recalledAt ? 'Tin nhắn đã được thu hồi' : verified?.text ?? 'Đang xác minh tin nhắn…';
   }
 
+  formatBotHtml(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
   isRecalled(message: ChatMessage): boolean { return Boolean(this.verifiedMessage(message)?.recalledAt); }
 
   isForwarded(message: ChatMessage): boolean {

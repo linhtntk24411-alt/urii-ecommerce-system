@@ -4,9 +4,9 @@
       <div id="heroCarousel" class="carousel slide">
         <!-- Nút tròn chuyển slide -->
         <div class="carousel-indicators">
-          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true"></button>
-          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+          <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
         </div>
 
         <div class="carousel-inner">
@@ -62,8 +62,8 @@
       <div class="values-grid">
         @for (item of valuesData; track item.title) {
           <div class="value-card">
-            <div class="value-icon"><i class="bi {{item.icon}}"></i></div>
-            <h3>{{item.title}}</h3>
+            <div class="value-icon"><i class="bi {{item.icon}}" aria-hidden="true"></i></div>
+            <h2>{{item.title}}</h2>
             <p>{{item.desc}}</p>
           </div>
         }
@@ -85,7 +85,7 @@
           <a [routerLink]="['/products']" [queryParams]="{category: item.category}" class="category-card-link">
             <article class="category-card img-hover-effect">
               <div class="category-card__media">
-                <img [src]="item.image" [alt]="item.name" />
+                <img [src]="item.image" [alt]="item.name" width="280" height="220" loading="lazy" />
               </div>
               <h3>{{item.name}}</h3>
             </article>
@@ -117,7 +117,7 @@
           <article class="product-card">
             <div class="product-card__media">
               <a [routerLink]="['/product-detail', item.slug]" class="d-block">
-                <img [src]="item.image" [alt]="item.name" />
+                <img [src]="item.image" [alt]="item.name" width="280" height="220" loading="lazy" />
               </a>
               @if (item.isSale) {
                 <span class="product-card__badge product-card__badge--sale">{{item.badge}}</span>
@@ -148,8 +148,8 @@
                     <span class="price">{{item.originalPrice | number}}đ</span>
                   }
                 </div>
-                <button class="btn btn-urii btn-sm" type="button" (click)="addToCart(item)" [title]="'Thêm ' + item.name + ' vào giỏ hàng'">
-                  <i class="bi bi-cart-plus"></i>
+                <button class="btn btn-urii btn-sm" type="button" (click)="addToCart(item)" [title]="'Thêm ' + item.name + ' vào giỏ hàng'" [attr.aria-label]="'Thêm ' + item.name + ' vào giỏ hàng'">
+                  <i class="bi bi-cart-plus" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -175,7 +175,7 @@
           <div class="step-card">
             <div class="step-number">{{item.number}}</div>
             <div class="step-image">
-              <img [src]="item.image" [alt]="item.title" />
+              <img [src]="item.image" [alt]="item.title" width="140" height="140" loading="lazy" />
             </div>
             <h3>{{item.title}}</h3>
             <p>{{item.desc}}</p>
@@ -216,7 +216,7 @@
       <div class="gallery-grid community-gallery-grid">
         @for (post of communityPosts; track trackCommunityPost($index, post)) {
           <a class="gallery-item img-hover-effect" [routerLink]="['/blog-detail', post.slug]">
-            <img [src]="post.image" [alt]="post.title" />
+            <img [src]="post.image" [alt]="post.title" width="300" height="300" loading="lazy" />
             <span class="gallery-item__caption">
               <strong>{{ post.title }}</strong>
               <small>{{ post.author }}</small>

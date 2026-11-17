@@ -21,6 +21,9 @@ router.post('/:id/return-request', authenticate, c.requestReturnOrder);
 
 router.post('/', authenticate, requireCustomer, c.createOrder);
 router.use(authenticate, requireAdmin);
+router.get('/return-requests', c.getReturnRequests);
+router.get('/return-requests/:source/:id', c.getReturnRequest);
+router.post('/return-requests/:source/:id/:action', c.processReturnRequest);
 router.get('/', c.getAllOrders);
 router.get('/:id', c.getOrderById);
 router.put('/:id', c.updateOrder);

@@ -100,6 +100,9 @@
     }
   ],
   "requestStatuses": [
+    { "id": "refund_pending", "label": "Chờ hoàn tiền" },
+    { "id": "refunded", "label": "Đã hoàn tiền" },
+    { "id": "completed", "label": "Hoàn tất" },
     {
       "id": "pending_approval",
       "label": "Chờ Shop xác nhận"

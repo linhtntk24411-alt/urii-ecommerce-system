@@ -1,5 +1,6 @@
 ﻿import { ChangeDetectorRef, Component, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AdminApiService, AdminUser } from '../../core/services/admin-api.service';
@@ -15,7 +16,7 @@ declare var bootstrap: any;
   templateUrl: './orders-admin.html',
   styleUrls: ['./orders-admin.css']
 })
-export class OrdersAdmin implements OnInit {
+export class OrdersAdmin implements OnInit, OnDestroy {
   private readonly socket = inject(AdminSocketService);
   constructor(
     private adminApi: AdminApiService,
@@ -45,6 +46,41 @@ export class OrdersAdmin implements OnInit {
   orderLoadError = '';
   private orderDataSubscription?: Subscription;
   private pendingSearchId: string | null = null;
+  requestTab: 'cancel' | 'return' = 'cancel';
+  returnRequests: any[] = [];
+  returnTotal = 0;
+  returnPage = 1;
+  returnTypeFilter = '';
+  returnStatusFilter = '';
+  returnOrderTypeFilter = '';
+  returnLoading = false;
+  returnBusy = false;
+  returnDetailLoading = false;
+  returnError = '';
+  returnSuccess = '';
+  selectedReturn: any = null;
+  returnAction = '';
+  returnDecisionType = '';
+  returnActionNote = '';
+  returnInspectionResult = 'passed';
+  private returnSubscription?: Subscription;
+  private returnDetailSubscription?: Subscription;
+  private readonly liveSubscriptions = new Subscription();
+  readonly returnTypes = [
+    { id: 'return_only', label: 'Chỉ trả hàng' }, { id: 'refund_only', label: 'Chỉ hoàn tiền' },
+    { id: 'return_and_refund', label: 'Trả hàng và hoàn tiền' }
+  ];
+  readonly returnStates = [
+    { id: 'pending_approval', label: 'Chờ duyệt' }, { id: 'approved', label: 'Đã duyệt' },
+    { id: 'awaiting_return_pickup', label: 'Chờ nhận hàng' }, { id: 'inspecting', label: 'Kiểm tra hàng' },
+    { id: 'refund_pending', label: 'Chờ hoàn tiền' }, { id: 'refunded', label: 'Đã hoàn tiền' },
+    { id: 'completed', label: 'Hoàn tất' }, { id: 'rejected', label: 'Đã từ chối' }
+  ];
+  readonly returnActionLabels: Record<string, string> = {
+    approve: 'Duyệt', reject: 'Từ chối', start: 'Tiếp tục xử lý', receive: 'Xác nhận nhận lại hàng',
+    inspect: 'Ghi nhận kiểm hàng', 'prepare-refund': 'Chuyển chờ hoàn tiền',
+    'confirm-cod': 'Xác nhận đã nhận thanh toán', 'confirm-refund': 'Xác nhận đã hoàn tiền', complete: 'Hoàn tất yêu cầu', requested: 'Gửi yêu cầu'
+  };
   showDeleteConfirm = false;
   deletingOrderId: string | null = null;
   isDeletingOrder = false;
@@ -82,25 +118,38 @@ export class OrdersAdmin implements OnInit {
     "waiting_quote": { text: "Chờ báo giá", class: "badge-status-waiting_quote" },
     "processing": { text: "Đang gia công", class: "badge-status-processing" },
     "shipping": { text: "Đang giao", class: "badge-status-approved" },
-    "returned": { text: "Trả hàng", class: "badge-status-cancelled" }
+    "returned": { text: "Trả hàng", class: "badge-status-cancelled" },
+    "return_requested": { text: "Chờ xử lý hoàn trả", class: "badge-status-pending_approval" }
   };
 
   getStatusLabel(order: any): string {
+    if (order?.returnStatusId) return `Hoàn trả: ${this.returnStates.find(state => state.id === order.returnStatusId)?.label || order.returnStatusId}`;
     if (order?.status === 'processing' && !order.isCustomOrder) return 'Chờ lấy hàng';
     return this.statusMap[order?.status]?.text || order?.status || '';
   }
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(params => {
+    this.liveSubscriptions.add(this.route.queryParamMap.subscribe(params => {
       this.pendingSearchId = params.get('searchType') === 'order'
         ? params.get('searchId')
         : null;
       this.applySearchTarget();
-    });
+      if (this.pendingSearchId) this.locateReturnRequest(this.pendingSearchId);
+    }));
     this.loadCustomerAvatars();
     this.loadOrders();
-    this.socket.onCrudChange('orders').subscribe(() => this.loadOrders());
-    this.socket.onCrudChange('customOrders').subscribe(() => this.loadOrders());
+    this.loadReturnRequests();
+    this.liveSubscriptions.add(this.socket.onCrudChange('orders').subscribe(() => this.loadOrders()));
+    this.liveSubscriptions.add(this.socket.onCrudChange('customOrders').subscribe(() => this.loadOrders()));
+    this.liveSubscriptions.add(this.socket.onCrudChange('orders').subscribe(() => this.loadReturnRequests()));
+    this.liveSubscriptions.add(this.socket.onCrudChange('customOrders').subscribe(() => this.loadReturnRequests()));
+  }
+
+  ngOnDestroy(): void {
+    this.liveSubscriptions.unsubscribe();
+    this.orderDataSubscription?.unsubscribe();
+    this.returnSubscription?.unsubscribe();
+    this.returnDetailSubscription?.unsubscribe();
   }
 
   searchTargetId(id: string | number): string {
@@ -113,6 +162,11 @@ export class OrdersAdmin implements OnInit {
 
     const order = this.originalOrders.find(item => String(item.id) === id);
     if (!order) return;
+    if (order.returnStatusId) {
+      this.pendingSearchId = null;
+      this.locateReturnRequest(id);
+      return;
+    }
 
     this.searchQuery = '';
     this.filterStatus = '';
@@ -261,7 +315,8 @@ export class OrdersAdmin implements OnInit {
             'chờ giao hàng': 'shipping',
             'đã giao': 'completed',
             'returned': 'returned',
-            'trả hàng': 'returned'
+            'trả hàng': 'returned',
+            'return_requested': 'return_requested'
           };
           const cancellationStatusAliases: { [key: string]: string } = {
             pending_approval: 'pending_approval',
@@ -600,6 +655,113 @@ export class OrdersAdmin implements OnInit {
   }
 
   // --- Modals Logic ---
+  loadReturnRequests(page = this.returnPage): void {
+    this.returnSubscription?.unsubscribe();
+    this.returnLoading = true;
+    this.returnError = '';
+    this.returnSubscription = this.adminApi.getReturnRequests({ page, limit: this.ITEMS_PER_PAGE,
+      requestType: this.returnTypeFilter, status: this.returnStatusFilter, orderType: this.returnOrderTypeFilter }).subscribe({
+      next: response => {
+        this.returnRequests = response.requests || [];
+        this.returnTotal = response.total || 0;
+        this.returnPage = response.page || 1;
+        this.returnLoading = false;
+        const lastPage = Math.max(1, Math.ceil(this.returnTotal / this.ITEMS_PER_PAGE));
+        if (!this.returnRequests.length && this.returnPage > lastPage && page !== lastPage) {
+          this.loadReturnRequests(lastPage);
+          return;
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: error => {
+        this.returnLoading = false;
+        this.returnError = error.error?.message || 'Không tải được yêu cầu hoàn trả. Vui lòng thử lại.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  private locateReturnRequest(id: string): void {
+    this.adminApi.getReturnRequests({ orderId: id, limit: 2 }).subscribe({
+      next: response => {
+        if (response.requests?.length) {
+          this.requestTab = 'return';
+          this.openReturnDetail(response.requests[0]);
+          this.changeDetectorRef.markForCheck();
+        }
+      }, error: () => { /* List remains available for manual lookup. */ }
+    });
+  }
+
+  openReturnDetail(request: any): void {
+    if (this.returnBusy) return;
+    this.returnDetailLoading = true;
+    if (this.selectedReturn?.id !== request.id || this.selectedReturn?.source !== request.source) this.selectedReturn = null;
+    this.returnAction = '';
+    this.returnError = '';
+    this.returnSuccess = '';
+    this.returnDetailSubscription?.unsubscribe();
+    this.returnDetailSubscription = this.adminApi.getReturnRequest(request.source, request.id).subscribe({
+      next: detail => {
+        this.returnDetailLoading = false;
+        this.selectedReturn = detail;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('returnRequestModal')).show();
+        this.changeDetectorRef.markForCheck();
+      }, error: error => {
+        this.returnDetailLoading = false;
+        this.returnError = error.error?.message || 'Không tải được chi tiết yêu cầu.';
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  beginReturnAction(action: string): void {
+    if (this.returnBusy || !this.selectedReturn?.availableActions?.includes(action)) return;
+    this.returnAction = action;
+    this.returnDecisionType = this.isReturnType(this.selectedReturn.requestType) ? this.selectedReturn.requestType : '';
+    this.returnActionNote = '';
+    this.returnInspectionResult = 'passed';
+    this.returnError = '';
+    this.returnSuccess = '';
+  }
+
+  submitReturnAction(): void {
+    if (this.returnBusy || !this.selectedReturn || !this.returnAction) return;
+    if (this.returnAction === 'approve' && !this.returnTypes.some(type => type.id === this.returnDecisionType)) {
+      this.returnError = 'Vui lòng chọn loại xử lý.'; return;
+    }
+    if (this.returnAction === 'reject' && !this.returnActionNote.trim()) {
+      this.returnError = 'Bắt buộc nhập lý do từ chối.'; return;
+    }
+    if (!confirm(`Xác nhận: ${this.returnActionLabels[this.returnAction]}?`)) return;
+    this.returnBusy = true;
+    this.adminApi.processReturnRequest(this.selectedReturn.source, this.selectedReturn.id, this.returnAction, {
+      revision: this.selectedReturn.returnRevision || 0, requestType: this.returnDecisionType,
+      note: this.returnActionNote.trim(), result: this.returnInspectionResult
+    }).subscribe({
+      next: detail => {
+        this.selectedReturn = detail;
+        this.returnAction = '';
+        this.returnBusy = false;
+        this.returnError = '';
+        this.returnSuccess = 'Đã lưu xử lý yêu cầu.';
+        this.loadReturnRequests();
+        this.loadOrders();
+        this.changeDetectorRef.markForCheck();
+      }, error: error => {
+        this.returnBusy = false;
+        this.returnError = error.error?.message || 'Không thể xử lý yêu cầu. Vui lòng tải lại chi tiết.';
+        this.returnAction = '';
+        this.selectedReturn = { ...this.selectedReturn, availableActions: [] };
+        this.changeDetectorRef.markForCheck();
+      }
+    });
+  }
+
+  isReturnType(type: string): boolean {
+    return this.returnTypes.some(item => item.id === type);
+  }
+
   openOrderDetail(order: any) {
     this.selectedOrder = order;
     new bootstrap.Modal(document.getElementById('orderDetailModal')).show();

@@ -36,6 +36,50 @@ const waitingInfoSchema = new mongoose.Schema({
 const orderTypeEnum = (orderStatuses.orderTypes || []).map(({ id }) => id);
 const requestStatusEnum = (orderStatuses.requestStatuses || []).map(({ id }) => id);
 
+// Shared embedded fields; no separate return collection or duplicate workflow.
+function returnRequestFields() {
+  return {
+    requestType: { type: String, enum: ['return_only', 'refund_only', 'return_and_refund'] },
+    returnRevision: { type: Number, default: 0 },
+    returnApprovedBy: String,
+    returnApprovedAt: Date,
+    returnRejectionReason: String,
+    returnReceivedAt: Date,
+    returnPreviousStatus: { statusId: String, status: String, statusType: String },
+    returnCod: { amount: { type: Number, min: 1, validate: Number.isSafeInteger }, confirmedAt: Date, confirmedBy: String },
+    returnInspection: { result: { type: String, enum: ['passed', 'failed'] }, note: String, inspectedAt: Date, inspectedBy: String },
+    returnRefund: { amount: { type: Number, min: 1, validate: Number.isSafeInteger }, method: String, reference: String, evidence: String, refundedAt: Date, confirmedBy: String },
+    returnHistory: [{ action: String, fromStatus: String, toStatus: String, actorId: String, at: Date, note: String }]
+  };
+}
+
+function protectReturnWorkflow(schema) {
+  schema.pre(['findOneAndUpdate', 'updateOne', 'updateMany', 'replaceOne', 'findOneAndReplace', 'findOneAndDelete', 'deleteOne', 'deleteMany'], function () {
+    if (this.getOptions().returnWorkflow === true) return;
+    const update = this.getUpdate();
+    const guarded = key => /^(return|requestType$)/.test(key.split('.')[0]);
+    const containsProtected = value => value && typeof value === 'object' && Object.entries(value).some(([key, child]) =>
+      guarded(key) || (key.startsWith('$') && containsProtected(child)) || (key === '$rename' && Object.values(child).some(guarded)));
+    if (Array.isArray(update) || containsProtected(update) || /replace/i.test(this.op)) {
+      const error = new Error('Các trường hoàn trả chỉ được cập nhật qua API xử lý yêu cầu.');
+      error.status = 409;
+      throw error;
+    }
+    const changesStatus = update && ['status', 'statusId', 'statusType', 'payment', 'total', 'totalAmount', 'items', 'shipping', 'voucher'].some(key =>
+      Object.keys(update).some(k => k === key || k.startsWith(key + '.')) ||
+      Object.keys(update.$set || {}).some(k => k === key || k.startsWith(key + '.')) ||
+      Object.keys(update.$unset || {}).some(k => k === key || k.startsWith(key + '.')));
+    if (/delete/i.test(this.op)) {
+      this.setQuery({ $and: [this.getFilter(), { returnStatusId: { $exists: false } }] });
+    } else if (changesStatus) {
+      this.setQuery({ $and: [this.getFilter(), {
+        returnStatusId: { $nin: ['pending_approval', 'approved', 'awaiting_return_pickup', 'inspecting', 'refund_pending', 'refunded'] },
+        'returnCod.confirmedAt': { $exists: false }
+      }] });
+    }
+  });
+}
+
 const orderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   orderType: { type: String, enum: orderTypeEnum, default: 'normal' },
@@ -61,6 +105,7 @@ const orderSchema = new mongoose.Schema({
   returnDeadlineAt: Date,
   returnResolvedAt: Date,
   returnEvidence: { type: [orderEvidenceSchema], default: [] },
+  ...returnRequestFields(),
   showReview: { type: Boolean, default: false },
   deliveredAt: Date,
   total: String,
@@ -108,5 +153,8 @@ const orderSchema = new mongoose.Schema({
 
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ userId: 1, statusId: 1, createdAt: -1 });
+protectReturnWorkflow(orderSchema);
 
 module.exports = mongoose.model('Order', orderSchema);
+module.exports.returnRequestFields = returnRequestFields;
+module.exports.protectReturnWorkflow = protectReturnWorkflow;

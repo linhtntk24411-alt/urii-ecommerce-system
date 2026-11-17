@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const CustomOrder = require('../models/CustomOrder');
 const Product = require('../models/Product');
 
 let productsJsonMap = null;
@@ -213,8 +214,8 @@ async function enrichOrders(orders) {
       statusId: effectiveStatusId,
       orderType: order.orderType || 'normal',
       orderTypeLabel: orderTypesById.get(order.orderType || 'normal')?.label || '',
-      status: mappedLegacyStatus?.status || order.status || statusMeta?.label || '',
-      statusType: order.statusType || statusMeta?.statusType || '',
+      status: effectiveStatusId === 'return_requested' ? statusMeta?.label : (mappedLegacyStatus?.status || order.status || statusMeta?.label || ''),
+      statusType: effectiveStatusId === 'return_requested' ? 'return_requested' : (order.statusType || statusMeta?.statusType || ''),
       icon: order.icon || statusMeta?.icon || '',
       isWaiting: Boolean(statusMeta?.isWaiting),
       waitingLabel: statusMeta?.waitingLabel || waitingPolicy?.label || '',
@@ -439,6 +440,9 @@ exports.createOrder = async (req, res) => {
   }
 
   try {
+    if (Object.keys(req.body).some(key => /^(return|requestType)/.test(key) || key.startsWith('$'))) {
+      return res.status(400).json({ message: 'Không được khởi tạo dữ liệu xử lý hoàn trả qua API tạo đơn.' });
+    }
     const isCustomerOrder = req.auth?.role === 'user'
       || (req.auth?.role === 'admin' && !req.body.userId);
     const orderData = isCustomerOrder
@@ -690,7 +694,10 @@ exports.requestCancelOrder = async (req, res) => {
 };
 
 exports.requestReturnOrder = async (req, res) => {
-  const { reasonId, note, evidence } = req.body || {};
+  const { reasonId, note, evidence, requestType } = req.body || {};
+  if (requestType !== undefined && !RETURN_TYPES.includes(requestType)) {
+    return res.status(400).json({ message: 'Loại yêu cầu không hợp lệ.' });
+  }
   const reason = returnReasonsById.get(reasonId);
   if (!reason) {
     res.status(400).json({ message: 'Lý do hoàn trả không hợp lệ.' });
@@ -735,8 +742,13 @@ exports.requestReturnOrder = async (req, res) => {
     const nowIso = new Date().toISOString().slice(0, 19);
     const slaHours = reason.slaHours || orderReasons.waitingPolicies?.awaiting_return_approval?.slaHours || 48;
     const deadlineIso = addHoursIso(nowIso, slaHours);
+    const previousStatus = { statusId: order.statusId, status: order.status, statusType: order.statusType };
+    if (await linkedReturnReason(order, 'order')) return res.status(409).json({ message: 'Cần xác nhận nguồn giao dịch Custom liên kết trước khi tiếp nhận yêu cầu.' });
 
     order.statusId = 'return_requested';
+    order.status = 'Chờ xác nhận hoàn trả';
+    order.statusType = 'return_requested';
+    if (requestType) order.requestType = requestType;
     order.returnReasonId = reason.id;
     order.returnNote = typeof note === 'string' ? note.trim() : '';
     order.returnEvidence = mediaList;
@@ -757,9 +769,25 @@ exports.requestReturnOrder = async (req, res) => {
       { statusId: 'awaiting_return_confirmation', time: nowIso }
     ];
 
-    await order.save();
+    const intake = await Order.findOneAndUpdate({ _id: order._id, statusId: { $in: allowedStatuses }, returnStatusId: { $exists: false } }, {
+      $set: {
+        statusId: order.statusId, status: order.status, statusType: order.statusType,
+        ...(requestType ? { requestType } : {}),
+        returnReasonId: order.returnReasonId, returnNote: order.returnNote,
+        returnEvidence: order.returnEvidence, returnStatusId: order.returnStatusId,
+        returnRequestedAt: order.returnRequestedAt, returnDeadlineAt: order.returnDeadlineAt,
+        returnPreviousStatus: previousStatus,
+        waitingInfo: order.waitingInfo
+      },
+      $push: { timeline: { $each: [{ statusId: 'return_requested', time: nowIso }, { statusId: 'awaiting_return_confirmation', time: nowIso }] },
+        returnHistory: { action: 'requested', toStatus: 'pending_approval', actorId: String(req.auth.id), at: nowIso, note: order.returnNote } },
+      $inc: { returnRevision: 1 }
+    }, { new: true, runValidators: true, returnWorkflow: true });
+    if (!intake) return res.status(409).json({ message: 'Đơn hàng đã có yêu cầu hoặc vừa được cập nhật. Vui lòng tải lại.' });
+    await createAdminNotification({ typeId: 'ADMIN_ORDER_RETURN_REQUEST', eventId: String(intake._id) + ':' + new Date(intake.returnRequestedAt).toISOString(),
+      reference: { orderId: String(intake.id) }, title: 'Yêu cầu hoàn trả #' + intake.id, message: 'Có yêu cầu trả hàng/hoàn tiền cần kiểm duyệt.' });
     emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
-    const [enriched] = await enrichOrders([order.toObject()]);
+    const [enriched] = await enrichOrders([intake.toObject()]);
     res.json(enriched);
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -770,6 +798,190 @@ exports.requestReturnOrder = async (req, res) => {
     res.status(500).json({ message: 'Không thể gửi yêu cầu hoàn trả.' });
   }
 };
+
+const RETURN_TYPES = ['return_only', 'refund_only', 'return_and_refund'];
+const RETURN_OPEN = ['pending_approval', 'approved', 'awaiting_return_pickup', 'inspecting', 'refund_pending', 'refunded'];
+const RETURN_TYPE_LABELS = { return_only: 'Chỉ trả hàng', refund_only: 'Chỉ hoàn tiền', return_and_refund: 'Trả hàng và hoàn tiền' };
+
+function returnError(message, status = 409) {
+  const error = new Error(message); error.status = status; return error;
+}
+
+function confirmedOrderAmount(order) {
+  if (order.payment?.methodId && order.payment.methodId !== 'cod') return null;
+  const raw = order.totalAmount ?? order.total;
+  let amount = raw;
+  if (typeof raw === 'string') {
+    const value = raw.trim().replace(/\s*(đ|₫|VND)$/i, '').trim();
+    if (!/^(\d+|\d{1,3}(\.\d{3})+|\d{1,3}(,\d{3})+)$/.test(value)) return null;
+    amount = Number(value.replace(/[.,]/g, ''));
+  }
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+}
+
+function returnActions(order, blockedReason = '') {
+  if (blockedReason) return [];
+  const state = order.returnStatusId;
+  if (state === 'pending_approval') return ['approve', 'reject'];
+  if (!RETURN_TYPES.includes(order.requestType)) return [];
+  if (state === 'approved') return ['start'];
+  if (state === 'awaiting_return_pickup' && order.requestType !== 'refund_only') return ['receive'];
+  if (state === 'inspecting' && order.returnReceivedAt && order.requestType !== 'refund_only' && !order.returnInspection?.result) return ['inspect'];
+  if (state === 'inspecting' && order.returnReceivedAt && order.returnInspection?.result === 'passed') return [order.requestType === 'return_only' ? 'complete' : 'prepare-refund'];
+  if (state === 'refund_pending' && order.requestType !== 'return_only' && !order.returnRefund?.refundedAt) {
+    if (order.requestType === 'return_and_refund' && (!order.returnReceivedAt || order.returnInspection?.result !== 'passed')) return [];
+    return order.returnCod?.confirmedAt && Number.isSafeInteger(order.returnCod.amount) && order.returnCod.amount > 0
+      ? ['confirm-refund'] : confirmedOrderAmount(order) ? ['confirm-cod'] : [];
+  }
+  if (state === 'refunded' && order.requestType !== 'return_only' && order.returnRefund?.refundedAt && order.returnRefund.amount === order.returnCod?.amount) return ['complete'];
+  return [];
+}
+
+async function linkedReturnReason(order, source) {
+  if (order.payment?.statusId === 'refunded' && !order.returnRefund?.refundedAt) return 'Dữ liệu cũ ghi đã hoàn tiền. Cần đối chiếu trước khi xử lý để tránh hoàn trùng.';
+  if (source === 'order' && order.returnStatusId === 'refund_pending' && await Payment.exists({ orderId: order._id })) {
+    return 'Đơn có bản ghi thanh toán riêng. Cần xác nhận nguồn COD trước khi xử lý.';
+  }
+  if (source === 'custom_order') {
+    if (await Order.exists({ customOrderId: { $in: [String(order.id), String(order._id)] } })) {
+      return 'Custom có Order liên kết. Cần xác nhận nguồn giao dịch trước khi xử lý để tránh trùng.';
+    }
+  } else if (order.customOrderId) {
+    return 'Đơn có customOrderId. Cần xác nhận nguồn giao dịch Custom trước khi xử lý.';
+  }
+  return '';
+}
+
+function returnView(order, source, blockedReason = '') {
+  const state = order.returnStatusId;
+  const availableActions = returnActions(order, blockedReason);
+  return {
+    ...order, source,
+    customerName: source === 'custom_order' ? order.fullName : (order.userName || order.address?.name),
+    orderTypeLabel: source === 'custom_order' || order.orderType === 'custom' ? 'Custom' : 'Thường',
+    requestTypeLabel: RETURN_TYPE_LABELS[order.requestType] || 'Chưa phân loại',
+    returnReason: returnReasonsById.get(order.returnReasonId)?.label || order.returnReasonId || '',
+    returnStatusLabel: requestStatusesById.get(state)?.label || state || 'Chưa xác định',
+    blockedReason: blockedReason || (state === 'inspecting' && order.returnInspection?.result === 'failed'
+      ? 'Kiểm hàng không đạt. Tạm dừng, cần xác nhận phương án xử lý.'
+      : state === 'refund_pending' && !order.returnCod?.confirmedAt && !confirmedOrderAmount(order)
+        ? 'Chưa xác định được số tiền COD hợp lệ từ đơn hàng. Không thể xác nhận thanh toán/hoàn tiền.'
+        : RETURN_OPEN.includes(state) && !availableActions.length ? 'Dữ liệu yêu cầu cũ chưa đủ để tiếp tục an toàn. Cần đối chiếu trước khi xử lý.' : ''),
+    availableActions,
+    codAmount: order.returnCod?.amount ?? confirmedOrderAmount(order)
+  };
+}
+
+async function getReturnRecord(req) {
+  const source = req.params.source;
+  if (!['order', 'custom_order'].includes(source)) throw returnError('Nguồn đơn không hợp lệ.', 400);
+  const Model = source === 'order' ? Order : CustomOrder;
+  const order = await Model.findOne({ id: req.params.id }).lean();
+  if (!order || !order.returnStatusId) throw returnError('Không tìm thấy yêu cầu.', 404);
+  return { source, Model, order, blockedReason: await linkedReturnReason(order, source) };
+}
+
+exports.getReturnRequests = async (req, res) => {
+  if (req.auth?.role !== 'admin') return res.status(403).json({ message: 'Chỉ Admin được xử lý yêu cầu.' });
+  try {
+    const { skip, limit } = getPagination(req.query);
+    const match = { returnStatusId: { $exists: true, $ne: null } };
+    if (req.query.requestType === 'unclassified') match.requestType = { $nin: RETURN_TYPES };
+    else if (req.query.requestType) {
+      if (!RETURN_TYPES.includes(req.query.requestType)) throw returnError('Bộ lọc loại yêu cầu không hợp lệ.', 400);
+      match.requestType = req.query.requestType;
+    }
+    if (req.query.status) {
+      if (!requestStatusesById.has(req.query.status)) throw returnError('Bộ lọc trạng thái không hợp lệ.', 400);
+      match.returnStatusId = req.query.status;
+    }
+    if (req.query.orderType) {
+      if (!['normal', 'custom'].includes(req.query.orderType)) throw returnError('Loại đơn không hợp lệ.', 400);
+      match.orderType = req.query.orderType;
+    }
+    if (req.query.orderId) match.id = String(req.query.orderId);
+    const [result] = await Order.aggregate([
+      { $match: { returnStatusId: { $exists: true } } },
+      { $addFields: { source: 'order', orderType: { $ifNull: ['$orderType', 'normal'] } } },
+      { $unionWith: { coll: CustomOrder.collection.name, pipeline: [
+        { $match: { returnStatusId: { $exists: true } } }, { $addFields: { source: 'custom_order', orderType: 'custom' } }
+      ] } },
+      { $match: match },
+      { $addFields: { returnPriority: { $cond: [{ $in: ['$returnStatusId', RETURN_OPEN] }, 0, 1] } } },
+      { $sort: { returnPriority: 1, returnRequestedAt: -1, source: 1, id: 1 } },
+      { $facet: { requests: [{ $skip: skip }, { $limit: limit }], count: [{ $count: 'total' }] } }
+    ]);
+    const requests = await Promise.all((result?.requests || []).map(async order => returnView(order, order.source, await linkedReturnReason(order, order.source))));
+    res.json({ requests, total: result?.count?.[0]?.total || 0, page: Math.floor(skip / limit) + 1, limit });
+  } catch (error) { res.status(error.status || 500).json({ message: error.status ? error.message : 'Không thể tải yêu cầu hoàn trả.' }); }
+};
+
+exports.getReturnRequest = async (req, res) => {
+  if (req.auth?.role !== 'admin') return res.status(403).json({ message: 'Chỉ Admin được xử lý yêu cầu.' });
+  try {
+    const { order, source, blockedReason } = await getReturnRecord(req);
+    const detail = source === 'order' ? (await enrichOrders([order]))[0] : order;
+    res.json(returnView(detail, source, blockedReason));
+  } catch (error) { res.status(error.status || 500).json({ message: error.status ? error.message : 'Không thể tải chi tiết yêu cầu.' }); }
+};
+
+exports.processReturnRequest = async (req, res) => {
+  if (req.auth?.role !== 'admin') return res.status(403).json({ message: 'Chỉ Admin được xử lý yêu cầu.' });
+  try {
+    const { order, source, Model, blockedReason } = await getReturnRecord(req);
+    if (blockedReason) throw returnError(blockedReason);
+    const body = req.body || {};
+    const action = req.params.action;
+    if (!Number.isSafeInteger(body.revision) || body.revision !== (order.returnRevision || 0)) throw returnError('Yêu cầu đã thay đổi. Vui lòng tải lại.');
+    if (!returnActions(order).includes(action)) throw returnError('Thao tác không hợp lệ với trạng thái hiện tại.');
+    const now = new Date(); const actorId = String(req.auth.id);
+    const set = {}; let next = order.returnStatusId;
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 4000) : '';
+    if (action === 'approve') {
+      const type = RETURN_TYPES.includes(order.requestType) ? order.requestType : body.requestType;
+      if (!RETURN_TYPES.includes(type)) throw returnError('Vui lòng chọn loại xử lý.', 400);
+      if (RETURN_TYPES.includes(order.requestType) && body.requestType && body.requestType !== order.requestType) throw returnError('Không được thay đổi loại yêu cầu khách đã chọn.', 400);
+      Object.assign(set, { requestType: type, returnApprovedAt: now, returnApprovedBy: actorId }); next = 'approved';
+    } else if (action === 'reject') {
+      if (!note) throw returnError('Bắt buộc nhập lý do từ chối.', 400);
+      set.returnRejectionReason = note; set.returnResolvedAt = now; next = 'rejected';
+    } else if (action === 'start') next = order.requestType === 'refund_only' ? 'refund_pending' : 'awaiting_return_pickup';
+    else if (action === 'receive') { set.returnReceivedAt = now; next = 'inspecting'; }
+    else if (action === 'inspect') {
+      if (!['passed', 'failed'].includes(body.result)) throw returnError('Chọn Đạt hoặc Không đạt.', 400);
+      set.returnInspection = { result: body.result, note, inspectedAt: now, inspectedBy: actorId };
+    } else if (action === 'prepare-refund') next = 'refund_pending';
+    else if (action === 'confirm-cod') {
+      const amount = confirmedOrderAmount(order);
+      if (!amount || order.returnCod?.confirmedAt) throw returnError('Không xác định được số tiền COD hoặc đã xác nhận.');
+      set.returnCod = { amount, confirmedAt: now, confirmedBy: actorId };
+      if (source === 'order') set.payment = { ...order.payment, statusId: 'paid', status: 'Đã thanh toán' };
+    } else if (action === 'confirm-refund') {
+      if (!order.returnCod?.confirmedAt || !Number.isSafeInteger(order.returnCod.amount) || order.returnCod.amount <= 0 || order.returnRefund?.refundedAt) throw returnError('Chưa xác nhận COD hoặc đã hoàn tiền.');
+      set.returnRefund = { amount: order.returnCod.amount, method: 'manual', refundedAt: now, confirmedBy: actorId }; next = 'refunded';
+      if (source === 'order') set.payment = { ...order.payment, statusId: 'refunded', status: 'Đã hoàn tiền' };
+    } else if (action === 'complete') { set.returnResolvedAt = now; next = 'completed'; }
+    set.returnStatusId = next;
+    if (source === 'order' && ['completed', 'rejected'].includes(next) && order.returnPreviousStatus?.statusId) {
+      Object.assign(set, order.returnPreviousStatus);
+      set.waitingInfo = null;
+    }
+    const payment = source === 'order' ? await Payment.exists({ orderId: order._id }) : false;
+    if (payment && ['confirm-cod', 'confirm-refund'].includes(action)) throw returnError('Đơn có bản ghi thanh toán riêng. Cần xác nhận nguồn COD trước khi xử lý.');
+    const updated = await Model.findOneAndUpdate({ _id: order._id, returnStatusId: order.returnStatusId,
+      ...(order.returnRevision === undefined ? { returnRevision: { $exists: false } } : { returnRevision: order.returnRevision }) }, {
+      $set: set, $inc: { returnRevision: 1 },
+      $push: { returnHistory: { action, fromStatus: order.returnStatusId, toStatus: next, actorId, at: now, note } }
+    }, { new: true, runValidators: true, returnWorkflow: true }).lean();
+    if (!updated) throw returnError('Có người vừa cập nhật yêu cầu. Vui lòng tải lại.');
+    emitCrudChange(source === 'order' ? 'orders' : 'customOrders', 'updated', updated._id, { userId: updated.userId });
+    const detail = source === 'order' ? (await enrichOrders([updated]))[0] : updated;
+    res.json(returnView(detail, source));
+  } catch (error) { res.status(error.status || (error.name === 'ValidationError' ? 400 : 500)).json({ message: error.status ? error.message : 'Không thể xử lý yêu cầu.' }); }
+};
+
+exports.returnActions = returnActions;
+exports.confirmedOrderAmount = confirmedOrderAmount;
 
 async function notifyUserOnOrderStatusChange(order, newStatusId) {
   if (!order || !order.userId || !newStatusId) return;
@@ -821,22 +1033,33 @@ exports.updateOrder = async (req, res) => {
   }
 
   const updates = { ...req.body };
+  if (Object.keys(updates).some(key => key.startsWith('$') || /^(return|requestType)/.test(key)) ||
+      ['refund_pending', 'refunded'].includes(updates.payment?.statusId) ||
+      ['refund_pending', 'refunded'].includes(updates['payment.statusId']) ||
+      updates.statusId === 'returned' || updates.statusType === 'returned') {
+    return res.status(409).json({ message: 'Vui lòng sử dụng API xử lý yêu cầu hoàn trả.' });
+  }
   delete updates._id;
   delete updates.id;
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
   normalizeOrderStatusUpdates(updates);
+  if (updates.statusId === 'returned') return res.status(409).json({ message: 'Vui lòng sử dụng API xử lý yêu cầu hoàn trả.' });
 
   try {
     let order;
     const filter = mongoose.isValidObjectId(req.params.id)
       ? { _id: req.params.id }
       : { id: req.params.id };
-    const currentOrder = await Order.findOne(filter).select('_id statusId status').lean();
+    const currentOrder = await Order.findOne(filter).select('_id statusId status returnStatusId').lean();
     if (!currentOrder) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
+    }
+    if (currentOrder.returnStatusId && !['completed', 'rejected'].includes(currentOrder.returnStatusId) &&
+        Object.keys(updates).some(key => /^(status|payment|total|items|shipping|voucher)/.test(key))) {
+      return res.status(409).json({ message: 'Đơn hàng đang có yêu cầu hoàn trả cần xử lý.' });
     }
 
     // Quy định: Dữ liệu đang chờ xác nhận thì không được giao hàng. Khi nào xác nhận xong mới tiến hành chuẩn bị và giao.
@@ -883,6 +1106,9 @@ exports.updateOrder = async (req, res) => {
         if (!order) return;
 
         const payment = await Payment.findOne({ orderId: order._id }).session(session);
+        if (RETURN_OPEN.includes(order.returnStatusId) && Object.keys(updates).some(key => /^(status|payment|total|items|shipping|voucher)/.test(key))) {
+          throw new PaymentOrderConflictError('Đơn hàng đang có yêu cầu hoàn trả cần xử lý.');
+        }
         if (!payment) {
           order = await Order.findOneAndUpdate(filter, updates, {
             new: true,

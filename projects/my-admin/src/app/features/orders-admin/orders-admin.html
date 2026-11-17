@@ -162,8 +162,13 @@
     <!-- 2. BẢNG YÊU CẦU HỦY ĐƠN HÀNG -->
     <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
-            <h4 class="fw-bold text-danger m-0 font-segoe">Yêu cầu hủy đơn hàng <span class="badge bg-danger rounded-pill fs-6 align-middle font-segoe">{{ cancelRequests.length }}</span></h4>
+            <h4 class="fw-bold text-danger m-0 font-segoe">Yêu cầu xử lý đơn hàng</h4>
         </div>
+        <div class="request-tabs px-4 mt-3" role="tablist" aria-label="Loại yêu cầu xử lý">
+            <button id="cancel-tab" type="button" role="tab" [attr.aria-selected]="requestTab === 'cancel'" aria-controls="cancel-request-panel" [class.active]="requestTab === 'cancel'" (click)="requestTab = 'cancel'">Yêu cầu hủy đơn hàng <span class="badge bg-danger">{{ cancelRequests.length }}</span></button>
+            <button id="return-tab" type="button" role="tab" [attr.aria-selected]="requestTab === 'return'" aria-controls="return-request-panel" [class.active]="requestTab === 'return'" (click)="requestTab = 'return'">Yêu cầu trả hàng/hoàn tiền <span class="badge bg-danger">{{ returnTotal }}</span></button>
+        </div>
+        <div id="cancel-request-panel" role="tabpanel" aria-labelledby="cancel-tab" [hidden]="requestTab !== 'cancel'">
         <div class="table-responsive p-0 mt-2">
             <table class="table table-hover align-middle mb-0 table-orders-cancel">
                 <thead class="text-muted small fw-bold bg-light">
@@ -242,11 +247,58 @@
         </div>
     </div>
 
+        <div id="return-request-panel" role="tabpanel" aria-labelledby="return-tab" [hidden]="requestTab !== 'return'">
+            <div class="row g-2 p-4">
+                <div class="col-md-4"><label class="filter-label" for="return-type-filter">Loại yêu cầu</label>
+                    <select id="return-type-filter" class="form-select" [(ngModel)]="returnTypeFilter" (ngModelChange)="loadReturnRequests(1)">
+                        <option value="">Tất cả</option>
+                        @for (type of returnTypes; track type.id) { <option [value]="type.id">{{ type.label }}</option> }
+                        <option value="unclassified">Chưa xác định loại yêu cầu</option>
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="filter-label" for="return-status-filter">Trạng thái xử lý</label>
+                    <select id="return-status-filter" class="form-select" [(ngModel)]="returnStatusFilter" (ngModelChange)="loadReturnRequests(1)">
+                        <option value="">Tất cả — ưu tiên đang xử lý</option>
+                        @for (state of returnStates; track state.id) { <option [value]="state.id">{{ state.label }}</option> }
+                    </select>
+                </div>
+                <div class="col-md-3"><label class="filter-label" for="return-order-filter">Loại đơn</label>
+                    <select id="return-order-filter" class="form-select" [(ngModel)]="returnOrderTypeFilter" (ngModelChange)="loadReturnRequests(1)"><option value="">Tất cả</option><option value="normal">Thường</option><option value="custom">Custom</option></select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end"><button class="btn btn-outline-danger" type="button" (click)="loadReturnRequests()" [disabled]="returnLoading" aria-label="Tải lại yêu cầu"><i class="bi bi-arrow-clockwise"></i></button></div>
+            </div>
+            @if (returnError) { <div class="alert alert-warning mx-4" role="alert">{{ returnError }}</div> }
+            @if (returnDetailLoading) { <p class="px-4 text-muted" role="status">Đang tải chi tiết yêu cầu...</p> }
+            <div class="table-responsive" [attr.aria-busy]="returnLoading">
+                <table class="table table-hover align-middle mb-0 table-returns">
+                    <thead><tr><th>Mã đơn hàng</th><th>Khách hàng</th><th>Loại đơn</th><th>Loại yêu cầu</th><th>Lý do</th><th>Ngày yêu cầu</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                    <tbody>
+                        @if (returnLoading) { <tr><td colspan="8" class="text-center py-4">Đang tải yêu cầu...</td></tr> }
+                        @else {
+                            @for (r of returnRequests; track r.source + ':' + r.id) {
+                                <tr><td class="order-id">#{{ r.id }}</td><td>{{ r.customerName || 'Chưa có thông tin' }}</td><td>{{ r.orderTypeLabel }}</td><td>{{ r.requestTypeLabel }}</td><td>{{ r.returnReason }}</td><td>{{ r.returnRequestedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                                    <td><span class="badge-status" [class.badge-status-completed]="r.returnStatusId === 'completed'" [class.badge-status-cancelled]="r.returnStatusId === 'rejected'" [class.badge-status-pending_approval]="r.returnStatusId !== 'completed' && r.returnStatusId !== 'rejected'">{{ r.returnStatusLabel }}</span></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" (click)="openReturnDetail(r)" [disabled]="returnBusy || returnDetailLoading">Xem / Xử lý</button></td>
+                                </tr>
+                            } @empty { <tr><td colspan="8" class="text-center text-muted py-4">Không có yêu cầu phù hợp.</td></tr> }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center p-3">
+                <span class="text-muted small">{{ returnTotal }} yêu cầu · Trang {{ returnPage }} / {{ Math.max(1, Math.ceil(returnTotal / ITEMS_PER_PAGE)) }}</span>
+                <nav aria-label="Phân trang yêu cầu hoàn trả" class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-danger" [disabled]="returnLoading || returnPage <= 1" (click)="loadReturnRequests(returnPage - 1)">Trước</button>
+                    <button class="btn btn-sm btn-outline-danger" [disabled]="returnLoading || returnPage * ITEMS_PER_PAGE >= returnTotal" (click)="loadReturnRequests(returnPage + 1)">Sau</button>
+                </nav>
+            </div>
+        </div>
+    </div>
     <!-- 3. BẢNG CUSTOM ORDER -->
     <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
             <h4 class="fw-bold text-danger m-0 font-segoe">
-                <i class="bi bi-palette me-2"></i>Đơn hàng Custom theo yêu cầu 
+                <i></i>Đơn hàng Custom theo yêu cầu 
                 <span class="badge bg-warning rounded-pill fs-6 align-middle font-segoe">{{ customOrders.length }}</span>
             </h4>
         </div>
@@ -312,6 +364,70 @@
 
 <!-- ================= 4 MODALS TÍCH HỢP TỪ JS CŨ LÊN HTML ================= -->
 <!-- Modal Chi Tiết Đơn Hàng -->
+<div class="modal fade" id="returnRequestModal" tabindex="-1" aria-labelledby="return-modal-title" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content font-segoe">
+        <div class="modal-header"><h4 id="return-modal-title" class="modal-title text-danger">Yêu cầu #{{ selectedReturn?.id }}</h4><button type="button" class="btn-close" data-bs-dismiss="modal" [disabled]="returnBusy" aria-label="Đóng"></button></div>
+        <div class="modal-body">
+            @if (selectedReturn; as r) {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6"><strong>{{ r.customerName || 'Chưa có thông tin khách' }}</strong><div>{{ r.address?.phone || r.phone }}</div><div>{{ r.address?.address || r.email }}</div></div>
+                    <div class="col-md-6"><div>{{ r.orderTypeLabel }} · {{ r.requestTypeLabel }}</div><div>{{ r.returnStatusLabel }}</div><div>Ngày gửi: {{ r.returnRequestedAt | date:'dd/MM/yyyy HH:mm' }}</div></div>
+                </div>
+                <h6>Sản phẩm / Yêu cầu Custom</h6>
+                @for (item of r.items || []; track $index) { <p class="mb-1">{{ item.name || item.productId }} — {{ item.variantName }} × {{ item.quantity }}</p> }
+                @if (r.requestName) { <p>{{ r.requestName }} · {{ r.size }} · {{ r.beadType }}</p> }
+                <div class="alert alert-light border mt-3"><strong>{{ r.returnReason }}</strong><p class="mb-0 return-note">{{ r.returnNote }}</p></div>
+                <div class="return-evidence mb-3">
+                    @for (media of r.returnEvidence || []; track $index) {
+                        @if (media.type === 'image') { <a [href]="getCustomerAvatarUrl(media.url)" target="_blank" rel="noopener noreferrer"><img [src]="getCustomerAvatarUrl(media.url)" alt="Minh chứng khách gửi" loading="lazy"></a> }
+                        @else { <video [src]="getCustomerAvatarUrl(media.url)" controls preload="metadata"></video> }
+                    } @empty { <span class="text-muted">Không có minh chứng.</span> }
+                </div>
+                @if (r.returnCod?.confirmedAt) { <div class="alert alert-info">Đã xác nhận COD: <strong>{{ r.returnCod.amount | number }}đ</strong><br>{{ r.returnCod.confirmedAt | date:'dd/MM/yyyy HH:mm' }} · {{ r.returnCod.confirmedBy }}</div> }
+                @if (r.returnRefund?.refundedAt) { <div class="alert alert-success">Đã hoàn tiền thủ công: <strong>{{ r.returnRefund.amount | number }}đ</strong><br>{{ r.returnRefund.refundedAt | date:'dd/MM/yyyy HH:mm' }} · {{ r.returnRefund.confirmedBy }}</div> }
+                @if (r.returnInspection?.result) { <p>Kết quả kiểm hàng: <strong>{{ r.returnInspection.result === 'passed' ? 'Đạt' : 'Không đạt' }}</strong> · {{ r.returnInspection.inspectedAt | date:'dd/MM/yyyy HH:mm' }}</p> }
+                @if (r.returnRejectionReason) { <p class="return-note">Lý do từ chối: {{ r.returnRejectionReason }}</p> }
+                @if (r.blockedReason) { <div class="alert alert-warning">{{ r.blockedReason }}</div> }
+                @if (returnError) { <div class="alert alert-danger" role="alert">{{ returnError }}</div> }
+                @if (returnSuccess) { <div class="alert alert-success" role="status">{{ returnSuccess }}</div> }
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @for (action of r.availableActions || []; track action) { <button type="button" class="btn btn-outline-danger btn-sm" (click)="beginReturnAction(action)" [disabled]="returnBusy">{{ returnActionLabels[action] }}</button> }
+                    <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="returnBusy" (click)="openReturnDetail(r)">Tải lại chi tiết</button>
+                </div>
+                @if (returnAction) {
+                    <div class="border rounded p-3 mb-3 return-action-form">
+                        <h6>{{ returnActionLabels[returnAction] }}</h6>
+                        @if (returnAction === 'approve') {
+                            <label for="return-decision-type" class="form-label">Loại xử lý</label>
+                            <select id="return-decision-type" class="form-select mb-2" [(ngModel)]="returnDecisionType" [disabled]="returnBusy || isReturnType(r.requestType)">
+                                <option value="">Chọn phương án xử lý</option>
+                                @for (type of returnTypes; track type.id) { <option [value]="type.id">{{ type.label }}</option> }
+                            </select>
+                            <p class="small text-muted">Trao đổi với khách trước khi duyệt nếu phương án chưa rõ hoặc khác mong muốn của khách.</p>
+                        }
+                        @if (returnAction === 'approve' || returnAction === 'reject') {
+                            <label for="return-action-note" class="form-label">{{ returnAction === 'reject' ? 'Lý do từ chối (bắt buộc)' : 'Ghi chú xử lý (không bắt buộc)' }}</label>
+                            <textarea id="return-action-note" class="form-control mb-2" maxlength="4000" [(ngModel)]="returnActionNote" [disabled]="returnBusy"></textarea>
+                        }
+                        @if (returnAction === 'inspect') {
+                            <label for="return-inspection-result" class="form-label">Kết quả kiểm tra</label>
+                            <select id="return-inspection-result" class="form-select mb-2" [(ngModel)]="returnInspectionResult" [disabled]="returnBusy"><option value="passed">Đạt</option><option value="failed">Không đạt — tạm dừng xử lý</option></select>
+                        }
+                        @if (returnAction === 'confirm-cod') { <p>Xác nhận khách đã thanh toán COD: <strong>{{ r.codAmount | number }}đ</strong>. Chỉ xác nhận khi đã thực sự nhận thanh toán.</p> }
+                        @if (returnAction === 'confirm-refund') { <p>Hoàn toàn bộ: <strong>{{ r.returnCod?.amount | number }}đ</strong>. Chỉ xác nhận sau khi bạn đã hoàn tiền thành công bên ngoài hệ thống.</p> }
+                        <div class="d-flex gap-2"><button class="btn btn-danger" type="button" [disabled]="returnBusy" (click)="submitReturnAction()">{{ returnBusy ? 'Đang lưu...' : 'Xác nhận' }}</button><button class="btn btn-outline-secondary" type="button" [disabled]="returnBusy" (click)="returnAction = ''">Hủy thao tác</button></div>
+                    </div>
+                }
+                <h6>Lịch sử xử lý</h6>
+                <ul class="return-history">
+                    @for (event of r.returnHistory || []; track $index) { <li><strong>{{ returnActionLabels[event.action] || event.action }}</strong> · {{ event.at | date:'dd/MM/yyyy HH:mm' }}<div class="small text-muted">{{ event.actorId }} · {{ event.fromStatus }} → {{ event.toStatus }}</div>@if (event.note) { <div class="return-note">{{ event.note }}</div> }</li> }
+                    @empty { <li class="text-muted">Yêu cầu cũ chưa có lịch sử xử lý bổ sung.</li> }
+                </ul>
+            }
+        </div>
+    </div></div>
+</div>
+
 <div class="modal fade" id="orderDetailModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content font-segoe border-0 shadow-lg rounded-3">

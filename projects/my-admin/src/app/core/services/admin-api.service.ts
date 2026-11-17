@@ -974,6 +974,19 @@ export class AdminApiService {
     );
   }
 
+  public getReturnRequests(filters: { page?: number; limit?: number; requestType?: string; status?: string; orderType?: string; orderId?: string } = {}): Observable<any> {
+    const params = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => [key, String(value)]));
+    return this.http.get<any>(`${this.baseUrl}/orders/return-requests`, { headers: this.getAuthHeaders(), params });
+  }
+
+  public getReturnRequest(source: string, id: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/orders/return-requests/${encodeURIComponent(source)}/${encodeURIComponent(id)}`, { headers: this.getAuthHeaders() });
+  }
+
+  public processReturnRequest(source: string, id: string, action: string, payload: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/orders/return-requests/${encodeURIComponent(source)}/${encodeURIComponent(id)}/${encodeURIComponent(action)}`, payload, { headers: this.getAuthHeaders() });
+  }
+
   public getCustomOrders(): Observable<any> {
     return this.http.get<any>(
       `${this.baseUrl}/custom-orders?page=1&limit=100`,

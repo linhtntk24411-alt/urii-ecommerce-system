@@ -49,6 +49,202 @@ const {
 const dataPath = (name) => path.join(__dirname, '..', 'data', name);
 const readJSON = (name) => JSON.parse(fs.readFileSync(dataPath(name), 'utf8'));
 
+function returnTestResponse() {
+  return { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+}
+
+test('return workflow enforces all three paths, classification, COD confirmation and concurrent actions for both sources', async (t) => {
+  const controller = require('../controllers/orderController');
+  const Payment = require('../models/Payment');
+  t.mock.method(Payment, 'exists', async () => null);
+  t.mock.method(Order, 'exists', async () => null);
+  t.mock.method(CustomOrder, 'exists', async () => null);
+  for (const source of ['order', 'custom_order']) {
+    for (const type of ['return_only', 'refund_only', 'return_and_refund']) {
+      const Model = source === 'order' ? Order : CustomOrder;
+      let stored = { _id: '507f1f77bcf86cd799439011', id: 'TEST-RETURN', statusId: 'completed', status: 'completed',
+        returnStatusId: 'pending_approval', returnRevision: 0, totalAmount: 120000,
+        payment: { methodId: 'cod', statusId: 'paid' }, timeline: [{ statusId: 'order_placed' }] };
+      const originalTimeline = JSON.stringify(stored.timeline);
+      const find = t.mock.method(Model, 'findOne', () => ({ lean: async () => structuredClone(stored) }));
+      const update = t.mock.method(Model, 'findOneAndUpdate', (filter, mutation, options) => ({ lean: async () => {
+        assert.equal(options.returnWorkflow, true);
+        if (filter.returnRevision !== stored.returnRevision || filter.returnStatusId !== stored.returnStatusId) return null;
+        stored = { ...stored, ...mutation.$set, returnRevision: stored.returnRevision + 1,
+          returnHistory: [...(stored.returnHistory || []), mutation.$push.returnHistory] };
+        return structuredClone(stored);
+      } }));
+      const act = async (action, body = {}) => {
+        const response = returnTestResponse();
+        await controller.processReturnRequest({ auth: { id: 'admin-1', role: 'admin' },
+          params: { source, id: stored.id, action }, body: { revision: stored.returnRevision, ...body } }, response);
+        return response;
+      };
+      assert.equal((await act('confirm-refund')).statusCode, 409);
+      assert.equal((await act('approve')).statusCode, 400);
+      assert.equal((await act('approve', { requestType: type })).statusCode, 200);
+      assert.equal(stored.requestType, type);
+      assert.equal(stored.returnApprovedBy, 'admin-1');
+      assert.equal((await act('reject', { note: 'Too late' })).statusCode, 409);
+      assert.equal((await act('start')).statusCode, 200);
+      if (type !== 'refund_only') {
+        assert.equal((await act('inspect', { result: 'passed' })).statusCode, 409);
+        assert.equal((await act('receive')).statusCode, 200);
+        assert.equal((await act('complete')).statusCode, 409);
+        assert.equal((await act('inspect', { result: 'passed' })).statusCode, 200);
+        if (type === 'return_and_refund') assert.equal((await act('prepare-refund')).statusCode, 200);
+      }
+      if (type !== 'return_only') {
+        assert.equal((await act('confirm-refund')).statusCode, 409);
+        assert.equal((await act('confirm-cod')).statusCode, 200);
+        assert.equal(stored.returnCod.amount, 120000);
+        assert.equal((await act('confirm-cod')).statusCode, 409);
+        const simultaneous = await Promise.all([act('confirm-refund'), act('confirm-refund')]);
+        assert.deepEqual(simultaneous.map(result => result.statusCode).sort(), [200, 409]);
+        assert.equal(stored.returnRefund.amount, 120000);
+        assert.equal((await act('confirm-refund')).statusCode, 409);
+      }
+      assert.equal((await act('complete')).statusCode, 200);
+      assert.equal(stored.returnStatusId, 'completed');
+      assert.equal(stored.statusId, 'completed');
+      assert.equal(stored.totalAmount, 120000);
+      assert.equal(JSON.stringify(stored.timeline), originalTimeline);
+      assert.equal(stored.payment.statusId, source === 'order' && type !== 'return_only' ? 'refunded' : 'paid');
+      assert.equal((await act('complete')).statusCode, 409);
+      find.mock.restore(); update.mock.restore();
+    }
+  }
+});
+
+test('return requests reject invalid decisions, block failed inspections, unknown COD and preserve customer request type', async (t) => {
+  const c = require('../controllers/orderController');
+  const Payment = require('../models/Payment');
+  t.mock.method(Payment, 'exists', async () => null);
+  t.mock.method(Order, 'exists', async () => null);
+  let order = { _id: '507f1f77bcf86cd799439011', id: 'RETURN', returnStatusId: 'pending_approval', returnRevision: 0, requestType: 'return_only' };
+  t.mock.method(Order, 'findOne', () => ({ lean: async () => structuredClone(order) }));
+  t.mock.method(Order, 'findOneAndUpdate', (_filter, mutation) => ({ lean: async () => {
+    order = { ...order, ...mutation.$set, returnRevision: order.returnRevision + 1 }; return order;
+  } }));
+  const call = async (action, body = {}, role = 'admin') => {
+    const response = returnTestResponse();
+    await c.processReturnRequest({ auth: { id: 'a', role }, params: { source: 'order', id: order.id, action }, body: { revision: order.returnRevision, ...body } }, response);
+    return response;
+  };
+  assert.equal((await call('approve', { requestType: 'refund_only' })).statusCode, 400);
+  assert.equal((await call('reject', { note: '  ' })).statusCode, 400);
+  assert.equal((await call('reject', { note: 'Không đáp ứng yêu cầu' }, 'user')).statusCode, 403);
+  assert.equal((await call('reject', { note: 'Không đáp ứng yêu cầu' })).statusCode, 200);
+  assert.equal(order.returnRejectionReason, 'Không đáp ứng yêu cầu');
+  order = { ...order, returnStatusId: 'inspecting', returnReceivedAt: new Date(), returnInspection: { result: 'failed' } };
+  assert.deepEqual(c.returnActions(order), []);
+  assert.equal((await call('complete')).statusCode, 409);
+  assert.deepEqual(c.returnActions({ returnStatusId: 'refund_pending', requestType: 'refund_only' }), []);
+  for (const raw of [undefined, '', 'n/a', '-1', '100.50', 0, -1, NaN, Infinity]) assert.equal(c.confirmedOrderAmount({ totalAmount: raw }), null);
+  assert.equal(c.confirmedOrderAmount({ total: '120.000đ', payment: { methodId: 'cod' } }), 120000);
+  assert.equal(c.confirmedOrderAmount({ totalAmount: 120000, payment: { methodId: 'bank_transfer' } }), null);
+});
+
+test('return schemas preserve Custom production state and block generic updates to workflow fields', async () => {
+  const custom = new CustomOrder({ id: 'custom-return', fullName: 'Test', phone: '0901234567', email: 'a@example.com',
+    requestName: 'Test', size: '10x10', beadType: 'mini', status: 'processing', requestType: 'return_only', returnStatusId: 'pending_approval' });
+  await custom.validate();
+  assert.equal(custom.status, 'processing');
+  for (const Model of [Order, CustomOrder]) {
+    await assert.rejects(Model.findOneAndUpdate({ id: 'test' }, { $set: { 'returnRefund.amount': 100 } }).exec(), /API xử lý/);
+    await assert.rejects(Model.findOneAndUpdate({ id: 'test' }, { $rename: { note: 'returnStatusId' } }).exec(), /API xử lý/);
+  }
+});
+
+test('return routes require Admin and register before generic order ID routes', () => {
+  const routes = require('../routes/orderRoutes').stack;
+  const authBoundary = routes.findIndex(layer => layer.name === 'requireAdmin');
+  const list = routes.findIndex(layer => layer.route?.path === '/return-requests');
+  const generic = routes.findIndex(layer => layer.route?.path === '/:id' && layer.route.methods.get);
+  assert.ok(authBoundary >= 0 && list > authBoundary && list < generic);
+});
+
+test('return list paginates on the server, filters unclassified requests and preserves source identity', async (t) => {
+  const c = require('../controllers/orderController');
+  let pipeline;
+  t.mock.method(Order, 'aggregate', async stages => {
+    pipeline = stages;
+    return [{ requests: [{ id: 'CUSTOM', source: 'custom_order', returnStatusId: 'pending_approval' }], count: [{ total: 7 }] }];
+  });
+  t.mock.method(Order, 'exists', async () => null);
+  const response = returnTestResponse();
+  await c.getReturnRequests({ auth: { role: 'admin' }, query: { page: '2', limit: '4', requestType: 'unclassified', status: 'pending_approval', orderType: 'custom' } }, response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.total, 7);
+  assert.equal(response.body.page, 2);
+  assert.equal(response.body.requests[0].requestTypeLabel, 'Chưa phân loại');
+  assert.equal(response.body.requests[0].source, 'custom_order');
+  assert.equal(pipeline.find(stage => stage.$facet).$facet.requests[0].$skip, 4);
+  assert.ok(pipeline.some(stage => stage.$match?.requestType?.$nin));
+  const invalid = returnTestResponse();
+  await c.getReturnRequests({ auth: { role: 'admin' }, query: { requestType: 'invalid' } }, invalid);
+  assert.equal(invalid.statusCode, 400);
+});
+
+test('linked Custom transactions and unknown Custom COD amounts remain blocked', async (t) => {
+  const c = require('../controllers/orderController');
+  const record = { _id: '507f1f77bcf86cd799439011', id: 'CUSTOM', returnStatusId: 'refund_pending', requestType: 'refund_only', returnRevision: 0 };
+  t.mock.method(CustomOrder, 'findOne', () => ({ lean: async () => record }));
+  const linked = t.mock.method(Order, 'exists', async () => ({ _id: 'linked-order' }));
+  const response = returnTestResponse();
+  const request = { auth: { id: 'a', role: 'admin' }, params: { source: 'custom_order', id: record.id, action: 'confirm-cod' }, body: { revision: 0 } };
+  await c.getReturnRequest(request, response);
+  assert.deepEqual(response.body.availableActions, []);
+  assert.match(response.body.blockedReason, /liên kết/);
+  linked.mock.mockImplementation(async () => null);
+  const unknown = returnTestResponse();
+  await c.processReturnRequest(request, unknown);
+  assert.equal(unknown.statusCode, 409);
+});
+
+test('generic Order API cannot mark refunds or replace return workflow state', async () => {
+  const c = require('../controllers/orderController');
+  for (const body of [{ returnStatusId: 'completed' }, { 'returnCod.amount': 100 }, { $set: { returnStatusId: 'refunded' } }, { payment: { statusId: 'refunded' } }, { statusType: 'returned' }]) {
+    const response = returnTestResponse();
+    await c.updateOrder({ params: { id: 'TEST' }, body }, response);
+    assert.equal(response.statusCode, 409);
+  }
+});
+
+test('legacy customer intake remains unclassified, synchronizes statuses and emits one Admin notification', async (t) => {
+  const c = require('../controllers/orderController');
+  const mongoose = require('mongoose');
+  const previousDb = mongoose.connection.db;
+  const notifications = [];
+  let inserted = false;
+  t.mock.method(Order, 'findOne', async () => new Order({ id: 'INTAKE', statusId: 'completed', status: 'Đã giao', statusType: 'completed', items: [] }));
+  t.mock.method(Order, 'findOneAndUpdate', async (_filter, update) => {
+    if (inserted) return null;
+    inserted = true;
+    return new Order({ id: 'INTAKE', ...update.$set, returnRevision: 1, returnHistory: [update.$push.returnHistory] });
+  });
+  mongoose.connection.db = { collection: name => ({ updateOne: async (filter, update) => {
+    assert.equal(name, 'admin_notifications'); notifications.push({ filter, update }); return { upsertedCount: 1 };
+  } }) };
+  try {
+    const request = { params: { id: 'INTAKE' }, auth: { id: 'admin-1', role: 'admin' }, body: {
+      reasonId: 'MISSING_QUANTITY', note: 'Thiếu hàng', evidence: [{ type: 'image', url: '/images/test.jpg' }]
+    } };
+    const first = returnTestResponse();
+    await c.requestReturnOrder(request, first);
+    assert.equal(first.statusCode, 200);
+    assert.equal(first.body.requestType, undefined);
+    assert.equal(first.body.statusId, 'return_requested');
+    assert.equal(first.body.statusType, 'return_requested');
+    assert.equal(first.body.returnPreviousStatus.statusId, 'completed');
+    const second = returnTestResponse();
+    await c.requestReturnOrder(request, second);
+    assert.equal(second.statusCode, 409);
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0].update.$setOnInsert.typeId, 'ADMIN_ORDER_RETURN_REQUEST');
+  } finally { mongoose.connection.db = previousDb; }
+});
+
 test('seed fixtures validate against their MongoDB schemas', async () => {
   const fixtures = [
     [Product, readJSON('products.json').products],
@@ -1354,6 +1550,7 @@ test('order waiting states, SLA deadlines, metadata endpoint, and cancel/return 
     assert.ok(orders.some((o) => o.statusId === statusObj.id && o.orderType === 'custom'), `Missing custom order for ${statusObj.id}`);
   }
   for (const reqStatus of orderStatuses.requestStatuses) {
+    if (['refund_pending', 'refunded', 'completed'].includes(reqStatus.id)) continue; // New workflow states are covered by transition tests below.
     assert.ok(orders.some((o) => o.cancellationStatusId === reqStatus.id || o.returnStatusId === reqStatus.id), `Missing requestStatus ${reqStatus.id}`);
   }
   for (const payStatus of orderStatuses.paymentStatuses) {
@@ -1398,6 +1595,7 @@ test('order waiting states, SLA deadlines, metadata endpoint, and cancel/return 
 
   const origUserFind = User.find;
   const origOrderFindOne = Order.findOne;
+  const origReturnUpdate = Order.findOneAndUpdate;
   try {
     const sampleUser = readJSON('users.json').users.find((u) => u.role === 'user');
     User.find = () => ({
@@ -1457,6 +1655,10 @@ test('order waiting states, SLA deadlines, metadata endpoint, and cancel/return 
       return this;
     };
     Order.findOne = async () => completedOrder;
+    Order.findOneAndUpdate = async (_filter, update) => {
+      completedOrder.set(update.$set);
+      return completedOrder;
+    };
 
     let returnStatus = 200;
     let returnBody = null;
@@ -1491,6 +1693,7 @@ test('order waiting states, SLA deadlines, metadata endpoint, and cancel/return 
   } finally {
     User.find = origUserFind;
     Order.findOne = origOrderFindOne;
+    Order.findOneAndUpdate = origReturnUpdate;
   }
 });
 

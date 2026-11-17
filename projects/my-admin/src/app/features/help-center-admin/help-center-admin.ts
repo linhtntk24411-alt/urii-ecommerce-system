@@ -1,13 +1,15 @@
 import { Component } from '@angular/core';
-import { NgForm } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-  imports: [],
   selector: 'app-help-center-admin',
-  styleUrl: './help-center-admin.css',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './help-center-admin.html',
+  styleUrl: './help-center-admin.css',
 })
-export class HelpCenterAdmin { 
+export class HelpCenterAdmin {
   activeFaq: number | null = null;
 
   helpForm = {
@@ -20,19 +22,14 @@ export class HelpCenterAdmin {
   toggleFaq(index: number): void {
     this.activeFaq = this.activeFaq === index ? null : index;
   }
-
-  resetForm(form: NgForm): void {
+  resetForm(form: any): void {
     form.resetForm();
   }
-
-  submitForm(form: NgForm): void {
+  submitForm(form: any): void {
     if (form.invalid) {
       form.control.markAllAsTouched();
       return;
     }
-
-    // Giữ nguyên hành vi HTML gốc:
-    // Chưa có API gửi yêu cầu hỗ trợ.
     alert(
       '✅ Câu hỏi của bạn đã được gửi thành công! ' +
       'Đội ngũ hỗ trợ sẽ liên hệ lại sớm nhất.'

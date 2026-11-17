@@ -20,6 +20,16 @@
 /* =========================================
    Badges Trạng Thái
    ========================================= */
+.request-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #eee; }
+.request-tabs button { border: 0; background: transparent; color: #666; padding: 12px 16px; border-bottom: 3px solid transparent; font: inherit; }
+.request-tabs button.active { color: #b52c3d; border-bottom-color: #b52c3d; font-weight: 600; }
+.table-returns th, .table-returns td { padding: 14px 16px; min-width: 110px; }
+.table-returns th { background: #f8f9fa; color: #666; font-size: .85rem; }
+.return-evidence { display: flex; flex-wrap: wrap; gap: 12px; }
+.return-evidence img, .return-evidence video { width: 150px; height: 120px; object-fit: contain; border: 1px solid #eee; border-radius: 8px; }
+.return-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+.return-history { padding-left: 20px; }
+.return-history li { padding-bottom: 12px; }
 .badge-status {
     padding: 5px 14px;
     border-radius: 20px;

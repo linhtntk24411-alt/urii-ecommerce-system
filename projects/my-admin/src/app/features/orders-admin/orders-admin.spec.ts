@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, NEVER } from 'rxjs';
 import { OrdersAdmin } from './orders-admin';
 import { AdminApiService } from '../../core/services/admin-api.service';
-import { OrdersAdmin } from './orders-admin';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 describe('OrdersAdmin', () => {
   let component: OrdersAdmin;
@@ -11,9 +12,15 @@ describe('OrdersAdmin', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [OrdersAdmin],
-      providers: [{
+      providers: [
+        { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({})) } },
+        { provide: AdminSocketService, useValue: { onCrudChange: () => NEVER } },
+        {
         provide: AdminApiService,
         useValue: {
+          products$: of([]),
+          getCustomOrders: () => of([]),
+          getReturnRequests: () => of({ requests: [], total: 0, page: 1 }),
           getOrders: () => of([{
             id: 'UR-1',
             userName: '  Phạm   Thu Hà ',
@@ -42,6 +49,49 @@ describe('OrdersAdmin', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('keeps cancellation handling and its pagination when switching request tabs', async () => {
+    vi.spyOn(TestBed.inject(AdminApiService), 'getOrders').mockReturnValue(of(Array.from({ length: 5 }, (_, i) => ({ id: `C-${i}`, statusType: 'pending', cancellationStatusId: 'pending_approval' }))));
+    component.loadOrders();
+    component.currentCancelPage = 2;
+    fixture.nativeElement.querySelector('#return-tab').click();
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector('#cancel-tab').click();
+    await fixture.whenStable();
+    expect(component.currentCancelPage).toBe(2);
+    expect(component.pagedCancelRequests.map(order => order.id)).toEqual(['C-4']);
+    const panel = fixture.nativeElement.querySelector('#cancel-request-panel');
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain('Duyệt hủy');
+    expect(panel.textContent).toContain('Không duyệt');
+  });
+
+  it('loads server pagination and filters independently of cancellations', () => {
+    const api = TestBed.inject(AdminApiService);
+    const spy = vi.spyOn(api, 'getReturnRequests').mockReturnValue(of({ requests: [], total: 9, page: 2 }));
+    component.returnTypeFilter = 'unclassified';
+    component.returnStatusFilter = 'pending_approval';
+    component.loadReturnRequests(2);
+    expect(spy).toHaveBeenCalledWith({ page: 2, limit: 4, requestType: 'unclassified', status: 'pending_approval', orderType: '' });
+    expect(component.returnTotal).toBe(9);
+    expect(component.currentCancelPage).toBe(1);
+  });
+
+  it('requires a classification on approval and a reason for rejection', () => {
+    component.selectedReturn = { availableActions: ['approve', 'reject'] };
+    component.beginReturnAction('approve');
+    component.submitReturnAction();
+    expect(component.returnError).toContain('chọn loại');
+    component.beginReturnAction('reject');
+    component.submitReturnAction();
+    expect(component.returnError).toContain('lý do');
+    component.beginReturnAction('confirm-refund');
+    expect(component.returnAction).toBe('reject');
+  });
+
+  it('labels return requests using request state instead of stale completed order status', () => {
+    expect(component.getStatusLabel({ status: 'completed', returnStatusId: 'pending_approval' })).toBe('Hoàn trả: Chờ duyệt');
   });
 
   it('should use the matching customer avatar instead of initials', () => {

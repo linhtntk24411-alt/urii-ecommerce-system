@@ -1114,6 +1114,12 @@ export class AdminApiService {
     );
   }
 
+  public updateLibraryMap(id: string, mapData: any): Observable<any> {
+    return this.http.put(`${this.baseUrl}/maps/${encodeURIComponent(id)}`, mapData, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
   // --- 8. DASHBOARD STATS ---
 
   async getDashboard(): Promise<DashboardStats> {

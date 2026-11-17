@@ -1,6 +1,7 @@
 import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
@@ -30,6 +31,16 @@ export class MapAdmin implements OnInit {
   currentPage = 1;
   ITEMS_PER_PAGE = 8;
   editingId: string | null = null;
+  isSaving = false;
+  saveError = '';
+  saveSuccess = '';
+  imageError = '';
+  imagePreview: string | null = null;
+  selectedImage: File | null = null;
+  private uploadedImage: string | null = null;
+  private pendingMapId: string | null = null;
+  private imageReader: FileReader | null = null;
+  private initialForm: Record<string, unknown> = {};
   private pendingSearchId: string | null = null;
   showDeleteConfirm = false;
   deletingMapId: string | null = null;
@@ -195,20 +206,36 @@ export class MapAdmin implements OnInit {
   }
 
   openModal(id: string | null = null) {
+    if (this.isSaving) return;
+    this.imageReader?.abort();
+    this.imageReader = null;
+    this.selectedImage = null;
+    this.imagePreview = null;
+    this.uploadedImage = null;
+    this.pendingMapId = null;
+    this.imageError = '';
+    this.saveError = '';
+    this.saveSuccess = '';
     this.editingId = id;
+    const imageInput = document.getElementById('map-image-file') as HTMLInputElement | null;
+    if (imageInput) imageInput.value = '';
     const modalTitleEl = document.getElementById('modalTitle');
 
     if (id) {
       if (modalTitleEl) modalTitleEl.innerText = "Chỉnh sửa mẫu";
       const m = this.maps.find(item => item.map_id === id);
+      if (!m) {
+        this.saveError = 'Không tìm thấy Map mẫu cần chỉnh sửa. Vui lòng tải lại danh sách.';
+        return;
+      }
       if (m) {
         this.mapIdInput = m.map_id;
         this.mapName = m.map_name || '';
-        this.mapAuthor = m.author || 'Urii Thiết kế';
+        this.mapAuthor = m.author ?? '';
         this.mapImage = m.main_image || '';
         this.mapDifficulty = m.difficulty || 'Dễ';
         this.mapGridSize = m.grid_size || '';
-        this.mapTotalBeads = m.total_beads || null;
+        this.mapTotalBeads = m.total_beads ?? null;
         this.mapBeadType = m.bead_type || 'Midi 5mm';
         this.mapTime = m.time || '';
         this.mapDesc = m.description || '';
@@ -227,85 +254,127 @@ export class MapAdmin implements OnInit {
       this.mapDesc = '';
     }
 
+    this.initialForm = {
+      map_name: this.mapName.trim(), author: this.mapAuthor.trim(), difficulty: this.mapDifficulty,
+      grid_size: this.mapGridSize.trim(), total_beads: this.mapTotalBeads,
+      bead_type: this.mapBeadType.trim(), description: this.mapDesc.trim(), time: this.mapTime.trim()
+    };
     const modalEl = document.getElementById('mapModal');
     if (modalEl) {
       new bootstrap.Modal(modalEl).show();
     }
   }
 
-  saveMap() {
-    if (!this.mapName.trim()) {
-      alert("Vui lòng điền tên mẫu!");
+  onImageSelected(event: Event): void {
+    if (this.isSaving) return;
+    this.imageReader?.abort();
+    this.imageReader = null;
+    this.selectedImage = null;
+    this.imagePreview = null;
+    this.uploadedImage = null;
+    this.imageError = '';
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type) ||
+        file.size === 0 || file.size > 8 * 1024 * 1024) {
+      this.imageError = 'Chỉ nhận PNG, JPG, JPEG, WEBP lớn hơn 0 và tối đa 8 MB.';
+      input.value = '';
+      return;
+    }
+    this.selectedImage = file;
+    const reader = new FileReader();
+    this.imageReader = reader;
+    reader.onload = () => {
+      if (this.imageReader !== reader) return;
+      this.imagePreview = reader.result as string;
+      this.changeDetectorRef.markForCheck();
+    };
+    reader.onerror = () => {
+      if (this.imageReader !== reader) return;
+      this.imageError = 'Không thể đọc ảnh. Vui lòng chọn lại.';
+      this.changeDetectorRef.markForCheck();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async saveMap(): Promise<void> {
+    if (this.isSaving) return;
+    this.saveError = '';
+    this.saveSuccess = '';
+    const existing = this.editingId ? this.maps.find(m => m.map_id === this.editingId) : null;
+    if (this.editingId && !existing) {
+      this.saveError = 'Không tìm thấy Map mẫu cần chỉnh sửa. Vui lòng tải lại danh sách.';
+      return;
+    }
+    if (!this.mapName.trim() || !this.mapAuthor.trim()) {
+      this.saveError = 'Vui lòng nhập tên mẫu và tác giả, không chỉ nhập khoảng trắng.';
+      return;
+    }
+    if (typeof this.mapTotalBeads !== 'number' || !Number.isSafeInteger(this.mapTotalBeads) || this.mapTotalBeads < 0) {
+      this.saveError = 'Tổng số hạt phải là số nguyên không âm, có thể bằng 0.';
+      return;
+    }
+    if (this.imageError || (!this.editingId && !this.selectedImage)) {
+      this.saveError = this.imageError || 'Vui lòng chọn hình ảnh mẫu.';
       return;
     }
 
-    let difficultyClass = 'badge-easy';
-    if (this.mapDifficulty === 'Trung bình') difficultyClass = 'badge-medium';
-    else if (this.mapDifficulty === 'Khó') difficultyClass = 'badge-hard';
-
-    if (this.editingId) {
-      const index = this.maps.findIndex(m => m.map_id === this.editingId);
-      if (index !== -1) {
-        this.maps[index] = {
-          ...this.maps[index],
-          map_name: this.mapName.trim(),
-          author: this.mapAuthor.trim() || 'Urii Thiết kế',
-          main_image: this.mapImage.trim(),
-          difficulty: this.mapDifficulty,
-          difficultyClass,
-          grid_size: this.mapGridSize.trim(),
-          total_beads: Number(this.mapTotalBeads) || 0,
-          bead_type: this.mapBeadType.trim(),
-          description: this.mapDesc.trim(),
-          time: this.mapTime.trim() || '15-20 phút'
-        };
+    this.isSaving = true;
+    let uploading = false;
+    try {
+      let image = existing ? existing.main_image : '';
+      if (this.selectedImage) {
+        uploading = true;
+        if (!this.uploadedImage) {
+          this.uploadedImage = await firstValueFrom(this.adminApi.uploadProductImage(this.selectedImage));
+        }
+        image = this.uploadedImage;
+        uploading = false;
       }
-    } else {
-      const nextNum = this.maps.length > 0 ? Math.max(...this.maps.map(m => {
-        const num = parseInt(m.map_id?.substring(1));
-        return isNaN(num) ? 0 : num;
-      })) + 1 : 1;
-
-      const map_id = 'M' + nextNum.toString().padStart(2, '0');
-      const createdMap = {
-        map_id,
-        map_name: this.mapName.trim(),
-        author: this.mapAuthor.trim() || 'Urii Thiết kế',
-        main_image: this.mapImage.trim(),
-        gallery_images: [],
-        difficulty: this.mapDifficulty,
-        difficultyClass,
-        categories: ["Trang trí"],
-        grid_size: this.mapGridSize.trim(),
-        bead_type: this.mapBeadType.trim(),
-        total_beads: Number(this.mapTotalBeads) || 0,
-        download_link: "",
-        description: this.mapDesc.trim(),
-        time: this.mapTime.trim() || "15-20 phút",
-        related_product_ids: []
+      let difficultyClass = 'badge-easy';
+      if (this.mapDifficulty === 'Trung bình') difficultyClass = 'badge-medium';
+      else if (this.mapDifficulty === 'Khó') difficultyClass = 'badge-hard';
+      const payload: any = {
+        map_name: this.mapName.trim(), author: this.mapAuthor.trim(),
+        difficulty: this.mapDifficulty, difficultyClass,
+        grid_size: this.mapGridSize.trim(), total_beads: this.mapTotalBeads,
+        bead_type: this.mapBeadType.trim(), description: this.mapDesc.trim(),
+        time: this.mapTime.trim() || (existing ? '' : '15-20 phút')
       };
-      this.maps.push(createdMap);
-    }
-
-    const payloadMap = this.editingId
-      ? this.maps.find(m => m.map_id === this.editingId)
-      : this.maps[this.maps.length - 1];
-
-    if (payloadMap) {
-      this.adminApi.saveLibraryMap(payloadMap).subscribe({
-        next: () => this.loadMaps(),
-        error: (err) => console.error('Lỗi lưu map qua API:', err)
-      });
-    }
-
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      localStorage.setItem('library_maps', JSON.stringify(this.maps));
-    }
-
-    const modalEl = document.getElementById('mapModal');
-    if (modalEl) {
-      const modalInstance = bootstrap.Modal.getInstance(modalEl);
-      if (modalInstance) modalInstance.hide();
+      // Omit the old image on updates unless a replacement was uploaded.
+      if (!existing || this.selectedImage) payload.main_image = image;
+      if (existing) {
+        if (payload.difficulty === this.initialForm['difficulty']) delete payload.difficultyClass;
+        for (const key of Object.keys(this.initialForm)) {
+          if (payload[key] === this.initialForm[key]) delete payload[key];
+        }
+        await firstValueFrom(this.adminApi.updateLibraryMap(this.editingId!, payload));
+      } else {
+        if (!this.pendingMapId) {
+          const nextNum = this.maps.length > 0 ? Math.max(...this.maps.map(m => {
+            const num = parseInt(m.map_id?.substring(1));
+            return isNaN(num) ? 0 : num;
+          })) + 1 : 1;
+          this.pendingMapId = 'M' + nextNum.toString().padStart(2, '0');
+        }
+        await firstValueFrom(this.adminApi.saveLibraryMap({
+          ...payload, map_id: this.pendingMapId, gallery_images: [],
+          categories: ['Trang trí'], download_link: '', related_product_ids: []
+        }));
+      }
+      this.saveSuccess = existing ? 'Đã cập nhật Map mẫu.' : 'Đã thêm Map mẫu thành công.';
+      const modalEl = document.getElementById('mapModal');
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+      this.loadMaps();
+    } catch (error: any) {
+      const detail = error?.error?.message || error?.message;
+      this.saveError = error?.status === 409
+        ? 'Mã Map mẫu đã tồn tại. Vui lòng tải lại danh sách để kiểm tra trước khi thêm lại.'
+        : `${uploading ? 'Không thể tải ảnh lên' : 'Không thể lưu Map mẫu'}${detail ? ': ' + detail : '. Vui lòng thử lại.'}`;
+    } finally {
+      this.isSaving = false;
+      this.changeDetectorRef.markForCheck();
     }
   }
 

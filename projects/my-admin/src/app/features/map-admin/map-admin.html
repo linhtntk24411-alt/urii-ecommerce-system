@@ -11,6 +11,8 @@
         </button>
     </div>
 
+    <div *ngIf="saveSuccess" class="alert alert-success" role="status">{{ saveSuccess }}</div>
+    <div *ngIf="saveError && !isSaving" class="alert alert-danger" role="alert">{{ saveError }}</div>
     @if (mapLoadError) {
         <div class="alert alert-warning" role="alert">{{ mapLoadError }}</div>
     }
@@ -82,15 +84,17 @@
 </div>
 
 <!-- ========== MODAL THÊM / SỬA MẪU ========== -->
-<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold text-danger" id="modalTitle">Thêm mẫu mới</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" [disabled]="isSaving"></button>
             </div>
             <div class="modal-body">
-                <form>
+                <div *ngIf="saveError" class="alert alert-danger" role="alert">{{ saveError }}</div>
+                <form (submit)="$event.preventDefault(); saveMap()">
+                    <fieldset [disabled]="isSaving">
                     <input type="hidden" [(ngModel)]="mapIdInput" name="mapIdInput">
                     
                     <div class="mb-3">
@@ -102,10 +106,11 @@
                         <input type="text" class="form-control" [(ngModel)]="mapAuthor" name="mapAuthor" placeholder="Tên tác giả" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Đường dẫn ảnh mẫu</label>
-                        <input type="text" class="form-control" [(ngModel)]="mapImage" name="mapImage" placeholder="assets/gallery_assets/...">
-                        <div class="mt-2" *ngIf="mapImage">
-                            <img [src]="getImagePath(mapImage)" class="img-thumbnail" style="max-height: 120px;">
+                        <label for="map-image-file" class="form-label fw-bold">Hình ảnh mẫu</label>
+                        <input id="map-image-file" type="file" class="form-control" accept="image/png,image/jpeg,image/jpg,image/webp" (change)="onImageSelected($event)">
+                        <div *ngIf="imageError" class="text-danger mt-2" role="alert">{{ imageError }}</div>
+                        <div class="mt-2" *ngIf="imagePreview || mapImage">
+                            <img [src]="imagePreview || getImagePath(mapImage)" class="img-thumbnail" style="max-height: 120px;" alt="Xem trước hình ảnh mẫu">
                         </div>
                     </div>
 
@@ -141,11 +146,12 @@
                         <label class="form-label fw-bold">Mô tả</label>
                         <textarea class="form-control" rows="3" [(ngModel)]="mapDesc" name="mapDesc" placeholder="Mô tả ngắn về mẫu thiết kế..."></textarea>
                     </div>
+                    </fieldset>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-danger fw-bold px-4" (click)="saveMap()"><i class="bi bi-save"></i> Lưu mẫu</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" [disabled]="isSaving">Hủy</button>
+                <button type="button" class="btn btn-danger fw-bold px-4" (click)="saveMap()" [disabled]="isSaving"><i class="bi bi-save"></i> {{ isSaving ? 'Đang lưu...' : 'Lưu mẫu' }}</button>
             </div>
         </div>
     </div>

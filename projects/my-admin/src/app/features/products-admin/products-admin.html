@@ -20,6 +20,8 @@
         </div>
     </div>
 
+    <div *ngIf="saveSuccess" class="alert alert-success" role="status">{{ saveSuccess }}</div>
+
     <!-- Thẻ thống kê (Stats Cards) -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md">
@@ -219,24 +221,26 @@
 </div>
 
 <!-- MODAL SỬA SẢN PHẨM -->
-<div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <!-- ... (Nội dung Modal giữ nguyên, vì không có style inline) ... -->
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-danger fw-bold"><i class="bi bi-pencil-square"></i> Chỉnh sửa sản phẩm</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title text-danger fw-bold"><i class="bi bi-pencil-square"></i> {{ isEditMode ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" [disabled]="isSaving"></button>
             </div>
             <form id="editProductForm" (submit)="onSaveEdit($event)">
                 <div class="modal-body">
+                    <div *ngIf="saveError" class="alert alert-danger" role="alert">{{ saveError }}</div>
+                    <fieldset [disabled]="isSaving">
                     <div class="mb-3">
                         <label for="edit-name" class="form-label fw-bold">Tên sản phẩm</label>
                         <input type="text" class="form-control" id="edit-name" [(ngModel)]="editData.name" name="name" placeholder="Nhập tên sản phẩm" required>
                     </div>
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-12">
                             <label for="edit-category" class="form-label fw-bold">Danh mục</label>
-                            <select class="form-select" id="edit-category" [(ngModel)]="editData.category" name="category">
+                            <select class="form-select" id="edit-category" [(ngModel)]="editData.category" name="category" required>
                                 <option value="HN">Hạt nhựa</option>
                                 <option value="DC">Dụng cụ</option>
                                 <option value="BST">Bộ sưu tập</option>
@@ -244,32 +248,23 @@
                                 <option value="TP">Thành phần</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label for="edit-status" class="form-label fw-bold">Trạng thái</label>
-                            <select class="form-select" id="edit-status" [(ngModel)]="editData.status" name="status">
-                                <option value="normal">Bình thường</option>
-                                <option value="new">Mới</option>
-                                <option value="hot">Bán chạy</option>
-                                <option value="sap-het">Sắp hết hàng</option>
-                                <option value="het-hang">Hết hàng</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="edit-price" class="form-label fw-bold">Giá bán (VNĐ)</label>
-                            <input type="number" class="form-control" id="edit-price" [(ngModel)]="editData.price" name="price" required>
+                            <input type="number" class="form-control" id="edit-price" [(ngModel)]="editData.currentPrice" name="price" min="0" step="any" required>
                         </div>
                         <div class="col-md-6">
                             <label for="edit-stock" class="form-label fw-bold">Số lượng kho</label>
-                            <input type="number" class="form-control" id="edit-stock" [(ngModel)]="editData.stock" name="stock" required>
+                            <input type="number" class="form-control" id="edit-stock" [(ngModel)]="editData.stock" name="stock" min="0" step="1" required>
                         </div>
                     </div>
                     <!-- BỔ SUNG: Phần upload hình ảnh sản phẩm -->
                     <div class="mb-3">
                         <label for="edit-image-file" class="form-label fw-bold">Hình ảnh sản phẩm</label>
-                        <input type="file" class="form-control" id="edit-image-file" accept="image/*" (change)="onFileSelected($event)">
+                        <input type="file" class="form-control" id="edit-image-file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" (change)="onFileSelected($event)">
+                        <div *ngIf="imageError" class="text-danger mt-2" role="alert">{{ imageError }}</div>
                         
                         <!-- Hiển thị ảnh xem trước (Preview) -->
                         @if (imagePreview || editData.image) {
@@ -278,10 +273,11 @@
                             </div>
                         }
                     </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-danger fw-bold px-4"><i class="bi bi-save"></i> Lưu thay đổi</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" [disabled]="isSaving">Hủy</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4" [disabled]="isSaving || isReadingImage"><i class="bi bi-save"></i> {{ isSaving ? 'Đang xử lý...' : (isEditMode ? 'Lưu thay đổi' : 'Thêm sản phẩm') }}</button>
                 </div>
             </form>
         </div>

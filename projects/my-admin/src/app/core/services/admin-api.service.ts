@@ -740,6 +740,18 @@ export class AdminApiService {
     return [];
   }
 
+  public uploadProductImage(file: File): Observable<string> {
+    return this.http.post<{ imageUrl?: string; url?: string }>(`${this.baseUrl}/upload`, file, {
+      headers: this.getAuthHeaders().set('Content-Type', file.type)
+    }).pipe(map(response => {
+      const imageUrl = response.imageUrl || response.url;
+      if (!imageUrl || !/^\/images\/uploads\/[a-zA-Z0-9-]+\.(png|jpg|webp|gif)$/.test(imageUrl)) {
+        throw new Error('API upload trả về đường dẫn ảnh không hợp lệ.');
+      }
+      return imageUrl;
+    }));
+  }
+
   public addProduct(productData: any): Observable<any> {
     const headers = this.getAuthHeaders();
 

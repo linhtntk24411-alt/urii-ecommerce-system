@@ -1,6 +1,7 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
@@ -17,6 +18,7 @@ declare var bootstrap: any;
   styleUrls: ['./products-admin.css']
 })
 export class ProductsAdmin implements OnInit {
+  private readonly changeDetector = inject(ChangeDetectorRef);
   products: Product[] = [];
   currentPage = 1;
   itemsPerPage = 5;
@@ -39,7 +41,20 @@ export class ProductsAdmin implements OnInit {
   startIdx = 0;
   mathMin = Math.min;
 
-  editData: any = { id: null, name: '', category: 'HN', status: 'normal', price: 0, stock: 0, image: '' };
+  readonly defaultProductImage = '/images/Logo.png';
+  editData: any = { id: null, name: '', category: 'HN', currentPrice: 0, stock: 0, image: this.defaultProductImage };
+  isSaving = false;
+  isReadingImage = false;
+  saveError = '';
+  imageError = '';
+  saveSuccess = '';
+  private createSlug = '';
+  private createProductId = '';
+  private uploadedImage: string | null = null;
+
+  get isEditMode(): boolean {
+    return !!(this.editData.id || this.editData._id);
+  }
 
   categoriesMap: { [key: string]: string } = { 
     "HN": "Hạt nhựa", "DC": "Dụng cụ", "BST": "Bộ sưu tập", "KIT": "Bộ Kit", "TP": "Thành phần"
@@ -96,6 +111,7 @@ ngOnInit() {
           this.renderProducts();
         }
         this.applySearchTarget();
+        this.changeDetector.markForCheck();
       }
     }
   });
@@ -238,15 +254,17 @@ ngOnInit() {
   }
 
   openAddModal() {
-    this.editData = { id: null, name: '', category: 'hat-nhua', status: 'normal', price: 0, stock: 10, image: 'assets/images/banner-home.webp' };
-    this.selectedFile = null;
-    this.imagePreview = null;
+    if (this.isSaving) return;
+    this.editData = { id: null, name: '', category: 'HN', currentPrice: 0, stock: 10, image: this.defaultProductImage };
+    this.resetProductForm();
   }
 
   openEditModal(p: Product) {
-    this.editData = { ...p };
-    this.selectedFile = null;
-    this.imagePreview = null;
+    if (this.isSaving) return;
+    this.editData = { ...p, currentPrice: p.currentPrice ?? p.price ?? p.originalPrice ?? 0 };
+    delete this.editData.status;
+    delete this.editData.price;
+    this.resetProductForm();
     const modalEl = document.getElementById('editProductModal');
     if (modalEl) {
       const modal = new bootstrap.Modal(modalEl);
@@ -280,27 +298,90 @@ ngOnInit() {
     });
   }
 
-  onSaveEdit(event: Event) {
-    event.preventDefault();
-    const targetId = this.editData.id || this.editData._id;
-    // --- THÊM ĐOẠN NÀY ĐỂ NHẬN ẢNH MỚI CHỌN ---
-    if (this.imagePreview) {
-      this.editData.image = this.imagePreview;
-    }
-    // ------------------------------------------
+  private resetProductForm(): void {
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.uploadedImage = null;
+    this.isReadingImage = false;
+    this.saveError = '';
+    this.imageError = '';
+    this.saveSuccess = '';
+    this.createSlug = '';
+    this.createProductId = '';
+    const input = document.getElementById('edit-image-file') as HTMLInputElement | null;
+    if (input) input.value = '';
+  }
 
-    if (targetId) {
-      this.adminApi.updateProduct(targetId, this.editData).subscribe({
-        next: () => {
-          this.adminApi.loadProducts();
-          const modalEl = document.getElementById('editProductModal');
-          if (modalEl) {
-            const modalInstance = bootstrap.Modal.getInstance(modalEl);
-            if (modalInstance) modalInstance.hide();
-          }
-        },
-        error: (err) => console.error('Lỗi khi cập nhật sản phẩm:', err)
-      });
+  async onSaveEdit(event: Event): Promise<void> {
+    event.preventDefault();
+    if (this.isSaving || this.isReadingImage) return;
+    this.saveError = '';
+    this.saveSuccess = '';
+    const targetId = this.editData.id || this.editData._id;
+    const name = String(this.editData.name ?? '').trim();
+    const price = this.editData.currentPrice;
+    const stock = this.editData.stock;
+    if (!name || !Object.prototype.hasOwnProperty.call(this.categoriesMap, this.editData.category)) {
+      this.saveError = 'Vui lòng nhập tên và chọn danh mục hợp lệ.';
+      return;
+    }
+    if (typeof price !== 'number' || !Number.isFinite(price) || price < 0 ||
+        typeof stock !== 'number' || !Number.isSafeInteger(stock) || stock < 0) {
+      this.saveError = 'Giá bán phải là số không âm; tồn kho phải là số nguyên không âm.';
+      return;
+    }
+    if (this.imageError) {
+      this.saveError = this.imageError;
+      return;
+    }
+
+    this.isSaving = true;
+    let stage = 'upload';
+    try {
+      let image = this.uploadedImage || this.editData.image || this.defaultProductImage;
+      if (this.selectedFile && !this.uploadedImage) {
+        this.uploadedImage = await firstValueFrom(this.adminApi.uploadProductImage(this.selectedFile));
+        image = this.uploadedImage;
+      }
+      if (String(image).startsWith('data:')) {
+        throw new Error('Vui lòng chọn lại ảnh để tải lên trước khi lưu sản phẩm.');
+      }
+      stage = 'save';
+      const payload: any = { name, category: this.editData.category, currentPrice: price, stock, image };
+      if (!targetId) {
+        if (!this.createProductId) {
+          // Keep the existing numeric SKU format. The backend unique index is
+          // authoritative; never replace this ID when retrying an uncertain POST.
+          const random = new Uint32Array(1);
+          do {
+            globalThis.crypto.getRandomValues(random);
+          } while (random[0] < 1_000_000_000 || this.products.some(product => String(product.id) === String(random[0])));
+          this.createProductId = String(random[0]);
+        }
+        payload.id = this.createProductId;
+        if (!this.createSlug) {
+          const base = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd')
+            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'san-pham';
+          const suffix = Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('');
+          this.createSlug = `${base}-${suffix}`;
+        }
+        payload.slug = this.createSlug;
+        payload.originalPrice = price;
+      }
+      await firstValueFrom(targetId
+        ? this.adminApi.updateProduct(targetId, payload)
+        : this.adminApi.addProduct(payload));
+      this.saveSuccess = targetId ? 'Đã cập nhật sản phẩm.' : 'Đã thêm sản phẩm thành công.';
+      const modalEl = document.getElementById('editProductModal');
+      if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+    } catch (error: any) {
+      const detail = error?.error?.message || error?.message;
+      this.saveError = error?.status === 409
+        ? 'Mã hoặc slug sản phẩm đã tồn tại. Chưa tạo thêm bản ghi; vui lòng tải lại danh sách để kiểm tra.'
+        : `${stage === 'upload' ? 'Không thể tải ảnh lên' : 'Không thể lưu sản phẩm'}${detail ? ': ' + detail : '. Vui lòng thử lại.'}`;
+    } finally {
+      this.isSaving = false;
+      this.changeDetector.markForCheck();
     }
   }
   // Hàm xử lý khi người dùng chọn file
@@ -397,13 +478,34 @@ ngOnInit() {
   }
   // Hàm chạy khi người dùng chọn file ảnh từ máy tính
   onFileSelected(event: any) {
+    if (this.isSaving) return;
     const file = event.target.files[0];
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.uploadedImage = null;
+    this.imageError = '';
+    this.isReadingImage = false;
     if (file) {
+      if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(file.type) ||
+          file.size === 0 || file.size > 8 * 1024 * 1024) {
+        this.imageError = 'Chỉ nhận PNG, JPG, WEBP, GIF có dung lượng lớn hơn 0 và tối đa 8 MB.';
+        event.target.value = '';
+        return;
+      }
       this.selectedFile = file;
-      
+      this.isReadingImage = true;
       const reader = new FileReader();
       reader.onload = () => {
+        if (this.selectedFile !== file) return;
         this.imagePreview = reader.result as string;
+        this.isReadingImage = false;
+        this.changeDetector.markForCheck();
+      };
+      reader.onerror = () => {
+        if (this.selectedFile !== file) return;
+        this.isReadingImage = false;
+        this.imageError = 'Không thể đọc ảnh đã chọn. Vui lòng chọn lại.';
+        this.changeDetector.markForCheck();
       };
       reader.readAsDataURL(file);
     }

@@ -180,6 +180,8 @@
     font-size: 15px;
     line-height: 1.8;
     color: #4a4a4a;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 /* Biến mỗi cặp nội dung hoặc cấu trúc trong bài thành dạng hàng ngang (Flexbox) */

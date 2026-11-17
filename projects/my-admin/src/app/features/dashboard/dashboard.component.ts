@@ -12,6 +12,7 @@ import {
   signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 import {
@@ -62,6 +63,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly activeModal = signal<'product' | 'blog' | 'coupon' | 'orderDetail' | null>(null);
   readonly selectedOrder = signal<AdminOrder | null>(null);
   readonly savingModal = signal(false);
+  private blogImageFile: File | null = null;
+  private blogUploadedImage: string | null = null;
+  private blogImageError = '';
+  private pendingBlogIdentity: { id: number; slug: string } | null = null;
 
   // Toast notification
   readonly toast = signal<{ type: 'success' | 'danger' | 'warning' | 'info'; message: string } | null>(null);
@@ -387,10 +392,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   openQuickModal(type: 'product' | 'blog' | 'coupon'): void {
+    if (this.activeModal() === 'blog' && this.savingModal()) return;
     this.activeModal.set(type);
   }
 
   closeModal(): void {
+    if (this.activeModal() === 'blog' && this.savingModal()) return;
     this.activeModal.set(null);
     this.selectedOrder.set(null);
   }
@@ -409,14 +416,32 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onBlogFileChange(event: Event): void {
+    if (this.savingModal()) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    this.blogImageFile = null;
+    this.blogUploadedImage = null;
+    this.blogImageError = '';
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(file.type) ||
+        file.size === 0 || file.size > 8 * 1024 * 1024) {
+      this.blogImageError = 'Chỉ nhận PNG, JPG, WEBP, GIF lớn hơn 0 và tối đa 8 MB.';
+      this.showToast('danger', this.blogImageError);
+      input.value = '';
+      return;
+    }
+    this.blogImageFile = file;
     const reader = new FileReader();
     reader.onload = () => {
+      if (this.blogImageFile !== file) return;
       if (typeof reader.result === 'string') {
         this.blogForm.image = reader.result;
       }
+    };
+    reader.onerror = () => {
+      if (this.blogImageFile !== file) return;
+      this.blogImageError = 'Không thể đọc ảnh. Vui lòng chọn lại.';
+      this.showToast('danger', this.blogImageError);
     };
     reader.readAsDataURL(file);
   }
@@ -464,34 +489,57 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  saveQuickBlog(): void {
-    if (!this.blogForm.title.trim()) {
-      this.showToast('warning', 'Vui lòng nhập tiêu đề bài viết!');
+  async saveQuickBlog(): Promise<void> {
+    if (this.savingModal()) return;
+    if (!this.blogForm.title.trim() || !this.blogForm.content.trim()) {
+      this.showToast('warning', 'Vui lòng nhập tiêu đề và nội dung bài viết!');
       return;
     }
+    if (this.blogImageError) {
+      this.showToast('danger', this.blogImageError);
+      return;
+    }
+    this.pendingBlogIdentity ||= { id: Date.now(), slug: `blog-${Date.now()}` };
     const newBlog: AdminBlog = {
-      id: Date.now(),
+      ...this.pendingBlogIdentity,
       title: this.blogForm.title.trim(),
-      slug: `blog-${Date.now()}`,
       author: this.blogForm.author.trim() || 'Urii Admin',
       category: this.blogForm.category,
-      content: this.blogForm.content,
+      content: this.blogForm.content.trim(),
       image: this.blogForm.image || 'images/index/stcd1.png',
       date: 'Vừa xong',
-      views: 1,
-      likes: 1,
-      approvalStatus: 'pending'
+      views: 0,
+      likes: 0
     };
-    this.blogs.update((list) => [newBlog, ...list]);
-    this.showToast('success', `Đã tạo bài viết "${newBlog.title}" thành công!`);
-    this.blogForm = {
-      title: '',
-      author: 'Urii Admin',
-      category: 'Hướng dẫn DIY',
-      content: '',
-      image: 'images/index/stcd1.png'
-    };
-    this.closeModal();
+    this.savingModal.set(true);
+    this.showToast('info', 'Đang lưu bài viết...');
+    try {
+      if (this.blogImageFile) {
+        this.blogUploadedImage ||= await firstValueFrom(this.api.uploadProductImage(this.blogImageFile));
+        newBlog.image = this.blogUploadedImage;
+      }
+      if (newBlog.image?.startsWith('data:')) throw new Error('Vui lòng chọn lại ảnh để tải lên.');
+      const created = await this.api.createBlog(newBlog);
+      this.blogs.update(list => [created, ...list]);
+      this.showToast('success', `Đã tạo bài viết "${created.title}" thành công!`);
+      this.blogForm = {
+        title: '',
+        author: 'Urii Admin',
+        category: 'Hướng dẫn DIY',
+        content: '',
+        image: 'images/index/stcd1.png'
+      };
+      this.blogImageFile = null;
+      this.blogUploadedImage = null;
+      this.pendingBlogIdentity = null;
+      this.savingModal.set(false);
+      this.closeModal();
+      void this.loadAllData();
+    } catch (error) {
+      this.showToast('danger', apiErrorMessage(error, 'Không thể tạo bài viết.'));
+    } finally {
+      this.savingModal.set(false);
+    }
   }
 
   async saveQuickCoupon(): Promise<void> {

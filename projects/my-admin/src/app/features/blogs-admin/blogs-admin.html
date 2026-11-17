@@ -3,6 +3,7 @@
     <div class="admin-main-content" style="padding-top: 10px; width: 100%;">
         <div style="width: 100%; max-width: 1400px; margin: 0 auto;">
             
+            <div *ngIf="createSuccess" class="alert alert-success" role="status">{{ createSuccess }}</div>
             <!-- Header Title & Create Button -->
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
                 <div>
@@ -201,15 +202,17 @@
 </div>
 
 <!-- Modal Tạo Bài Viết Mới -->
-<div class="modal fade" id="createBlogModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="createBlogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-light border-bottom-0">
                 <h5 class="modal-title fw-bold text-danger"><i class="bi bi-plus-circle"></i> Tạo bài viết mới</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" [disabled]="savingBlog"></button>
             </div>
             <div class="modal-body p-4">
-                <form>
+                <div *ngIf="createError" class="alert alert-danger" role="alert">{{ createError }}</div>
+                <form (submit)="$event.preventDefault(); submitNewBlog()">
+                    <fieldset [disabled]="savingBlog">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tiêu đề bài viết <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" [(ngModel)]="newTitle" name="newTitle" placeholder="Ví dụ: Hướng dẫn làm móc khóa..." required>
@@ -220,7 +223,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Ảnh đại diện</label>
-                        <input type="file" class="form-control" (change)="onFileSelected($event)" accept="image/*">
+                        <input id="blog-image-file" type="file" class="form-control" (change)="onFileSelected($event)" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif">
                         <div class="mt-2">
                             <img [src]="previewThumbnail" *ngIf="previewThumbnail" class="img-thumbnail" style="max-height: 120px;">
                         </div>
@@ -229,11 +232,12 @@
                         <label class="form-label fw-bold">Nội dung <span class="text-danger">*</span></label>
                         <textarea class="form-control" [(ngModel)]="newContent" name="newContent" rows="5" placeholder="Nhập nội dung bài viết..." required></textarea>
                     </div>
+                    </fieldset>
                 </form>
             </div>
             <div class="modal-footer border-top-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-danger px-4 fw-bold" (click)="submitNewBlog()"><i class="bi bi-save"></i> Lưu bài viết</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" [disabled]="savingBlog">Hủy</button>
+                <button type="button" class="btn btn-danger px-4 fw-bold" (click)="submitNewBlog()" [disabled]="savingBlog"><i class="bi bi-save"></i> {{ savingBlog ? 'Đang lưu...' : 'Lưu bài viết' }}</button>
             </div>
         </div>
     </div>

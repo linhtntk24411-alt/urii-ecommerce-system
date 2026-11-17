@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import {
   AdminApiService,
@@ -46,6 +47,13 @@ export class BlogsAdmin implements OnInit {
   newAuthor: string = '';
   newContent: string = '';
   previewThumbnail: string | null = null;
+  savingBlog = false;
+  createError = '';
+  createSuccess = '';
+  private selectedImage: File | null = null;
+  private uploadedImage: string | null = null;
+  private imageError = '';
+  private createSlug = '';
   // Biến lưu thông tin bài viết đang xem chi tiết
   selectedBlog: BlogAdminItem | null = null;
 
@@ -295,10 +303,19 @@ export class BlogsAdmin implements OnInit {
   }
 
   openCreateModal(): void {
+    if (this.savingBlog) return;
     this.newTitle = '';
     this.newAuthor = '';
     this.newContent = '';
     this.previewThumbnail = null;
+    this.selectedImage = null;
+    this.uploadedImage = null;
+    this.imageError = '';
+    this.createError = '';
+    this.createSuccess = '';
+    this.createSlug = '';
+    const input = document.getElementById('blog-image-file') as HTMLInputElement | null;
+    if (input) input.value = '';
     const modalElement = document.getElementById('createBlogModal');
     if (modalElement) {
       const modal = new bootstrap.Modal(modalElement);
@@ -318,56 +335,82 @@ export class BlogsAdmin implements OnInit {
   }
 
   onFileSelected(event: Event): void {
+    if (this.savingBlog) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
+    this.selectedImage = null;
+    this.uploadedImage = null;
+    this.previewThumbnail = null;
+    this.imageError = '';
+    this.createError = '';
     if (file) {
+      if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(file.type) ||
+          file.size === 0 || file.size > 8 * 1024 * 1024) {
+        this.imageError = 'Chỉ nhận PNG, JPG, WEBP, GIF lớn hơn 0 và tối đa 8 MB.';
+        this.createError = this.imageError;
+        input.value = '';
+        return;
+      }
+      this.selectedImage = file;
       const reader = new FileReader();
       reader.onload = () => {
+        if (this.selectedImage !== file) return;
         this.previewThumbnail = typeof reader.result === 'string' ? reader.result : null;
         this.cdr.detectChanges();
+      };
+      reader.onerror = () => {
+        if (this.selectedImage !== file) return;
+        this.imageError = 'Không thể đọc ảnh. Vui lòng chọn lại.';
+        this.createError = this.imageError;
+        this.cdr.markForCheck();
       };
       reader.readAsDataURL(file);
     }
   }
 
   // Tạo bài viết mới
-  submitNewBlog(): void {
+  async submitNewBlog(): Promise<void> {
+    if (this.savingBlog) return;
+    this.createError = '';
+    this.createSuccess = '';
     if (!this.newTitle.trim() || !this.newAuthor.trim() || !this.newContent.trim()) {
-      alert("Vui lòng điền đầy đủ thông tin (Tiêu đề, Tác giả, Nội dung)");
+      this.createError = 'Vui lòng điền đầy đủ Tiêu đề, Tác giả và Nội dung.';
       return;
     }
-
+    if (this.imageError) {
+      this.createError = this.imageError;
+      return;
+    }
     const newBlog = {
       title: this.newTitle.trim(),
-      slug: `blog-${Date.now()}`,
+      slug: this.createSlug || (this.createSlug = `blog-${Date.now()}`),
       date: new Date().toLocaleDateString('vi-VN'),
-      thumbnail: this.previewThumbnail || 'https://picsum.photos/seed/blog/100/100',
-      author: { name: this.newAuthor.trim(), avatar: 'https://i.pravatar.cc/150?u=1' },
-      status: 'pending' as const,
-      visible: true,
+      image: 'https://picsum.photos/seed/blog/100/100',
+      author: this.newAuthor.trim(),
+      avatar: 'https://i.pravatar.cc/150?u=1',
+      category: 'Mẹo vặt',
       content: this.newContent.trim()
     };
-
-    this.adminApiService.createBlog(newBlog)
-      .then(() => this.loadBlogsFromCloud())
-      .catch(err => console.error('Lỗi tạo blog qua API:', err));
-
-    this.blogs.unshift({
-      id: Date.now(),
-      category: 'Mẹo vặt',
-      views: 0,
-      comments: 0,
-      likes: 0,
-      ...newBlog
-    });
-
-    const modalElement = document.getElementById('createBlogModal');
-    if (modalElement) {
-      const modal = bootstrap.Modal.getInstance(modalElement);
-      if (modal) modal.hide();
+    this.savingBlog = true;
+    let uploading = false;
+    try {
+      if (this.selectedImage) {
+        uploading = true;
+        this.uploadedImage ||= await firstValueFrom(this.adminApiService.uploadProductImage(this.selectedImage));
+        newBlog.image = this.uploadedImage;
+        uploading = false;
+      }
+      await this.adminApiService.createBlog(newBlog);
+      this.createSuccess = 'Đã tạo bài viết thành công.';
+      const modalElement = document.getElementById('createBlogModal');
+      if (modalElement) bootstrap.Modal.getInstance(modalElement)?.hide();
+      await this.loadBlogsFromCloud();
+    } catch (error) {
+      this.createError = apiErrorMessage(error, uploading ? 'Không thể tải ảnh lên.' : 'Không thể tạo bài viết.');
+    } finally {
+      this.savingBlog = false;
+      this.cdr.markForCheck();
     }
-
-    this.cdr.detectChanges();
   }
 
   formatImagePath(path: string | null | undefined): string {

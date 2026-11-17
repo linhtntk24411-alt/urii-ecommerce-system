@@ -37,7 +37,13 @@ describe('LoginAdmin', () => {
   it('renders the existing login card and social buttons without adding a chatbot or shopping link', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
-    // Header elements
+    // Page branding
+    expect(compiled.querySelector('.welcome-kicker')?.textContent).toContain('Chào mừng đến với');
+    expect(compiled.querySelector('.welcome-title')?.textContent).toContain('Hệ thống quản trị');
+    expect(compiled.querySelector('.site-logo')?.getAttribute('src')).toBe('assets/Urii-Logo.png');
+    expect(compiled.querySelector('.site-footer')).toBeTruthy();
+
+    // Login card
     const header = compiled.querySelector('.auth-header');
     expect(header).toBeTruthy();
     expect(compiled.querySelector('.auth-card')).toBeTruthy();
@@ -46,7 +52,7 @@ describe('LoginAdmin', () => {
     expect(compiled.textContent).not.toContain('Trang mua sắm');
 
     // Login form
-    expect(compiled.textContent).toContain('Chào mừng trở lại');
+    expect(compiled.textContent).toContain('Đăng nhập quản trị');
     expect(compiled.querySelector('#login-email')).toBeTruthy();
     expect(compiled.querySelector('#login-password')).toBeTruthy();
     expect(compiled.querySelector('.primary-button')).toBeTruthy();

@@ -34,23 +34,61 @@
     </section>
   </div>
 }
-<main class="auth-page">
-  <section class="auth-card" aria-label="Đăng nhập Urii Admin">
+<div class="auth-page">
+  <header class="site-header">
+    <img class="site-logo" src="assets/Urii-Logo.png" alt="Urii">
+    <h1>
+      <span class="welcome-kicker">Chào mừng đến với</span>
+      <span class="welcome-title">Hệ thống quản trị</span>
+    </h1>
+  </header>
 
-    <!-- Tiêu đề -->
-    <header class="auth-header">
-      <h1 class="auth-title">Chào mừng trở lại</h1>
-      <p class="auth-subtitle">
-        Vui lòng đăng nhập để tiếp tục quản trị hệ thống Urii.
-      </p>
-    </header>
+  <main class="auth-shell">
+    <aside class="auth-showcase" aria-label="Giới thiệu hệ thống Urii">
+      <div class="showcase-topline">
+        <span class="showcase-version">URII ADMIN</span>
+      </div>
 
-    <!-- Form đăng nhập -->
-    <form
-      class="auth-panel login-panel"
-      aria-label="Đăng nhập Admin"
-      (submit)="$event.preventDefault(); login(emailInput.value, passwordInput.value)"
-    >
+      <div class="showcase-copy">
+        <p class="showcase-eyebrow">SÁNG TẠO TỪ NHỮNG HẠT MÀU</p>
+        <h2>Khơi nguồn sáng tạo<br><span>& lan tỏa đam mê hạt ủi</span></h2>
+        <p class="showcase-description">
+          Quản lý cửa hàng Urii dễ dàng hơn — để bạn tập trung lan tỏa niềm vui sáng tạo mỗi ngày.
+        </p>
+
+        <div class="showcase-stats">
+          <div>
+            <span class="showcase-stat-label">Không gian sáng tạo</span>
+            <strong>URII</strong>
+          </div>
+          <div>
+            <span class="showcase-stat-label">Cùng bạn mỗi ngày</span>
+            <strong>Luôn sẵn sàng</strong>
+          </div>
+        </div>
+
+        <div class="showcase-bottomline">
+          <span>#PerlerBeads</span>
+          <span>#UriiCreative</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="auth-card" aria-label="Đăng nhập Urii Admin">
+      <!-- Tiêu đề -->
+      <header class="auth-header">
+        <h2 class="auth-title">Đăng nhập quản trị</h2>
+        <p class="auth-subtitle">
+          Vui lòng đăng nhập để tiếp tục quản trị hệ thống Urii.
+        </p>
+      </header>
+
+      <!-- Form đăng nhập -->
+      <form
+        class="auth-panel login-panel"
+        aria-label="Đăng nhập Admin"
+        (submit)="$event.preventDefault(); login(emailInput.value, passwordInput.value)"
+      >
 
       <!-- Email -->
       <div class="field-group">
@@ -167,6 +205,11 @@
         <span class="text-link">Trung tâm trợ giúp</span>
       </p>
 
-    </form>
-  </section>
-</main>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2024 Urii Perler Beads. All rights reserved.</p>
+  </footer>
+</div>

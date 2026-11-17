@@ -1,0 +1,815 @@
+{
+  "info": {
+    "_postman_id": "8f3c2b1a-9d4e-4f5a-8b6c-7d8e9f0a1b2c",
+    "name": "Urii E-Commerce API Test Suite (Mục 5.4.4)",
+    "description": "Bộ kiểm thử API Back-end cho đồ án Urii E-Commerce: Auth (Login, Send/Verify OTP), Product (CRUD), Order, và Webhook SePay (200 OK, 400, 401, 404).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3002",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testEmail",
+      "value": "khachhang_test_otp@gmail.com",
+      "type": "string"
+    },
+    {
+      "key": "createdProductId",
+      "value": "product-test-postman-01",
+      "type": "string"
+    },
+    {
+      "key": "createdOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentCode",
+      "value": "URII1234567890ABCDEF",
+      "type": "string"
+    },
+    {
+      "key": "sepayApiKey",
+      "value": "NyICAqrpwGxWX0NitOZzONDBKpUgN+KZlSLle8z+VmI=",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth (Đăng nhập, Send/Verify OTP)",
+      "item": [
+        {
+          "name": "1.1. [POST] Đăng nhập Admin thành công (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload có chứa JWT token và thông tin user', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('token');",
+                  "    pm.expect(jsonData).to.have.property('user');",
+                  "    pm.expect(jsonData.user.role).to.eql('admin');",
+                  "    pm.collectionVariables.set('adminToken', jsonData.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"urii123@\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.2. [POST] Đăng nhập thất bại - Sai mật khẩu (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload trả về thông báo lỗi xác thực', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"saimatkhau123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.3. [POST] Đăng ký & Gửi mã OTP qua Email (200 OK - Send OTP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK (hoặc 409 nếu email đã tồn tại)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});",
+                  "pm.test('Response Time < 10000ms (gửi mail SMTP)', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(10000);",
+                  "});",
+                  "pm.test('JSON Payload xác nhận requireOtp = true', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.requireOtp).to.eql(true);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khách Hàng Test Postman\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestUser123@\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "1.4. [POST] Verify OTP - Sai mã hoặc hết hạn (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 400 Bad Request khi mã OTP sai', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload trả về message báo lỗi OTP', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"otp\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify-otp"]
+            }
+          }
+        },
+        {
+          "name": "1.5. [GET] Lấy thông tin cá nhân không gửi Token (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('JSON Payload có thông báo yêu cầu đăng nhập', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Product (CRUD Sản phẩm)",
+      "item": [
+        {
+          "name": "2.1. [GET] Lấy danh sách sản phẩm (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload là mảng danh sách sản phẩm', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2. [POST] Tạo mới sản phẩm - Admin (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload trả về sản phẩm vừa tạo đúng cấu trúc', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "    pm.expect(jsonData).to.have.property('name', 'Bản đồ Gỗ 3D Việt Nam (Test Postman)');",
+                  "    pm.expect(jsonData).to.have.property('reservedStock', 0);",
+                  "    pm.collectionVariables.set('createdProductId', jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"product-test-postman-01\",\n  \"name\": \"Bản đồ Gỗ 3D Việt Nam (Test Postman)\",\n  \"slug\": \"ban-do-go-3d-viet-nam-test-postman\",\n  \"category\": \"Bản đồ gỗ tường\",\n  \"image\": \"/images/products/map-vn.jpg\",\n  \"isSale\": true,\n  \"originalPrice\": 1500000,\n  \"currentPrice\": 1200000,\n  \"stock\": 20,\n  \"description\": \"Sản phẩm tạo tự động từ Postman Collection để kiểm thử CRUD.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "2.3. [POST] Tạo sản phẩm thiếu dữ liệu bắt buộc (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('JSON Payload báo lỗi dữ liệu sản phẩm không hợp lệ', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Bản đồ lỗi thiếu name và slug\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "2.4. [PUT] Cập nhật thông tin sản phẩm (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON Payload phản ánh giá và tồn kho mới', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.currentPrice).to.eql(1150000);",
+                  "    pm.expect(jsonData.stock).to.eql(35);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bản đồ Gỗ 3D Việt Nam (Đã cập nhật qua PUT)\",\n  \"currentPrice\": 1150000,\n  \"stock\": 35\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{createdProductId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{createdProductId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.5. [DELETE] Xóa sản phẩm vừa tạo (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON Payload trả về thông báo xóa thành công', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message', 'Đã xóa sản phẩm');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{createdProductId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{createdProductId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Order (Quản lý Đơn hàng & Thanh toán)",
+      "item": [
+        {
+          "name": "3.1. [GET] Lấy Metadata cấu hình trạng thái đơn hàng (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('JSON Payload chứa danh mục trạng thái và phương thức thanh toán', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('orderStatuses');",
+                  "    pm.expect(jsonData).to.have.property('paymentMethods');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/metadata",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "metadata"]
+            }
+          }
+        },
+        {
+          "name": "3.2. [GET] Admin lấy danh sách toàn bộ đơn hàng (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload là mảng các đơn hàng', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "    if (jsonData.length > 0 && jsonData[0].id) {",
+                  "        pm.collectionVariables.set('createdOrderId', jsonData[0].id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3. [POST] Đặt hàng khi chưa đăng nhập (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Response Time < 500ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});",
+                  "pm.test('JSON Payload yêu cầu xác thực JWT', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [],\n  \"payment\": { \"methodId\": \"bank_transfer\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "3.4. [GET] Truy vấn chi tiết đơn hàng không tồn tại (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('JSON Payload báo không tìm thấy đơn hàng', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message', 'Không tìm thấy đơn hàng.');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/UR-99999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "UR-99999999"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Webhook SePay (200 OK, 400, 401, 404)",
+      "item": [
+        {
+          "name": "4.1. [POST] Giả lập SePay Webhook hợp lệ (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response Time < 1000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "pm.test('JSON Payload có success = true và thông tin phân loại giao dịch', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success', true);",
+                  "    pm.expect(jsonData).to.have.property('classification');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Apikey {{sepayApiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{$timestamp}},\n  \"gateway\": \"MBBank\",\n  \"transactionDate\": \"2026-11-18 10:30:00\",\n  \"accountNumber\": \"0000907772631\",\n  \"code\": \"{{paymentCode}}\",\n  \"content\": \"Chuyen khoan thanh toan don hang {{paymentCode}}\",\n  \"transferType\": \"in\",\n  \"transferAmount\": 250000,\n  \"referenceCode\": \"FT2632299901\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/sepay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "sepay"]
+            }
+          }
+        },
+        {
+          "name": "4.2. [POST] Giả lập SePay Webhook sai/thiếu API Key (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Response Time < 500ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});",
+                  "pm.test('JSON Payload trả về success = false và lý do từ chối xác thực', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success', false);",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Apikey key-gia-mao-khong-hop-le"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 900102,\n  \"gateway\": \"MBBank\",\n  \"transactionDate\": \"2026-11-18 10:31:00\",\n  \"code\": \"{{paymentCode}}\",\n  \"content\": \"Thanh toan {{paymentCode}}\",\n  \"transferType\": \"in\",\n  \"transferAmount\": 250000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/sepay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "sepay"]
+            }
+          }
+        },
+        {
+          "name": "4.3. [POST] Giả lập SePay Webhook sai định dạng Payload (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Response Time < 500ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});",
+                  "pm.test('JSON Payload trả về success = false và mô tả lỗi dữ liệu', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success', false);",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Apikey {{sepayApiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 900103,\n  \"transferType\": \"in\",\n  \"transferAmount\": -50000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/sepay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "sepay"]
+            }
+          }
+        },
+        {
+          "name": "4.4. [POST] Gọi sai đường dẫn Endpoint Webhook (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP Status là 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('JSON Payload trả về thông báo không tìm thấy tài nguyên', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message', 'Không tìm thấy tài nguyên.');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Apikey {{sepayApiKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 900104,\n  \"transferType\": \"in\",\n  \"transferAmount\": 250000,\n  \"content\": \"URII1234567890ABCDEF\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/sepay-invalid-endpoint",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "sepay-invalid-endpoint"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -170,3 +170,46 @@ table.table-maps tbody td .map-difficulty-badge::before {
 .delete-confirm-actions .btn:disabled {
     opacity: 0.65;
 }
+.map-actions {
+    margin-top: 0.5rem;
+}
+
+.map-import-btn {
+    color: #b42343;
+    background: #fff;
+    border: 1px solid #d94d6d;
+}
+
+.map-import-btn:hover,
+.map-import-btn:focus-visible {
+    color: #971a36;
+    background: #fff1f4;
+    border-color: #b42343;
+}
+
+.map-import-preview {
+    max-height: 22rem;
+    overflow: auto;
+}
+
+.map-import-preview table {
+    min-width: 40rem;
+}
+
+.map-import-preview thead {
+    position: sticky;
+    top: 0;
+}
+
+.map-import-thumbnail {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.375rem;
+    object-fit: contain;
+    background: #f8f9fa;
+}
+
+.map-import-progress {
+    width: 100%;
+    accent-color: #b42343;
+}

@@ -342,7 +342,7 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   font-family: var(--font-main);
 }
-.dropdown-header span { font-size: 15px; color: #1b1c1c; font-weight: 700; }
+.dropdown-header span { font-size: 15px; color: #feffff; font-weight: 700; }
 .btn-clear-all {
   background: none;
   border: none;

@@ -1,12 +1,35 @@
 import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 declare var bootstrap: any;
+
+const MAP_COLUMNS = [
+  'map_id', 'map_name', 'author', 'main_image', 'gallery_images', 'difficulty',
+  'difficultyClass', 'categories', 'grid_size', 'bead_type', 'total_beads',
+  'download_link', 'description', 'related_product_ids', 'time'
+] as const;
+type MapColumn = typeof MAP_COLUMNS[number];
+type MapPayload = Record<Exclude<MapColumn, 'gallery_images' | 'categories' | 'related_product_ids' | 'total_beads'>, string> & {
+  gallery_images: string[];
+  categories: string[];
+  related_product_ids: string[];
+  total_beads: number;
+};
+type ImportStatus = 'ready' | 'invalid' | 'saved' | 'failed' | 'unknown';
+type ImportRow = {
+  line: number;
+  map: MapPayload;
+  errors: string[];
+  status: ImportStatus;
+  previewImage: string;
+  imageUnavailable?: boolean;
+};
+type TableRow = { line: number; cells: unknown[] };
 
 @Component({
   selector: 'app-map-admin',
@@ -42,6 +65,20 @@ export class MapAdmin implements OnInit {
   private imageReader: FileReader | null = null;
   private initialForm: Record<string, unknown> = {};
   private pendingSearchId: string | null = null;
+  importFile: File | null = null;
+  importFormat = '';
+  importSheet = '';
+  importError = '';
+  importRows: ImportRow[] = [];
+  importChecking = false;
+  importing = false;
+  importFinished = false;
+  importTotal = 0;
+  importProcessed = 0;
+  readonly importLabels: Record<ImportStatus, string> = {
+    ready: 'Hợp lệ', invalid: 'Lỗi dữ liệu', saved: 'Đã lưu',
+    failed: 'Lưu thất bại', unknown: 'Chưa xác định'
+  };
   showDeleteConfirm = false;
   deletingMapId: string | null = null;
   deletingMapName = '';
@@ -66,7 +103,9 @@ export class MapAdmin implements OnInit {
       this.applySearchTarget();
     });
     this.loadMaps();
-    this.socket.onCrudChange('gallery').subscribe(() => this.loadMaps());
+    this.socket.onCrudChange('gallery').subscribe(() => {
+      if (!this.importing) this.loadMaps();
+    });
   }
 
   loadMaps(): void {
@@ -374,6 +413,367 @@ export class MapAdmin implements OnInit {
         : `${uploading ? 'Không thể tải ảnh lên' : 'Không thể lưu Map mẫu'}${detail ? ': ' + detail : '. Vui lòng thử lại.'}`;
     } finally {
       this.isSaving = false;
+      this.changeDetectorRef.markForCheck();
+    }
+  }
+
+  openImport(): void {
+    if (this.isSaving || this.importChecking || this.importing) return;
+    const modal = document.getElementById('mapImportModal');
+    if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
+  }
+
+  selectImportFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.importFile = input.files?.[0] ?? null;
+    input.value = '';
+    this.importFormat = this.importFile?.name.match(/\.([^.]+)$/)?.[1].toLowerCase() ?? '';
+    this.importRows = [];
+    this.importError = '';
+    this.importSheet = '';
+    this.importFinished = false;
+  }
+
+  get importCounts(): Record<ImportStatus, number> {
+    const counts = { ready: 0, invalid: 0, saved: 0, failed: 0, unknown: 0 };
+    for (const row of this.importRows) counts[row.status]++;
+    return counts;
+  }
+
+  async checkImportFile(): Promise<void> {
+    if (!this.importFile || this.importChecking || this.importing || this.importFinished) return;
+    this.importChecking = true;
+    this.importError = '';
+    this.importRows = [];
+    this.importSheet = '';
+    try {
+      const rows = await this.readImportFile(this.importFile);
+      const header = rows.shift();
+      if (!header) throw new Error('File rỗng hoặc không có tiêu đề.');
+      const headerError = this.checkImportHeader(header.cells);
+      if (headerError) throw new Error(headerError);
+      const data = rows.filter(row => row.cells.some(value => value != null && String(value).trim() !== ''));
+      if (!data.length) throw new Error('File không có dòng dữ liệu.');
+      const columns = new Map(header.cells.map((name, index) => [name, index]));
+      const validated = data.map(row => this.validateImportRow(row, columns));
+      let next = validated.some(row => row.status === 'ready') ? await this.lastMapNumber() : 0n;
+      for (const row of validated) {
+        if (row.status === 'ready') row.map.map_id = this.formatMapId(++next);
+      }
+      this.importRows = validated;
+    } catch (error) {
+      this.importError = error instanceof Error ? error.message : 'Không thể kiểm tra file.';
+    } finally {
+      this.importChecking = false;
+      this.changeDetectorRef.markForCheck();
+    }
+  }
+
+  private checkImportHeader(cells: unknown[]): string {
+    const missing = MAP_COLUMNS.filter(column => !cells.includes(column));
+    const extra = cells.filter(cell => !MAP_COLUMNS.some(column => column === cell));
+    const duplicate = [...new Set(cells.filter((cell, index) => cells.indexOf(cell) !== index))];
+    const labels = (values: unknown[]) => values.map(value => String(value ?? '') || '(trống)').join(', ');
+    return [
+      cells.length !== MAP_COLUMNS.length ? 'File phải có đúng 15 cột.' : '',
+      missing.length ? `Thiếu cột: ${labels(missing)}.` : '',
+      extra.length ? `Cột thừa hoặc sai tên: ${labels(extra)}.` : '',
+      duplicate.length ? `Trùng tên cột: ${labels(duplicate)}.` : ''
+    ].filter(Boolean).join(' ');
+  }
+
+  private async readImportFile(file: File): Promise<TableRow[]> {
+    if (!['csv', 'xlsx', 'xls'].includes(this.importFormat)) {
+      throw new Error('Chỉ hỗ trợ file CSV, XLSX và XLS.');
+    }
+    if (!file.size) throw new Error('File rỗng.');
+    if (file.size > 5 * 1024 * 1024) throw new Error('File vượt quá 5 MB.');
+    const buffer = await file.arrayBuffer();
+    if (this.importFormat === 'csv') {
+      let text: string;
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      } catch {
+        throw new Error('File CSV phải dùng mã hóa UTF-8.');
+      }
+      if (text.includes('\0')) throw new Error('Nội dung file CSV không hợp lệ.');
+      return this.readMapCsv(text);
+    }
+    const bytes = new Uint8Array(buffer);
+    const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 3 && bytes[3] === 4;
+    const xlsSignature = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+    const isLegacyBiff = bytes[0] === 0x09 && [0, 2, 4, 8].includes(bytes[1]);
+    if (this.importFormat === 'xlsx' ? !isZip : !(isLegacyBiff || xlsSignature.every((b, i) => bytes[i] === b))) {
+      throw new Error('Nội dung file không khớp định dạng Excel đã chọn.');
+    }
+    const { read, utils } = await import('xlsx');
+    const workbook = read(bytes, {
+      type: 'array', cellFormula: true, cellHTML: false, cellText: false,
+      sheetStubs: true, bookFiles: isZip
+    });
+    const archiveEntries = 'keys' in workbook && Array.isArray(workbook.keys) ? workbook.keys : [];
+    if (isZip && !archiveEntries.includes('xl/workbook.xml')) {
+      throw new Error('Nội dung file không phải workbook XLSX.');
+    }
+    let firstHeaderError = '';
+    for (const name of workbook.SheetNames) {
+      const sheet = workbook.Sheets[name];
+      if (!sheet?.['!ref'] || sheet['!type']) continue;
+      const range = utils.decode_range(sheet['!ref']);
+      const readRow = (r: number): TableRow => {
+        const cells = [];
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const cell = sheet[utils.encode_cell({ r, c })];
+          cells.push(cell?.t === 'e' || cell?.t === 'b' || ((cell?.f || cell?.F) && cell.v == null)
+            ? Symbol('invalidExcelCell') : cell?.v);
+        }
+        return { line: r + 1, cells };
+      };
+      if (range.e.c - range.s.c + 1 > MAP_COLUMNS.length) {
+        firstHeaderError ||= 'Worksheet có cột thừa. File phải có đúng 15 cột.';
+        continue;
+      }
+      const header = readRow(range.s.r);
+      const headerError = this.checkImportHeader(header.cells);
+      if (headerError) {
+        firstHeaderError ||= headerError;
+        continue;
+      }
+      if (range.e.r - range.s.r > 5000) throw new Error('Worksheet vượt quá 5.000 hàng dữ liệu.');
+      this.importSheet = name;
+      const rows = [header];
+      for (let r = range.s.r + 1; r <= range.e.r; r++) rows.push(readRow(r));
+      return rows;
+    }
+    throw new Error(firstHeaderError || 'Không tìm thấy worksheet có cấu trúc phù hợp.');
+  }
+
+  private readMapCsv(text: string): TableRow[] {
+    const rows: TableRow[] = [];
+    let cells: string[] = [];
+    let value = '';
+    let quoted = false;
+    let closedQuote = false;
+    let line = 1;
+    let rowLine = 1;
+    const endCell = () => {
+      cells.push(value);
+      value = '';
+      closedQuote = false;
+    };
+    const endRow = () => {
+      endCell();
+      rows.push({ line: rowLine, cells });
+      cells = [];
+      if (rows.length > 5001) throw new Error('CSV vượt quá 5.000 hàng dữ liệu.');
+    };
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const newline = char === '\r' || char === '\n';
+      const crlf = char === '\r' && text[i + 1] === '\n';
+      if (quoted) {
+        if (char === '"' && text[i + 1] === '"') {
+          value += '"';
+          i++;
+        } else if (char === '"') {
+          quoted = false;
+          closedQuote = true;
+        } else {
+          value += crlf ? '\r\n' : char;
+          if (crlf) i++;
+          if (newline) line++;
+        }
+      } else if (char === ',') {
+        endCell();
+      } else if (newline) {
+        endRow();
+        if (crlf) i++;
+        rowLine = ++line;
+      } else if (closedQuote || (char === '"' && value !== '')) {
+        throw new Error(`Dòng ${rowLine}: dấu ngoặc kép CSV không hợp lệ.`);
+      } else if (char === '"') {
+        quoted = true;
+      } else {
+        value += char;
+      }
+    }
+    if (quoted) throw new Error(`Dòng ${rowLine}: ô CSV chưa đóng dấu ngoặc kép.`);
+    if (cells.length || value || closedQuote) endRow();
+    return rows;
+  }
+
+  private validateImportRow(row: TableRow, columns: Map<unknown, number>): ImportRow {
+    const errors: string[] = [];
+    if (row.cells.length > MAP_COLUMNS.length) errors.push('Dòng có ô thừa.');
+    const readCell = (column: MapColumn) => row.cells[columns.get(column)!];
+    const readText = (column: MapColumn, fallback = ''): string => {
+      const value = readCell(column);
+      if (value == null || (typeof value === 'string' && !value.trim())) return fallback;
+      if (typeof value === 'string') return value;
+      errors.push(`${column} phải là văn bản.`);
+      return fallback;
+    };
+    const readArray = (column: MapColumn): string[] => {
+      const value = readText(column, '[]');
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) return parsed;
+      } catch {
+        // Report invalid JSON and invalid element types with the same field message.
+      }
+      errors.push(`${column} phải là JSON array chứa chuỗi.`);
+      return [];
+    };
+    const rawBeads = readCell('total_beads');
+    const totalBeads = typeof rawBeads === 'number' ? rawBeads
+      : typeof rawBeads === 'string' && /^\d+$/.test(rawBeads.trim()) ? Number(rawBeads) : NaN;
+    const difficulty = readText('difficulty', 'Dễ');
+    const expectedClass = new Map([
+      ['Dễ', 'badge-easy'], ['Trung bình', 'badge-medium'], ['Khó', 'badge-hard']
+    ]).get(difficulty);
+    const map: MapPayload = {
+      map_id: '', map_name: readText('map_name'), author: readText('author'),
+      main_image: readText('main_image'), gallery_images: readArray('gallery_images'),
+      difficulty, difficultyClass: readText('difficultyClass', expectedClass ?? ''),
+      categories: readArray('categories'), grid_size: readText('grid_size'),
+      bead_type: readText('bead_type', 'Midi 5mm'), total_beads: totalBeads,
+      download_link: readText('download_link'), description: readText('description'),
+      related_product_ids: readArray('related_product_ids'), time: readText('time', '15-20 phút')
+    };
+    for (const field of ['map_name', 'author', 'main_image'] as const) {
+      if (!map[field]) errors.push(`Thiếu ${field}.`);
+    }
+    if (!Number.isSafeInteger(totalBeads) || totalBeads < 0) {
+      errors.push('total_beads phải là số nguyên an toàn, không âm.');
+    }
+    if (!expectedClass || expectedClass !== map.difficultyClass) {
+      errors.push('difficulty và difficultyClass không tạo thành cặp hợp lệ.');
+    }
+    if (map.main_image && !this.validImportPath(map.main_image, 'images')) {
+      errors.push('main_image có URL hoặc đường dẫn không hợp lệ.');
+    }
+    map.gallery_images.forEach((path, index) => {
+      if (!this.validImportPath(path, 'images')) errors.push(`gallery_images[${index}] có đường dẫn không hợp lệ.`);
+    });
+    if (map.download_link && !this.validImportPath(map.download_link, 'files')) {
+      errors.push('download_link có URL hoặc đường dẫn PDF không hợp lệ.');
+    }
+    return {
+      line: row.line, map, errors, status: errors.length ? 'invalid' : 'ready',
+      previewImage: this.validImportPath(map.main_image, 'images') ? this.getImagePath(map.main_image) : ''
+    };
+  }
+
+  private validImportPath(path: string, folder: 'images' | 'files'): boolean {
+    if (/[\s\\\u0000-\u001f\u007f]/.test(path) || /%(?![\da-f]{2})/i.test(path)) return false;
+    if (/^https?:\/\//.test(path)) {
+      try {
+        const url = new URL(path);
+        return !!url.hostname && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }
+    const internal = path.replace(/^\//, '');
+    if (!internal.startsWith(folder + '/') || /[:?#]/.test(internal)) return false;
+    if (folder === 'files' && !/\.pdf$/i.test(internal)) return false;
+    try {
+      return internal.split('/').every(segment => {
+        const decoded = decodeURIComponent(segment);
+        return !!decoded && decoded !== '.' && decoded !== '..' && !/[\/\\\u0000-\u001f]/.test(decoded);
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  private async lastMapNumber(): Promise<bigint> {
+    let max = 0n;
+    const seen = new Set<string>();
+    try {
+      for (let page = 1; ; page++) {
+        const reply = await firstValueFrom(this.adminApi.getLibraryMaps(page, 100).pipe(timeout(15000)));
+        const maps = Array.isArray(reply) ? reply : reply?.maps;
+        if (!Array.isArray(maps) || maps.length > 100) throw new Error();
+        for (const map of maps) {
+          const id = map?.map_id;
+          if (typeof id !== 'string' || !id || seen.has(id)) throw new Error();
+          seen.add(id);
+          if (/^M\d+$/.test(id)) {
+            const number = BigInt(id.slice(1));
+            if (number > max) max = number;
+          }
+        }
+        if (maps.length < 100) return max;
+      }
+    } catch {
+      throw new Error('Không thể xác minh toàn bộ mã Map từ máy chủ. Vui lòng kiểm tra lại.');
+    }
+  }
+
+  private formatMapId(number: bigint): string {
+    return 'M' + number.toString().padStart(2, '0');
+  }
+
+  async confirmImport(): Promise<void> {
+    if (this.importing || this.importChecking || this.importFinished) return;
+    const pending = this.importRows.filter(row => row.status === 'ready');
+    if (!pending.length) return;
+    this.importing = true;
+    this.importError = '';
+    this.importTotal = pending.length;
+    this.importProcessed = 0;
+    let sent = false;
+    try {
+      let last = await this.lastMapNumber();
+      for (const row of pending) {
+        for (let attempt = 0; ; attempt++) {
+          row.map.map_id = this.formatMapId(++last);
+          sent = true;
+          try {
+            const response = await firstValueFrom(this.adminApi.saveLibraryMap(row.map, true).pipe(timeout(20000)));
+            if (response?.status === 201 && typeof response.body?._id === 'string' &&
+                response.body._id.trim() && response.body.map_id === row.map.map_id) {
+              row.status = 'saved';
+            } else {
+              row.status = 'unknown';
+              row.errors.push('Phản hồi chưa xác nhận mã Map và bản ghi đã lưu.');
+            }
+          } catch (error: any) {
+            const status = error?.status;
+            if (status === 409 && attempt < 2) {
+              try {
+                const currentMax = await this.lastMapNumber();
+                if (currentMax > last) last = currentMax;
+              } catch (verificationError) {
+                row.status = 'failed';
+                row.errors.push('Mã Map đã trùng và không thể xác minh mã mới.');
+                this.importProcessed++;
+                throw verificationError;
+              }
+              continue;
+            }
+            row.status = !status || status >= 500 ? 'unknown' : 'failed';
+            row.errors.push(status === 400 ? 'Máy chủ từ chối dữ liệu (400).'
+              : status === 409 ? 'Mã Map bị trùng sau 3 lần thử (409).'
+              : row.status === 'unknown' ? 'Không xác nhận được kết quả. Hãy tra cứu mã trước khi nhập lại.'
+              : `Máy chủ từ chối lưu (${status}).`);
+            if (status === 401 || status === 403) {
+              this.importProcessed++;
+              throw new Error('Đã dừng nhập vì phiên đăng nhập hoặc quyền truy cập không hợp lệ.');
+            }
+          }
+          break;
+        }
+        this.importProcessed++;
+        this.changeDetectorRef.markForCheck();
+      }
+    } catch (error) {
+      this.importError = error instanceof Error ? error.message : 'Không thể tiếp tục nhập.';
+    } finally {
+      this.importFinished = sent;
+      this.importing = false;
+      if (sent) this.loadMaps();
       this.changeDetectorRef.markForCheck();
     }
   }

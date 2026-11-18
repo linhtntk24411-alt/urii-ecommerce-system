@@ -1085,9 +1085,10 @@ export class AdminApiService {
   // --- 7. QUẢN LÝ THƯ VIỆN MAP MẪU ---
   // Tạm giữ endpoint /maps theo code hiện tại sau khi Pull.
 
-  public getLibraryMaps(): Observable<any> {
+  public getLibraryMaps(page?: number, limit = 100): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/maps`, {
-      headers: this.getAuthHeaders()
+      headers: this.getAuthHeaders(),
+      params: page === undefined ? undefined : { page, limit }
     });
   }
 
@@ -1099,12 +1100,12 @@ export class AdminApiService {
     return `${this.baseUrl.replace(/\/api$/, '')}/${normalizedPath}`;
   }
 
-  public saveLibraryMap(mapData: any): Observable<any> {
-    return this.http.post(
-      `${this.baseUrl}/maps`,
-      mapData,
-      { headers: this.getAuthHeaders() }
-    );
+  public saveLibraryMap(mapData: any, includeResponse = false): Observable<any> {
+    const url = `${this.baseUrl}/maps`;
+    const headers = this.getAuthHeaders();
+    return includeResponse
+      ? this.http.post(url, mapData, { headers, observe: 'response' })
+      : this.http.post(url, mapData, { headers });
   }
 
   public deleteLibraryMap(id: string): Observable<any> {

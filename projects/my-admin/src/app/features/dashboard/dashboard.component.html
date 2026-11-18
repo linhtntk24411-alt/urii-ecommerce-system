@@ -390,9 +390,7 @@
     </div>
   </div>
 
-  <!-- 3 Columns: Bài viết cộng đồng + Cảnh báo kho hàng + Lịch sử hoạt động (Dữ liệu thật từ MongoDB) -->
   <div class="row g-3 mb-4">
-    <!-- Col 1: Bài viết cộng đồng -->
     <div class="col-12 col-lg-4">
       <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
         <div
@@ -429,22 +427,6 @@
                     <i class="bi bi-check-circle-fill me-1"></i> Đã duyệt
                   </span>
                 } @else {
-                  <button
-                    type="button"
-                    class="btn-action-soft btn-action-approve"
-                    title="Duyệt bài"
-                    (click)="approveBlog(blog)"
-                  >
-                    <i class="bi bi-check-lg"></i>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-action-soft btn-action-reject"
-                    title="Từ chối"
-                    (click)="rejectBlog(blog)"
-                  >
-                    <i class="bi bi-x-lg"></i>
-                  </button>
                 }
               </div>
             </div>

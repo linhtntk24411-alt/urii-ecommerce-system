@@ -31,6 +31,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
   blogData: BlogPost | null = null;
   blogComments: BlogComment[] = [];
   isLoggedIn = false;
+  currentUserAvatar = '/assets/avatar-non.jpg';
   isLiked = false;
   isBookmarked = false;
   isCommentsLoading = false;
@@ -51,6 +52,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       };
       window.addEventListener('auth:changed', this.authChangeListener);
+      window.addEventListener('user:profile-synced', this.authChangeListener);
     }
 
     combineLatest([this.route.paramMap, this.route.queryParamMap]).pipe(
@@ -74,6 +76,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.authChangeListener) {
       window.removeEventListener('auth:changed', this.authChangeListener);
+      window.removeEventListener('user:profile-synced', this.authChangeListener);
     }
   }
 
@@ -344,11 +347,10 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
           comment.replies = res.replies;
         } else {
           const userName = localStorage.getItem('userName') || 'Bạn';
-          const userAvatar = localStorage.getItem('userAvatar') || 'assets/avatar-non.jpg';
           comment.replies.push({
             id: 'r-' + Date.now(),
             author: userName,
-            avatar: userAvatar,
+            avatar: this.currentUserAvatar,
             content: content,
             time: 'Vừa xong',
             role: 'user',
@@ -446,11 +448,22 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     return (this.blogData?.likes ?? 0) + (this.isLiked ? 1 : 0);
   }
 
+  private normalizeAvatar(avatar: string): string {
+    const trimmed = avatar.trim();
+    if (!trimmed) return '/assets/avatar-non.jpg';
+    if (trimmed.startsWith('/images/')) return `/api${trimmed}`;
+    if (trimmed.startsWith('images/')) return `/api/${trimmed}`;
+    return trimmed;
+  }
+
   private syncAuthAndActions(): void {
     if (!isPlatformBrowser(this.platformId)) return;
 
     const email = localStorage.getItem('userEmail')?.trim().toLowerCase() ?? '';
     this.isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' && email.length > 0;
+    this.currentUserAvatar = this.isLoggedIn
+      ? this.normalizeAvatar(localStorage.getItem('userAvatar') ?? '')
+      : '/assets/avatar-non.jpg';
     if (!this.isLoggedIn || !this.blogData) {
       this.isLiked = false;
       this.isBookmarked = false;

@@ -83,6 +83,116 @@
 
     <!-- WORKSPACE SECTION -->
     <section class="create-map-workspace" aria-label="Khu vực tạo map">
+      <!-- GỢI Ý MAP MẪU TỪ THƯ VIỆN THEO ĐỘ KHÓ CỦA ẢNH -->
+      <div class="workspace-card personal-suggest-card" *ngIf="hasImage">
+        <div class="suggest-head">
+          <div class="suggest-head__title">
+            <div class="header-icon-badge"><i class="bi bi-stars"></i></div>
+            <div>
+              <h2>Map mẫu gợi ý cho ảnh của bạn</h2>
+              <p>Chọn từ thư viện mẫu Urii theo độ khó tương đương với ảnh bạn vừa tải lên</p>
+            </div>
+          </div>
+
+          <div *ngIf="difficultyAnalysis" class="difficulty-summary" [ngClass]="'difficulty-summary--' + difficultyAnalysis.level">
+            <div class="difficulty-summary__ring" [style.--score]="difficultyAnalysis.score">
+              <span>{{ difficultyAnalysis.score }}</span>
+            </div>
+            <div class="difficulty-summary__text">
+              <small>Độ khó ảnh của bạn</small>
+              <strong>{{ difficultyAnalysis.label }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <ul class="difficulty-reasons" *ngIf="difficultyAnalysis">
+          <li *ngFor="let r of difficultyAnalysis.reasons"><i class="bi bi-check2-circle"></i> {{ r }}</li>
+        </ul>
+
+        <div class="suggest-toolbar">
+          <div class="level-tabs" role="tablist" aria-label="Lọc map mẫu theo độ khó">
+            <button
+              *ngFor="let tab of difficultyTabs"
+              type="button"
+              role="tab"
+              class="level-tab"
+              [ngClass]="'level-tab--' + tab.level"
+              [class.active]="suggestionLevel === tab.level"
+              [attr.aria-selected]="suggestionLevel === tab.level"
+              (click)="selectSuggestionLevel(tab.level)"
+            >
+              <i class="bi" [ngClass]="tab.icon"></i>
+              {{ tab.label }}
+              <span class="level-tab__count">{{ countMapsByLevel(tab.level) }}</span>
+              <span class="level-tab__match" *ngIf="difficultyAnalysis?.level === tab.level" title="Khớp độ khó ảnh của bạn">
+                <i class="bi bi-magic"></i>
+              </span>
+            </button>
+          </div>
+          <a class="link-view-library" routerLink="/sample-maps">
+            Xem toàn bộ thư viện <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+
+        <div class="suggest-loading" *ngIf="isLoadingSampleMaps">
+          <span class="suggest-spinner"></span> Đang tải thư viện map mẫu...
+        </div>
+
+        <div class="suggest-empty" *ngIf="!isLoadingSampleMaps && suggestedMaps.length === 0">
+          <i class="bi bi-inbox"></i>
+          <p>Thư viện chưa có map mẫu nào. Hãy quay lại sau nhé!</p>
+        </div>
+
+        <p class="suggest-fallback-note" *ngIf="!isLoadingSampleMaps && suggestionFallback">
+          <i class="bi bi-info-circle-fill"></i>
+          Chưa có mẫu ở mức "{{ levelToLabel(suggestionLevel) }}" – dưới đây là các mẫu có độ khó gần nhất.
+        </p>
+
+        <div class="sample-suggest-grid" *ngIf="!isLoadingSampleMaps && suggestedMaps.length > 0">
+          <article
+            *ngFor="let m of suggestedMaps; let i = index"
+            class="sample-suggest-card"
+            [ngClass]="'sample-suggest-card--' + getMapLevel(m)"
+            [class.best-match]="isBestMatch(m, i)"
+          >
+            <a class="ssc-media" [routerLink]="['/sample-maps-detail', m.slug]" [attr.aria-label]="'Xem chi tiết ' + m.title">
+              <img [src]="m.image" [alt]="m.title" loading="lazy" (error)="onSampleImageError($event)" />
+              <span class="ssc-level-pill"><i class="bi bi-bar-chart-fill"></i> {{ m.difficulty }}</span>
+              <div class="ssc-flags">
+                <span class="ssc-flag ssc-flag--best" *ngIf="isBestMatch(m, i)"><i class="bi bi-hand-thumbs-up-fill"></i> Hợp nhất</span>
+                <span class="ssc-flag ssc-flag--popular" *ngIf="m.isPopular"><i class="bi bi-fire"></i> Phổ biến</span>
+                <span class="ssc-flag ssc-flag--new" *ngIf="m.isNew">Mới</span>
+              </div>
+              <span class="ssc-hover-cta"><i class="bi bi-eye-fill"></i> Xem map</span>
+            </a>
+
+            <div class="ssc-body">
+              <span class="ssc-category">{{ m.category }}</span>
+              <h4 class="ssc-title" [title]="m.title">{{ m.title }}</h4>
+
+              <div class="ssc-stats">
+                <div class="ssc-stat">
+                  <i class="bi bi-grid-3x3"></i>
+                  <span>{{ m.gridSize }}</span>
+                </div>
+                <div class="ssc-stat">
+                  <i class="bi bi-circle-fill"></i>
+                  <span>{{ m.totalBeads | number }} hạt</span>
+                </div>
+                <div class="ssc-stat">
+                  <i class="bi bi-clock-fill"></i>
+                  <span>{{ m.time || 'Đang cập nhật' }}</span>
+                </div>
+              </div>
+
+              <a class="ssc-btn" [routerLink]="['/sample-maps-detail', m.slug]">
+                Xem chi tiết map <i class="bi bi-arrow-right-short"></i>
+              </a>
+            </div>
+          </article>
+        </div>
+      </div>
+
       <div class="workspace-grid">
         <!-- BỘ ĐIỀU KHIỂN BÊN TRÁI -->
         <div class="workspace-card controls-card">
@@ -375,7 +485,7 @@
         </div>
 
         <!-- KHU VỰC KẾT QUẢ BÊN PHẢI -->
-        <div class="workspace-card preview-card">
+        <div class="workspace-card preview-card" #previewCard>
           <div class="card-header-styled">
             <div class="header-icon-badge header-icon-badge--yellow"><i class="bi bi-image"></i></div>
             <div class="flex-1">

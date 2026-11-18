@@ -184,6 +184,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
         if (userId) {
           localStorage.setItem('userId', String(userId));
         }
+        window.dispatchEvent(new Event('user:profile-synced'));
         if (typeof (profile as any).orders === 'number') {
           this.orderCount = (profile as any).orders;
         }

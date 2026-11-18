@@ -151,7 +151,7 @@
 .blog-detail-comments__composer { flex: 1; min-width: 0; }
 .blog-detail-comments__avatar-placeholder {
   width: 40px; height: 40px; border-radius: 50%;
-  background: url('/assets/gallery_assets/mau-ca-heo.webp') center/cover no-repeat;
+  background: url('/assets/avatar-non.jpg') center/cover no-repeat;
   flex-shrink: 0;
 }
 .blog-detail-comments__textarea {

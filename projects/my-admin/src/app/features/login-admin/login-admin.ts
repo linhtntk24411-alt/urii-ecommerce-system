@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, OnDestroy, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -19,7 +19,7 @@ interface LoginResponse {
 }
 
 @Component({
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, FormsModule],
   selector: 'app-login-admin',
   standalone: true,
   styleUrl: './login-admin.css',

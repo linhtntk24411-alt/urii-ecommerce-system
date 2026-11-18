@@ -61,7 +61,9 @@
     <section class="blog-detail-comments">
       <h2 class="blog-detail-comments__title">Bình luận ({{ blogComments.length }})</h2>
       <form class="blog-detail-comments__form" [formGroup]="commentForm" (ngSubmit)="submitComment()">
-        <div class="blog-detail-comments__avatar-placeholder" aria-hidden="true"></div>
+        <div class="blog-detail-comments__avatar">
+          <img [src]="currentUserAvatar" alt="Ảnh đại diện của bạn" onerror="this.src='/assets/avatar-non.jpg'" />
+        </div>
         <div class="blog-detail-comments__composer">
           <textarea
             class="blog-detail-comments__textarea"

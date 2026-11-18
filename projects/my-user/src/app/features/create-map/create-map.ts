@@ -14,6 +14,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { MapService, SampleMap } from '../../core/services/map.service';
 
 export interface BeadDefinition {
   code: string; // VD: F6, A4, B5, H1, H7, D3, E2
@@ -60,6 +61,18 @@ export interface BeadProductRecommendation {
   variants: string[];
   matchedVariants?: MatchedVariant[];
   totalBeadsNeeded?: number;
+}
+
+export type MapDifficultyLevel = 'easy' | 'medium' | 'hard';
+
+export interface ImageDifficultyAnalysis {
+  level: MapDifficultyLevel;
+  label: string;
+  score: number; // 0 - 100
+  dominantColors: number;
+  edgeDensity: number; // % số cặp điểm ảnh liền kề có đổi màu rõ rệt
+  hasTransparentBg: boolean;
+  reasons: string[];
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -220,6 +233,10 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('originalCanvas') originalCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('resultCanvas') resultCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
+  @ViewChild('previewCard') previewCardRef?: ElementRef<HTMLElement>;
+
+  /** Bật khi người dùng tự thêm ảnh: sau khi tạo map xong sẽ tự cuộn xuống chart */
+  private scrollToResultPending = false;
 
   // Cấu hình kích thước ô: Tách biệt Số cột (Ngang) và Số hàng (Dọc)
   gridCols: number = 29;
@@ -305,6 +322,20 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
 
   suggestedProducts: BeadProductRecommendation[] = [];
 
+  // Gợi ý map mẫu cá nhân hóa dựa trên độ khó của ảnh người dùng
+  difficultyAnalysis: ImageDifficultyAnalysis | null = null;
+  sampleMaps: SampleMap[] = [];
+  suggestedMaps: SampleMap[] = [];
+  isLoadingSampleMaps = false;
+  suggestionLevel: MapDifficultyLevel = 'easy';
+  suggestionFallback = false;
+  readonly difficultyTabs: { level: MapDifficultyLevel; label: string; icon: string }[] = [
+    { level: 'easy', label: 'Dễ', icon: 'bi-emoji-smile-fill' },
+    { level: 'medium', label: 'Trung bình', icon: 'bi-star-half' },
+    { level: 'hard', label: 'Khó', icon: 'bi-gem' }
+  ];
+  private readonly mapService = inject(MapService);
+
   private lastReducedPixels: [number, number, number][] = [];
   private lastTransparentMask: boolean[] = [];
   private lastColorCodeMap = new Map<string, BeadColorInfo>();
@@ -344,6 +375,7 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     if (this.isBrowser) {
+      this.loadSampleMaps();
       this.http.get<any>('/api/products?limit=100').subscribe({
         next: (res) => {
           const list = Array.isArray(res) ? res : res?.products || [];
@@ -431,6 +463,7 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private readFile(file: File): void {
+    this.scrollToResultPending = true;
     const reader = new FileReader();
     reader.onload = (e: ProgressEvent<FileReader>) => {
       const result = e.target?.result as string;
@@ -442,6 +475,7 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadPreset(preset: PresetImage): void {
+    this.scrollToResultPending = false;
     this.imageFileName = `${preset.name} (${preset.label})`;
     this.loadImageUrl(preset.url);
   }
@@ -460,9 +494,255 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
 
       this.drawOriginalPreview();
       this.processImage();
+      this.buildPersonalizedSuggestions(img);
       this.cdr.detectChanges();
     };
     img.src = url;
+  }
+
+  // =========================================================
+  // GỢI Ý MAP MẪU CÁ NHÂN HÓA THEO ĐỘ KHÓ CỦA ẢNH
+  // =========================================================
+
+  /**
+   * Phân tích độ khó của ảnh: số màu chủ đạo, mật độ đường viền/chi tiết,
+   * độ phức tạp phân bố màu (entropy) và nền trong suốt.
+   */
+  private analyzeImageDifficulty(img: HTMLImageElement): ImageDifficultyAnalysis | null {
+    const size = 64;
+    const aspect = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    const w = aspect >= 1 ? size : Math.max(8, Math.round(size * aspect));
+    const h = aspect >= 1 ? Math.max(8, Math.round(size / aspect)) : size;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    let data: Uint8ClampedArray;
+    try {
+      data = ctx.getImageData(0, 0, w, h).data;
+    } catch {
+      return null; // Ảnh khác nguồn bị chặn CORS
+    }
+
+    const bins = new Map<number, number>();
+    const keys: number[] = new Array(w * h).fill(-1);
+    const rgbs: [number, number, number][] = new Array(w * h);
+    let opaque = 0;
+    let transparent = 0;
+
+    for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+      if (data[i + 3] < 32) {
+        transparent++;
+        continue;
+      }
+      opaque++;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      rgbs[p] = [r, g, b];
+      const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+      keys[p] = key;
+      bins.set(key, (bins.get(key) || 0) + 1);
+    }
+
+    if (opaque === 0) return null;
+
+    // Số màu chủ đạo: các nhóm màu chiếm >= 1% diện tích
+    let dominantColors = 0;
+    let entropy = 0;
+    bins.forEach(count => {
+      if (count >= opaque * 0.01) dominantColors++;
+      const pr = count / opaque;
+      entropy -= pr * Math.log2(pr);
+    });
+
+    // Mật độ đường viền / chi tiết
+    let edges = 0;
+    let pairs = 0;
+    const isEdge = (a: number, b: number) => {
+      const ca = rgbs[a], cb = rgbs[b];
+      return Math.abs(ca[0] - cb[0]) + Math.abs(ca[1] - cb[1]) + Math.abs(ca[2] - cb[2]) > 60;
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const p = y * w + x;
+        if (keys[p] < 0) continue;
+        if (x + 1 < w && keys[p + 1] >= 0) {
+          pairs++;
+          if (isEdge(p, p + 1)) edges++;
+        }
+        if (y + 1 < h && keys[p + w] >= 0) {
+          pairs++;
+          if (isEdge(p, p + w)) edges++;
+        }
+      }
+    }
+    const edgeDensity = pairs > 0 ? edges / pairs : 0;
+    const transparentRatio = transparent / (w * h);
+    const hasTransparentBg = transparentRatio > 0.15;
+
+    const colorScore = Math.min(1, Math.max(0, (dominantColors - 2) / 22));
+    const edgeScore = Math.min(1, edgeDensity / 0.3);
+    const entropyScore = Math.min(1, entropy / 9);
+    let score = Math.round(100 * (0.4 * colorScore + 0.35 * edgeScore + 0.25 * entropyScore));
+    if (hasTransparentBg) score -= 8;
+    score = Math.max(0, Math.min(100, score));
+
+    const level: MapDifficultyLevel = score < 35 ? 'easy' : score < 65 ? 'medium' : 'hard';
+    const label = level === 'easy' ? 'Dễ' : level === 'medium' ? 'Trung bình' : 'Khó';
+
+    const reasons: string[] = [];
+    reasons.push(
+      dominantColors <= 4
+        ? `Ảnh chỉ có khoảng ${dominantColors} màu chủ đạo – rất dễ xếp`
+        : dominantColors <= 12
+          ? `Ảnh có khoảng ${dominantColors} màu chủ đạo – độ phức tạp vừa phải`
+          : `Ảnh có tới ${dominantColors}+ màu chủ đạo – nhiều sắc độ chuyển màu`
+    );
+    reasons.push(
+      edgeDensity < 0.08
+        ? 'Mảng màu lớn, ít đường viền nhỏ'
+        : edgeDensity < 0.2
+          ? 'Có một số chi tiết và đường viền cần chú ý'
+          : 'Nhiều chi tiết nhỏ, đường viền dày đặc'
+    );
+    if (hasTransparentBg) {
+      reasons.push('Nền trong suốt – tiết kiệm hạt và dễ tách hình');
+    }
+
+    return {
+      level,
+      label,
+      score,
+      dominantColors,
+      edgeDensity: Math.round(edgeDensity * 100),
+      hasTransparentBg,
+      reasons
+    };
+  }
+
+  levelToLabel(level: MapDifficultyLevel): string {
+    return level === 'easy' ? 'Dễ' : level === 'medium' ? 'Trung bình' : 'Khó';
+  }
+
+  private labelToLevel(label: string): MapDifficultyLevel | null {
+    const t = (label || '').toLocaleLowerCase('vi');
+    if (t.includes('dễ') || t.includes('easy')) return 'easy';
+    if (t.includes('khó') || t.includes('hard')) return 'hard';
+    if (t.includes('trung') || t.includes('medium')) return 'medium';
+    return null;
+  }
+
+  private loadSampleMaps(): void {
+    this.isLoadingSampleMaps = true;
+    this.mapService.getMaps().subscribe({
+      next: (maps) => {
+        this.sampleMaps = maps;
+        this.isLoadingSampleMaps = false;
+        this.refreshSuggestedMaps();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.warn('Lỗi tải thư viện map mẫu:', err);
+        this.sampleMaps = [];
+        this.isLoadingSampleMaps = false;
+        this.refreshSuggestedMaps();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Phân tích độ khó của ảnh hiện tại rồi chọn map mẫu cùng độ khó từ thư viện */
+  private buildPersonalizedSuggestions(img: HTMLImageElement): void {
+    if (!this.isBrowser) return;
+    const analysis = this.analyzeImageDifficulty(img);
+    this.difficultyAnalysis = analysis;
+    if (analysis) {
+      this.suggestionLevel = analysis.level;
+    }
+    this.refreshSuggestedMaps();
+  }
+
+  selectSuggestionLevel(level: MapDifficultyLevel): void {
+    this.suggestionLevel = level;
+    this.refreshSuggestedMaps();
+  }
+
+  countMapsByLevel(level: MapDifficultyLevel): number {
+    return this.sampleMaps.filter(m => this.labelToLevel(m.difficulty) === level).length;
+  }
+
+  private parseGridArea(gridSize: string): number {
+    const nums = (gridSize || '').match(/\d+/g);
+    if (!nums || nums.length === 0) return 0;
+    const a = parseInt(nums[0], 10);
+    const b = nums.length > 1 ? parseInt(nums[1], 10) : a;
+    return a * b;
+  }
+
+  /**
+   * Lấy map mẫu từ thư viện có độ khó trùng với ảnh, xếp theo kích thước gần với
+   * map người dùng đang tạo nhất (ưu tiên mẫu phổ biến / mới).
+   * Nếu không có mẫu cùng độ khó, lấy các mẫu ở độ khó lân cận.
+   */
+  private refreshSuggestedMaps(): void {
+    const order: MapDifficultyLevel[] = ['easy', 'medium', 'hard'];
+    const targetIdx = order.indexOf(this.suggestionLevel);
+    const userArea = Math.max(1, this.gridCols * this.gridRows);
+
+    const rank = (m: SampleMap): number => {
+      const area = this.parseGridArea(m.gridSize);
+      const sizeDiff = area > 0 ? Math.abs(Math.log(area / userArea)) : 1.5;
+      return sizeDiff - (m.isPopular ? 0.35 : 0) - (m.isNew ? 0.15 : 0);
+    };
+
+    const sameLevel = this.sampleMaps.filter(m => this.labelToLevel(m.difficulty) === this.suggestionLevel);
+    if (sameLevel.length > 0) {
+      this.suggestionFallback = false;
+      this.suggestedMaps = [...sameLevel].sort((a, b) => rank(a) - rank(b)).slice(0, 6);
+      return;
+    }
+
+    const levelDistance = (m: SampleMap): number => {
+      const lv = this.labelToLevel(m.difficulty);
+      return lv ? Math.abs(order.indexOf(lv) - targetIdx) : 3;
+    };
+    this.suggestionFallback = this.sampleMaps.length > 0;
+    this.suggestedMaps = [...this.sampleMaps]
+      .sort((a, b) => levelDistance(a) - levelDistance(b) || rank(a) - rank(b))
+      .slice(0, 6);
+  }
+
+  getMapLevel(m: SampleMap): MapDifficultyLevel {
+    return this.labelToLevel(m.difficulty) || 'medium';
+  }
+
+  isBestMatch(m: SampleMap, index: number): boolean {
+    return index === 0 && !this.suggestionFallback && this.difficultyAnalysis?.level === this.suggestionLevel;
+  }
+
+  onSampleImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (!img.src.endsWith('mau-ca-heo.webp')) {
+      img.src = 'assets/gallery_assets/mau-ca-heo.webp';
+    }
+  }
+
+  /** Cuộn mượt tới khung chart map vừa tạo và làm nổi bật trong giây lát */
+  private scrollToResultMap(): void {
+    if (!this.isBrowser) return;
+    const target = this.previewCardRef?.nativeElement ?? this.resultCanvasRef?.nativeElement;
+    if (!target) return;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.remove('just-created');
+      void target.offsetWidth; // khởi động lại animation
+      target.classList.add('just-created');
+      setTimeout(() => target.classList.remove('just-created'), 1800);
+    });
   }
 
   private applyImageAspectRatio(img: HTMLImageElement): void {
@@ -777,6 +1057,10 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
       } finally {
         this.isProcessing = false;
         this.cdr.detectChanges();
+        if (this.scrollToResultPending) {
+          this.scrollToResultPending = false;
+          this.scrollToResultMap();
+        }
       }
     }, 10);
   }
@@ -1264,6 +1548,7 @@ export class CreateMapComponent implements OnInit, AfterViewInit, OnDestroy {
     const url = window.prompt('Dán đường dẫn (URL) hình ảnh vào đây:');
     if (url && url.trim()) {
       this.imageFileName = 'Ảnh từ liên kết';
+      this.scrollToResultPending = true;
       this.loadImageUrl(url.trim());
     }
   }

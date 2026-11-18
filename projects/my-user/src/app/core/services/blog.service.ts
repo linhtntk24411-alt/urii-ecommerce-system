@@ -84,10 +84,16 @@ export class BlogService {
     );
   }
 
-  replyComment(commentId: string | number, content: string, token: string, replyToAuthor?: string): Observable<any> {
-    return this.http.post<any>(`/api/comments/${commentId}/replies`, { content, replyToAuthor }, {
+  replyComment(commentId: string | number, content: string, token: string, replyToAuthor?: string): Observable<BlogComment> {
+    return this.http.post<unknown>(`/api/comments/${commentId}/replies`, { content, replyToAuthor }, {
       headers: new HttpHeaders({ Authorization: `Bearer ${token}` }),
-    });
+    }).pipe(
+      map((response) => {
+        const updated = this.parseComments(response)[0];
+        if (!updated) throw new Error('API phản hồi bình luận trả về dữ liệu không hợp lệ.');
+        return updated;
+      }),
+    );
   }
 
   reactComment(commentId: string | number, emoji: string | null, token: string, replyId?: string): Observable<BlogComment> {

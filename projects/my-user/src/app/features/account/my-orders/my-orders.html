@@ -291,7 +291,7 @@
             </div>
           </section>
 
-          <!-- 7. Thanh thao tác dưới cùng (Yêu cầu trả hàng & Đánh giá) -->
+          <!-- 7. Thanh thao tác dưới cùng (Yêu cầu trả hàng, Mua lại & Đánh giá) -->
           <div class="order-detail__bottom-bar">
             @if (activeOrder.statusId === 'pending') {
               <button type="button" class="orders-button orders-button--cancel" (click)="openCancelModal(activeOrder)">
@@ -311,8 +311,21 @@
                   Đã quá hạn đổi trả (15 ngày)
                 </button>
               }
+            }
+            @if (canReorder(activeOrder)) {
+              <button
+                type="button"
+                class="orders-button orders-button--reorder"
+                [class.orders-button--reorder-primary]="!isOrderUnreviewed(activeOrder)"
+                (click)="reorderOrder(activeOrder, $event)"
+              >
+                <span class="material-symbols-outlined">shopping_cart</span>
+                <span>Mua lại</span>
+              </button>
+            }
+            @if (activeOrder.statusId === 'completed') {
               @if (isOrderUnreviewed(activeOrder)) {
-                <button type="button" class="orders-button orders-button--shopee-review" (click)="openReviewModal(activeOrder)">
+                <button type="button" class="orders-button orders-button--shopee-review orders-button--review" (click)="openReviewModal(activeOrder)">
                   Đánh giá
                 </button>
               } @else {
@@ -546,7 +559,7 @@
               </div>
             }
 
-            <!-- Nút thao tác dưới cùng bên phải: Hủy đơn (khi chờ xác nhận), Xem chi tiết & Đánh giá -->
+            <!-- Nút thao tác dưới cùng bên phải: Hủy đơn (khi chờ xác nhận), Xem chi tiết, Mua lại & Đánh giá -->
             <div class="order-card__bottom-actions">
               @if (order.statusId === 'pending') {
                 <button type="button" class="orders-button orders-button--cancel" (click)="openCancelModal(order, $event)">
@@ -564,8 +577,19 @@
               <a class="orders-button orders-button--secondary" [routerLink]="['/orders', order.slug]">
                 Xem chi tiết
               </a>
+              @if (canReorder(order)) {
+                <button
+                  type="button"
+                  class="orders-button orders-button--reorder"
+                  [class.orders-button--reorder-primary]="!isOrderUnreviewed(order)"
+                  (click)="reorderOrder(order, $event)"
+                >
+                  <span class="material-symbols-outlined">shopping_cart</span>
+                  <span>Mua lại</span>
+                </button>
+              }
               @if (isOrderUnreviewed(order)) {
-                <button type="button" class="orders-button orders-button--shopee-review" (click)="openReviewModal(order)">
+                <button type="button" class="orders-button orders-button--shopee-review orders-button--review" (click)="openReviewModal(order)">
                   Đánh giá
                 </button>
               } @else if (order.statusId === 'completed') {

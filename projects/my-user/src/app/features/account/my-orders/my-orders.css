@@ -883,10 +883,51 @@
   border-color: #990000;
 }
 
+.orders-button--shopee-review:hover {
+  background: #800000;
+  border-color: #800000;
+}
+
 .orders-button--shopee-reviewed {
   background: #f0fdf4;
   color: #15803d;
   border-color: #86efac;
+}
+
+.orders-button--reorder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: #fff5f5;
+  color: #990000;
+  border-color: #f3b7b7;
+  font-weight: 700;
+}
+
+.orders-button--reorder:hover {
+  background: #990000;
+  color: #ffffff;
+  border-color: #990000;
+  box-shadow: 0 3px 10px rgba(153, 0, 0, 0.2);
+}
+
+.orders-button--reorder-primary {
+  background: #990000;
+  color: #ffffff;
+  border-color: #990000;
+  box-shadow: 0 2px 6px rgba(153, 0, 0, 0.18);
+}
+
+.orders-button--reorder-primary:hover {
+  background: #7a0000;
+  border-color: #7a0000;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(153, 0, 0, 0.28);
+}
+
+.orders-button--reorder .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .orders-button--cancel {

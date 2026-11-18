@@ -1,8 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
+import { CheckoutSelectionService } from '../../../core/services/checkout-selection.service';
 import { MyOrders } from './my-orders';
 
 describe('MyOrders', () => {
@@ -178,7 +180,7 @@ describe('MyOrders', () => {
 
     const reviewBtn = fixture.nativeElement.querySelector('.orders-button--review');
     expect(reviewBtn).toBeTruthy();
-    expect(reviewBtn.textContent).toContain('Đánh giá ngay');
+    expect(reviewBtn.textContent).toContain('Đánh giá');
   });
 
   it('displays count badges on other tabs when status counts are available', () => {
@@ -294,12 +296,103 @@ describe('MyOrders', () => {
     });
     postReq.flush({ message: 'Đánh giá thành công' });
 
-    // After success, it reloads eligible orders
+    // After success, it reloads eligible orders and order list
     flushBackgroundRequests();
+    http.expectOne((req) => req.url === '/api/orders/mine').flush({
+      orders: [],
+      total: 0,
+      page: 1,
+      limit: 5,
+      totalPages: 0,
+    });
     fixture.detectChanges();
 
     expect(component.reviewSubmitSuccess).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('Gửi đánh giá thành công!');
+  });
+
+  it('displays reorder button for completed, unreviewed, and cancelled orders and adds items to cart', () => {
+    setSignedIn();
+    fixture.detectChanges();
+
+    flushBackgroundRequests([
+      {
+        id: 'UR-UNREVIEWED-1',
+        statusId: 'completed',
+        items: [{ productId: 'PROD-2', name: 'Hạt ủi xanh', unitPrice: 25000, quantity: 1 }],
+      },
+    ]);
+
+    http.expectOne((req) => req.url === '/api/orders/mine').flush({
+      orders: [
+        {
+          id: 'UR-COMPLETED-1',
+          statusId: 'completed',
+          status: 'Đã giao',
+          totalAmount: 20000,
+          total: '20.000đ',
+          items: [{ productId: 'PROD-1', name: 'Hạt ủi pastel', variantName: 'Hồng', unitPrice: 20000, quantity: 2 }],
+        },
+        {
+          id: 'UR-UNREVIEWED-1',
+          statusId: 'completed',
+          status: 'Đã giao',
+          totalAmount: 25000,
+          total: '25.000đ',
+          items: [{ productId: 'PROD-2', name: 'Hạt ủi xanh', unitPrice: 25000, quantity: 1 }],
+        },
+        {
+          id: 'UR-CANCELLED-1',
+          statusId: 'cancelled',
+          status: 'Đã hủy',
+          totalAmount: 30000,
+          total: '30.000đ',
+          items: [{ productId: 'PROD-3', name: 'Bảng ủi vuông', unitPrice: 30000, quantity: 1 }],
+        },
+        {
+          id: 'UR-PENDING-1',
+          statusId: 'pending',
+          status: 'Chờ xác nhận',
+          totalAmount: 15000,
+          total: '15.000đ',
+          items: [{ productId: 'PROD-4', name: 'Kẹp gắp hạt', unitPrice: 15000, quantity: 1 }],
+        },
+      ],
+      total: 4,
+      page: 1,
+      limit: 5,
+      totalPages: 1,
+    });
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('.order-card');
+    expect(cards.length).toBe(4);
+
+    // Completed order has "Mua lại"
+    expect(cards[0].querySelector('.orders-button--reorder')?.textContent).toContain('Mua lại');
+    // Unreviewed order has "Mua lại"
+    expect(cards[1].querySelector('.orders-button--reorder')?.textContent).toContain('Mua lại');
+    // Cancelled order has "Mua lại"
+    expect(cards[2].querySelector('.orders-button--reorder')?.textContent).toContain('Mua lại');
+    // Pending order does not have "Mua lại"
+    expect(cards[3].querySelector('.orders-button--reorder')).toBeNull();
+
+    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const checkoutSelection = TestBed.inject(CheckoutSelectionService);
+    const reorderBtn = cards[0].querySelector('.orders-button--reorder') as HTMLButtonElement;
+    reorderBtn.click();
+    fixture.detectChanges();
+
+    expect(checkoutSelection.get()).toEqual([
+      {
+        productId: 'PROD-1',
+        variant: 'Hồng',
+        quantity: 2,
+        selected: true,
+      },
+    ]);
+    expect(checkoutSelection.shouldRemoveFromCartAfterCheckout()).toBe(false);
+    expect(navigateSpy).toHaveBeenCalledWith(['/checkout']);
   });
 
   function setSignedIn(): void {

@@ -286,10 +286,13 @@ export class CheckOut implements OnInit, OnDestroy {
 
     this.catalog.getProducts().subscribe({
       next: (products) => {
-        this.lines = items.map((item) => ({
-          item,
-          product: products.find((product) => product.id === item.productId) ?? null,
-        }));
+        this.lines = items.map((item) => {
+          const product = products.find((p) => p.id === item.productId || p.slug === item.productId) ?? null;
+          return {
+            item: product ? { ...item, productId: product.id } : item,
+            product,
+          };
+        });
         this.loading = false;
         this.changeDetectorRef.markForCheck();
       },

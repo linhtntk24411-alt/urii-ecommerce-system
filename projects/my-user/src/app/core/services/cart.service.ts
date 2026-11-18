@@ -102,6 +102,57 @@ export class CartService {
     }
   }
 
+  addItems(newItems: CartItem[]): Observable<CartItem[]> {
+    if (newItems.length === 0) return of(this.getItems());
+    const items = this.getItems();
+    for (const item of newItems) {
+      const existing = items.find(
+        (current) => current.productId === item.productId && current.variant === item.variant,
+      );
+      if (existing) {
+        existing.quantity += item.quantity;
+        if (item.selected !== undefined) {
+          existing.selected = item.selected;
+        }
+      } else {
+        items.push({ ...item });
+      }
+    }
+    this.saveItems(items);
+
+    if (!this.isAuthenticatedUser()) {
+      return of(items);
+    }
+
+    return from(newItems).pipe(
+      concatMap((item) =>
+        this.http.post<unknown>('/api/cart/items', {
+          productId: item.productId,
+          variantName: item.variant,
+          quantity: item.quantity,
+        }, { headers: this.authorizationHeaders() }).pipe(
+          catchError((err: unknown) => {
+            if (item.variant !== null) {
+              return this.http.post<unknown>('/api/cart/items', {
+                productId: item.productId,
+                variantName: null,
+                quantity: item.quantity,
+              }, { headers: this.authorizationHeaders() });
+            }
+            return throwError(() => err);
+          }),
+          map((response) => this.parseApiCart(response)),
+          tap((serverItems) => this.cacheItems(serverItems)),
+          catchError((error: unknown) => {
+            this.reportSyncError('Không thể đồng bộ giỏ hàng lên máy chủ.', error);
+            return of(this.getItems());
+          }),
+        ),
+      ),
+      last(),
+    );
+  }
+
   updateQuantity(productId: string, variant: string | null, quantity: number): void {
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new Error('Số lượng phải lớn hơn 0.');

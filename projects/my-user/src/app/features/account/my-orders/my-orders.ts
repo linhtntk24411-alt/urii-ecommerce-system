@@ -5,6 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AddressArea, AddressLookupService } from '../../../core/services/address-lookup.service';
+import { CartItem } from '../../../core/services/cart.service';
+import { CheckoutSelectionService } from '../../../core/services/checkout-selection.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { UserSocketService } from '../../../core/services/user-socket.service';
 
 
@@ -97,6 +100,8 @@ export class MyOrders implements OnInit, OnDestroy {
 
   
   private readonly addressLookup = inject(AddressLookupService);
+  private readonly checkoutSelection = inject(CheckoutSelectionService);
+  private readonly toast = inject(ToastService);
   private readonly socket = inject(UserSocketService);
 
   // Address change modal for pending orders
@@ -533,8 +538,60 @@ export class MyOrders implements OnInit, OnDestroy {
   }
 
   isOrderUnreviewed(order: CustomerOrder): boolean {
-    if (!order || order.statusId !== 'completed') return false;
+    if (!order) return false;
+    if (order.statusId && order.statusId !== 'completed') return false;
     return this.unreviewedOrderIds.has(order.slug);
+  }
+
+  canReorder(order: CustomerOrder | null): boolean {
+    if (!order) return false;
+    const statusClass = this.getStatusClass(order);
+    return (
+      statusClass === 'status--completed' ||
+      statusClass === 'status--cancelled' ||
+      this.isOrderUnreviewed(order) ||
+      this.unreviewedOrderIds.has(order.slug) ||
+      this.selectedStatus === 'completed' ||
+      this.selectedStatus === 'unreviewed' ||
+      this.selectedStatus === 'cancelled'
+    );
+  }
+
+  reorderOrder(order: CustomerOrder, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (!order || !order.items || order.items.length === 0) {
+      void this.router.navigate(['/products']).catch(() => {});
+      return;
+    }
+
+    const checkoutItems: CartItem[] = order.items
+      .map((item) => {
+        const productId = String(item.productId || item.slug || '').trim();
+        if (!productId) return null;
+        return {
+          productId,
+          variant: item.variantName ? item.variantName.trim() : null,
+          quantity: item.quantity && item.quantity > 0 ? item.quantity : 1,
+          selected: true,
+        } as CartItem;
+      })
+      .filter((item): item is CartItem => item !== null);
+
+    if (checkoutItems.length === 0) {
+      void this.router.navigate(['/products']).catch(() => {});
+      return;
+    }
+
+    try {
+      this.checkoutSelection.set(checkoutItems, false);
+      void this.router.navigate(['/checkout']).catch(() => {});
+    } catch (error) {
+      console.error('Không thể mua lại đơn hàng:', error);
+      this.toast.show('Không thể chuyển đến trang thanh toán. Vui lòng thử lại.', 'error');
+    }
   }
 
   selectStatus(statusId: string): void {

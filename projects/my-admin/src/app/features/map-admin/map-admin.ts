@@ -1,5 +1,6 @@
-import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, Inject, OnInit, PLATFORM_ID, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom, timeout } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
@@ -40,6 +41,7 @@ type TableRow = { line: number; cells: unknown[] };
 })
 export class MapAdmin implements OnInit {
   private readonly socket = inject(AdminSocketService);
+  private readonly destroyRef = inject(DestroyRef);
   constructor(
     private adminApi: AdminApiService,
     private changeDetectorRef: ChangeDetectorRef,
@@ -96,14 +98,14 @@ export class MapAdmin implements OnInit {
   mapDesc: string = '';
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(params => {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       this.pendingSearchId = params.get('searchType') === 'map'
         ? params.get('searchId')
         : null;
       this.applySearchTarget();
     });
     this.loadMaps();
-    this.socket.onCrudChange('gallery').subscribe(() => {
+    this.socket.onCrudChange('gallery').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (!this.importing) this.loadMaps();
     });
   }
@@ -118,7 +120,7 @@ export class MapAdmin implements OnInit {
     this.mapLoadError = '';
     this.isLoading = true;
 
-    this.adminApi.getLibraryMaps().subscribe({
+    this.adminApi.getLibraryMaps().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response: any) => {
         const mapList = Array.isArray(response)
           ? response

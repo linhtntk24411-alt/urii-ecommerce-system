@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminApiService } from '../../core/services/admin-api.service';
@@ -9,6 +9,34 @@ import { AdminSocketService } from '../../core/services/admin-socket.service';
 import { Product } from '../../../../../my-user/src/app/models/uri.model';
 
 declare var bootstrap: any;
+
+type ImportedVariant = { name: string; price: number; stock: number; image?: string };
+type ProductImportPayload = {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  image: string;
+  stock: number;
+  originalPrice: number;
+  currentPrice: number;
+  description: string;
+  isSale?: boolean;
+  rating?: number;
+  reviewCount?: number;
+  variants?: ImportedVariant[];
+  specifications?: Record<string, string>;
+};
+type ImportStatus = 'ready' | 'invalid' | 'saved' | 'failed' | 'unknown';
+type ProductImportRow = {
+  line: number;
+  product: ProductImportPayload;
+  errors: string[];
+  warnings: string[];
+  status: ImportStatus;
+};
+type ProductTableRow = { line: number; cells: unknown[] };
+
 
 @Component({
   selector: 'app-products-admin',
@@ -73,6 +101,22 @@ export class ProductsAdmin implements OnInit {
   showDeleteConfirm = false;
   deletingProductId: string | number | null = null;
   deletingProductName = '';
+
+
+
+  importFile: File | null = null;
+  importSheet = '';
+  importError = '';
+  importRows: ProductImportRow[] = [];
+  importChecking = false;
+  importing = false;
+  importFinished = false;
+  importProcessed = 0;
+  importTotal = 0;
+  readonly importLabels: Record<ImportStatus, string> = {
+    ready: 'Hợp lệ', invalid: 'Không hợp lệ', saved: 'Đã lưu',
+    failed: 'Thất bại', unknown: 'Chưa xác định'
+  };
 
   constructor(
     private adminApi: AdminApiService,
@@ -384,98 +428,359 @@ ngOnInit() {
       this.changeDetector.markForCheck();
     }
   }
-  // Hàm xử lý khi người dùng chọn file
-  onFileImport(event: any): void {
-    const file = event.target.files[0];
-    if (!file) return;
 
-    const fileName = file.name.toLowerCase();
-
-    // 1. KIỂM TRA ĐỊNH DẠNG FILE (Chỉ nhận .csv)
-    if (!fileName.endsWith('.csv')) {
-      alert('❌ Lỗi định dạng! Vui lòng chọn file có định dạng .csv (Bạn có thể chuyển file Excel .xlsx sang .csv trước khi tải lên).');
-      event.target.value = '';
-      return;
-    }
-
-    // Đọc nội dung file CSV
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      const text = e.target.result;
-      this.parseCSVAndImport(text);
-      event.target.value = ''; // Reset input để có thể chọn lại file cũ nếu cần
-    };
-    reader.readAsText(file, 'UTF-8');
+  openProductImport(): void {
+    const modal = document.getElementById('productImportModal');
+    if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 
-  // Hàm phân tích và kiểm tra tính hợp lệ của các cột dữ liệu
-  parseCSVAndImport(csvText: string): void {
-    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    
-    if (lines.length < 2) {
-      alert('❌ Lỗi: File CSV trống hoặc không có dữ liệu sản phẩm!');
-      return;
+  selectProductImport(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.importFile = input.files?.[0] ?? null;
+    input.value = '';
+    this.importRows = [];
+    this.importError = '';
+    this.importSheet = '';
+    this.importFinished = false;
+  }
+
+  get importCounts(): Record<ImportStatus, number> {
+    const counts = { ready: 0, invalid: 0, saved: 0, failed: 0, unknown: 0 };
+    for (const row of this.importRows) counts[row.status]++;
+    return counts;
+  }
+
+  async checkProductImport(): Promise<void> {
+    if (!this.importFile || this.importChecking || this.importing || this.importFinished) return;
+    this.importChecking = true;
+    this.importRows = [];
+    this.importError = '';
+    this.importSheet = '';
+    try {
+      const rows = await this.readProductImport(this.importFile);
+      const header = rows.shift();
+      const headers = this.productHeaders(header?.cells ?? []);
+      const data = rows.filter(row => row.cells.some(cell => cell != null && String(cell).trim()));
+      if (!data.length) throw new Error('File không có dòng dữ liệu.');
+      const parsed = data.map(row => this.validateProductRow(row, headers));
+      for (const field of ['id', 'slug'] as const) {
+        const counts = new Map<string, number>();
+        for (const row of parsed) {
+          const key = row.product[field];
+          if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        for (const row of parsed) {
+          if ((counts.get(row.product[field]) ?? 0) > 1) {
+            row.errors.push(field + ' bị trùng trong file.');
+            row.status = 'invalid';
+          }
+        }
+      }
+      this.importRows = parsed;
+    } catch (error) {
+      this.importError = error instanceof Error ? error.message : 'Không thể đọc file.';
+    } finally {
+      this.importChecking = false;
+      this.changeDetector.markForCheck();
     }
+  }
 
-    // 2. KIỂM TRA TÊN CÁC CỘT DỮ LIỆU (HEADER)
-    // Đọc dòng đầu tiên và tách tên các cột
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-    
-    // Đặt các cột bắt buộc phải có trong file để hệ thống nhận diện đúng
-    const requiredColumns = ['name', 'category', 'stock']; 
-    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
-
-    if (missingColumns.length > 0) {
-      alert(`❌ Lỗi tên cột dữ liệu!\nFile của bạn đang thiếu các cột bắt buộc sau: [ ${missingColumns.join(', ')} ]\nHãy đảm bảo tên các cột trùng khớp với dữ liệu hiện tại (Ví dụ: name, category, stock, currentPrice, image...).`);
-      return;
+  private productHeaders(cells: unknown[]): string[] {
+    const headers = cells.map(cell => typeof cell === 'string' ? cell.trim() : '');
+    const missing = ['name', 'category', 'stock'].filter(field => !headers.includes(field));
+    if (missing.length) throw new Error('Thiếu cột: ' + missing.join(', ') + '.');
+    if (headers.includes('') || new Set(headers).size !== headers.length) {
+      throw new Error('Có tên cột trùng hoặc không hợp lệ.');
     }
+    return headers;
+  }
 
-    let successCount = 0;
+  private async readProductImport(file: File): Promise<ProductTableRow[]> {
+    const format = file.name.match(/\.([^.]+)$/)?.[1].toLowerCase();
+    if (format !== 'csv' && format !== 'xlsx' && format !== 'xls') throw new Error('Chỉ hỗ trợ CSV, XLSX và XLS.');
+    if (!file.size) throw new Error('File rỗng.');
+    if (file.size > 5 * 1024 * 1024) throw new Error('File vượt quá 5 MB.');
+    const buffer = await file.arrayBuffer();
+    if (format === 'csv') {
+      let text: string;
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      } catch {
+        throw new Error('File CSV phải dùng mã hóa UTF-8.');
+      }
+      if (text.includes('\0')) throw new Error('Nội dung CSV không hợp lệ.');
+      return this.readProductCsv(text);
+    }
+    const bytes = new Uint8Array(buffer);
+    const zip = [0x50, 0x4b, 3, 4].every((byte, i) => bytes[i] === byte);
+    const ole = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1].every((byte, i) => bytes[i] === byte);
+    if (format === 'xlsx' ? !zip : !(ole || (bytes[0] === 9 && [0, 2, 4, 8].includes(bytes[1])))) {
+      throw new Error('Nội dung file không khớp định dạng Excel.');
+    }
+    const { read, utils } = await import('xlsx');
+    const book = read(bytes, { type: 'array', cellHTML: false, sheetStubs: true, bookFiles: zip });
+    if (zip && !('keys' in book && Array.isArray(book.keys) && book.keys.includes('xl/workbook.xml'))) {
+      throw new Error('Nội dung file không phải workbook XLSX.');
+    }
+    let sheetError = 'Không tìm thấy worksheet phù hợp.';
+    for (const name of book.SheetNames) {
+      const sheet = book.Sheets[name];
+      if (!sheet?.['!ref'] || sheet['!type']) continue;
+      const range = utils.decode_range(sheet['!ref']);
+      const readRow = (r: number): ProductTableRow => {
+        const cells: unknown[] = [];
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const cell = sheet[utils.encode_cell({ r, c })];
+          cells.push(cell?.t === 'e' || ((cell?.f || cell?.F) && cell.v == null)
+            ? Symbol('invalidExcelCell') : cell?.v);
+        }
+        return { line: r + 1, cells };
+      };
+      const header = readRow(range.s.r);
+      try {
+        this.productHeaders(header.cells);
+      } catch (error) {
+        if (error instanceof Error) sheetError = error.message;
+        continue;
+      }
+      if (range.e.r - range.s.r > 5000) throw new Error('Worksheet vượt quá 5.000 hàng dữ liệu.');
+      const data: ProductTableRow[] = [];
+      for (let r = range.s.r + 1; r <= range.e.r; r++) {
+        const row = readRow(r);
+        if (row.cells.some(cell => cell != null && String(cell).trim())) data.push(row);
+      }
+      if (!data.length) continue;
+      this.importSheet = name;
+      return [header, ...data];
+    }
+    throw new Error(sheetError);
+  }
 
-    // Duyệt qua từng dòng dữ liệu sản phẩm bên dưới
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line) continue;
+  private validateProductRow(row: ProductTableRow, headers: string[]): ProductImportRow {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const cell = (field: string) => row.cells[headers.indexOf(field)];
+    const blank = (value: unknown) => value == null || (typeof value === 'string' && !value.trim());
+    if (row.cells.length > headers.length) errors.push('Dòng có cột thừa.');
+    const text = (field: string, fallback = ''): string => {
+      const value = cell(field);
+      if (blank(value)) return fallback;
+      if (typeof value === 'string') return value;
+      if (field === 'id' && typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
+      errors.push(field + ' phải là văn bản.');
+      return fallback;
+    };
+    const number = (field: string, value: unknown, fallback = 0, integer = false, max = Infinity) => {
+      const parsed = typeof value === 'number' ? value
+        : typeof value === 'string' && /^\+?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())
+          ? Number(value) : NaN;
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= max && (!integer || Number.isSafeInteger(parsed))) return parsed;
+      errors.push(field + ' phải là ' + (integer ? 'số nguyên' : 'số') + ' không âm' + (max < Infinity ? ', tối đa ' + max : '') + '.');
+      return fallback;
+    };
+    const numberField = (field: string, fallback = 0, integer = false, max = Infinity) =>
+      blank(cell(field)) ? fallback : number(field, cell(field), fallback, integer, max);
+    const json = (field: string): unknown => {
+      try {
+        const value = cell(field);
+        if (typeof value === 'string') return JSON.parse(value);
+      } catch {
+        // Report the field below.
+      }
+      errors.push(field + ' chứa JSON không hợp lệ.');
+      return undefined;
+    };
 
-      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      const productObj: any = {};
-      
-      headers.forEach((header, index) => {
-        productObj[header] = values[index] !== undefined ? values[index] : '';
-      });
+    const name = text('name').trim();
+    if (!name) errors.push('Thiếu name.');
+    const category = text('category', 'TP').trim();
+    if (!Object.hasOwn(this.categoriesMap, category)) errors.push('category không hợp lệ.');
+    const image = text('image', 'assets/images/banner-home.webp');
+    if (!this.validImportImage(image)) errors.push('image có URL hoặc đường dẫn không hợp lệ.');
+    const product: ProductImportPayload = {
+      id: text('id').trim() || Math.floor(100000000 + Math.random() * 900000000).toString(),
+      name,
+      slug: text('slug').trim() || name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
+      category, image,
+      originalPrice: numberField('originalPrice'),
+      currentPrice: blank(cell('currentPrice')) ? numberField('price') : numberField('currentPrice'),
+      stock: numberField('stock', 10, true),
+      description: text('description')
+    };
+    if (name && !product.slug) errors.push('Không thể tạo slug từ tên. Vui lòng cung cấp slug.');
 
-      // Kiểm tra nếu có tên sản phẩm thì tiến hành thêm vào hệ thống
-      if (productObj.name) {
-        // Sinh ID tự động duy nhất cho mỗi sản phẩm khác nhau
-        const generatedId = Math.floor(100000000 + Math.random() * 900000000).toString();
-        
-        const newProduct = {
-          id: productObj.id || generatedId,
-          name: productObj.name,
-          slug: productObj.slug || productObj.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
-          category: productObj.category || 'TP',
-          image: productObj.image || 'assets/images/banner-home.webp',
-          originalPrice: Number(productObj.originalPrice) || 0,
-          currentPrice: Number(productObj.currentPrice) || Number(productObj.price) || 0,
-          stock: Number(productObj.stock) || 10,
-          description: productObj.description || '',
-          createdAt: new Date().toISOString()
-        };
-
-        // Gửi API thêm sản phẩm
-        this.adminApi.addProduct(newProduct).subscribe({
-          next: () => {
-            successCount++;
-            if (i === lines.length - 1 || successCount === lines.length - 1) {
-              this.adminApi.loadProducts();
-              alert(`✅ Nhập thành công ${successCount} sản phẩm từ file vào hệ thống!`);
-            }
-          },
-          error: (err) => console.error('Lỗi khi thêm sản phẩm từ file:', err)
-        });
+    const sale = cell('isSale');
+    if (!blank(sale)) {
+      const value = typeof sale === 'string' ? sale.trim().toLowerCase() : sale;
+      if (value === true || value === 'true') product.isSale = true;
+      else if (value === false || value === 'false') product.isSale = false;
+      else errors.push('isSale phải là TRUE hoặc FALSE.');
+    }
+    if (!blank(cell('rating'))) product.rating = numberField('rating', 0, false, 5);
+    if (!blank(cell('reviewCount'))) product.reviewCount = numberField('reviewCount', 0, true);
+    if (!blank(cell('specifications'))) {
+      const specs = json('specifications');
+      if (specs && typeof specs === 'object' && !Array.isArray(specs)
+          && Object.values(specs).every(value => typeof value === 'string')) {
+        product.specifications = specs as Record<string, string>;
+      } else if (specs !== undefined) {
+        errors.push('specifications phải là JSON object có giá trị chuỗi.');
       }
     }
+    if (!blank(cell('variants'))) {
+      const variants = json('variants');
+      if (Array.isArray(variants)) {
+        const names = new Set<string>();
+        product.variants = variants.flatMap((value: unknown, index) => {
+          const label = 'Biến thể ' + (index + 1);
+          if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            errors.push(label + ' phải là object.');
+            return [];
+          }
+          const variant = value as Record<string, unknown>;
+          const name = typeof variant['name'] === 'string' ? variant['name'].trim() : '';
+          if (!name) errors.push(label + ' thiếu name.');
+          const key = name.normalize('NFC').toLocaleLowerCase('vi-VN');
+          if (key && names.has(key)) errors.push(label + ' trùng tên.');
+          if (key) names.add(key);
+          const result: ImportedVariant = {
+            name,
+            price: number(label + ' · price', variant['price']),
+            stock: number(label + ' · stock', variant['stock'], 0, true)
+          };
+          const image = variant['image'];
+          if (!blank(image)) {
+            if (typeof image === 'string' && this.validImportImage(image)) result.image = image;
+            else errors.push(label + ' có URL hoặc đường dẫn ảnh không hợp lệ.');
+          }
+          return [result];
+        });
+        const total = product.variants.reduce((sum, variant) => sum + BigInt(variant.stock), 0n);
+        if (product.variants.length && !errors.length && total !== BigInt(product.stock)) {
+          warnings.push('Tổng tồn kho biến thể (' + total + ') khác tồn kho sản phẩm (' + product.stock + ').');
+        }
+      } else if (variants !== undefined) {
+        errors.push('variants phải là JSON array.');
+      }
+    }
+    return { line: row.line, product, errors, warnings, status: errors.length ? 'invalid' : 'ready' };
   }
+
+  private validImportImage(path: string): boolean {
+    if (/[\s\\\u0000-\u001f\u007f]/.test(path) || /%(?![\da-f]{2})/i.test(path)) return false;
+    if (/^https?:\/\//.test(path)) {
+      try {
+        const url = new URL(path);
+        return !!url.hostname && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }
+    const relative = path.replace(/^\/|^\.\.\//, '');
+    if (!/^(?:images|assets)\//.test(relative) || /[:?#]/.test(relative)) return false;
+    try {
+      return relative.split('/').every(segment => {
+        const decoded = decodeURIComponent(segment);
+        return !!decoded && decoded !== '.' && decoded !== '..' && !/[\/\\\u0000-\u001f]/.test(decoded);
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  async confirmProductImport(): Promise<void> {
+    if (this.importing || this.importChecking || this.importFinished) return;
+    const pending = this.importRows.filter(row => row.status === 'ready');
+    if (!pending.length) return;
+    this.importing = true;
+    this.importTotal = pending.length;
+    this.importProcessed = 0;
+    try {
+      for (const row of pending) {
+        let stop = false;
+        try {
+          const saved = await firstValueFrom(this.adminApi.addProduct(row.product).pipe(timeout(20000)));
+          if (saved?._id && saved.id === row.product.id && saved.slug === row.product.slug) {
+            row.status = 'saved';
+          } else {
+            row.status = 'unknown';
+            row.errors.push('Phản hồi không xác nhận đúng bản ghi. Hãy tra cứu mã trước khi nhập lại.');
+          }
+        } catch (error: any) {
+          const status = error?.status;
+          row.status = !status || status >= 500 ? 'unknown' : 'failed';
+          row.errors.push(status === 409 ? 'Mã hoặc slug đã tồn tại.'
+            : row.status === 'unknown' ? 'Chưa xác nhận được kết quả. Hãy tra cứu mã trước khi thử lại.'
+            : error?.error?.message || 'Máy chủ từ chối lưu (HTTP ' + status + ').');
+          stop = status === 401 || status === 403;
+          if (stop) this.importError = 'Đã dừng nhập do phiên đăng nhập hoặc quyền truy cập không hợp lệ.';
+        }
+        this.importProcessed++;
+        this.changeDetector.markForCheck();
+        if (stop) break;
+      }
+    } finally {
+      this.importFinished = true;
+      this.importing = false;
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  private readProductCsv(text: string): ProductTableRow[] {
+    const rows: ProductTableRow[] = [];
+    let cells: string[] = [];
+    let value = '';
+    let quoted = false;
+    let closedQuote = false;
+    let line = 1;
+    let rowLine = 1;
+    const endCell = () => {
+      cells.push(value);
+      value = '';
+      closedQuote = false;
+    };
+    const endRow = () => {
+      endCell();
+      rows.push({ line: rowLine, cells });
+      cells = [];
+      if (rows.length > 5001) throw new Error('CSV vượt quá 5.000 hàng dữ liệu.');
+    };
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const newline = char === '\r' || char === '\n';
+      const crlf = char === '\r' && text[i + 1] === '\n';
+      if (quoted) {
+        if (char === '"' && text[i + 1] === '"') {
+          value += '"';
+          i++;
+        } else if (char === '"') {
+          quoted = false;
+          closedQuote = true;
+        } else {
+          value += crlf ? '\r\n' : char;
+          if (crlf) i++;
+          if (newline) line++;
+        }
+      } else if (char === ',') {
+        endCell();
+      } else if (newline) {
+        endRow();
+        if (crlf) i++;
+        rowLine = ++line;
+      } else if (closedQuote || (char === '"' && value !== '')) {
+        throw new Error(`Dòng ${rowLine}: dấu ngoặc kép CSV không hợp lệ.`);
+      } else if (char === '"') {
+        quoted = true;
+      } else {
+        value += char;
+      }
+    }
+    if (quoted) throw new Error(`Dòng ${rowLine}: ô CSV chưa đóng dấu ngoặc kép.`);
+    if (cells.length || value || closedQuote) endRow();
+    return rows;
+  }
+
+
   // Hàm chạy khi người dùng chọn file ảnh từ máy tính
   onFileSelected(event: any) {
     if (this.isSaving) return;

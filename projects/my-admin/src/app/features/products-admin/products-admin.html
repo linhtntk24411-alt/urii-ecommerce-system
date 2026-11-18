@@ -5,11 +5,7 @@
             <p class="text-muted small m-0">Theo dõi và quản lý kho hàng DIY của bạn</p>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <!-- Input file ẩn -->
-            <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls" style="display: none;" (change)="onFileImport($event)">
-            
-            <!-- Nút Nhập từ File (Thiết kế đồng bộ kiểu dáng) -->
-            <button class="btn btn-custom-file fw-bold px-3 py-2 rounded-3 shadow-sm" onclick="document.getElementById('csvFileInput').click()">
+            <button type="button" class="btn btn-custom-file fw-bold px-3 py-2 rounded-3 shadow-sm" (click)="openProductImport()">
                 <i class="bi bi-file-earmark-arrow-up me-1"></i> Nhập từ File (CSV/Excel)
             </button>
 
@@ -216,6 +212,93 @@
                     </li>
                 </ul>
             </nav>
+        </div>
+    </div>
+</div>
+
+<div id="productImportModal" class="modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="productImportTitle"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="productImportTitle" class="modal-title fs-5 fw-bold text-danger">Nhập sản phẩm từ CSV/Excel</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"
+                        [disabled]="importChecking || importing"></button>
+            </div>
+            <div class="modal-body">
+                <label for="productImportFile" class="form-label fw-semibold">Chọn file CSV, XLSX hoặc XLS</label>
+                <input id="productImportFile" type="file" class="form-control" accept=".csv,.xlsx,.xls"
+                       (change)="selectProductImport($event)" [disabled]="importChecking || importing">
+                <p class="form-text mb-2">Tối đa 5 MB và 5.000 hàng. Cột bắt buộc gồm name, category và stock.</p>
+                @if (importFile) {
+                    <p class="small text-break mb-2">{{ importFile.name }}
+                        @if (importSheet) { · Worksheet {{ importSheet }} }
+                    </p>
+                }
+                <button type="button" class="btn btn-outline-secondary mb-3" (click)="checkProductImport()"
+                        [disabled]="!importFile || importChecking || importing || importFinished">
+                    {{ importChecking ? 'Đang kiểm tra…' : 'Kiểm tra dữ liệu' }}
+                </button>
+                @if (importError) {
+                    <div class="alert alert-danger" role="alert">{{ importError }}</div>
+                }
+                @if (importRows.length) {
+                    @let counts = importCounts;
+                    <p class="small mb-2" role="status">
+                        Tổng số dòng {{ importRows.length }} · Hợp lệ {{ importRows.length - counts.invalid }} · Không hợp lệ {{ counts.invalid }}
+                    </p>
+                    @if (importing || importFinished) {
+                        <p class="small mb-1" role="status">
+                            {{ importing ? 'Đang nhập' : 'Kết quả nhập' }} · Đã xử lý {{ importProcessed }}/{{ importTotal }}
+                        </p>
+                        <progress class="w-100 mb-2" [value]="importProcessed" [max]="importTotal" aria-label="Tiến độ nhập"></progress>
+                        <p class="small">
+                            Đã lưu {{ counts.saved }} · Thất bại {{ counts.failed }} · Bỏ qua {{ counts.invalid }} ·
+                            Chưa gửi {{ counts.ready }} · Chưa xác định {{ counts.unknown }}
+                        </p>
+                    }
+                    <div class="table-responsive overflow-auto" style="max-height: 22rem" tabindex="0" aria-label="Xem trước sản phẩm">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Dòng</th><th>Mã</th><th>Tên sản phẩm</th><th>Danh mục</th>
+                                    <th>Giá bán</th><th>Tồn kho</th><th>Biến thể</th><th>Trạng thái</th><th>Chi tiết</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (row of importRows; track row.line) {
+                                    <tr>
+                                        <td>{{ row.line }}</td>
+                                        <td>{{ row.product.id }}</td>
+                                        <td class="text-break">{{ row.product.name || '—' }}</td>
+                                        <td>{{ row.product.category }}</td>
+                                        <td>{{ row.product.currentPrice | number }}</td>
+                                        <td>{{ row.product.stock | number }}</td>
+                                        <td>{{ row.product.variants?.length ?? 0 }}</td>
+                                        <td class="text-nowrap">{{ importFinished && row.status === 'ready' ? 'Chưa gửi' : importLabels[row.status] }}</td>
+                                        <td class="small">
+                                            @for (error of row.errors; track $index) {
+                                                <div class="text-danger">{{ error }}</div>
+                                            }
+                                            @for (warning of row.warnings; track $index) {
+                                                <div class="text-warning-emphasis">{{ warning }}</div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                        [disabled]="importChecking || importing">Đóng</button>
+                <button type="button" class="btn btn-danger fw-bold" (click)="confirmProductImport()"
+                        [disabled]="importChecking || importing || importFinished || !importCounts.ready">
+                    {{ importing ? 'Đang nhập…' : importFinished ? 'Đã kết thúc lượt nhập' : 'Nhập ' + importCounts.ready + ' sản phẩm hợp lệ' }}
+                </button>
+            </div>
         </div>
     </div>
 </div>

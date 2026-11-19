@@ -56,6 +56,7 @@ export interface CheckoutVoucher {
 }
 
 export interface CreateOrderPayload {
+  codCheckoutKey?: string;
   userName: string;
   date: string;
   status: string;

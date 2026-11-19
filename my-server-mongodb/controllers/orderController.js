@@ -30,6 +30,82 @@ const { emitCrudChange } = require('../realtime');
 const { createAdminNotification } = require('./notificationController');
 const { createUserNotification } = require('../utils/userNotificationHelper');
 const paymentLifecycleService = require('../services/paymentLifecycleService');
+const { calculateOrderQuote, PaymentValidationError } = require('../services/paymentService');
+const { PaymentReservationConflictError } = paymentLifecycleService;
+
+async function withOrderTransaction(work) {
+  const session = await mongoose.startSession();
+  try {
+    return await session.withTransaction(() => work(session));
+  } finally {
+    await session.endSession();
+  }
+}
+
+function emitVoucherUsageChange(order) {
+  emitCrudChange('voucherUsage', 'updated', order._id);
+}
+
+function publicOrderData(order) {
+  const data = order.toObject();
+  delete data.codVoucherUsage;
+  delete data.codCheckoutKey;
+  return data;
+}
+
+async function createCodVoucherOrder(payload, checkoutKey) {
+  return withOrderTransaction(async session => {
+    const quote = await calculateOrderQuote(new Order(payload), payload.userId, session, new Date(), { cod: true });
+    const entries = quote.voucherReservations || [quote.voucherReservation].filter(Boolean);
+    if (!entries.length) throw new PaymentValidationError('Thông tin voucher trong đơn hàng không hợp lệ.');
+    const order = new Order({
+      ...payload, items: quote.items,
+      payment: { ...payload.payment, methodId: 'cod', method: 'cod' },
+      total: String(quote.amountDue), totalAmount: quote.amountDue,
+      shipping: { ...payload.shipping, fee: quote.shippingFee },
+      voucher: { voucherId: entries[0].voucherId, discountAmount: quote.discountAmount },
+      ...(payload.vouchers?.length ? { vouchers: quote.voucherDiscounts } : {}),
+      ...(checkoutKey ? { codCheckoutKey: checkoutKey } : {}),
+      codVoucherUsage: { refundable: ['pending', 'processing', 'cancel_requested'].includes(payload.statusId), entries }
+    });
+    await order.save({ session });
+    for (const entry of entries) await paymentLifecycleService.consumeCodVoucher(order, entry, session);
+    return order;
+  });
+}
+
+async function applyCodVoucherStatus(current, updates, targetStatus) {
+  return withOrderTransaction(async session => {
+    const order = await Order.findById(current._id).select('+codVoucherUsage').session(session);
+    if (!order || order.statusId !== current.statusId) {
+      throw new PaymentOrderConflictError('Trạng thái đơn đã thay đổi. Vui lòng tải lại.');
+    }
+    if (order.statusId === 'cancelled' && targetStatus !== 'cancelled') {
+      throw new PaymentOrderConflictError('Đơn COD đã hủy không thể mở lại.');
+    }
+    const refundable = order.codVoucherUsage?.refundable;
+    const restore = refundable && targetStatus === 'cancelled'
+      && ['pending', 'processing', 'cancel_requested'].includes(order.statusId);
+    const closeVoucherUsage = refundable && ['shipping', 'completed', 'cancelled', 'returned'].includes(targetStatus);
+    const next = { ...updates };
+    if (closeVoucherUsage) next.$set = { ...next.$set, 'codVoucherUsage.refundable': false };
+    const updated = await Order.findOneAndUpdate({ _id: order._id, statusId: order.statusId }, next,
+      { new: true, runValidators: true, session });
+    if (!updated) throw new PaymentOrderConflictError('Trạng thái đơn đã thay đổi. Vui lòng tải lại.');
+    if (restore) await paymentLifecycleService.restoreCodVouchers(order.codVoucherUsage.entries, order.userId, session);
+    return { order: updated, restored: restore };
+  });
+}
+
+async function savePendingCancellation(order) {
+  if (!order.codVoucherUsage?.refundable) {
+    await order.save();
+    return order;
+  }
+  const result = await applyCodVoucherStatus({ _id: order._id, statusId: 'pending' }, order.$getChanges(), 'cancelled');
+  if (result.restored) emitVoucherUsageChange(result.order);
+  return result.order;
+}
 
 function generateOrderId() {
   return `UR-${randomInt(10000, 100000)}`;
@@ -454,6 +530,29 @@ exports.createOrder = async (req, res) => {
           statusType: 'pending'
         }
       : req.body;
+    const checkoutKey = req.body.codCheckoutKey;
+    const { codCheckoutKey, codVoucherUsage, ...safeOrderData } = orderData;
+    const paymentMethod = safeOrderData.payment?.methodId || safeOrderData.payment?.method;
+    const hasVoucher = Boolean(safeOrderData.voucher?.voucherId || safeOrderData.voucher?.discountAmount != null
+      || safeOrderData.vouchers?.length);
+    const hasCodVoucher = hasVoucher && paymentMethod !== 'bank_transfer';
+    if (hasCodVoucher && paymentMethod && paymentMethod !== 'cod') {
+      throw new PaymentValidationError('Phương thức thanh toán của đơn áp mã không hợp lệ.');
+    }
+    if (checkoutKey !== undefined && (!hasCodVoucher || typeof checkoutKey !== 'string'
+      || !/^[a-f0-9-]{36}$/i.test(checkoutKey))) {
+      throw new PaymentValidationError('Mã gửi lại đơn hàng không hợp lệ.');
+    }
+    const findPreviousOrder = () => Order.findOne({ userId: safeOrderData.userId, codCheckoutKey: checkoutKey });
+    const respondWithExisting = async (existing) => {
+      const [enriched] = await enrichOrders([publicOrderData(existing)]);
+      return res.status(200).json(enriched);
+    };
+    if (checkoutKey) {
+      const existing = await findPreviousOrder();
+      if (existing) return respondWithExisting(existing);
+    }
+
     const nowIso = new Date().toISOString().slice(0, 19);
     const statusId = isCustomerOrder ? 'pending' : (orderData.statusId || 'pending');
     const waitingPolicy = orderReasons.waitingPolicies?.awaiting_confirmation;
@@ -475,20 +574,21 @@ exports.createOrder = async (req, res) => {
     const maxAttempts = customId ? 1 : 5;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        order = await Order.create({
-          ...orderData,
-          id: customId || generateOrderId(),
-          statusId,
-          waitingInfo: defaultWaitingInfo
-        });
+        const payload = { ...safeOrderData, id: customId || generateOrderId(), statusId, waitingInfo: defaultWaitingInfo };
+        order = hasCodVoucher ? await createCodVoucherOrder(payload, checkoutKey) : await Order.create(payload);
         break;
       } catch (createError) {
+        if (checkoutKey) {
+          const existing = await findPreviousOrder();
+          if (existing) return respondWithExisting(existing);
+        }
         if (createError?.code === 11000 && !customId && attempt < maxAttempts) {
           continue;
         }
         throw createError;
       }
     }
+    if (hasCodVoucher) emitVoucherUsageChange(order);
     emitCrudChange('orders', 'created', order._id, { userId: order.userId, status: order.status });
     await createAdminNotification({ typeId: 'ADMIN_ORDER_NEW', eventId: String(order._id),
       reference: { orderId: String(order.id || order._id) },
@@ -504,9 +604,11 @@ exports.createOrder = async (req, res) => {
         actionUrl: `/orders/${encodeURIComponent(order.id || order._id)}`
       });
     }
-    const [enriched] = await enrichOrders([order.toObject()]);
+    const [enriched] = await enrichOrders([publicOrderData(order)]);
     res.status(201).json(enriched);
   } catch (error) {
+    if (error instanceof PaymentValidationError) return res.status(400).json({ message: error.message });
+    if (error instanceof PaymentReservationConflictError) return res.status(409).json({ message: error.message });
     if (error.name === 'ValidationError') {
       res.status(400).json({ message: 'Dữ liệu đơn hàng không hợp lệ.' });
       return;
@@ -533,7 +635,7 @@ exports.cancelMyPendingOrder = async (req, res) => {
     const filter = mongoose.isValidObjectId(slugOrId)
       ? { _id: slugOrId }
       : { id: slugOrId };
-    const order = await Order.findOne(filter);
+    let order = await Order.findOne(filter).select('+codVoucherUsage');
     if (!order) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
@@ -566,7 +668,7 @@ exports.cancelMyPendingOrder = async (req, res) => {
       { statusId: 'cancelled', status: 'Đã hủy đơn hàng', time: nowIso, note: reasonText }
     ];
 
-    await order.save();
+    order = await savePendingCancellation(order);
 
     // Hủy payment đang chờ thanh toán nếu có
     try {
@@ -597,9 +699,12 @@ exports.cancelMyPendingOrder = async (req, res) => {
       console.warn('Lỗi tạo notification:', notifErr);
     }
 
-    const [enriched] = await enrichOrders([order.toObject()]);
+    const [enriched] = await enrichOrders([publicOrderData(order)]);
     res.json({ success: true, message: 'Đã hủy đơn hàng thành công.', order: enriched });
   } catch (error) {
+    if (error instanceof PaymentOrderConflictError || error instanceof PaymentReservationConflictError) {
+      return res.status(409).json({ message: error.message });
+    }
     console.error('Lỗi khi hủy đơn hàng:', error);
     res.status(500).json({ message: 'Không thể hủy đơn hàng. Vui lòng thử lại sau.' });
   }
@@ -624,7 +729,7 @@ exports.requestCancelOrder = async (req, res) => {
     const filter = mongoose.isValidObjectId(req.params.id)
       ? { _id: req.params.id }
       : { id: req.params.id };
-    const order = await Order.findOne(filter);
+    let order = await Order.findOne(filter).select('+codVoucherUsage');
     if (!order) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
@@ -658,12 +763,13 @@ exports.requestCancelOrder = async (req, res) => {
         ...(order.timeline || []),
         { statusId: 'cancelled', status: 'Đã hủy đơn hàng', time: nowIso, note: reason.label }
       ];
-      await order.save();
+      order = await savePendingCancellation(order);
       emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
-      const [enriched] = await enrichOrders([order.toObject()]);
+      const [enriched] = await enrichOrders([publicOrderData(order)]);
       return res.json(enriched);
     }
 
+    const previousStatusId = order.statusId;
     const slaHours = reason.slaHours || orderReasons.waitingPolicies?.awaiting_cancel_approval?.slaHours || 24;
     const deadlineIso = addHoursIso(nowIso, slaHours);
 
@@ -687,7 +793,12 @@ exports.requestCancelOrder = async (req, res) => {
       { statusId: 'cancel_requested', time: nowIso }
     ];
 
-    await order.save();
+    if (order.codVoucherUsage) {
+      const result = await applyCodVoucherStatus({ _id: order._id, statusId: previousStatusId }, order.$getChanges(), 'cancel_requested');
+      order = result.order;
+    } else {
+      await order.save();
+    }
     emitCrudChange('orders', 'updated', order._id, { userId: order.userId, status: order.status });
     if (req.auth?.role !== 'admin') {
       await createAdminNotification({ typeId: 'ADMIN_ORDER_CANCEL_REQUEST', eventId: cancellationEvent,
@@ -695,9 +806,12 @@ exports.requestCancelOrder = async (req, res) => {
         title: 'Yêu cầu hủy đơn #' + (order.id || order._id),
         message: 'Khách hàng yêu cầu hủy đơn, cần Admin xem xét.' });
     }
-    const [enriched] = await enrichOrders([order.toObject()]);
+    const [enriched] = await enrichOrders([publicOrderData(order)]);
     res.json(enriched);
   } catch (error) {
+    if (error instanceof PaymentOrderConflictError || error instanceof PaymentReservationConflictError) {
+      return res.status(409).json({ message: error.message });
+    }
     console.error('Lỗi gửi yêu cầu hủy đơn:', error);
     res.status(500).json({ message: 'Không thể gửi yêu cầu hủy đơn hàng.' });
   }
@@ -1051,6 +1165,9 @@ exports.updateOrder = async (req, res) => {
   }
   delete updates._id;
   delete updates.id;
+  for (const field of Object.keys(updates)) {
+    if (/^cod(CheckoutKey|VoucherUsage)(\.|$)/.test(field)) delete updates[field];
+  }
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
@@ -1062,7 +1179,7 @@ exports.updateOrder = async (req, res) => {
     const filter = mongoose.isValidObjectId(req.params.id)
       ? { _id: req.params.id }
       : { id: req.params.id };
-    const currentOrder = await Order.findOne(filter).select('_id statusId status returnStatusId').lean();
+    const currentOrder = await Order.findOne(filter).select('_id statusId status returnStatusId +codVoucherUsage').lean();
     if (!currentOrder) {
       res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
       return;
@@ -1082,6 +1199,21 @@ exports.updateOrder = async (req, res) => {
         return;
       }
     }
+    if (currentOrder.codVoucherUsage && (Object.hasOwn(updates, 'userId')
+      || Object.keys(updates).some(key => /^(voucher|vouchers|payment\.methodId|payment\.method)(\.|$)/.test(key))
+      || updates.payment?.methodId && updates.payment.methodId !== 'cod'
+      || updates.payment?.method && updates.payment.method !== 'cod')) {
+      return res.status(409).json({ message: 'Không thể đổi chủ đơn, voucher hoặc phương thức thanh toán của đơn COD đã ghi nhận lượt.' });
+    }
+    if (currentOrder.codVoucherUsage && updates.statusId) {
+      const result = await applyCodVoucherStatus(currentOrder, updates, updates.statusId);
+      if (result.restored) emitVoucherUsageChange(result.order);
+      if (currentOrder.statusId !== updates.statusId) notifyUserOnOrderStatusChange(result.order, updates.statusId).catch(console.error);
+      emitCrudChange('orders', 'updated', result.order._id, { userId: result.order.userId, status: result.order.status });
+      const [enriched] = await enrichOrders([publicOrderData(result.order)]);
+      return res.json(enriched);
+    }
+
     const currentPayment = await Payment.findOne({ orderId: currentOrder._id })
       .select('_id')
       .lean();
@@ -1181,10 +1313,10 @@ exports.updateOrder = async (req, res) => {
       userId: order.userId,
       status: order.status
     });
-    const [enriched] = await enrichOrders([order.toObject()]);
+    const [enriched] = await enrichOrders([publicOrderData(order)]);
     res.json(enriched);
   } catch (error) {
-    if (error instanceof PaymentOrderConflictError) {
+    if (error instanceof PaymentOrderConflictError || error instanceof PaymentReservationConflictError) {
       res.status(409).json({ message: error.message });
       return;
     }

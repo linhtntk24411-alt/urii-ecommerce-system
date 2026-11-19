@@ -1,10 +1,11 @@
-import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { afterNextRender, ChangeDetectorRef, Component, DestroyRef, Inject, Injector, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { TimeoutError, catchError, forkJoin, of } from 'rxjs';
+import { Subscription, TimeoutError, catchError, forkJoin, of } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AdminApiService, AdminComment, AdminReview } from '../../core/services/admin-api.service';
-import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 interface CommentItem {
   id: string;
@@ -32,7 +33,8 @@ interface CommentItem {
   styleUrls: ['./comments-admin.css']
 })
 export class CommentsAdmin implements OnInit {
-  private readonly socket = inject(AdminSocketService);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   constructor(
     private adminApi: AdminApiService,
     private changeDetectorRef: ChangeDetectorRef,
@@ -55,7 +57,10 @@ export class CommentsAdmin implements OnInit {
   isReplyModalOpen = false;
   isSavingReply = false;
   replySaveError = '';
-  private pendingSearchId: string | null = null;
+  private pendingSearch: { id: string; resolving: boolean } | null = null;
+  private targetLookup?: Subscription;
+  private restoreHighlight?: () => void;
+  targetError = '';
   showDeleteConfirm = false;
   deletingCommentId: string | null = null;
   deletingCommentAuthor = '';
@@ -78,15 +83,17 @@ export class CommentsAdmin implements OnInit {
   };
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(params => {
-      this.pendingSearchId = params.get('searchType') === 'comment'
-        ? params.get('searchId')
-        : null;
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.destroyRef.onDestroy(() => this.restoreHighlight?.());
+    this.loadComments();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.targetLookup?.unsubscribe();
+      this.targetError = '';
+      const id = params.get('searchType') === 'comment' ? params.get('searchId') : null;
+      this.pendingSearch = id ? { id, resolving: false } : null;
       this.applySearchTarget();
+      this.changeDetectorRef.markForCheck();
     });
-    if (isPlatformBrowser(this.platformId)) {
-      this.loadComments();
-    }
   }
 
   loadComments(): void {
@@ -109,7 +116,7 @@ export class CommentsAdmin implements OnInit {
           return of(null);
         })
       )
-    }).subscribe(({ comments, reviews }) => {
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ comments, reviews }) => {
       const loadedComments: CommentItem[] = [];
       if (Array.isArray(comments)) {
         loadedComments.push(...comments.map((comment) => this.toCommentItem(comment)));
@@ -129,8 +136,8 @@ export class CommentsAdmin implements OnInit {
       this.commentsLoadError = errors.join(' ');
       this.currentReviewPage = 1;
       this.currentBlogPage = 1;
-      this.applySearchTarget();
       this.isLoading = false;
+      this.applySearchTarget();
       this.changeDetectorRef.markForCheck();
     });
   }
@@ -309,17 +316,51 @@ export class CommentsAdmin implements OnInit {
   }
 
   private applySearchTarget(): void {
-    const id = this.pendingSearchId;
-    if (!id) return;
+    const target = this.pendingSearch;
+    if (!target || target.resolving || this.isLoading) return;
+    const { id } = target;
+    const existing = this.allComments.find(comment => comment.id === id);
+    if (existing) {
+      this.revealSearchTarget(target, existing);
+      return;
+    }
+    if (id.startsWith('review:')) return;
+
+    target.resolving = true;
+    this.targetLookup = this.adminApi.getCommentById(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: comment => {
+        if (this.pendingSearch !== target) return;
+        if (!comment || String(comment.id) !== id && String(comment._id) !== id) {
+          this.finishSearchTarget(target, 'Máy chủ trả về bình luận không khớp với thông báo.');
+          return;
+        }
+        const item = this.toCommentItem(comment);
+        if (!this.allComments.some(current => current.id === item.id)) this.allComments = [...this.allComments, item];
+        this.revealSearchTarget(target, item);
+      },
+      error: (error: unknown) => this.finishSearchTarget(target,
+        error instanceof HttpErrorResponse && error.status === 404
+          ? 'Bình luận không còn tồn tại hoặc đã bị xóa.'
+          : 'Không thể tải bình luận từ thông báo. Vui lòng thử lại.')
+    });
+  }
+
+  private finishSearchTarget(target: { id: string }, error = ''): void {
+    if (this.pendingSearch !== target) return;
+    this.pendingSearch = null;
+    this.targetError = error;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private revealSearchTarget(target: { id: string; resolving: boolean }, item: CommentItem): void {
+    target.resolving = true;
+    const id = item.id;
 
     this.searchKeyword = '';
     this.filterType = '';
     this.filterStatus = '';
     this.currentReviewPage = 1;
     this.currentBlogPage = 1;
-    const item = this.allComments.find(comment => comment.id === id);
-    if (!item) return;
-
     if (item.targetType === 'blog') {
       const index = this.getFilteredBlogs().findIndex(comment => comment.id === id);
       this.currentBlogPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
@@ -328,15 +369,14 @@ export class CommentsAdmin implements OnInit {
       this.currentReviewPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
     }
 
-    this.pendingSearchId = null;
-    this.scrollToSearchTarget(this.searchTargetId(id));
-  }
-
-  private scrollToSearchTarget(elementId: string): void {
-    if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
-    requestAnimationFrame(() => {
-      const row = document.getElementById(elementId);
-      if (!(row instanceof HTMLTableRowElement)) return;
+    afterNextRender(() => {
+      if (this.pendingSearch !== target) return;
+      const row = document.getElementById(this.searchTargetId(id));
+      if (!(row instanceof HTMLTableRowElement)) {
+        this.finishSearchTarget(target, 'Không thể định vị bình luận trên bảng. Vui lòng thử lại.');
+        return;
+      }
+      this.restoreHighlight?.();
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const cells = Array.from(row.cells);
       const originalStyles = cells.map(cell => ({
@@ -348,7 +388,10 @@ export class CommentsAdmin implements OnInit {
         cell.style.setProperty('background-color', '#fffbea', 'important');
       });
 
-      window.setTimeout(() => {
+      const timer = window.setTimeout(() => this.restoreHighlight?.(), 3000);
+      this.restoreHighlight = () => {
+        window.clearTimeout(timer);
+        this.restoreHighlight = undefined;
         cells.forEach((cell, index) => {
           const original = originalStyles[index];
           if (original.backgroundColor) {
@@ -357,8 +400,10 @@ export class CommentsAdmin implements OnInit {
             cell.style.removeProperty('background-color');
           }
         });
-      }, 3000);
-    });
+      };
+      this.finishSearchTarget(target);
+    }, { injector: this.injector });
+    this.changeDetectorRef.markForCheck();
   }
 
   // Hàm mở modal chi tiết bình luận khi ấn vào icon con mắt

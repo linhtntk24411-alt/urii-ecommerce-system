@@ -69,7 +69,20 @@ describe('AdminLayoutComponent', () => {
     component.onNotificationClick(notif);
     expect(notif.isRead).toBe(true);
     expect(navigateSpy).toHaveBeenCalledWith(['/orders'], {
-      queryParams: { searchType: 'order', searchId: 'UR-12345' }
+      queryParams: { searchType: 'order', searchId: 'UR-12345', notificationClick: expect.any(Number) }
     });
+  });
+
+  it('emits a distinct navigation when the same blog comment notification is clicked again', () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const notification = { typeId: 'ADMIN_COMMENT_NEW', reference: { commentId: '17' }, isRead: true };
+    component.onNotificationClick(notification);
+    component.onNotificationClick(notification);
+    expect(navigate.mock.calls.map(([path, options]) => [path, options?.queryParams])).toEqual([
+      [['/comments'], { searchType: 'comment', searchId: '17', notificationClick: expect.any(Number) }],
+      [['/comments'], { searchType: 'comment', searchId: '17', notificationClick: expect.any(Number) }],
+    ]);
+    expect(navigate.mock.calls[0][1]?.queryParams?.['notificationClick'])
+      .not.toBe(navigate.mock.calls[1][1]?.queryParams?.['notificationClick']);
   });
 });

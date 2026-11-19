@@ -1,5 +1,6 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, NEVER, Subject } from 'rxjs';
+import { of, NEVER, Subject, BehaviorSubject } from 'rxjs';
 import { OrdersAdmin } from './orders-admin';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
@@ -8,12 +9,14 @@ import { AdminSocketService } from '../../core/services/admin-socket.service';
 describe('OrdersAdmin', () => {
   let component: OrdersAdmin;
   let fixture: ComponentFixture<OrdersAdmin>;
+  let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
   beforeEach(async () => {
+    params = new BehaviorSubject(convertToParamMap({}));
     await TestBed.configureTestingModule({
       imports: [OrdersAdmin],
       providers: [
-        { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({})) } },
+        { provide: ActivatedRoute, useValue: { queryParamMap: params.asObservable() } },
         { provide: AdminSocketService, useValue: { onCrudChange: () => NEVER } },
         {
         provide: AdminApiService,
@@ -22,6 +25,7 @@ describe('OrdersAdmin', () => {
           getCustomOrders: () => of([]),
           updateCustomOrder: () => NEVER,
           getReturnRequests: () => of({ requests: [], total: 0, page: 1 }),
+          getOrderById: () => NEVER,
           getOrders: () => of([{
             id: 'UR-1',
             userName: '  Phạm   Thu Hà ',
@@ -145,5 +149,37 @@ describe('OrdersAdmin', () => {
       quoteNegotiation: { quoteVersion: 2, proposedPrice: 80000 } })).toBe('requote');
     expect(component.quoteActionFor({ ...quote, quoteDecision: 'negotiating',
       quoteNegotiation: { quoteVersion: 1, proposedPrice: 80000 } })).toBeNull();
+  });
+
+  it('loads an order outside the list and highlights it on repeated notification navigation', async () => {
+    const scroll = vi.fn();
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll });
+    try {
+      const service = TestBed.inject(AdminApiService);
+      const lookup = vi.spyOn(service, 'getOrderById').mockReturnValue(of({ id: 'UR-999', items: [], statusType: 'pending' }));
+      for (const click of ['1', '2']) {
+        params.next(convertToParamMap({ searchType: 'order', searchId: 'UR-999', notificationClick: click }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        component.loadOrders();
+      }
+      expect(lookup).toHaveBeenCalledExactlyOnceWith('UR-999');
+      expect(scroll).toHaveBeenCalledTimes(2);
+      expect(component.originalOrders.map(order => order.id)).toEqual(['UR-1', 'UR-999']);
+      expect(fixture.nativeElement.querySelector('#admin-search-target-order-UR-999 td').style.backgroundColor).not.toBe('');
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', descriptor);
+      else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+    }
+  });
+
+  it('reports a deleted notification order without removing the current list', () => {
+    const response = new Subject();
+    vi.spyOn(TestBed.inject(AdminApiService), 'getOrderById').mockReturnValue(response);
+    params.next(convertToParamMap({ searchType: 'order', searchId: 'UR-999', notificationClick: '1' }));
+    response.error(new HttpErrorResponse({ status: 404 }));
+    expect(component.orderTargetError).toContain('đã bị xóa');
+    expect(component.originalOrders.map(order => order.id)).toEqual(['UR-1']);
   });
 });

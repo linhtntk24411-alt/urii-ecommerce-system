@@ -365,6 +365,8 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     return { route: '/dashboard' };
   }
 
+  private targetNotificationClick = Date.now();
+
   onNotificationClick(notif: any, event?: Event): void {
     if (event) {
       event.stopPropagation();
@@ -405,8 +407,11 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
 
     // Điều hướng tới dữ liệu liên quan
     const target = this.getNotificationTarget(notif);
+    const repeatableTarget = ['ADMIN_COMMENT_NEW', 'ADMIN_ORDER_NEW'].includes(notif.typeId) && target.queryParams?.['searchId'];
     this.router.navigate([target.route], {
-      queryParams: target.queryParams
+      queryParams: repeatableTarget
+        ? { ...target.queryParams, notificationClick: ++this.targetNotificationClick }
+        : target.queryParams
     });
   }
 

@@ -448,3 +448,120 @@ test('payment status is independent of invalid QR configuration', async () => {
     orderFind.mock.restore();
   }
 });
+
+test('COD voucher checkout claims the last use once and restores it once on cancellation', async t => {
+  const Voucher = require('../models/Voucher');
+  const UserVoucher = require('../models/UserVoucher');
+  const otherUserId = '6ade4310c044b23d6c6a8683';
+  const voucher = { id: 'cod-test', code: 'CODTEST', type: 'fixed', discountValue: 5000, isActive: true,
+    quantity: 1, used: 0, reservedCount: 0 };
+  const grants = new Map([userId, otherUserId].map(id => [id, {
+    _id: new mongoose.Types.ObjectId(), userId: id, voucherId: voucher.id, isUsed: false, reservedByPaymentId: null
+  }]));
+  const orders = new Map();
+  const copy = value => JSON.parse(JSON.stringify(value));
+  let queue = Promise.resolve();
+  t.mock.method(mongoose, 'startSession', async () => ({
+    withTransaction(work) {
+      const task = queue.then(async () => {
+        const snapshot = copy([voucher, [...grants], [...orders]]);
+        try { return await work(); } catch (error) {
+          Object.assign(voucher, snapshot[0]);
+          for (const [id, grant] of snapshot[1]) grants.set(id, grant);
+          orders.clear();
+          for (const [id, order] of snapshot[2]) orders.set(id, order);
+          throw error;
+        }
+      });
+      queue = task.catch(() => {});
+      return task;
+    },
+    async endSession() {}
+  }));
+  t.mock.method(Product, 'find', () => query([{ id: 'product-cod', name: 'Hạt', currentPrice: 50000, stock: 10 }]));
+  t.mock.method(User, 'find', () => query([]));
+  t.mock.method(UserVoucher, 'findOne', filter => {
+    const grant = grants.get(String(filter.userId));
+    return query(grant?.isUsed === false && !grant.reservedByPaymentId ? grant : null);
+  });
+  t.mock.method(UserVoucher, 'updateOne', async (filter, update) => {
+    const grant = [...grants.values()].find(item => String(item._id) === String(filter._id));
+    if (!grant || grant.isUsed !== filter.isUsed || String(grant.reservedByPaymentId) !== String(filter.reservedByPaymentId)) {
+      return { modifiedCount: 0 };
+    }
+    Object.assign(grant, update.$set);
+    return { modifiedCount: 1 };
+  });
+  t.mock.method(Voucher, 'findOne', () => query({ ...voucher }));
+  t.mock.method(Voucher, 'findOneAndUpdate', async (filter, update) => {
+    assert.ok(filter.$expr);
+    if (voucher.used + voucher.reservedCount >= voucher.quantity) return null;
+    voucher.reservedCount += update.$inc.reservedCount;
+    return voucher;
+  });
+  t.mock.method(Voucher, 'updateOne', async (filter, { $inc }) => {
+    if (filter.used && voucher.used < filter.used.$gte) return { modifiedCount: 0 };
+    voucher.used += $inc.used || 0;
+    voucher.reservedCount += $inc.reservedCount || 0;
+    return { modifiedCount: 1 };
+  });
+  const persist = order => { orders.set(String(order._id), copy(order.toObject())); return order; };
+  t.mock.method(Order.prototype, 'save', async function () { return persist(this); });
+  t.mock.method(Order, 'create', async payload => persist(new Order(payload)));
+  const find = filter => [...orders.values()].find(order => Object.entries(filter).every(([key, value]) => String(order[key]) === String(value)));
+  t.mock.method(Order, 'findOne', filter => {
+    const order = find(filter);
+    return query(order ? Order.hydrate(order) : null);
+  });
+  t.mock.method(Order, 'findById', id => query(Order.hydrate(orders.get(String(id)))));
+  t.mock.method(Order, 'findOneAndUpdate', async (filter, update) => {
+    const order = find(filter);
+    if (!order) return null;
+    const doc = Order.hydrate(order);
+    for (const [key, value] of Object.entries(update)) if (!key.startsWith('$')) doc.set(key, value);
+    for (const [key, value] of Object.entries(update.$set || {})) doc.set(key, value);
+    for (const key of Object.keys(update.$unset || {})) doc.set(key, undefined);
+    return persist(doc);
+  });
+  t.mock.method(Payment, 'findOne', () => query(null));
+
+  const token = id => jwt.sign({ id, role: 'user' }, process.env.JWT_SECRET);
+  const admin = jwt.sign({ id: otherUserId, role: 'admin' }, process.env.JWT_SECRET);
+  const send = (path, method, credential, body) => fetch(baseUrl + '/api/orders' + path, {
+    method, headers: { ...authHeaders(credential), 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const body = { items: [{ productId: 'product-cod', quantity: 1 }], payment: { method: 'cod' } };
+  assert.equal((await send('', 'POST', token(userId), body)).status, 201);
+  assert.equal(voucher.used, 0);
+  const withVoucher = { ...body, voucher: { voucherId: voucher.id } };
+  const first = { ...withVoucher, codCheckoutKey: 'a'.repeat(36) };
+  const second = { ...withVoucher, codCheckoutKey: 'b'.repeat(36) };
+  const requests = await Promise.all([
+    send('', 'POST', token(userId), first), send('', 'POST', token(userId), first),
+    send('', 'POST', token(otherUserId), second)
+  ]);
+  assert.deepEqual(requests.map(item => item.status), [201, 200, 400]);
+  const [created, replay] = await Promise.all(requests.slice(0, 2).map(item => item.json()));
+  assert.equal(created.id, replay.id);
+  assert.equal(created.totalAmount, 75000);
+  assert.equal(created.codVoucherUsage, undefined);
+  assert.equal(voucher.used, 1);
+  assert.equal(voucher.reservedCount, 0);
+  const cancels = await Promise.all([
+    send('/mine/' + created.id + '/cancel', 'POST', token(userId), {}),
+    send('/mine/' + created.id + '/cancel', 'POST', token(userId), {})
+  ]);
+  assert.equal(cancels.filter(item => item.ok).length, 1);
+  assert.equal(voucher.used, 0);
+  assert.equal(grants.get(userId).isUsed, false);
+
+  const next = await send('', 'POST', token(otherUserId), second);
+  assert.equal(next.status, 201);
+  const nextOrder = await next.json();
+  for (const statusId of ['processing', 'shipping', 'completed', 'completed']) {
+    assert.equal((await send('/' + nextOrder.id, 'PATCH', admin, { statusId })).status, 200);
+  }
+  assert.equal(voucher.used, 1);
+  assert.equal((await send('/' + nextOrder.id, 'PATCH', admin, { statusId: 'cancelled' })).status, 200);
+  assert.equal(voucher.used, 1);
+});

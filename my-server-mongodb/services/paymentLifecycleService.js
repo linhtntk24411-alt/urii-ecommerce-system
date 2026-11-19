@@ -397,6 +397,27 @@ async function consumeSingleVoucherReservation(paymentId, reservation, session, 
   incDbWritesCount();
 }
 
+async function consumeCodVoucher(order, reservation, session) {
+  await reserveVoucher({ ...reservation, userId: order.userId, paymentId: order._id, expiresAt: new Date() }, session);
+  await consumeSingleVoucherReservation(order._id, { ...reservation, status: 'reserved' }, session, () => 0, () => {});
+}
+
+async function restoreCodVouchers(entries, userId, session) {
+  for (const entry of entries) {
+    const ownership = await UserVoucher.updateOne({
+      _id: entry.userVoucherId, userId, voucherId: entry.voucherId, isUsed: true, reservedByPaymentId: null
+    }, { $set: { isUsed: false, usedAt: null } }, { session });
+    const identity = entry.voucherDocumentId ? { _id: entry.voucherDocumentId } : { id: entry.voucherId };
+    const voucher = await Voucher.updateOne({ ...identity, used: { $gte: 1 } },
+      { $inc: { used: -1 } }, { session });
+    // A voucher may have been deleted after the order was placed.
+    const unchangedVoucher = voucher.modifiedCount !== 1 && await Voucher.exists(identity).session(session);
+    if (ownership.modifiedCount !== 1 || unchangedVoucher) {
+      throw new PaymentReservationConflictError('Không thể hoàn lượt voucher của đơn hàng. Vui lòng kiểm tra dữ liệu.');
+    }
+  }
+}
+
 async function consumePaymentReservations(payment, session) {
   const structureError = validatePaymentReservations(payment);
   if (structureError) {
@@ -1031,6 +1052,8 @@ module.exports = {
   PaymentReservationInvalidError,
   cancelPaymentInSession,
   consumePaymentReservations,
+  consumeCodVoucher,
+  restoreCodVouchers,
   expireDuePayments,
   expirePayment,
   expirePaymentInSession,

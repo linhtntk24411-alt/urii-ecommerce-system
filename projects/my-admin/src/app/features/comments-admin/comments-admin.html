@@ -9,8 +9,8 @@
             </div>
         </div>
 
-        <div *ngIf="commentsLoadError" class="alert alert-warning" role="alert">
-            {{ commentsLoadError }}
+        <div *ngIf="commentsLoadError || targetError" class="alert alert-warning" role="alert">
+            {{ commentsLoadError }} {{ targetError }}
             <button type="button" class="btn btn-sm btn-outline-warning ms-2" (click)="loadComments()">
                 Tải lại
             </button>

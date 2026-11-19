@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { auditTime, merge } from 'rxjs';
 import { AdminApiService, Promotion, PromotionPayload } from '../../core/services/admin-api.service';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 
@@ -28,6 +30,9 @@ export class PromotionsComponent implements OnInit {
   private readonly api = inject(AdminApiService);
   private readonly socket = inject(AdminSocketService);
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  private loadVersion = 0;
   private pendingSearchId: string | null = null;
 
   coupons: CouponView[] = [];
@@ -88,12 +93,16 @@ export class PromotionsComponent implements OnInit {
 
     // 2. Tiếp tục đồng bộ ngầm với MongoDB, nếu có thay đổi sẽ cập nhật mượt mà
     void this.loadCoupons();
+    merge(this.socket.onCrudChange('voucherUsage'), this.socket.onCrudChange('orders'))
+      .pipe(auditTime(100), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.loadCoupons());
   }
 
   async loadCoupons(): Promise<void> {
+    const version = ++this.loadVersion;
     try {
       const items = await this.api.getPromotions();
-      if (items && items.length > 0) {
+      if (version === this.loadVersion && items && items.length > 0) {
         this.coupons = items.map((item) => this.mapCouponView(item));
         this.applyFilters();
         this.applySearchTarget();
@@ -101,7 +110,10 @@ export class PromotionsComponent implements OnInit {
     } catch (e) {
       console.warn('Đồng bộ mã giảm giá ngầm:', e);
     } finally {
-      this.isLoading = false;
+      if (version === this.loadVersion) {
+        this.isLoading = false;
+        this.changeDetector.markForCheck();
+      }
     }
   }
 

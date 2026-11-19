@@ -442,7 +442,7 @@ async function findOwnedVoucher(voucherId, userId, session) {
   return { voucher, ownership };
 }
 
-async function calculateOrderQuote(order, userId, session, now = new Date()) {
+async function calculateOrderQuote(order, userId, session, now = new Date(), { cod = false } = {}) {
   if (!Array.isArray(order.items) || order.items.length === 0) {
     throw new PaymentValidationError('Đơn hàng không có sản phẩm hợp lệ để thanh toán.');
   }
@@ -518,6 +518,7 @@ async function calculateOrderQuote(order, userId, session, now = new Date()) {
   let hasShippingVoucher = false;
   let hasOrderDiscountVoucher = false;
   const seenVoucherIds = new Set();
+  const voucherDiscounts = [];
 
   for (const entry of rawVoucherEntries) {
     if (!entry || !entry.voucherId) {
@@ -577,15 +578,17 @@ async function calculateOrderQuote(order, userId, session, now = new Date()) {
     }
 
     discountAmount += singleDiscount;
+    if (cod) voucherDiscounts.push({ voucherId: voucher.id, type: voucher.type, discountAmount: Math.round(singleDiscount) });
     voucherReservations.push({
       voucherId: voucher.id,
-      userVoucherId: ownership._id
+      userVoucherId: ownership._id,
+      ...(cod ? { voucherDocumentId: voucher._id } : {})
     });
   }
   voucherReservation = voucherReservations[0] || null;
 
   const amountDue = Math.round(Math.max(0, subtotal + shippingFee - discountAmount));
-  if (!Number.isSafeInteger(amountDue) || amountDue < 1) {
+  if (!Number.isSafeInteger(amountDue) || amountDue < (cod ? 0 : 1)) {
     throw new PaymentValidationError('Tổng tiền thanh toán phải lớn hơn 0.');
   }
 
@@ -597,6 +600,7 @@ async function calculateOrderQuote(order, userId, session, now = new Date()) {
     voucherReservation,
     ...(voucherReservations.length > 1 ? { voucherReservations } : {}),
     amountDue,
+    ...(cod ? { voucherDiscounts } : {}),
     now
   };
 }

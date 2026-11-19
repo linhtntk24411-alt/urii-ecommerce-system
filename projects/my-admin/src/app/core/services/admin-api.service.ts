@@ -140,6 +140,7 @@ export interface AdminBlog {
 }
 
 export interface AdminComment {
+  _id?: string;
   id: number;
   blogId: number;
   author: string;
@@ -865,6 +866,13 @@ export class AdminApiService {
       .pipe(timeout(15000));
   }
 
+  getCommentById(id: string): Observable<AdminComment> {
+    return this.http.get<AdminComment>(
+      `${this.baseUrl}/comments/${encodeURIComponent(id)}`,
+      { headers: this.getAuthHeaders() }
+    ).pipe(timeout(15000));
+  }
+
   replyToComment(id: string | number, content: string): Observable<any> {
     return this.http.post(
       `${this.baseUrl}/comments/${encodeURIComponent(String(id))}/replies`,
@@ -965,6 +973,13 @@ export class AdminApiService {
   }
 
   // --- 6. QUẢN LÝ ĐÆ N HÀNG ---
+
+  getOrderById(id: string): Observable<any> {
+    return this.http.get(
+      this.baseUrl + '/orders/' + encodeURIComponent(id),
+      { headers: this.getAuthHeaders() }
+    ).pipe(timeout(15000));
+  }
 
   public getOrders(): Observable<any> {
     let authToken = this.currentAuthToken || this.token() || '';

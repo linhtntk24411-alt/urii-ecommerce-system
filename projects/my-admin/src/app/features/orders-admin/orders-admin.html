@@ -1,6 +1,6 @@
 <div class="orders-container">
-    @if (orderLoadError) {
-        <div class="alert alert-warning" role="alert">{{ orderLoadError }}</div>
+    @if (orderLoadError || orderTargetError) {
+        <div class="alert alert-warning" role="alert">{{ orderLoadError }} {{ orderTargetError }}</div>
     }
 
     <!-- Stats Cards -->

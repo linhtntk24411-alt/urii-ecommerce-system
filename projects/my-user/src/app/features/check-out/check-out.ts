@@ -83,6 +83,7 @@ export class CheckOut implements OnInit, OnDestroy {
   profileLoading = false;
   loadingVouchers = false;
   submitting = false;
+  private codCheckoutAttempt?: { fingerprint: string; key: string };
   errorMessage = '';
   voucherError = '';
   voucherLoadError = '';
@@ -881,10 +882,19 @@ export class CheckOut implements OnInit, OnDestroy {
       },
     };
 
+    if (!isBankTransfer && payload.voucher) {
+      const fingerprint = JSON.stringify({ ...payload, date: undefined });
+      if (this.codCheckoutAttempt?.fingerprint !== fingerprint) {
+        const key = Array.from(crypto.getRandomValues(new Uint8Array(18)), byte => byte.toString(16).padStart(2, '0')).join('');
+        this.codCheckoutAttempt = { fingerprint, key };
+      }
+      payload.codCheckoutKey = this.codCheckoutAttempt.key;
+    }
     this.submitting = true;
     this.checkout.createOrder(payload, token).subscribe({
       next: (response: unknown) => {
         this.submitting = false;
+        this.codCheckoutAttempt = undefined;
         const createdOrderId = this.readOrderNumber(response);
         this.orderNumber = createdOrderId;
         if (this.selection.shouldRemoveFromCartAfterCheckout()) {

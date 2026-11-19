@@ -1,5 +1,6 @@
-﻿import { ChangeDetectorRef, Component, OnInit, HostListener, inject } from '@angular/core';
+﻿import { afterNextRender, ChangeDetectorRef, Component, Injector, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -46,6 +47,16 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   orderLoadError = '';
   private orderDataSubscription?: Subscription;
   private pendingSearchId: string | null = null;
+  private readonly injector = inject(Injector);
+  private newOrderNavigation = false;
+  private orderNavigationVersion = 0;
+  private orderListLoading = false;
+  private targetLookup?: Subscription;
+  private resolvingOrderTarget = false;
+  private notificationOrder?: any;
+  private orderProducts: any[] = [];
+  private restoreOrderHighlight?: () => void;
+  orderTargetError = '';
   requestTab: 'cancel' | 'return' = 'cancel';
   returnRequests: any[] = [];
   returnTotal = 0;
@@ -138,12 +149,22 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.orderListLoading = true;
     this.liveSubscriptions.add(this.route.queryParamMap.subscribe(params => {
+      ++this.orderNavigationVersion;
+      this.targetLookup?.unsubscribe();
+      this.resolvingOrderTarget = false;
+      this.orderTargetError = '';
+      this.newOrderNavigation = params.has('notificationClick');
       this.pendingSearchId = params.get('searchType') === 'order'
         ? params.get('searchId')
         : null;
+      if (!this.newOrderNavigation || !this.pendingSearchId ||
+          (this.notificationOrder?.id !== this.pendingSearchId && String(this.notificationOrder?._id) !== this.pendingSearchId)) {
+        this.notificationOrder = undefined;
+      }
       this.applySearchTarget();
-      if (this.pendingSearchId) this.locateReturnRequest(this.pendingSearchId);
+      if (this.pendingSearchId && !this.newOrderNavigation) this.locateReturnRequest(this.pendingSearchId);
     }));
     this.loadCustomerAvatars();
     this.loadOrders();
@@ -157,6 +178,8 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.liveSubscriptions.unsubscribe();
     this.orderDataSubscription?.unsubscribe();
+    this.targetLookup?.unsubscribe();
+    this.restoreOrderHighlight?.();
     this.returnSubscription?.unsubscribe();
     this.returnDetailSubscription?.unsubscribe();
   }
@@ -166,12 +189,17 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   }
 
   private applySearchTarget(): void {
-    const id = this.pendingSearchId;
-    if (!id) return;
+    const searchId = this.pendingSearchId;
+    if (!searchId || this.resolvingOrderTarget) return;
 
-    const order = this.originalOrders.find(item => String(item.id) === id);
-    if (!order) return;
-    if (order.returnStatusId) {
+    const order = this.originalOrders.find(item => String(item.id) === searchId
+      || (this.newOrderNavigation && String(item._id) === searchId));
+    if (!order) {
+      if (this.newOrderNavigation && !this.orderListLoading) this.loadOrderSearchTarget(searchId);
+      return;
+    }
+    const id = String(order.id);
+    if (order.returnStatusId && !this.newOrderNavigation) {
       this.pendingSearchId = null;
       this.locateReturnRequest(id);
       return;
@@ -198,37 +226,88 @@ export class OrdersAdmin implements OnInit, OnDestroy {
       this.currentPage = Math.floor(index / this.ITEMS_PER_PAGE) + 1;
     }
 
+    if (!this.newOrderNavigation) {
+      this.pendingSearchId = null;
+      this.scrollToSearchTarget(this.searchTargetId(id));
+      return;
+    }
+
+    this.resolvingOrderTarget = true;
+    const version = this.orderNavigationVersion;
+    afterNextRender(() => {
+      if (version !== this.orderNavigationVersion) return;
+      const row = document.getElementById(this.searchTargetId(id));
+      if (row instanceof HTMLTableRowElement) this.highlightOrderRow(row);
+      this.finishOrderTarget(row instanceof HTMLTableRowElement ? '' : 'Không thể định vị đơn hàng trên bảng. Vui lòng thử lại.');
+    }, { injector: this.injector });
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private loadOrderSearchTarget(id: string): void {
+    this.resolvingOrderTarget = true;
+    const version = this.orderNavigationVersion;
+    this.targetLookup = this.adminApi.getOrderById(id).subscribe({
+      next: item => {
+        if (version !== this.orderNavigationVersion) return;
+        if (!item || (String(item.id) !== id && String(item._id) !== id)) {
+          this.finishOrderTarget('Máy chủ trả về đơn hàng không khớp với thông báo.');
+          return;
+        }
+        const order = this.normalizeRegularOrder(item, this.orderProducts);
+        this.notificationOrder = order;
+        if (!this.originalOrders.some(current => current.id === order.id)) this.originalOrders = [...this.originalOrders, order];
+        this.resolvingOrderTarget = false;
+        this.applySearchTarget();
+      },
+      error: (error: unknown) => {
+        if (version !== this.orderNavigationVersion) return;
+        this.finishOrderTarget(error instanceof HttpErrorResponse && error.status === 404
+          ? 'Đơn hàng không còn tồn tại hoặc đã bị xóa.' : 'Không thể tải đơn hàng từ thông báo. Vui lòng thử lại.');
+      }
+    });
+  }
+
+  private finishOrderTarget(error: string): void {
     this.pendingSearchId = null;
-    this.scrollToSearchTarget(this.searchTargetId(id));
+    this.resolvingOrderTarget = false;
+    this.orderTargetError = error;
+    this.changeDetectorRef.markForCheck();
   }
 
   private scrollToSearchTarget(elementId: string): void {
     if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
     requestAnimationFrame(() => {
       const row = document.getElementById(elementId);
-      if (!(row instanceof HTMLTableRowElement)) return;
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const cells = Array.from(row.cells);
-      const originalStyles = cells.map(cell => ({
-        backgroundColor: cell.style.getPropertyValue('background-color'),
-        backgroundPriority: cell.style.getPropertyPriority('background-color')
-      }));
-
-      cells.forEach(cell => {
-        cell.style.setProperty('background-color', '#fffbea', 'important');
-      });
-
-      window.setTimeout(() => {
-        cells.forEach((cell, index) => {
-          const original = originalStyles[index];
-          if (original.backgroundColor) {
-            cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
-          } else {
-            cell.style.removeProperty('background-color');
-          }
-        });
-      }, 3000);
+      if (row instanceof HTMLTableRowElement) this.highlightOrderRow(row);
     });
+  }
+
+  private highlightOrderRow(row: HTMLTableRowElement): void {
+    this.restoreOrderHighlight?.();
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const cells = Array.from(row.cells);
+    const originalStyles = cells.map(cell => ({
+      backgroundColor: cell.style.getPropertyValue('background-color'),
+      backgroundPriority: cell.style.getPropertyPriority('background-color')
+    }));
+
+    cells.forEach(cell => {
+      cell.style.setProperty('background-color', '#fffbea', 'important');
+    });
+
+    const timer = window.setTimeout(() => this.restoreOrderHighlight?.(), 3000);
+    this.restoreOrderHighlight = () => {
+      window.clearTimeout(timer);
+      this.restoreOrderHighlight = undefined;
+      cells.forEach((cell, index) => {
+        const original = originalStyles[index];
+        if (original.backgroundColor) {
+          cell.style.setProperty('background-color', original.backgroundColor, original.backgroundPriority);
+        } else {
+          cell.style.removeProperty('background-color');
+        }
+      });
+    };
   }
 
   // --- Computed Lists ---
@@ -303,6 +382,7 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   // --- Logic Load Data ---
  loadOrders() {
     this.orderLoadError = '';
+    this.orderListLoading = true;
     this.orderDataSubscription?.unsubscribe();
     this.orderDataSubscription = combineLatest({
       response: this.adminApi.getOrders(),
@@ -310,6 +390,8 @@ export class OrdersAdmin implements OnInit, OnDestroy {
       products: this.adminApi.products$
     }).subscribe({
       next: ({ response, customResponse, products }) => {
+        this.orderListLoading = false;
+        this.orderProducts = products;
         const orderList = Array.isArray(response)
           ? response
           : Array.isArray(response?.orders)
@@ -317,6 +399,7 @@ export class OrdersAdmin implements OnInit, OnDestroy {
             : null;
         if (!orderList) {
           console.error('API đơn hàng trả về dữ liệu không hợp lệ:', response);
+          this.applySearchTarget();
           return;
         }
 
@@ -328,98 +411,26 @@ export class OrdersAdmin implements OnInit, OnDestroy {
         if (!customOrderList) {
           this.orderLoadError = 'Máy chủ trả về danh sách đơn hàng custom không hợp lệ.';
           console.error('API đơn hàng custom trả về dữ liệu không hợp lệ:', customResponse);
+          this.applySearchTarget();
           return;
         }
 
-        const regularOrders = orderList.map((item: any) => {
-          const orderItems = Array.isArray(item.items)
-            ? item.items.map((orderItem: any) => this.normalizeOrderItem(orderItem, products))
-            : [];
-          const name = item.userName || item.address?.name || 'Khách hàng';
-          const customerImage = item.customerImage
-            || item.userAvatar
-            || this.customerAvatars.get(this.normalizeCustomerName(name))
-            || 'images/avatar-non.jpg';
+        const regularOrders = orderList.map((item: any) => this.normalizeRegularOrder(item, products));
 
-          const rawStatus = String(item.statusType || item.status || '')
-            .trim()
-            .toLowerCase();
-          const rawCancellationStatus = String(
-            item.cancellationStatusId || item.cancellationStatus || ''
-          ).trim().toLowerCase();
-
-          const statusAliases: { [key: string]: string } = {
-            'pending': 'pending',
-            'chờ xác nhận': 'pending',
-            'approved': 'approved',
-            'đã xác nhận': 'approved',
-            'completed': 'completed',
-            'hoàn thành': 'completed',
-            'cancelled': 'cancelled',
-            'canceled': 'cancelled',
-            'đã hủy': 'cancelled',
-            'quoted': 'approved',
-            'đã báo giá': 'approved',
-            'pending_approval': 'pending_approval',
-            'chờ duyệt': 'pending_approval',
-            'waiting_quote': 'waiting_quote',
-            'chờ báo giá': 'waiting_quote',
-            'processing': 'processing',
-            'đang gia công': 'processing',
-            'chờ lấy hàng': 'processing',
-            'shipping': 'shipping',
-            'đang giao': 'shipping',
-            'chờ giao hàng': 'shipping',
-            'đã giao': 'completed',
-            'returned': 'returned',
-            'trả hàng': 'returned',
-            'return_requested': 'return_requested'
-          };
-          const cancellationStatusAliases: { [key: string]: string } = {
-            pending_approval: 'pending_approval',
-            'chờ duyệt': 'pending_approval',
-            'chờ shop xác nhận': 'pending_approval',
-            approved: 'approved',
-            rejected: 'rejected'
-          };
-          const cancellationStatus =
-            cancellationStatusAliases[rawCancellationStatus] || rawCancellationStatus;
-          const cancellationRequestDate = item.cancellationRequestedAt
-            ? new Date(item.cancellationRequestedAt)
-            : null;
-
-          return {
-            ...item,
-            id: String(item.id || item._id || ''),
-            customerName: name,
-            customerImage,
-            customerAvatar: name.length >= 2
-              ? name.substring(0, 2).toUpperCase()
-              : 'KH',
-            phone: item.phone || item.address?.phone || '',
-            address: item.address?.address || item.address || '',
-            total: this.getOrderTotal(item, orderItems),
-            items: orderItems,
-            product: item.product || orderItems.map((orderItem: any) =>
-              `${orderItem.name}${orderItem.variantName ? ` - ${orderItem.variantName}` : ''} (x${orderItem.quantity ?? 1})`
-            ).join(', ') || '',
-            reason: item.cancellationReason || item.reason || '',
-            cancellationNote: item.cancellationNote || '',
-            cancellationDate: cancellationRequestDate && !Number.isNaN(cancellationRequestDate.getTime())
-              ? cancellationRequestDate.toLocaleDateString('vi-VN')
-              : '',
-            date: item.date || '',
-            status: cancellationStatus === 'pending_approval'
-              ? 'pending_approval'
-              : statusAliases[rawStatus] || 'pending'
-          };
-        });
-
+        if (this.notificationOrder && !regularOrders.some((item: any) => item.id === this.notificationOrder.id)) {
+          regularOrders.push(this.notificationOrder);
+        }
         this.originalOrders = [
           ...regularOrders,
           ...customOrderList.map((item: any) => this.normalizeCustomOrder(item))
         ];
-        this.orders = [...this.originalOrders];
+        if (!this.newOrderNavigation) {
+          this.orders = [...this.originalOrders];
+        } else if (!this.resolvingOrderTarget) {
+          const previousPage = this.currentPage;
+          this.applyFilters();
+          this.currentPage = Math.min(previousPage, Math.max(1, Math.ceil(this.regularOrders.length / this.ITEMS_PER_PAGE)));
+        }
         if (this.selectedOrder?.isCustomOrder && typeof document !== 'undefined' && document.getElementById('customFormModal')?.classList.contains('show')) {
           const latest = this.originalOrders.find(item => item.isCustomOrder && item.id === this.selectedOrder.id);
           if (latest) this.selectedOrder = latest;
@@ -428,15 +439,103 @@ export class OrdersAdmin implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
       },
       error: (err: any) => {
+        this.orderListLoading = false;
         console.error('Lỗi tải đơn hàng:', err);
         this.orderLoadError = err.status === 401 || err.status === 403
           ? 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại để xem đơn hàng.'
           : 'Không thể tải đơn hàng. Vui lòng thử lại sau.';
-        this.originalOrders = [];
-        this.orders = [];
+        if (!this.newOrderNavigation) {
+          this.originalOrders = [];
+          this.orders = [];
+        }
+        this.applySearchTarget();
         this.changeDetectorRef.markForCheck();
       }
     });
+  }
+
+  private normalizeRegularOrder(item: any, products: any[]): any {
+    const orderItems = Array.isArray(item.items)
+      ? item.items.map((orderItem: any) => this.normalizeOrderItem(orderItem, products))
+      : [];
+    const name = item.userName || item.address?.name || 'Khách hàng';
+    const customerImage = item.customerImage
+      || item.userAvatar
+      || this.customerAvatars.get(this.normalizeCustomerName(name))
+      || 'images/avatar-non.jpg';
+
+    const rawStatus = String(item.statusType || item.status || '')
+      .trim()
+      .toLowerCase();
+    const rawCancellationStatus = String(
+      item.cancellationStatusId || item.cancellationStatus || ''
+    ).trim().toLowerCase();
+
+    const statusAliases: { [key: string]: string } = {
+      'pending': 'pending',
+      'chờ xác nhận': 'pending',
+      'approved': 'approved',
+      'đã xác nhận': 'approved',
+      'completed': 'completed',
+      'hoàn thành': 'completed',
+      'cancelled': 'cancelled',
+      'canceled': 'cancelled',
+      'đã hủy': 'cancelled',
+      'quoted': 'approved',
+      'đã báo giá': 'approved',
+      'pending_approval': 'pending_approval',
+      'chờ duyệt': 'pending_approval',
+      'waiting_quote': 'waiting_quote',
+      'chờ báo giá': 'waiting_quote',
+      'processing': 'processing',
+      'đang gia công': 'processing',
+      'chờ lấy hàng': 'processing',
+      'shipping': 'shipping',
+      'đang giao': 'shipping',
+      'chờ giao hàng': 'shipping',
+      'đã giao': 'completed',
+      'returned': 'returned',
+      'trả hàng': 'returned',
+      'return_requested': 'return_requested'
+    };
+    const cancellationStatusAliases: { [key: string]: string } = {
+      pending_approval: 'pending_approval',
+      'chờ duyệt': 'pending_approval',
+      'chờ shop xác nhận': 'pending_approval',
+      approved: 'approved',
+      rejected: 'rejected'
+    };
+    const cancellationStatus =
+      cancellationStatusAliases[rawCancellationStatus] || rawCancellationStatus;
+    const cancellationRequestDate = item.cancellationRequestedAt
+      ? new Date(item.cancellationRequestedAt)
+      : null;
+
+    return {
+      ...item,
+      id: String(item.id || item._id || ''),
+      customerName: name,
+      customerImage,
+      customerAvatar: name.length >= 2
+        ? name.substring(0, 2).toUpperCase()
+        : 'KH',
+      phone: item.phone || item.address?.phone || '',
+      address: item.address?.address || item.address || '',
+      total: this.getOrderTotal(item, orderItems),
+      items: orderItems,
+      product: item.product || orderItems.map((orderItem: any) =>
+        `${orderItem.name}${orderItem.variantName ? ` - ${orderItem.variantName}` : ''} (x${orderItem.quantity ?? 1})`
+      ).join(', ') || '',
+      reason: item.cancellationReason || item.reason || '',
+      cancellationNote: item.cancellationNote || '',
+      cancellationDate: cancellationRequestDate && !Number.isNaN(cancellationRequestDate.getTime())
+        ? cancellationRequestDate.toLocaleDateString('vi-VN')
+        : '',
+      date: item.date || '',
+      status: cancellationStatus === 'pending_approval'
+        ? 'pending_approval'
+        : statusAliases[rawStatus] || 'pending'
+    };
   }
 
   private normalizeOrderItem(orderItem: any, products: any[]): any {

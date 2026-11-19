@@ -121,6 +121,17 @@ const orderSchema = new mongoose.Schema({
     variantIndex: { type: Number, min: 0, validate: (value) => value === null || Number.isInteger(value) },
     variantName: String
   }],
+  codCheckoutKey: { type: String, unique: true, sparse: true, select: false },
+  codVoucherUsage: {
+    type: new mongoose.Schema({
+      refundable: Boolean,
+      entries: [{
+        _id: false, voucherId: String, userVoucherId: mongoose.Schema.Types.ObjectId,
+        voucherDocumentId: mongoose.Schema.Types.ObjectId
+      }]
+    }, { _id: false }),
+    select: false
+  },
   voucher: { voucherId: String, discountAmount: Number },
   vouchers: {
     type: [{

@@ -50,6 +50,7 @@ export class MyVouchers implements OnInit {
   showResultModal = false;
 
   isClaiming = false;
+  claimedCheckedCode: string | null = null;
   isClaimingAll = false;
   copiedCode: string | null = null;
 
@@ -121,6 +122,7 @@ export class MyVouchers implements OnInit {
   }
 
   checkVoucherCode(): void {
+    if (this.isChecking || this.isClaiming) return;
     const code = this.inputVoucherCode.trim().toUpperCase();
     if (!code) {
       this.toast.show('Vui lòng nhập mã voucher cần kiểm tra.', 'error');
@@ -167,14 +169,21 @@ export class MyVouchers implements OnInit {
     this.changeDetectorRef.markForCheck();
   }
 
-  claimInputCode(): void {
+  get checkedOwnedVoucher(): UserVoucherItem | undefined {
+    const code = this.checkResult?.voucher?.code.toUpperCase();
+    if (!code) return undefined;
+    return this.vouchers.find(item => (item.voucher?.code || item.code).toUpperCase() === code);
+  }
+
+  claimInputCode(input = this.inputVoucherCode): void {
+    if (this.isClaiming) return;
     const token = this.getToken();
     if (!token) {
       this.requiresLogin = true;
       return;
     }
 
-    const code = this.inputVoucherCode.trim().toUpperCase();
+    const code = input.trim().toUpperCase();
     if (!code) {
       this.toast.show('Vui lòng nhập mã khuyến mãi.', 'error');
       return;
@@ -184,6 +193,7 @@ export class MyVouchers implements OnInit {
     this.voucherService.claimVoucher(code, token).subscribe({
       next: (res) => {
         this.isClaiming = false;
+        this.claimedCheckedCode = code;
         this.inputVoucherCode = '';
         this.toast.show(
           res.message || `Đã thêm mã "${code}" vào kho voucher của bạn!`,

@@ -362,10 +362,20 @@
             </div>
 
             <div class="voucher-modal-actions">
-              <button type="button" class="btn-action-primary" (click)="useVoucher(v)">
-                <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
-                Dùng ngay khi đặt hàng
-              </button>
+              @let owned = checkedOwnedVoucher;
+              @if (owned || claimedCheckedCode === v.code.toUpperCase()) {
+                <button type="button" class="btn-action-primary"
+                  [disabled]="!!owned && (getStatus(owned) !== 'available' || !!owned.reservedByPaymentId)"
+                  (click)="useVoucher(owned || v)">
+                  <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+                  {{ owned && (getStatus(owned) !== 'available' || owned.reservedByPaymentId) ? 'Đã có trong kho' : 'Dùng ngay khi đặt hàng' }}
+                </button>
+              } @else {
+                <button type="button" class="btn-action-primary" [disabled]="isClaiming" (click)="claimInputCode(v.code)">
+                  <span class="material-symbols-outlined" aria-hidden="true">confirmation_number</span>
+                  {{ isClaiming ? 'Đang nhận…' : 'Nhận mã' }}
+                </button>
+              }
               <button type="button" class="btn-action-secondary" (click)="closeResultModal()">
                 Đóng
               </button>

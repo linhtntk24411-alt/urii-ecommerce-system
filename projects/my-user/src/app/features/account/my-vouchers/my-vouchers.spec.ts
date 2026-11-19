@@ -165,9 +165,20 @@ describe('MyVouchers', () => {
     expect(component.checkResult?.reason).toBe('NOT_FOUND');
   });
 
-  it('claims a voucher when input code submitted', () => {
-    component.inputVoucherCode = 'SALE15';
-    component.claimInputCode();
+  it('claims the checked code from the result dialog and switches to the use action', () => {
+    component.inputVoucherCode = 'another-code';
+    component.checkResult = {
+      valid: true,
+      code: 'SALE15',
+      message: 'Mã hợp lệ',
+      voucher: { id: 'SALE15', code: 'SALE15', name: 'Sale 15%', discountValue: 15, type: 'percent' },
+    };
+    component.showResultModal = true;
+    fixture.detectChanges();
+    const action: HTMLButtonElement = fixture.nativeElement.querySelector('.voucher-modal-actions .btn-action-primary');
+    expect(action.textContent).toContain('Nhận mã');
+    action.click();
+    component.claimInputCode('SALE15');
 
     const claimReq = httpTestingController.expectOne('/api/user-vouchers/claim');
     expect(claimReq.request.method).toBe('POST');
@@ -187,6 +198,9 @@ describe('MyVouchers', () => {
     const availRefresh = httpTestingController.expectOne('/api/user-vouchers/available');
     availRefresh.flush({ isLoggedIn: true, totalActive: 4, claimedCount: 3, vouchers: [] });
 
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.voucher-modal-actions .btn-action-primary').textContent)
+      .toContain('Dùng ngay khi đặt hàng');
     expect(component.inputVoucherCode).toBe('');
     expect(component.vouchers).toHaveLength(3);
   });

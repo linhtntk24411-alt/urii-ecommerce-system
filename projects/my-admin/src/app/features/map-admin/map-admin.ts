@@ -51,6 +51,9 @@ export class MapAdmin implements OnInit {
 
   Math = Math;
   maps: any[] = [];
+  searchQuery: string = '';
+  filterDifficulty: string = '';
+  filterSort: string = '';
   isLoading = false;
   mapLoadError = '';
   currentPage = 1;
@@ -169,18 +172,48 @@ export class MapAdmin implements OnInit {
     return [];
   }
 
+  get filteredMaps(): any[] {
+    const q = this.searchQuery.trim().toLowerCase();
+    const diff = this.filterDifficulty.normalize('NFC').trim().toLocaleLowerCase('vi-VN');
+    let list = this.maps.filter(m => {
+      const matchSearch = !q ||
+        String(m.map_name || '').toLowerCase().includes(q) ||
+        String(m.map_id || '').toLowerCase().includes(q) ||
+        String(m.author || '').toLowerCase().includes(q) ||
+        String(m.grid_size || '').toLowerCase().includes(q) ||
+        String(m.description || '').toLowerCase().includes(q);
+      const mapDiff = String(m.difficulty || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('vi-VN');
+      const matchDifficulty = !diff || mapDiff === diff;
+      return matchSearch && matchDifficulty;
+    });
+
+    if (this.filterSort === 'beads-asc') {
+      list = [...list].sort((a, b) => (Number(a.total_beads) || 0) - (Number(b.total_beads) || 0));
+    } else if (this.filterSort === 'beads-desc') {
+      list = [...list].sort((a, b) => (Number(b.total_beads) || 0) - (Number(a.total_beads) || 0));
+    } else if (this.filterSort === 'name-asc') {
+      list = [...list].sort((a, b) => String(a.map_name || '').localeCompare(String(b.map_name || ''), 'vi'));
+    }
+    return list;
+  }
+
+  applyFilters(): void {
+    this.currentPage = 1;
+  }
+
   get pagedMaps() {
     const start = (this.currentPage - 1) * this.ITEMS_PER_PAGE;
-    return this.maps.slice(start, start + this.ITEMS_PER_PAGE);
+    return this.filteredMaps.slice(start, start + this.ITEMS_PER_PAGE);
   }
 
   getPageArray(): number[] {
-    const totalPages = Math.ceil(this.maps.length / this.ITEMS_PER_PAGE) || 1;
+    const totalPages = Math.ceil(this.filteredMaps.length / this.ITEMS_PER_PAGE) || 1;
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
   changePage(page: number) {
-    if (page >= 1 && page <= Math.ceil(this.maps.length / this.ITEMS_PER_PAGE)) {
+    const totalPages = Math.ceil(this.filteredMaps.length / this.ITEMS_PER_PAGE) || 1;
+    if (page >= 1 && page <= totalPages) {
       this.currentPage = page;
     }
   }
@@ -193,7 +226,11 @@ export class MapAdmin implements OnInit {
     const id = this.pendingSearchId;
     if (!id) return;
 
-    const index = this.maps.findIndex(map =>
+    this.searchQuery = '';
+    this.filterDifficulty = '';
+    this.filterSort = '';
+
+    const index = this.filteredMaps.findIndex(map =>
       String(map.map_id || map.id || map._id || '') === id
     );
     if (index < 0) return;

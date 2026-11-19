@@ -129,14 +129,82 @@
 .table-orders tbody tr:hover { background-color: #f8f9ff; }
 .table-orders-custom tbody tr:hover { background-color: #fff8e1; }
 
-.order-id { font-weight: 700; color: #dc3545; }
+.order-id { font-weight: 700; color: #dc3545; white-space: nowrap; }
 .customer-info { display: flex; align-items: center; gap: 12px; }
 .customer-avatar {
     width: 44px; height: 44px; border-radius: 50%;
     background-color: #e9ecef; display: block; object-fit: cover; flex: 0 0 44px;
 }
-.customer-name { font-weight: 600; color: #333; }
-.order-total { font-weight: 700; color: #333; }
+.customer-name { font-weight: 600; color: #333; white-space: nowrap; }
+.order-total { font-weight: 700; color: #333; white-space: nowrap; }
+
+.table-orders th:not(.col-order-products),
+.table-orders td:not(.order-products-cell) {
+    white-space: nowrap;
+}
+
+.col-order-products,
+.order-products-cell {
+    width: 42%;
+    min-width: 380px;
+}
+
+.order-product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.order-product-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #eef0f2;
+    border-radius: 6px;
+    line-height: 1.35;
+}
+
+.order-product-name {
+    font-weight: 500;
+    color: #212529;
+}
+
+.order-product-variant {
+    font-size: 12px;
+    color: #6c757d;
+    background-color: #e9ecef;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.order-product-qty {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    color: #dc3545;
+    background-color: #fff0f1;
+    padding: 1px 7px;
+    border-radius: 999px;
+}
+
+.order-detail-product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.order-detail-product-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #eef0f2;
+    border-radius: 8px;
+}
 
 /* =========================================
    Action Buttons

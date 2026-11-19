@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common'; // Import để dùng *ngIf, *ngFor
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AdminApiService } from '../core/services/admin-api.service';
@@ -30,7 +30,8 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     private adminApi: AdminApiService,
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: object,
-    private adminRealtime: AdminRealtimeService
+    private adminRealtime: AdminRealtimeService,
+    private cdr: ChangeDetectorRef
   ) {}
   ngOnInit(): void {
     this.loadNotifications();
@@ -97,9 +98,6 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
       },
       error: err => console.error('Lỗi tải mẫu bản đồ:', err)
     });
-
-    // Tải thông báo ngay khi vào trang để hiển thị badge số lượng thông báo
-    this.loadNotifications();
 
     if (isPlatformBrowser(this.platformId)) {
       this.notificationPollInterval = setInterval(() => {
@@ -209,6 +207,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
             this.notifications = [];
             this.unreadCount = 0;
           }
+          this.cdr.markForCheck();
           return;
         }
 
@@ -224,6 +223,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
         this.unreadCount = response?.unreadCount !== undefined
           ? Number(response.unreadCount)
           : this.notifications.filter(notification => !notification.isRead).length;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         if (version !== this.notificationRequestVersion) return;
@@ -234,6 +234,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
           this.notifications = [];
           this.unreadCount = 0;
         }
+        this.cdr.markForCheck();
       }
     });
   }
@@ -386,12 +387,14 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
           }
           notif.isRead = true;
           this.notificationLoadError = '';
+          this.cdr.markForCheck();
           this.loadNotifications(true);
         },
         error: () => {
           this.pendingNotificationReads.delete(notifId);
           ++this.notificationRequestVersion;
           this.notificationLoadError = 'Không thể đánh dấu thông báo đã đọc. Vui lòng thử lại.';
+          this.cdr.markForCheck();
           this.loadNotifications(true);
         }
       });
@@ -421,6 +424,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
         this.isMarkingNotificationsRead = false;
         ++this.notificationRequestVersion;
         this.notificationLoadError = '';
+        this.cdr.markForCheck();
         this.loadNotifications(true);
       },
       error: (error) => {
@@ -428,6 +432,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
         this.notificationLoadError = 'Không thể đánh dấu đã đọc thông báo. Vui lòng thử lại.';
         this.isMarkingNotificationsRead = false;
         ++this.notificationRequestVersion;
+        this.cdr.markForCheck();
         this.loadNotifications(true);
       }
     });

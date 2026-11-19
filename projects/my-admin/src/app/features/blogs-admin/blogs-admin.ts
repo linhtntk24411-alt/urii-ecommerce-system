@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -39,23 +39,38 @@ export class BlogsAdmin implements OnInit {
   ITEMS_PER_PAGE: number = 4;
 
   // Bộ lọc
+  searchQuery: string = '';
   selectedStatus: string = '';
   selectedAuthor: string = '';
 
-  // Form tạo bài viết mới
+  // Form tạo / chỉnh sửa bài viết
+  editingBlogId: number | string | null = null;
   newTitle: string = '';
   newAuthor: string = '';
   newContent: string = '';
+  newStatus: BlogStatus = 'approved';
   previewThumbnail: string | null = null;
   savingBlog = false;
   createError = '';
   createSuccess = '';
+  activeDropdownId: string | null = null;
   private selectedImage: File | null = null;
   private uploadedImage: string | null = null;
   private imageError = '';
   private createSlug = '';
   // Biến lưu thông tin bài viết đang xem chi tiết
   selectedBlog: BlogAdminItem | null = null;
+
+  toggleDropdown(id: number | string | undefined, event: Event): void {
+    event.stopPropagation();
+    const key = String(id ?? '');
+    this.activeDropdownId = this.activeDropdownId === key ? null : key;
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.activeDropdownId = null;
+  }
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -140,10 +155,17 @@ export class BlogsAdmin implements OnInit {
   }
 
   get filteredBlogs(): BlogAdminItem[] {
+    const q = this.searchQuery.trim().toLowerCase();
     return this.blogs.filter(b => {
+      const matchSearch = !q ||
+        String(b.title || '').toLowerCase().includes(q) ||
+        String(b.author?.name || '').toLowerCase().includes(q) ||
+        String(b.content || '').toLowerCase().includes(q) ||
+        String(b.excerpt || '').toLowerCase().includes(q) ||
+        String(b.category || '').toLowerCase().includes(q);
       const matchStatus = this.selectedStatus === '' || b.status === this.selectedStatus;
       const matchAuthor = this.selectedAuthor === '' || b.author.name === this.selectedAuthor;
-      return matchStatus && matchAuthor;
+      return matchSearch && matchStatus && matchAuthor;
     });
   }
 
@@ -185,6 +207,7 @@ export class BlogsAdmin implements OnInit {
     const id = this.pendingSearchId;
     if (!id) return;
 
+    this.searchQuery = '';
     this.selectedStatus = '';
     this.selectedAuthor = '';
 
@@ -237,35 +260,22 @@ export class BlogsAdmin implements OnInit {
   }
 
   // Duyệt bài viết
-  approveBlog(id: number | string): void {
-    const blog = this.blogs.find(b => b.id === id || b._id === id);
-    if (blog) {
-      blog.status = 'approved';
-      const targetId = blog._id || blog.id;
-      this.adminApiService.updateBlog(targetId, { status: 'approved' })
-        .then(() => this.loadBlogsFromCloud())
-        .catch(err => console.error('Lỗi duyệt blog qua API:', err));
-      this.cdr.detectChanges();
-    }
+  approveBlog(id: number | string | undefined): void {
+    if (id === undefined) return;
+    this.changeStatus(id, 'approved');
   }
 
   // Từ chối / Vi phạm bài viết
-  rejectBlog(id: number | string): void {
-    const blog = this.blogs.find(b => b.id === id || b._id === id);
-    if (blog) {
-      blog.status = 'violated';
-      const targetId = blog._id || blog.id;
-      this.adminApiService.updateBlog(targetId, { status: 'violated' })
-        .then(() => this.loadBlogsFromCloud())
-        .catch(err => console.error('Lỗi từ chối blog qua API:', err));
-      this.cdr.detectChanges();
-    }
+  rejectBlog(id: number | string | undefined): void {
+    if (id === undefined) return;
+    this.changeStatus(id, 'violated');
   }
 
   // Xóa bài viết
-  deleteBlog(id: number | string): void {
-    const blog = this.blogs.find(item => item.id === id || item._id === id);
-    this.deletingBlogId = id;
+  deleteBlog(id: number | string | undefined): void {
+    if (id === undefined) return;
+    const blog = this.blogs.find(item => String(item.id) === String(id) || String(item._id) === String(id));
+    this.deletingBlogId = blog?._id || blog?.id || id;
     this.deletingBlogTitle = blog?.title || 'bài viết này';
     this.showDeleteConfirm = true;
   }
@@ -281,32 +291,52 @@ export class BlogsAdmin implements OnInit {
     if (id === null) return;
 
     this.adminApiService.deleteBlog(id)
-      .then(() => this.loadBlogsFromCloud())
+      .then(() => {
+        this.createSuccess = 'Đã xóa bài viết thành công.';
+        return this.loadBlogsFromCloud();
+      })
       .catch(err => console.error('Lỗi xóa blog qua API:', err));
 
-    this.blogs = this.blogs.filter(blog => blog.id !== id && blog._id !== id);
+    this.blogs = this.blogs.filter(blog => String(blog.id) !== String(id) && String(blog._id) !== String(id));
     this.closeDeleteConfirm();
     this.cdr.detectChanges();
   }
 
   // Thay đổi trạng thái qua Dropdown
-  changeStatus(id: number | string, newStatus: BlogStatus): void {
-    const blog = this.blogs.find(b => b.id === id || b._id === id);
+  changeStatus(id: number | string | undefined, newStatus: BlogStatus): void {
+    if (id === undefined) return;
+    const blog = this.blogs.find(b => String(b.id) === String(id) || String(b._id) === String(id));
+    this.activeDropdownId = null;
     if (blog) {
       blog.status = newStatus;
+      if (this.selectedBlog && (String(this.selectedBlog.id) === String(id) || String(this.selectedBlog._id) === String(id))) {
+        this.selectedBlog.status = newStatus;
+      }
       const targetId = blog._id || blog.id;
-      this.adminApiService.updateBlog(targetId, { status: newStatus })
-        .then(() => this.loadBlogsFromCloud())
-        .catch(err => console.error('Lỗi cập nhật trạng thái blog qua API:', err));
+      this.adminApiService.updateBlog(targetId, { status: newStatus, approvalStatus: newStatus })
+        .then((updated) => {
+          if (updated) {
+            Object.assign(blog, this.toBlogAdminItem({ ...blog, ...updated, author: updated.author || blog.author.name, status: newStatus }));
+          }
+          this.createSuccess = 'Đã cập nhật trạng thái bài viết.';
+          this.cdr.detectChanges();
+        })
+        .catch(err => {
+          console.error('Lỗi cập nhật trạng thái blog qua API:', err);
+          this.blogsError = apiErrorMessage(err, 'Không thể cập nhật trạng thái bài viết.');
+          this.cdr.detectChanges();
+        });
       this.cdr.detectChanges();
     }
   }
 
   openCreateModal(): void {
     if (this.savingBlog) return;
+    this.editingBlogId = null;
     this.newTitle = '';
     this.newAuthor = '';
     this.newContent = '';
+    this.newStatus = 'approved';
     this.previewThumbnail = null;
     this.selectedImage = null;
     this.uploadedImage = null;
@@ -318,7 +348,35 @@ export class BlogsAdmin implements OnInit {
     if (input) input.value = '';
     const modalElement = document.getElementById('createBlogModal');
     if (modalElement) {
-      const modal = new bootstrap.Modal(modalElement);
+      const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+      modal.show();
+    }
+  }
+
+  openEditModal(blog: BlogAdminItem): void {
+    if (this.savingBlog) return;
+    this.activeDropdownId = null;
+    this.editingBlogId = blog._id || blog.id;
+    this.newTitle = blog.title || '';
+    this.newAuthor = blog.author?.name || '';
+    this.newContent = blog.content || blog.excerpt || '';
+    this.newStatus = blog.status || 'approved';
+    this.previewThumbnail = blog.thumbnail ? this.formatImagePath(blog.thumbnail) : null;
+    this.selectedImage = null;
+    this.uploadedImage = blog.thumbnail || blog.image || null;
+    this.imageError = '';
+    this.createError = '';
+    this.createSuccess = '';
+    this.createSlug = blog.slug || '';
+    const input = document.getElementById('blog-image-file') as HTMLInputElement | null;
+    if (input) input.value = '';
+    const detailModalEl = document.getElementById('blogDetailModal');
+    if (detailModalEl) {
+      bootstrap.Modal.getInstance(detailModalEl)?.hide();
+    }
+    const modalElement = document.getElementById('createBlogModal');
+    if (modalElement) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
       modal.show();
     }
   }
@@ -368,7 +426,7 @@ export class BlogsAdmin implements OnInit {
     }
   }
 
-  // Tạo bài viết mới
+  // Tạo hoặc cập nhật bài viết
   async submitNewBlog(): Promise<void> {
     if (this.savingBlog) return;
     this.createError = '';
@@ -381,35 +439,60 @@ export class BlogsAdmin implements OnInit {
       this.createError = this.imageError;
       return;
     }
-    const newBlog = {
-      title: this.newTitle.trim(),
-      slug: this.createSlug || (this.createSlug = `blog-${Date.now()}`),
-      date: new Date().toLocaleDateString('vi-VN'),
-      image: 'https://picsum.photos/seed/blog/100/100',
-      author: this.newAuthor.trim(),
-      avatar: 'https://i.pravatar.cc/150?u=1',
-      category: 'Mẹo vặt',
-      content: this.newContent.trim()
-    };
     this.savingBlog = true;
     let uploading = false;
     try {
+      let imagePath = this.uploadedImage || 'https://picsum.photos/seed/blog/100/100';
       if (this.selectedImage) {
         uploading = true;
-        this.uploadedImage ||= await firstValueFrom(this.adminApiService.uploadProductImage(this.selectedImage));
-        newBlog.image = this.uploadedImage;
+        this.uploadedImage = await firstValueFrom(this.adminApiService.uploadProductImage(this.selectedImage));
+        imagePath = this.uploadedImage;
         uploading = false;
       }
-      await this.adminApiService.createBlog(newBlog);
-      this.createSuccess = 'Đã tạo bài viết thành công.';
+
+      if (this.editingBlogId !== null) {
+        const updatePayload = {
+          title: this.newTitle.trim(),
+          author: this.newAuthor.trim(),
+          content: this.newContent.trim(),
+          image: imagePath,
+          thumbnail: imagePath,
+          status: this.newStatus,
+          approvalStatus: this.newStatus
+        };
+        await this.adminApiService.updateBlog(this.editingBlogId, updatePayload);
+        this.createSuccess = 'Đã cập nhật bài viết thành công.';
+      } else {
+        const newBlog = {
+          title: this.newTitle.trim(),
+          slug: this.createSlug || (this.createSlug = `blog-${Date.now()}`),
+          date: new Date().toLocaleDateString('vi-VN'),
+          image: imagePath,
+          thumbnail: imagePath,
+          author: this.newAuthor.trim(),
+          avatar: 'https://i.pravatar.cc/150?u=1',
+          category: 'Mẹo vặt',
+          content: this.newContent.trim(),
+          status: this.newStatus,
+          approvalStatus: this.newStatus
+        };
+        await this.adminApiService.createBlog(newBlog);
+        this.createSuccess = 'Đã tạo bài viết thành công.';
+      }
+
       const modalElement = document.getElementById('createBlogModal');
       if (modalElement) bootstrap.Modal.getInstance(modalElement)?.hide();
       await this.loadBlogsFromCloud();
     } catch (error) {
-      this.createError = apiErrorMessage(error, uploading ? 'Không thể tải ảnh lên.' : 'Không thể tạo bài viết.');
+      this.createError = apiErrorMessage(
+        error,
+        uploading
+          ? 'Không thể tải ảnh lên.'
+          : (this.editingBlogId !== null ? 'Không thể cập nhật bài viết.' : 'Không thể tạo bài viết.')
+      );
     } finally {
       this.savingBlog = false;
-      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }
   }
 

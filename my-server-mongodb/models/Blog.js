@@ -17,6 +17,20 @@ const blogSchema = new mongoose.Schema({
   likes: Number,
   comments: Number,
   views: Number,
-  tags: [String]
+  tags: [String],
+  thumbnail: String,
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'violated'],
+    default: 'approved'
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'violated']
+  },
+  visible: {
+    type: Boolean,
+    default: true
+  }
 }, { timestamps: true });
 module.exports = mongoose.model('Blog', blogSchema);

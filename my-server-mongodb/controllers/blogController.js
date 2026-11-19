@@ -181,6 +181,20 @@ exports.updateBlog = async (req, res) => {
   delete updates.updatedAt;
   delete updates.__v;
 
+  if (isDataImageUrl(updates.image)) {
+    try {
+      updates.image = saveDataUrlImage(updates.image);
+    } catch (error) {
+      res.status(400).json({ message: error.message || 'Ảnh bài viết không hợp lệ.' });
+      return;
+    }
+  }
+  if (updates.status && !updates.approvalStatus) {
+    updates.approvalStatus = updates.status;
+  } else if (updates.approvalStatus && !updates.status) {
+    updates.status = updates.approvalStatus;
+  }
+
   try {
     const blog = await Blog.findOneAndUpdate(blogFilter(req.params.id), updates, {
       new: true,

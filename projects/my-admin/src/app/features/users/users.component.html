@@ -162,7 +162,7 @@
                 </div>
               </div>
             </td>
-            <td>{{ u.phone || '0901 234 567' }}</td>
+            <td>{{ u.phone || '0000 000 000' }}</td>
             <td>
               <span class="badge-role" [class.admin]="u.roleKey === 'admin'">
                 {{ u.roleLabel }}
@@ -251,7 +251,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold small mb-1">Số điện thoại</label>
-              <input type="text" class="form-control form-control-sm" placeholder="0901 234 567"
+              <input type="text" class="form-control form-control-sm" placeholder="0000 000 000"
                 [(ngModel)]="form.phone" name="phone">
             </div>
             <div class="col-md-6">
@@ -325,7 +325,7 @@
         <ul class="list-group list-group-flush small">
           <li class="list-group-item d-flex justify-content-between px-0">
             <span class="text-muted">Số điện thoại:</span>
-            <span class="fw-semibold">{{ selectedUser.phone || '0901 234 567' }}</span>
+            <span class="fw-semibold">{{ selectedUser.phone || '0000 000 000' }}</span>
           </li>
           <li class="list-group-item d-flex justify-content-between px-0">
             <span class="text-muted">Vai trò:</span>

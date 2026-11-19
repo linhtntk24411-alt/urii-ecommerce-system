@@ -22,6 +22,41 @@
         <div class="alert alert-warning" role="alert">{{ mapLoadError }}</div>
     }
 
+    <!-- BỘ LỌC VÀ TÌM KIẾM MAP MẪU -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3">
+        <div class="card-body p-0">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()" class="form-control border-start-0 ps-0" placeholder="Tìm tên mẫu, mã mẫu, tác giả...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select [(ngModel)]="filterDifficulty" (change)="applyFilters()" class="form-select bg-light border-0">
+                        <option value="">Tất cả độ khó</option>
+                        <option value="Dễ">Dễ</option>
+                        <option value="Trung bình">Trung bình</option>
+                        <option value="Khó">Khó</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select [(ngModel)]="filterSort" (change)="applyFilters()" class="form-select bg-light border-0">
+                        <option value="">Mặc định</option>
+                        <option value="name-asc">Tên (A-Z)</option>
+                        <option value="beads-asc">Ít hạt nhất</option>
+                        <option value="beads-desc">Nhiều hạt nhất</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <button type="button" class="btn btn-danger w-100 fw-bold px-3" (click)="applyFilters()">
+                        <i class="bi bi-search me-1"></i> Tìm kiếm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- BẢNG DANH SÁCH MAP MẪU -->
     <div class="card border-0 shadow-sm rounded-4 bg-white">
         <div class="card-body p-0">
@@ -55,9 +90,8 @@
                         } @empty {
                         <tr>
                             <td colspan="6" class="text-center text-muted py-5">
-                                {{ isLoading ? 'Đang tải danh sách mẫu...' : mapLoadError || 'Chưa có mẫu nào trong danh sách.' }}
+                                {{ isLoading ? 'Đang tải danh sách mẫu...' : mapLoadError || 'Không tìm thấy mẫu nào phù hợp.' }}
                             </td>
-                            <td colspan="6" class="text-center text-muted py-5">Chưa có mẫu nào trong danh sách.</td>
                         </tr>
                         }
                     </tbody>
@@ -65,7 +99,7 @@
             </div>
             <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
                 <div class="text-muted small">
-                    Hiển thị {{ maps.length ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ Math.min(currentPage * ITEMS_PER_PAGE, maps.length) }} trên tổng số {{ maps.length }} mẫu
+                    Hiển thị {{ filteredMaps.length ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ Math.min(currentPage * ITEMS_PER_PAGE, filteredMaps.length) }} trên tổng số {{ filteredMaps.length }} mẫu
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm m-0" *ngIf="getPageArray().length > 1">

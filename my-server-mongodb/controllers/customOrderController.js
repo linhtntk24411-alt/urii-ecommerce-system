@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { randomUUID } = require('node:crypto');
+const { randomInt } = require('node:crypto');
 const CustomOrder = require('../models/CustomOrder');
 const User = require('../models/User');
 const Gallery = require('../models/Gallery');
@@ -101,6 +101,18 @@ function validateCustomOrder(body, partial = false) {
   return null;
 }
 
+function generateCustomOrderId() {
+  return `customer-order-URII-${randomInt(1000, 10000)}`;
+}
+
+function normalizeLegacyUuidCustomOrderId(rawId) {
+  if (typeof rawId !== 'string') return rawId;
+  const match = rawId.match(/^(?:custom|customer)-order-([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  if (!match) return rawId;
+  const num = (parseInt(match[1], 16) % 9000) + 1000;
+  return `customer-order-URII-${num}`;
+}
+
 function customOrderFilter(value) {
   const filters = [{ id: value }];
   if (typeof value === 'string') {
@@ -127,20 +139,32 @@ async function enrichCustomOrders(customOrders) {
   ]);
   const usersById = new Map(users.map((user) => [String(user._id), user]));
   const mapsById = new Map(maps.map((map) => [map.map_id, map]));
-  return customOrders.map((order) => {
+  const migrations = [];
+  const enriched = customOrders.map((order) => {
     const user = order.userId ? usersById.get(String(order.userId)) : null;
     const map = order.mapId ? mapsById.get(order.mapId) : null;
     const mainImage = map?.main_image
       ? (map.main_image.startsWith('/') ? map.main_image : `/${map.main_image}`)
       : null;
+    const normalizedId = normalizeLegacyUuidCustomOrderId(order.id);
+    if (normalizedId !== order.id && order._id && typeof CustomOrder.updateOne === 'function') {
+      migrations.push(
+        Promise.resolve(CustomOrder.updateOne({ _id: order._id }, { $set: { id: normalizedId } })).catch(() => {})
+      );
+    }
     return {
       ...order,
+      id: normalizedId,
       fullName: order.fullName || user?.name || '',
       phone: order.phone || user?.phone || '',
       email: order.email || user?.email || '',
       imageUrl: order.imageUrl || mainImage || ''
     };
   });
+  if (migrations.length) {
+    await Promise.all(migrations);
+  }
+  return enriched;
 }
 
 exports.createCustomOrder = async (req, res) => {
@@ -178,7 +202,7 @@ exports.createCustomOrder = async (req, res) => {
   try {
     const payload = {
       ...candidateBody,
-      id: `custom-order-${randomUUID()}`,
+      id: generateCustomOrderId(),
       requestName: candidateBody.requestName.trim(),
       size: candidateBody.size.trim(),
       beadType: candidateBody.beadType.trim(),
@@ -210,7 +234,21 @@ exports.createCustomOrder = async (req, res) => {
       payload.imageUrl = candidateBody.imageUrl.trim();
     }
 
-    const customOrder = await CustomOrder.create(payload);
+    let customOrder = null;
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      try {
+        customOrder = await CustomOrder.create({
+          ...payload,
+          id: attempt === 1 ? payload.id : generateCustomOrderId()
+        });
+        break;
+      } catch (createError) {
+        if (createError?.code === 11000 && attempt < 5) {
+          continue;
+        }
+        throw createError;
+      }
+    }
     await createAdminNotification({ typeId: 'ADMIN_CUSTOM_ORDER_NEW', eventId: String(customOrder._id || customOrder.id),
       reference: { customOrderId: String(customOrder.id) },
       title: 'Yêu cầu Custom mới', message: 'Có yêu cầu thiết kế Custom mới từ khách hàng.' });

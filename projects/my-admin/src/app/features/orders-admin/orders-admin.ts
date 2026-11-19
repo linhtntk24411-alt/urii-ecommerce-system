@@ -97,6 +97,14 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   filterStatus: string = '';
   filterDate: string = '';
   filterSort: string = 'newest';
+  customSearchQuery: string = '';
+  customFilterStatus: string = '';
+  customFilterDate: string = '';
+  customFilterSort: string = 'newest';
+  cancelSearchQuery: string = '';
+  cancelFilterDate: string = '';
+  cancelFilterSort: string = 'newest';
+  returnSearchQuery: string = '';
 
   // --- Modal Data ---
   selectedOrder: any = null;
@@ -173,6 +181,10 @@ export class OrdersAdmin implements OnInit, OnDestroy {
     this.filterStatus = '';
     this.filterDate = '';
     this.filterSort = 'newest';
+    this.customSearchQuery = '';
+    this.customFilterStatus = '';
+    this.customFilterDate = '';
+    this.customFilterSort = 'newest';
     this.applyFilters();
 
     if (order.isCustomOrder) {
@@ -226,10 +238,54 @@ export class OrdersAdmin implements OnInit, OnDestroy {
     return this.regularOrders.slice(start, start + this.ITEMS_PER_PAGE);
   }
 
-  get cancelRequests() { return this.orders.filter(o => o.status === 'pending_approval'); }
+  get cancelRequests() {
+    const search = this.cancelSearchQuery.toLowerCase().trim();
+    let list = this.orders.filter(o => {
+      if (o.status !== 'pending_approval') return false;
+      const matchSearch = !search ||
+        String(o.id || '').toLowerCase().includes(search) ||
+        String(o.customerName || '').toLowerCase().includes(search) ||
+        String(o.reason || '').toLowerCase().includes(search) ||
+        String(o.cancellationNote || '').toLowerCase().includes(search);
+      let matchDate = true;
+      if (this.cancelFilterDate) {
+        const parts = this.cancelFilterDate.split('-');
+        const expectedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        const unpaddedDate = `${Number(parts[2])}/${Number(parts[1])}/${parts[0]}`;
+        const targetDate = o.cancellationDate || o.date || '';
+        matchDate = targetDate === expectedDate || targetDate === unpaddedDate;
+      }
+      return matchSearch && matchDate;
+    });
+    if (this.cancelFilterSort === 'oldest') {
+      list = [...list].reverse();
+    }
+    return list;
+  }
   get pagedCancelRequests() {
     const start = (this.currentCancelPage - 1) * this.ITEMS_PER_PAGE;
     return this.cancelRequests.slice(start, start + this.ITEMS_PER_PAGE);
+  }
+
+  get filteredReturnRequests() {
+    const search = this.returnSearchQuery.toLowerCase().trim();
+    if (!search) return this.returnRequests;
+    return this.returnRequests.filter(r =>
+      String(r.id || '').toLowerCase().includes(search) ||
+      String(r.customerName || '').toLowerCase().includes(search) ||
+      String(r.returnReason || '').toLowerCase().includes(search) ||
+      String(r.requestTypeLabel || '').toLowerCase().includes(search) ||
+      String(r.orderTypeLabel || '').toLowerCase().includes(search) ||
+      String(r.returnStatusLabel || '').toLowerCase().includes(search)
+    );
+  }
+
+  applyCancelFilters(): void {
+    this.currentCancelPage = 1;
+  }
+
+  applyReturnFilters(): void {
+    this.loadReturnRequests(1);
   }
 
   get customOrders() { return this.orders.filter(o => o.isCustomOrder === true); }
@@ -436,9 +492,15 @@ export class OrdersAdmin implements OnInit, OnDestroy {
       ? createdAt.toLocaleDateString('vi-VN')
       : '';
 
+    const rawId = String(item.id || item._id || '');
+    const uuidMatch = rawId.match(/^(?:custom|customer)-order-([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    const normalizedId = uuidMatch
+      ? `customer-order-URII-${(parseInt(uuidMatch[1], 16) % 9000) + 1000}`
+      : rawId;
+
     return {
       ...item,
-      id: String(item.id || item._id || ''),
+      id: normalizedId,
       isCustomOrder: true,
       customerName: item.fullName || 'Khách hàng',
       customerImage: this.customerAvatars.get(
@@ -546,11 +608,49 @@ export class OrdersAdmin implements OnInit, OnDestroy {
 
     if (this.filterSort === 'newest') filteredRegular.reverse();
 
-    const custom = this.originalOrders.filter(o => o.isCustomOrder === true);
+    const custom = this.filterCustomOrdersList();
     const cancel = this.originalOrders.filter(o => o.status === 'pending_approval');
     
     this.orders = [...filteredRegular, ...custom, ...cancel];
     this.currentPage = 1;
+  }
+
+  private filterCustomOrdersList(): any[] {
+    const search = this.customSearchQuery.toLowerCase().trim();
+    let filteredCustom = this.originalOrders.filter(o => {
+      if (!o.isCustomOrder) return false;
+      const detailsText = o.customDetails ? Object.values(o.customDetails).join(' ') : '';
+      const matchSearch = !search ||
+        String(o.id || '').toLowerCase().includes(search) ||
+        String(o.customerName || '').toLowerCase().includes(search) ||
+        String(o.product || '').toLowerCase().includes(search) ||
+        String(o.phone || '').toLowerCase().includes(search) ||
+        String(o.email || '').toLowerCase().includes(search) ||
+        detailsText.toLowerCase().includes(search);
+      const matchStatus = this.customFilterStatus === '' || o.status === this.customFilterStatus;
+      let matchDate = true;
+      if (this.customFilterDate) {
+        const parts = this.customFilterDate.split('-');
+        const expectedViDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        const unpaddedViDate = `${Number(parts[2])}/${Number(parts[1])}/${parts[0]}`;
+        const rawCreatedDate = o.createdAt ? new Date(o.createdAt).toISOString().slice(0, 10) : '';
+        matchDate = o.date === expectedViDate || o.date === unpaddedViDate || rawCreatedDate === this.customFilterDate;
+      }
+      return matchSearch && matchStatus && matchDate;
+    });
+
+    if (this.customFilterSort === 'oldest') {
+      filteredCustom = [...filteredCustom].reverse();
+    }
+    return filteredCustom;
+  }
+
+  applyCustomFilters(): void {
+    const regular = this.orders.filter(o => o.status !== 'pending_approval' && !o.isCustomOrder);
+    const custom = this.filterCustomOrdersList();
+    const cancel = this.originalOrders.filter(o => o.status === 'pending_approval');
+    this.orders = [...regular, ...custom, ...cancel];
+    this.currentCustomPage = 1;
   }
 
   // --- Actions ---
@@ -765,6 +865,38 @@ export class OrdersAdmin implements OnInit, OnDestroy {
 
   isReturnType(type: string): boolean {
     return this.returnTypes.some(item => item.id === type);
+  }
+
+  getReturnOrderTotal(order: any): number {
+    if (!order) return 0;
+    const matchedOrder = this.originalOrders.find(o => String(o.id) === String(order.id));
+    const candidates = [
+      order.totalAmount,
+      order.total,
+      order.pricing?.finalTotal,
+      order.quotedPrice,
+      order.returnRefund?.amount,
+      order.returnCod?.amount,
+      order.codAmount,
+      matchedOrder?.totalAmount,
+      matchedOrder?.total,
+      matchedOrder?.quotedPrice
+    ];
+    for (const value of candidates) {
+      if (value === null || value === undefined || value === '') continue;
+      const amount = typeof value === 'number'
+        ? value
+        : Number(String(value).replace(/[^0-9]/g, ''));
+      if (Number.isFinite(amount) && amount > 0) return amount;
+    }
+    const items = Array.isArray(order.items) && order.items.length
+      ? order.items
+      : (Array.isArray(matchedOrder?.items) ? matchedOrder.items : []);
+    return items.reduce((sum: number, item: any) => {
+      const price = Number(item.unitPrice ?? item.price) || 0;
+      const quantity = Number(item.quantity) || 1;
+      return sum + price * quantity;
+    }, 0);
   }
 
   openOrderDetail(order: any) {

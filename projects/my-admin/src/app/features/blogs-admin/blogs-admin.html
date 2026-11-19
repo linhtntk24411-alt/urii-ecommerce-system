@@ -51,6 +51,39 @@
                 </div>
             </div>
 
+            <!-- Thanh tìm kiếm và lọc bài viết -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 p-3">
+                <div class="card-body p-0">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-12 col-md-5">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" [(ngModel)]="searchQuery" (keyup.enter)="onFilterChange()" class="form-control border-start-0 ps-0" placeholder="Tìm tiêu đề bài viết, tác giả, nội dung...">
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="form-select bg-light border-0">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="approved">Đã duyệt</option>
+                                <option value="pending">Chờ duyệt</option>
+                                <option value="violated">Vi phạm</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <select [(ngModel)]="selectedAuthor" (change)="onFilterChange()" class="form-select bg-light border-0">
+                                <option value="">Tất cả tác giả</option>
+                                <option *ngFor="let author of authorsList" [value]="author">{{ author }}</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <button type="button" class="btn btn-danger w-100 fw-bold px-3" (click)="onFilterChange()">
+                                <i class="bi bi-search me-1"></i> Tìm kiếm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Main Content Grid -->
             <div class="row g-4">
                 
@@ -59,18 +92,6 @@
                     <div class="card border-0 shadow-sm rounded-4 bg-white h-100">
                         <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex flex-wrap justify-content-between align-items-center">
                             <h4 class="fw-bold m-0">Danh sách bài viết</h4>
-                            <div class="d-flex gap-2 mt-2 mt-sm-0">
-                                <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="form-select form-select-sm bg-light border-0" style="width: auto; min-width: 150px;">
-                                    <option value="">Tất cả trạng thái</option>
-                                    <option value="approved">Đã duyệt</option>
-                                    <option value="pending">Chờ duyệt</option>
-                                    <option value="violated">Vi phạm</option>
-                                </select>
-                                <select [(ngModel)]="selectedAuthor" (change)="onFilterChange()" class="form-select form-select-sm bg-light border-0" style="width: auto; min-width: 150px;">
-                                    <option value="">Tất cả tác giả</option>
-                                    <option *ngFor="let author of authorsList" [value]="author">{{ author }}</option>
-                                </select>
-                            </div>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive p-0">
@@ -121,20 +142,22 @@
                                                         <i class="bi bi-eye"></i>
                                                     </button>
                                                     
-                                                    <!-- Nút Chỉnh sửa trạng thái (Dropdown) -->
-                                                    <div class="dropdown d-inline-block">
-                                                        <button class="btn-action-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Thay đổi trạng thái">
+                                                    <!-- Nút Chỉnh sửa bài viết & trạng thái (Dropdown) -->
+                                                    <div class="dropdown d-inline-block position-relative">
+                                                        <button class="btn-action-icon" type="button" (click)="toggleDropdown(b.id ?? b._id, $event)" [attr.aria-expanded]="activeDropdownId === (b.id ?? b._id) + ''" title="Chỉnh sửa bài viết / Thay đổi trạng thái">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
-                                                        <ul class="dropdown-menu dropdown-menu-end">
-                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'pending'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id, 'pending')">Chờ duyệt</a></li>
-                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'approved'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id, 'approved')">Đã duyệt</a></li>
-                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'violated'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id, 'violated')">Vi phạm</a></li>
+                                                        <ul class="dropdown-menu dropdown-menu-end shadow" [class.show]="activeDropdownId === (b.id ?? b._id) + ''" style="right: 0; left: auto;">
+                                                            <li><a class="dropdown-item" href="#" (click)="$event.preventDefault(); openEditModal(b)"><i class="bi bi-pencil-square me-2"></i>Chỉnh sửa bài viết</a></li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'pending'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id ?? b._id, 'pending')">Chờ duyệt</a></li>
+                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'approved'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id ?? b._id, 'approved')">Đã duyệt</a></li>
+                                                            <li><a class="dropdown-item" [ngClass]="{'active': b.status === 'violated'}" href="#" (click)="$event.preventDefault(); changeStatus(b.id ?? b._id, 'violated')">Vi phạm</a></li>
                                                         </ul>
                                                     </div>
 
                                                     <!-- Nút Xóa vĩnh viễn -->
-                                                    <button class="btn-action-icon text-danger" (click)="deleteBlog(b.id)" title="Xóa bài viết"><i class="bi bi-trash"></i></button>
+                                                    <button class="btn-action-icon text-danger" (click)="deleteBlog(b.id ?? b._id)" title="Xóa bài viết"><i class="bi bi-trash"></i></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -184,8 +207,8 @@
                                     </div>
                                 </div>
                                 <div class="pending-actions">
-                                    <button class="btn-approve-small" (click)="approveBlog(b.id)">Duyệt</button>
-                                    <button class="btn-reject-small" (click)="rejectBlog(b.id)">Từ chối</button>
+                                    <button class="btn-approve-small" (click)="approveBlog(b.id ?? b._id)">Duyệt</button>
+                                    <button class="btn-reject-small" (click)="rejectBlog(b.id ?? b._id)">Từ chối</button>
                                 </div>
                             </div>
 
@@ -201,12 +224,15 @@
     </div>
 </div>
 
-<!-- Modal Tạo Bài Viết Mới -->
+<!-- Modal Tạo / Chỉnh sửa Bài Viết -->
 <div class="modal fade" id="createBlogModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-light border-bottom-0">
-                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-plus-circle"></i> Tạo bài viết mới</h5>
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi" [ngClass]="editingBlogId !== null ? 'bi-pencil-square' : 'bi-plus-circle'"></i>
+                    {{ editingBlogId !== null ? 'Chỉnh sửa bài viết' : 'Tạo bài viết mới' }}
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" [disabled]="savingBlog"></button>
             </div>
             <div class="modal-body p-4">
@@ -217,9 +243,19 @@
                         <label class="form-label fw-bold">Tiêu đề bài viết <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" [(ngModel)]="newTitle" name="newTitle" placeholder="Ví dụ: Hướng dẫn làm móc khóa..." required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tác giả <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" [(ngModel)]="newAuthor" name="newAuthor" placeholder="Tên tác giả" required>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold">Tác giả <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" [(ngModel)]="newAuthor" name="newAuthor" placeholder="Tên tác giả" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold">Trạng thái</label>
+                            <select class="form-select" [(ngModel)]="newStatus" name="newStatus">
+                                <option value="approved">Đã duyệt</option>
+                                <option value="pending">Chờ duyệt</option>
+                                <option value="violated">Vi phạm</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Ảnh đại diện</label>
@@ -237,7 +273,7 @@
             </div>
             <div class="modal-footer border-top-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" [disabled]="savingBlog">Hủy</button>
-                <button type="button" class="btn btn-danger px-4 fw-bold" (click)="submitNewBlog()" [disabled]="savingBlog"><i class="bi bi-save"></i> {{ savingBlog ? 'Đang lưu...' : 'Lưu bài viết' }}</button>
+                <button type="button" class="btn btn-danger px-4 fw-bold" (click)="submitNewBlog()" [disabled]="savingBlog"><i class="bi bi-save"></i> {{ savingBlog ? 'Đang lưu...' : (editingBlogId !== null ? 'Cập nhật bài viết' : 'Lưu bài viết') }}</button>
             </div>
         </div>
     </div>
@@ -289,6 +325,7 @@
                 </div>
             </div>
             <div class="modal-footer border-top-0 bg-light py-3 px-4">
+                <button *ngIf="selectedBlog" type="button" class="btn btn-danger px-4 fw-bold rounded-3" (click)="openEditModal(selectedBlog)"><i class="bi bi-pencil-square me-1"></i> Chỉnh sửa</button>
                 <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>

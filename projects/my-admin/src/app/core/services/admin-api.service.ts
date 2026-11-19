@@ -1168,15 +1168,29 @@ export class AdminApiService {
   }
 
   async createBlog(payload: any): Promise<AdminBlog> {
-    return this.requestWithFallback<AdminBlog>('POST', '/api/blogs', payload);
+    const created = await this.requestWithFallback<AdminBlog>('POST', '/api/blogs', payload);
+    const current = this.getInitialBlogs();
+    this.setCached('urii_admin_blogs', [created, ...current.filter(b => String(b.id ?? b._id) !== String(created?.id ?? created?._id))]);
+    return created;
   }
 
   async updateBlog(id: string | number, payload: any): Promise<AdminBlog> {
-    return this.requestWithFallback<AdminBlog>('PATCH', `/api/blogs/${encodeURIComponent(String(id))}`, payload);
+    const updated = await this.requestWithFallback<AdminBlog>('PATCH', `/api/blogs/${encodeURIComponent(String(id))}`, payload);
+    const current = this.getInitialBlogs();
+    this.setCached(
+      'urii_admin_blogs',
+      current.map(b => (String(b.id) === String(id) || String(b._id) === String(id)) ? { ...b, ...payload, ...(updated || {}) } : b)
+    );
+    return updated;
   }
 
   async deleteBlog(id: string | number): Promise<void> {
     await this.requestWithFallback<void>('DELETE', `/api/blogs/${encodeURIComponent(String(id))}`);
+    const current = this.getInitialBlogs();
+    this.setCached(
+      'urii_admin_blogs',
+      current.filter(b => String(b.id) !== String(id) && String(b._id) !== String(id))
+    );
   }
 
   // --- 10. QUẢN LÝ NGƯỜI DÙNG ---

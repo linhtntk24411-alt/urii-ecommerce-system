@@ -306,10 +306,11 @@ export class UsersComponent implements OnInit {
   openEditModal(user: UserView): void {
     this.isEditing = true;
     this.editingId = user._id;
+    const rawPhone = (user.phone || '').trim();
     this.form = {
       name: user.name,
       email: user.email,
-      phone: user.phone || '',
+      phone: rawPhone === '0000 000 000' || rawPhone === '0000000000' ? '' : rawPhone,
       password: '',
       roleKey: user.roleKey,
       statusKey: user.statusKey,
@@ -380,7 +381,7 @@ export class UsersComponent implements OnInit {
       const payload: UserPayload = {
         name,
         email,
-        phone: this.form.phone.trim() || '0901234567',
+        phone: this.form.phone.trim(),
         password: this.form.password || 'User@12345',
         role: dbRole,
         avatar: this.form.avatar || 'images/avatar1.png',

@@ -74,7 +74,7 @@
                 </div>
                 <div class="col-6 col-md-2">
                     <button class="btn btn-danger w-100 fw-bold filter-btn" (click)="applyFilters()">
-                        <i class="bi bi-funnel me-1"></i> Lọc
+                        <i class="bi bi-search me-1"></i> Tìm kiếm
                     </button>
                 </div>
             </div>
@@ -93,7 +93,7 @@
                         <th class="ps-4 py-3 font-segoe">MÃ ĐƠN HÀNG</th>
                         <th class="py-3 font-segoe">KHÁCH HÀNG</th>
                         <th class="py-3 font-segoe">NGÀY ĐẶT</th>
-                        <th class="py-3 font-segoe">SẢN PHẨM</th>
+                        <th class="py-3 font-segoe col-order-products">SẢN PHẨM</th>
                         <th class="py-3 font-segoe">TỔNG TIỀN</th>
                         <th class="py-3 font-segoe">TRẠNG THÁI</th>
                         <th class="pe-4 text-end py-3 font-segoe">THAO TÁC</th>
@@ -113,7 +113,23 @@
                             </div>
                         </td>
                         <td>{{ o.date }}</td>
-                        <td>{{ o.product }}</td>
+                        <td class="order-products-cell">
+                            @if (o.items?.length) {
+                                <div class="order-product-list">
+                                    @for (item of o.items; track $index) {
+                                        <div class="order-product-item">
+                                            <span class="order-product-name">{{ item.name }}</span>
+                                            @if (item.variantName) {
+                                                <span class="order-product-variant">{{ item.variantName }}</span>
+                                            }
+                                            <span class="order-product-qty">x{{ item.quantity ?? 1 }}</span>
+                                        </div>
+                                    }
+                                </div>
+                            } @else {
+                                {{ o.product }}
+                            }
+                        </td>
                         <td class="order-total">{{ (o.total || 0).toLocaleString('vi-VN') }}đ</td>
                         <td><span class="badge-status" [ngClass]="statusMap[o.status]?.class">{{ getStatusLabel(o) }}</span></td>
                         <td class="pe-4">
@@ -169,6 +185,33 @@
             <button id="return-tab" type="button" role="tab" [attr.aria-selected]="requestTab === 'return'" aria-controls="return-request-panel" [class.active]="requestTab === 'return'" (click)="requestTab = 'return'">Yêu cầu trả hàng/hoàn tiền <span class="badge bg-danger">{{ returnTotal }}</span></button>
         </div>
         <div id="cancel-request-panel" role="tabpanel" aria-labelledby="cancel-tab" [hidden]="requestTab !== 'cancel'">
+        <div class="px-4 pt-3 pb-2 filter-bar">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="filter-label">Tìm kiếm</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control font-segoe" [(ngModel)]="cancelSearchQuery" (keyup.enter)="applyCancelFilters()" placeholder="Mã đơn, tên khách hoặc lý do hủy...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="filter-label">Ngày yêu cầu</label>
+                    <input type="date" class="form-control font-segoe" [(ngModel)]="cancelFilterDate">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Sắp xếp</label>
+                    <select class="form-select font-segoe" [(ngModel)]="cancelFilterSort">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <button class="btn btn-danger w-100 fw-bold filter-btn" type="button" (click)="applyCancelFilters()">
+                        <i class="bi bi-search me-1"></i> Tìm kiếm
+                    </button>
+                </div>
+            </div>
+        </div>
         <div class="table-responsive p-0 mt-2">
             <table class="table table-hover align-middle mb-0 table-orders-cancel">
                 <thead class="text-muted small fw-bold bg-light">
@@ -235,6 +278,7 @@
             </table>
         </div>
         <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+            <div class="text-muted small">Hiển thị {{ cancelRequests.length ? (currentCancelPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ MathMin(currentCancelPage * ITEMS_PER_PAGE, cancelRequests.length) }} của {{ cancelRequests.length }} yêu cầu</div>
             <nav>
                 <ul class="pagination pagination-sm m-0">
                     <li class="page-item" [class.disabled]="currentCancelPage === 1"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCancelPage = currentCancelPage - 1">«</a></li>
@@ -248,48 +292,87 @@
     </div>
 
         <div id="return-request-panel" role="tabpanel" aria-labelledby="return-tab" [hidden]="requestTab !== 'return'">
-            <div class="row g-2 p-4">
-                <div class="col-md-4"><label class="filter-label" for="return-type-filter">Loại yêu cầu</label>
-                    <select id="return-type-filter" class="form-select" [(ngModel)]="returnTypeFilter" (ngModelChange)="loadReturnRequests(1)">
-                        <option value="">Tất cả</option>
-                        @for (type of returnTypes; track type.id) { <option [value]="type.id">{{ type.label }}</option> }
-                        <option value="unclassified">Chưa xác định loại yêu cầu</option>
-                    </select>
+            <div class="px-4 pt-3 pb-2 filter-bar">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="filter-label">Tìm kiếm</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control font-segoe" [(ngModel)]="returnSearchQuery" (keyup.enter)="applyReturnFilters()" placeholder="Mã đơn, tên khách hoặc lý do...">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3"><label class="filter-label" for="return-type-filter">Loại yêu cầu</label>
+                        <select id="return-type-filter" class="form-select font-segoe" [(ngModel)]="returnTypeFilter" (ngModelChange)="loadReturnRequests(1)">
+                            <option value="">Tất cả</option>
+                            @for (type of returnTypes; track type.id) { <option [value]="type.id">{{ type.label }}</option> }
+                            <option value="unclassified">Chưa xác định loại yêu cầu</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2"><label class="filter-label" for="return-status-filter">Trạng thái xử lý</label>
+                        <select id="return-status-filter" class="form-select font-segoe" [(ngModel)]="returnStatusFilter" (ngModelChange)="loadReturnRequests(1)">
+                            <option value="">Tất cả — ưu tiên đang xử lý</option>
+                            @for (state of returnStates; track state.id) { <option [value]="state.id">{{ state.label }}</option> }
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2"><label class="filter-label" for="return-order-filter">Loại đơn</label>
+                        <select id="return-order-filter" class="form-select font-segoe" [(ngModel)]="returnOrderTypeFilter" (ngModelChange)="loadReturnRequests(1)"><option value="">Tất cả</option><option value="normal">Thường</option><option value="custom">Custom</option></select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <button class="btn btn-danger w-100 fw-bold filter-btn" type="button" (click)="applyReturnFilters()" [disabled]="returnLoading">
+                            <i class="bi bi-search me-1"></i> Tìm kiếm
+                        </button>
+                    </div>
                 </div>
-                <div class="col-md-4"><label class="filter-label" for="return-status-filter">Trạng thái xử lý</label>
-                    <select id="return-status-filter" class="form-select" [(ngModel)]="returnStatusFilter" (ngModelChange)="loadReturnRequests(1)">
-                        <option value="">Tất cả — ưu tiên đang xử lý</option>
-                        @for (state of returnStates; track state.id) { <option [value]="state.id">{{ state.label }}</option> }
-                    </select>
-                </div>
-                <div class="col-md-3"><label class="filter-label" for="return-order-filter">Loại đơn</label>
-                    <select id="return-order-filter" class="form-select" [(ngModel)]="returnOrderTypeFilter" (ngModelChange)="loadReturnRequests(1)"><option value="">Tất cả</option><option value="normal">Thường</option><option value="custom">Custom</option></select>
-                </div>
-                <div class="col-md-1 d-flex align-items-end"><button class="btn btn-outline-danger" type="button" (click)="loadReturnRequests()" [disabled]="returnLoading" aria-label="Tải lại yêu cầu"><i class="bi bi-arrow-clockwise"></i></button></div>
             </div>
             @if (returnError) { <div class="alert alert-warning mx-4" role="alert">{{ returnError }}</div> }
             @if (returnDetailLoading) { <p class="px-4 text-muted" role="status">Đang tải chi tiết yêu cầu...</p> }
-            <div class="table-responsive" [attr.aria-busy]="returnLoading">
-                <table class="table table-hover align-middle mb-0 table-returns">
-                    <thead><tr><th>Mã đơn hàng</th><th>Khách hàng</th><th>Loại đơn</th><th>Loại yêu cầu</th><th>Lý do</th><th>Ngày yêu cầu</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-                    <tbody>
-                        @if (returnLoading) { <tr><td colspan="8" class="text-center py-4">Đang tải yêu cầu...</td></tr> }
+            <div class="table-responsive p-0 mt-2" [attr.aria-busy]="returnLoading">
+                <table class="table table-hover align-middle mb-0 table-orders-cancel table-returns">
+                    <thead class="text-muted small fw-bold bg-light">
+                        <tr>
+                            <th class="ps-4 py-3 font-segoe">MÃ ĐƠN HÀNG</th>
+                            <th class="py-3 font-segoe">KHÁCH HÀNG</th>
+                            <th class="py-3 font-segoe">LOẠI ĐƠN</th>
+                            <th class="py-3 font-segoe">LOẠI YÊU CẦU</th>
+                            <th class="py-3 font-segoe">LÝ DO</th>
+                            <th class="py-3 font-segoe">NGÀY YÊU CẦU</th>
+                            <th class="py-3 font-segoe">TRẠNG THÁI</th>
+                            <th class="pe-4 text-end py-3 font-segoe">XỬ LÝ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="fs-6">
+                        @if (returnLoading) { <tr><td colspan="8" class="text-center text-muted py-5">Đang tải yêu cầu...</td></tr> }
                         @else {
-                            @for (r of returnRequests; track r.source + ':' + r.id) {
-                                <tr><td class="order-id">#{{ r.id }}</td><td>{{ r.customerName || 'Chưa có thông tin' }}</td><td>{{ r.orderTypeLabel }}</td><td>{{ r.requestTypeLabel }}</td><td>{{ r.returnReason }}</td><td>{{ r.returnRequestedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                            @for (r of filteredReturnRequests; track r.source + ':' + r.id) {
+                                <tr>
+                                    <td class="ps-4"><span class="order-id">#{{ r.id }}</span></td>
+                                    <td>{{ r.customerName || 'Chưa có thông tin' }}</td>
+                                    <td>{{ r.orderTypeLabel }}</td>
+                                    <td>{{ r.requestTypeLabel }}</td>
+                                    <td>{{ r.returnReason }}</td>
+                                    <td>{{ r.returnRequestedAt | date:'dd/MM/yyyy HH:mm' }}</td>
                                     <td><span class="badge-status" [class.badge-status-completed]="r.returnStatusId === 'completed'" [class.badge-status-cancelled]="r.returnStatusId === 'rejected'" [class.badge-status-pending_approval]="r.returnStatusId !== 'completed' && r.returnStatusId !== 'rejected'">{{ r.returnStatusLabel }}</span></td>
-                                    <td><button type="button" class="btn btn-sm btn-outline-danger" (click)="openReturnDetail(r)" [disabled]="returnBusy || returnDetailLoading">Xem / Xử lý</button></td>
+                                    <td class="pe-4">
+                                        <div class="action-btn-group">
+                                            <button type="button" class="btn-process-cancel" (click)="openReturnDetail(r)" [disabled]="returnBusy || returnDetailLoading">Xem / Xử lý</button>
+                                        </div>
+                                    </td>
                                 </tr>
-                            } @empty { <tr><td colspan="8" class="text-center text-muted py-4">Không có yêu cầu phù hợp.</td></tr> }
+                            } @empty { <tr><td colspan="8" class="text-center text-muted py-5">Không có yêu cầu phù hợp.</td></tr> }
                         }
                     </tbody>
                 </table>
             </div>
-            <div class="card-footer bg-white d-flex justify-content-between align-items-center p-3">
-                <span class="text-muted small">{{ returnTotal }} yêu cầu · Trang {{ returnPage }} / {{ Math.max(1, Math.ceil(returnTotal / ITEMS_PER_PAGE)) }}</span>
-                <nav aria-label="Phân trang yêu cầu hoàn trả" class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-danger" [disabled]="returnLoading || returnPage <= 1" (click)="loadReturnRequests(returnPage - 1)">Trước</button>
-                    <button class="btn btn-sm btn-outline-danger" [disabled]="returnLoading || returnPage * ITEMS_PER_PAGE >= returnTotal" (click)="loadReturnRequests(returnPage + 1)">Sau</button>
+            <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
+                <div class="text-muted small">Hiển thị {{ returnTotal ? (returnPage - 1) * ITEMS_PER_PAGE + 1 : 0 }}-{{ MathMin(returnPage * ITEMS_PER_PAGE, returnTotal) }} của {{ returnTotal }} yêu cầu</div>
+                <nav aria-label="Phân trang yêu cầu hoàn trả">
+                    <ul class="pagination pagination-sm m-0">
+                        <li class="page-item" [class.disabled]="returnLoading || returnPage <= 1"><a class="page-link" href="#" (click)="$event.preventDefault(); returnPage > 1 && loadReturnRequests(returnPage - 1)">«</a></li>
+                        @for (i of getPageArray(returnTotal, ITEMS_PER_PAGE); track i) {
+                            <li class="page-item" [class.active]="returnPage === i"><a class="page-link" href="#" (click)="$event.preventDefault(); loadReturnRequests(i)">{{ i }}</a></li>
+                        }
+                        <li class="page-item" [class.disabled]="returnLoading || returnPage >= Math.max(1, Math.ceil(returnTotal / ITEMS_PER_PAGE))"><a class="page-link" href="#" (click)="$event.preventDefault(); returnPage * ITEMS_PER_PAGE < returnTotal && loadReturnRequests(returnPage + 1)">»</a></li>
+                    </ul>
                 </nav>
             </div>
         </div>
@@ -301,6 +384,44 @@
                 <i></i>Đơn hàng Custom theo yêu cầu 
                 <span class="badge bg-warning rounded-pill fs-6 align-middle font-segoe">{{ customOrders.length }}</span>
             </h4>
+        </div>
+        <div class="px-4 pt-3 pb-2 filter-bar">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="filter-label">Tìm kiếm</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control font-segoe" [(ngModel)]="customSearchQuery" (keyup.enter)="applyCustomFilters()" placeholder="Mã đơn, tên khách hoặc sản phẩm...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Trạng thái</label>
+                    <select class="form-select font-segoe" [(ngModel)]="customFilterStatus">
+                        <option value="">Tất cả</option>
+                        <option value="waiting_quote">Chờ báo giá</option>
+                        <option value="quoted">Đã báo giá</option>
+                        <option value="processing">Đang gia công</option>
+                        <option value="completed">Hoàn thành</option>
+                        <option value="cancelled">Đã hủy</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Ngày đặt</label>
+                    <input type="date" class="form-control font-segoe" [(ngModel)]="customFilterDate">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="filter-label">Sắp xếp</label>
+                    <select class="form-select font-segoe" [(ngModel)]="customFilterSort">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <button class="btn btn-danger w-100 fw-bold filter-btn" type="button" (click)="applyCustomFilters()">
+                        <i class="bi bi-search me-1"></i> Tìm kiếm
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="table-responsive p-0 mt-2">
             <table class="table table-hover align-middle mb-0 table-orders-custom">
@@ -358,7 +479,7 @@
             </table>
         </div>
         <div class="card-footer bg-white border-top border-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap">
-            <div class="text-muted small">Hiển thị...</div>
+            <div class="text-muted small">Hiển thị {{ customOrders.length ? (currentCustomPage - 1) * CUSTOM_ITEMS_PER_PAGE + 1 : 0 }}-{{ MathMin(currentCustomPage * CUSTOM_ITEMS_PER_PAGE, customOrders.length) }} của {{ customOrders.length }} đơn</div>
             <nav>
                 <ul class="pagination pagination-sm m-0">
                     <li class="page-item" [class.disabled]="currentCustomPage === 1"><a class="page-link" href="#" (click)="$event.preventDefault(); currentCustomPage = currentCustomPage - 1">«</a></li>
@@ -379,10 +500,10 @@
             @if (selectedReturn; as r) {
                 <div class="row g-3 mb-3">
                     <div class="col-md-6"><strong>{{ r.customerName || 'Chưa có thông tin khách' }}</strong><div>{{ r.address?.phone || r.phone }}</div><div>{{ r.address?.address || r.email }}</div></div>
-                    <div class="col-md-6"><div>{{ r.orderTypeLabel }} · {{ r.requestTypeLabel }}</div><div>{{ r.returnStatusLabel }}</div><div>Ngày gửi: {{ r.returnRequestedAt | date:'dd/MM/yyyy HH:mm' }}</div></div>
+                    <div class="col-md-6"><div>{{ r.orderTypeLabel }} · {{ r.requestTypeLabel }}</div><div>{{ r.returnStatusLabel }}</div><div>Ngày gửi: {{ r.returnRequestedAt | date:'dd/MM/yyyy HH:mm' }}</div><div>Số tiền đơn hàng: <strong class="text-danger">{{ getReturnOrderTotal(r).toLocaleString('vi-VN') }}đ</strong></div></div>
                 </div>
                 <h6>Sản phẩm / Yêu cầu Custom</h6>
-                @for (item of r.items || []; track $index) { <p class="mb-1">{{ item.name || item.productId }} — {{ item.variantName }} × {{ item.quantity }}</p> }
+                @for (item of r.items || []; track $index) { <p class="mb-1">{{ item.name || item.productId }} — {{ item.variantName }} × {{ item.quantity }} <span class="text-muted">({{ ((item.unitPrice ?? item.price ?? 0) * (item.quantity || 1)).toLocaleString('vi-VN') }}đ)</span></p> }
                 @if (r.requestName) { <p>{{ r.requestName }} · {{ r.size }} · {{ r.beadType }}</p> }
                 <div class="alert alert-light border mt-3"><strong>{{ r.returnReason }}</strong><p class="mb-0 return-note">{{ r.returnNote }}</p></div>
                 <div class="return-evidence mb-3">
@@ -421,8 +542,8 @@
                             <label for="return-inspection-result" class="form-label">Kết quả kiểm tra</label>
                             <select id="return-inspection-result" class="form-select mb-2" [(ngModel)]="returnInspectionResult" [disabled]="returnBusy"><option value="passed">Đạt</option><option value="failed">Không đạt — tạm dừng xử lý</option></select>
                         }
-                        @if (returnAction === 'confirm-cod') { <p>Xác nhận khách đã thanh toán COD: <strong>{{ r.codAmount | number }}đ</strong>. Chỉ xác nhận khi đã thực sự nhận thanh toán.</p> }
-                        @if (returnAction === 'confirm-refund') { <p>Hoàn toàn bộ: <strong>{{ r.returnCod?.amount | number }}đ</strong>. Chỉ xác nhận sau khi bạn đã hoàn tiền thành công bên ngoài hệ thống.</p> }
+                        @if (returnAction === 'confirm-cod') { <p>Xác nhận khách đã thanh toán COD: <strong>{{ (r.codAmount || getReturnOrderTotal(r)).toLocaleString('vi-VN') }}đ</strong>. Chỉ xác nhận khi đã thực sự nhận thanh toán.</p> }
+                        @if (returnAction === 'confirm-refund') { <p>Hoàn toàn bộ: <strong>{{ (r.returnCod?.amount || r.codAmount || getReturnOrderTotal(r)).toLocaleString('vi-VN') }}đ</strong>. Chỉ xác nhận sau khi bạn đã hoàn tiền thành công bên ngoài hệ thống.</p> }
                         <div class="d-flex gap-2"><button class="btn btn-danger" type="button" [disabled]="returnBusy" (click)="submitReturnAction()">{{ returnBusy ? 'Đang lưu...' : 'Xác nhận' }}</button><button class="btn btn-outline-secondary" type="button" [disabled]="returnBusy" (click)="returnAction = ''">Hủy thao tác</button></div>
                     </div>
                 }
@@ -471,7 +592,31 @@
                     </div>
                     <div class="col-md-6">
                         <h5 class="fw-bold border-bottom pb-2 mb-3">Chi tiết đơn hàng</h5>
-                        <div class="mb-3 text-dark"><span class="text-muted me-1">Sản phẩm:</span> <strong>{{ selectedOrder?.product }}</strong></div>
+                        <div class="mb-3 text-dark">
+                            <span class="text-muted d-block mb-2">Danh sách sản phẩm:</span>
+                            @if (selectedOrder?.items?.length) {
+                                <div class="order-detail-product-list">
+                                    @for (item of selectedOrder.items; track $index) {
+                                        <div class="order-detail-product-item">
+                                            <div class="fw-semibold text-dark">
+                                                {{ item.name }}
+                                                @if (item.variantName) {
+                                                    <span class="order-product-variant ms-1">{{ item.variantName }}</span>
+                                                }
+                                            </div>
+                                            <div class="text-nowrap ms-2">
+                                                <span class="order-product-qty">x{{ item.quantity ?? 1 }}</span>
+                                                @if (item.unitPrice || item.price) {
+                                                    <span class="text-muted small ms-2">{{ ((item.unitPrice ?? item.price ?? 0) * (item.quantity || 1)).toLocaleString('vi-VN') }}đ</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            } @else {
+                                <strong>{{ selectedOrder?.product }}</strong>
+                            }
+                        </div>
                         <div class="mb-3 text-dark"><span class="text-muted me-1">Ngày đặt:</span> <span>{{ selectedOrder?.date }}</span></div>
                         <div class="mb-3 d-flex align-items-center"><span class="text-muted me-2">Trạng thái:</span> <span class="badge-status" [ngClass]="statusMap[selectedOrder?.status]?.class">{{ getStatusLabel(selectedOrder) }}</span></div>
                         <div class="mb-4 text-dark"><span class="text-muted me-1">Tổng tiền:</span> <strong class="text-danger fs-5">{{ (selectedOrder?.total || 0).toLocaleString('vi-VN') }}đ</strong></div>

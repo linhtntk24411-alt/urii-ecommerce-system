@@ -1,7 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener, inject } from '@angular/core';
+import { afterNextRender, Component, OnInit, ChangeDetectorRef, DestroyRef, HostListener, Injector, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import {
   AdminApiService,
@@ -30,6 +31,8 @@ interface BlogAdminItem extends Omit<AdminBlog, 'author'> {
 })
 export class BlogsAdmin implements OnInit {
   private readonly socket = inject(AdminSocketService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
   blogs: BlogAdminItem[] = [];
   loadingBlogs = false;
@@ -79,16 +82,30 @@ export class BlogsAdmin implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.route.queryParamMap.subscribe(params => {
+    this.loadingBlogs = true;
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.targetLookup?.unsubscribe();
+      ++this.targetVersion;
+      this.targetLoading = false;
       this.pendingSearchId = params.get('searchType') === 'blog'
         ? params.get('searchId')
         : null;
+      this.pendingSearchSlug = this.pendingSearchId ? params.get('searchSlug') : null;
+      if (!this.matchesBlogId(this.linkedBlog, this.pendingSearchId)) this.linkedBlog = undefined;
       this.applySearchTarget();
     });
     this.loadBlogsFromCloud();
-    this.socket.onCrudChange('blogs').subscribe(() => this.loadBlogsFromCloud());
+    this.socket.onCrudChange('blogs').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(event => {
+      if (event.action === 'deleted' && this.matchesBlogId(this.linkedBlog, String(event.id))) this.linkedBlog = undefined;
+      void this.loadBlogsFromCloud();
+    });
   }
   private pendingSearchId: string | null = null;
+  private pendingSearchSlug: string | null = null;
+  private targetLoading = false;
+  private targetVersion = 0;
+  private targetLookup?: Subscription;
+  private linkedBlog?: BlogAdminItem;
   showDeleteConfirm = false;
   deletingBlogId: number | string | null = null;
   deletingBlogTitle = '';
@@ -99,14 +116,18 @@ export class BlogsAdmin implements OnInit {
 
     try {
       const blogs = await this.adminApiService.getBlogs();
+      if (this.destroyRef.destroyed) return;
       this.blogs = blogs.map((blog) => this.toBlogAdminItem(blog));
-      this.applySearchTarget();
+      if (this.linkedBlog && !this.blogs.some(item => item.id === this.linkedBlog?.id)) this.blogs.push(this.linkedBlog);
     } catch (error) {
       this.blogsError = apiErrorMessage(error, 'Không thể tải danh sách bài viết.');
       console.error('Lỗi tải bài viết:', error);
     } finally {
-      this.loadingBlogs = false;
-      this.cdr.detectChanges();
+      if (!this.destroyRef.destroyed) {
+        this.loadingBlogs = false;
+        this.applySearchTarget();
+        this.cdr.markForCheck();
+      }
     }
   }
 
@@ -203,34 +224,66 @@ export class BlogsAdmin implements OnInit {
     return `admin-search-target-blog-${encodeURIComponent(String(id ?? ''))}`;
   }
 
+  private matchesBlogId(blog: Pick<AdminBlog, 'id' | '_id'> | undefined, id: string | null): boolean {
+    return !!blog && !!id && (String(blog.id) === id || blog._id === id);
+  }
+
+  private loadSearchBlog(id: string, slug: string): void {
+    this.targetLoading = true;
+    const version = this.targetVersion;
+    this.targetLookup = this.adminApiService.getBlogBySlug(slug).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: blog => {
+        if (version !== this.targetVersion) return;
+        this.targetLoading = false;
+        if (!this.matchesBlogId(blog, id)) {
+          this.finishBlogSearch('Không tìm thấy bài viết được liên kết.');
+          return;
+        }
+        const item = this.toBlogAdminItem(blog);
+        this.linkedBlog = item;
+        if (!this.blogs.some(existing => existing.id === item.id)) this.blogs = [...this.blogs, item];
+        this.applySearchTarget();
+      },
+      error: error => {
+        if (version === this.targetVersion) this.finishBlogSearch(apiErrorMessage(error, 'Không thể mở bài viết được liên kết.'));
+      },
+    });
+  }
+
+  private finishBlogSearch(error = ''): void {
+    this.pendingSearchId = null;
+    this.targetLoading = false;
+    if (error) this.blogsError = error;
+    this.cdr.markForCheck();
+  }
+
   private applySearchTarget(): void {
     const id = this.pendingSearchId;
-    if (!id) return;
+    if (!id || this.loadingBlogs || this.targetLoading) return;
 
     this.searchQuery = '';
     this.selectedStatus = '';
     this.selectedAuthor = '';
-
-    const targetIndex = this.blogs.findIndex(
-      blog => String(blog._id || blog.id) === String(id)
-    );
-
+    const list = this.filteredBlogs;
+    const targetIndex = list.findIndex(blog => this.matchesBlogId(blog, id));
     if (targetIndex === -1) {
+      if (this.pendingSearchSlug) this.loadSearchBlog(id, this.pendingSearchSlug);
       return;
     }
 
+    const target = list[targetIndex];
     this.currentPage = Math.floor(targetIndex / this.ITEMS_PER_PAGE) + 1;
-    this.cdr.detectChanges();
-
-    const targetElementId = this.searchTargetId(id);
-    this.pendingSearchId = null;
-
-    window.setTimeout(() => {
+    const targetElementId = this.searchTargetId(target.id || target._id);
+    const version = this.targetVersion;
+    this.targetLoading = true;
+    afterNextRender(() => {
+      if (version !== this.targetVersion) return;
       const row = document.getElementById(targetElementId);
       if (!row) {
+        this.finishBlogSearch('Không thể định vị bài viết trên bảng.');
         return;
       }
-
+      this.finishBlogSearch();
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const cells = Array.from(row.querySelectorAll<HTMLElement>('td, th'));
       const originalStyles = cells.map(cell => ({
@@ -252,7 +305,8 @@ export class BlogsAdmin implements OnInit {
           }
         });
       }, 3000);
-    });
+    }, { injector: this.injector });
+    this.cdr.markForCheck();
   }
 
   onFilterChange(): void {
@@ -292,6 +346,7 @@ export class BlogsAdmin implements OnInit {
 
     this.adminApiService.deleteBlog(id)
       .then(() => {
+        if (this.matchesBlogId(this.linkedBlog, String(id))) this.linkedBlog = undefined;
         this.createSuccess = 'Đã xóa bài viết thành công.';
         return this.loadBlogsFromCloud();
       })
@@ -460,7 +515,8 @@ export class BlogsAdmin implements OnInit {
           status: this.newStatus,
           approvalStatus: this.newStatus
         };
-        await this.adminApiService.updateBlog(this.editingBlogId, updatePayload);
+        const updated = await this.adminApiService.updateBlog(this.editingBlogId, updatePayload);
+        if (this.matchesBlogId(this.linkedBlog, String(this.editingBlogId))) this.linkedBlog = this.toBlogAdminItem(updated);
         this.createSuccess = 'Đã cập nhật bài viết thành công.';
       } else {
         const newBlog = {

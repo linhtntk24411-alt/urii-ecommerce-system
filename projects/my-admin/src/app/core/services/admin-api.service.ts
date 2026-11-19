@@ -1158,6 +1158,12 @@ export class AdminApiService {
 
   // --- 9. BLOGS ---
 
+  getBlogBySlug(slug: string): Observable<AdminBlog> {
+    return this.http.get<AdminBlog>(this.baseUrl + '/blogs/' + encodeURIComponent(slug), {
+      headers: this.getAuthHeaders(),
+    }).pipe(timeout(15000));
+  }
+
   getLatestCommunityBlogs(): Observable<AdminBlog[]> {
     return this.http.get<AdminBlog[]>(this.baseUrl + '/blogs', {
       headers: this.getAuthHeaders(),

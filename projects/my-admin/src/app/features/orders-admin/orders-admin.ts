@@ -82,11 +82,19 @@ export class OrdersAdmin implements OnInit, OnDestroy {
     { id: 'return_and_refund', label: 'Trả hàng và hoàn tiền' }
   ];
   readonly returnStates = [
-    { id: 'pending_approval', label: 'Chờ duyệt' }, { id: 'approved', label: 'Đã duyệt' },
-    { id: 'awaiting_return_pickup', label: 'Chờ nhận hàng' }, { id: 'inspecting', label: 'Kiểm tra hàng' },
-    { id: 'refund_pending', label: 'Chờ hoàn tiền' }, { id: 'refunded', label: 'Đã hoàn tiền' },
-    { id: 'completed', label: 'Hoàn tất' }, { id: 'rejected', label: 'Đã từ chối' }
+    { id: 'pending_approval', label: 'Chờ duyệt', badgeClass: 'badge-status-pending_approval' },
+    { id: 'approved', label: 'Đã duyệt', badgeClass: 'badge-status-approved' },
+    { id: 'awaiting_return_pickup', label: 'Chờ nhận hàng', badgeClass: 'bg-secondary-subtle text-secondary' },
+    { id: 'inspecting', label: 'Kiểm tra hàng', badgeClass: 'badge-status-processing' },
+    { id: 'refund_pending', label: 'Chờ hoàn tiền', badgeClass: 'badge-status-pending' },
+    { id: 'refunded', label: 'Đã hoàn tiền', badgeClass: 'bg-info bg-opacity-10 text-info-emphasis' },
+    { id: 'completed', label: 'Hoàn tất', badgeClass: 'badge-status-completed' },
+    { id: 'rejected', label: 'Đã từ chối', badgeClass: 'badge-status-cancelled' }
   ];
+
+  getReturnBadgeClass(statusId: string): string {
+    return this.returnStates.find(state => state.id === statusId)?.badgeClass || 'bg-secondary-subtle text-secondary';
+  }
   readonly returnActionLabels: Record<string, string> = {
     approve: 'Duyệt', reject: 'Từ chối', start: 'Tiếp tục xử lý', receive: 'Xác nhận nhận lại hàng',
     inspect: 'Ghi nhận kiểm hàng', 'prepare-refund': 'Chuyển chờ hoàn tiền',
@@ -131,16 +139,24 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   statusMap: { [key: string]: any } = {
     "pending": { text: "Chờ xác nhận", class: "badge-status-pending" },
     "approved": { text: "Đã xác nhận", class: "badge-status-approved" },
-    "quoted": { text: "Đã báo giá", class: "badge-status-approved" },
+    "quoted": { text: "Đã báo giá", class: "bg-primary bg-opacity-10 text-primary" },
     "completed": { text: "Hoàn thành", class: "badge-status-completed" },
     "cancelled": { text: "Đã hủy", class: "badge-status-cancelled" },
     "pending_approval": { text: "Chờ duyệt", class: "badge-status-pending_approval" },
     "waiting_quote": { text: "Chờ báo giá", class: "badge-status-waiting_quote" },
     "processing": { text: "Đang gia công", class: "badge-status-processing" },
-    "shipping": { text: "Đang giao", class: "badge-status-approved" },
-    "returned": { text: "Trả hàng", class: "badge-status-cancelled" },
-    "return_requested": { text: "Chờ xử lý hoàn trả", class: "badge-status-pending_approval" }
+    "shipping": { text: "Đang giao", class: "bg-info bg-opacity-10 text-info-emphasis" },
+    "returned": { text: "Trả hàng", class: "bg-secondary-subtle text-secondary" },
+    "return_requested": { text: "Chờ xử lý hoàn trả", class: "bg-danger text-white" }
   };
+
+  getOrderBadgeClass(order: any): string {
+    if (order?.returnStatusId === 'pending_approval') return 'bg-primary bg-opacity-10 text-primary';
+
+    return order?.returnStatusId
+      ? this.getReturnBadgeClass(order.returnStatusId)
+      : this.statusMap[order?.status]?.class || '';
+  }
 
   getStatusLabel(order: any): string {
     if (order?.returnStatusId) return `Hoàn trả: ${this.returnStates.find(state => state.id === order.returnStatusId)?.label || order.returnStatusId}`;

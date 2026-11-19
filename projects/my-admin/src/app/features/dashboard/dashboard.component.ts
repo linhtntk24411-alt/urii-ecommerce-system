@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EMPTY, Subject, Subscription, auditTime, catchError, firstValueFrom, merge, switchMap } from 'rxjs';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 import {
   AdminApiService,
@@ -32,7 +32,7 @@ declare const Chart: any;
 @Component({
   selector: 'admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })

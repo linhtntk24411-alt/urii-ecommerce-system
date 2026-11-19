@@ -336,9 +336,10 @@
                             <div class="action-btn-group">
                                 <button class="btn-action-icon" (click)="openCustomOrderForm(o)" title="Xem form yêu cầu"><i class="bi bi-file-text"></i></button>
                                 @if (quoteActionFor(o); as action) {
-                                    <button type="button" class="btn-action-icon text-success" (click)="openQuoteForm(o)"
-                                        [title]="action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : 'Báo giá cho khách'">
-                                        <i class="bi bi-cash-stack me-1"></i>{{ action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : 'Báo giá' }}
+                                    @let label = action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : 'Báo giá cho khách';
+                                    <button type="button" class="btn-action-icon text-success flex-shrink-0" (click)="openQuoteForm(o)"
+                                        [title]="label" [attr.aria-label]="label">
+                                        <i class="bi" [ngClass]="action === 'correct' ? 'bi-pencil-square' : action === 'requote' ? 'bi-arrow-repeat' : 'bi-cash-stack'" aria-hidden="true"></i>
                                     </button>
                                 }
                                 @if (o.status === 'quoted' && o.quoteDecision === 'accepted') {

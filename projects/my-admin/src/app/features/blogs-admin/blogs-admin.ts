@@ -115,7 +115,7 @@ export class BlogsAdmin implements OnInit {
     this.blogsError = '';
 
     try {
-      const blogs = await this.adminApiService.getBlogs();
+      const blogs = await this.adminApiService.getBlogsForAdmin();
       if (this.destroyRef.destroyed) return;
       this.blogs = blogs.map((blog) => this.toBlogAdminItem(blog));
       if (this.linkedBlog && !this.blogs.some(item => item.id === this.linkedBlog?.id)) this.blogs.push(this.linkedBlog);

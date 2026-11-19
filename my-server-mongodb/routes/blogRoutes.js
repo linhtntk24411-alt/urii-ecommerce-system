@@ -3,7 +3,10 @@ const router = express.Router();
 const c = require('../controllers/blogController');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-router.get('/', c.getAllBlogs);
+router.get('/', (req, res, next) => {
+  if (req.query.view !== 'admin-list') return next();
+  return authenticate(req, res, () => requireAdmin(req, res, next));
+}, c.getAllBlogs);
 router.get('/:slug', c.getBlogBySlug);
 router.post('/', authenticate, c.createBlog);
 router.put('/:id', authenticate, requireAdmin, c.updateBlog);

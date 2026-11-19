@@ -59,7 +59,10 @@ describe('OrdersAdmin', () => {
   });
 
   it('keeps cancellation handling and its pagination when switching request tabs', async () => {
-    vi.spyOn(TestBed.inject(AdminApiService), 'getOrders').mockReturnValue(of(Array.from({ length: 5 }, (_, i) => ({ id: `C-${i}`, statusType: 'pending', cancellationStatusId: 'pending_approval' }))));
+    vi.spyOn(TestBed.inject(AdminApiService), 'getOrders').mockReturnValue(of(Array.from({ length: 5 }, (_, i) => ({
+      id: `C-${i}`, statusType: 'pending', cancellationStatusId: 'pending_approval',
+      cancellationRequestedAt: new Date(Date.UTC(2026, 0, 5 - i)).toISOString(),
+    }))));
     component.loadOrders();
     component.currentCancelPage = 2;
     fixture.nativeElement.querySelector('#return-tab').click();
@@ -181,5 +184,28 @@ describe('OrdersAdmin', () => {
     response.error(new HttpErrorResponse({ status: 404 }));
     expect(component.orderTargetError).toContain('đã bị xóa');
     expect(component.originalOrders.map(order => order.id)).toEqual(['UR-1']);
+  });
+
+  it('sorts filtered orders and requests by their own dates before paging the entire list', () => {
+    const regular = Array.from({ length: 106 }, (_, i) => ({
+      id: 'UR-' + i, customerName: 'Khách', status: 'pending',
+      createdAt: new Date(Date.UTC(2025, 0, i + 1)).toISOString(),
+    }));
+    component.originalOrders = [
+      ...regular,
+      { id: 'cancel-1', status: 'pending_approval', createdAt: '2026-01-01', cancellationRequestedAt: '2026-02-01' },
+      { id: 'cancel-2', status: 'pending_approval', createdAt: '2025-01-01', cancellationRequestedAt: '2026-03-01' },
+      { id: 'custom-1', isCustomOrder: true, status: 'quoted', createdAt: '2025-01-01' },
+      { id: 'custom-2', isCustomOrder: true, status: 'quoted', createdAt: '2026-01-01' },
+    ];
+    component.searchQuery = 'Khách';
+    component.filterStatus = 'pending';
+    component.applyFilters();
+    expect(component.regularOrders).toHaveLength(106);
+    expect(component.pagedRegularOrders[0].id).toBe('UR-105');
+    component.currentPage = 2;
+    expect(component.pagedRegularOrders[0].id).toBe('UR-' + (105 - component.ITEMS_PER_PAGE));
+    expect(component.pagedCancelRequests.map(item => item.id)).toEqual(['cancel-2', 'cancel-1']);
+    expect(component.pagedCustomOrders.map(item => item.id)).toEqual(['custom-2', 'custom-1']);
   });
 });

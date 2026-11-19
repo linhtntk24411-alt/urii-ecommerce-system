@@ -335,7 +335,7 @@ export class OrdersAdmin implements OnInit, OnDestroy {
 
   get cancelRequests() {
     const search = this.cancelSearchQuery.toLowerCase().trim();
-    let list = this.orders.filter(o => {
+    const list = this.orders.filter(o => {
       if (o.status !== 'pending_approval') return false;
       const matchSearch = !search ||
         String(o.id || '').toLowerCase().includes(search) ||
@@ -352,10 +352,7 @@ export class OrdersAdmin implements OnInit, OnDestroy {
       }
       return matchSearch && matchDate;
     });
-    if (this.cancelFilterSort === 'oldest') {
-      list = [...list].reverse();
-    }
-    return list;
+    return this.sortOrdersByDate(list, 'cancellationRequestedAt', this.cancelFilterSort === 'oldest');
   }
   get pagedCancelRequests() {
     const start = (this.currentCancelPage - 1) * this.ITEMS_PER_PAGE;
@@ -401,8 +398,8 @@ export class OrdersAdmin implements OnInit, OnDestroy {
     this.orderListLoading = true;
     this.orderDataSubscription?.unsubscribe();
     this.orderDataSubscription = combineLatest({
-      response: this.adminApi.getOrders(),
-      customResponse: this.adminApi.getCustomOrders(),
+      response: this.adminApi.getOrders(true),
+      customResponse: this.adminApi.getCustomOrders(true),
       products: this.adminApi.products$
     }).subscribe({
       next: ({ response, customResponse, products }) => {
@@ -440,12 +437,11 @@ export class OrdersAdmin implements OnInit, OnDestroy {
           ...regularOrders,
           ...customOrderList.map((item: any) => this.normalizeCustomOrder(item))
         ];
-        if (!this.newOrderNavigation) {
-          this.orders = [...this.originalOrders];
-        } else if (!this.resolvingOrderTarget) {
-          const previousPage = this.currentPage;
-          this.applyFilters();
-          this.currentPage = Math.min(previousPage, Math.max(1, Math.ceil(this.regularOrders.length / this.ITEMS_PER_PAGE)));
+        if (!this.resolvingOrderTarget || !this.newOrderNavigation) {
+          this.applyFilters(false);
+          this.currentPage = Math.min(this.currentPage, Math.max(1, Math.ceil(this.regularOrders.length / this.ITEMS_PER_PAGE)));
+          this.currentCancelPage = Math.min(this.currentCancelPage, Math.max(1, Math.ceil(this.cancelRequests.length / this.ITEMS_PER_PAGE)));
+          this.currentCustomPage = Math.min(this.currentCustomPage, Math.max(1, Math.ceil(this.customOrders.length / this.CUSTOM_ITEMS_PER_PAGE)));
         }
         if (this.selectedOrder?.isCustomOrder && typeof document !== 'undefined' && document.getElementById('customFormModal')?.classList.contains('show')) {
           const latest = this.originalOrders.find(item => item.isCustomOrder && item.id === this.selectedOrder.id);
@@ -699,10 +695,19 @@ export class OrdersAdmin implements OnInit, OnDestroy {
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
+  private sortOrdersByDate<T extends { id?: string; _id?: string; createdAt?: string; cancellationRequestedAt?: string }>(
+    orders: T[], field: 'createdAt' | 'cancellationRequestedAt', oldest: boolean
+  ): T[] {
+    const direction = oldest ? 1 : -1;
+    const timestamp = (value: unknown) => typeof value === 'string' ? Date.parse(value) || 0 : 0;
+    return orders.sort((a, b) => direction * (timestamp(a[field]) - timestamp(b[field])
+      || String(a._id || a.id || '').localeCompare(String(b._id || b.id || ''))));
+  }
+
   // --- Filter ---
-  applyFilters() {
+  applyFilters(resetPage = true) {
     const search = this.searchQuery.toLowerCase().trim();
-    let filteredRegular = this.originalOrders.filter(o => {
+    const filteredRegular = this.originalOrders.filter(o => {
       if (o.isCustomOrder || o.status === 'pending_approval') return false;
       const productNames = Array.isArray(o.items)
         ? o.items.map((item: any) => item.name || '').join(' ')
@@ -721,18 +726,18 @@ export class OrdersAdmin implements OnInit, OnDestroy {
       return matchSearch && matchStatus && matchDate;
     });
 
-    if (this.filterSort === 'newest') filteredRegular.reverse();
+    this.sortOrdersByDate(filteredRegular, 'createdAt', this.filterSort === 'oldest');
 
     const custom = this.filterCustomOrdersList();
     const cancel = this.originalOrders.filter(o => o.status === 'pending_approval');
     
     this.orders = [...filteredRegular, ...custom, ...cancel];
-    this.currentPage = 1;
+    if (resetPage) this.currentPage = 1;
   }
 
   private filterCustomOrdersList(): any[] {
     const search = this.customSearchQuery.toLowerCase().trim();
-    let filteredCustom = this.originalOrders.filter(o => {
+    const filteredCustom = this.originalOrders.filter(o => {
       if (!o.isCustomOrder) return false;
       const detailsText = o.customDetails ? Object.values(o.customDetails).join(' ') : '';
       const matchSearch = !search ||
@@ -754,10 +759,7 @@ export class OrdersAdmin implements OnInit, OnDestroy {
       return matchSearch && matchStatus && matchDate;
     });
 
-    if (this.customFilterSort === 'oldest') {
-      filteredCustom = [...filteredCustom].reverse();
-    }
-    return filteredCustom;
+    return this.sortOrdersByDate(filteredCustom, 'createdAt', this.customFilterSort === 'oldest');
   }
 
   applyCustomFilters(): void {

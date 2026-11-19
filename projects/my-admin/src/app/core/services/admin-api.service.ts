@@ -981,7 +981,7 @@ export class AdminApiService {
     ).pipe(timeout(15000));
   }
 
-  public getOrders(): Observable<any> {
+  public getOrders(fullAdminList = false): Observable<any> {
     let authToken = this.currentAuthToken || this.token() || '';
 
     if (!authToken && isPlatformBrowser(this.platformId)) {
@@ -997,7 +997,7 @@ export class AdminApiService {
 
     return this.http.get<any>(
       `${this.baseUrl}/orders`,
-      { headers }
+      { headers, ...(fullAdminList ? { params: { view: 'admin-list' } } : {}) }
     );
   }
 
@@ -1014,10 +1014,10 @@ export class AdminApiService {
     return this.http.post<any>(`${this.baseUrl}/orders/return-requests/${encodeURIComponent(source)}/${encodeURIComponent(id)}/${encodeURIComponent(action)}`, payload, { headers: this.getAuthHeaders() });
   }
 
-  public getCustomOrders(): Observable<any> {
+  public getCustomOrders(fullAdminList = false): Observable<any> {
     return this.http.get<any>(
-      `${this.baseUrl}/custom-orders?page=1&limit=100`,
-      { headers: this.getAuthHeaders() }
+      this.baseUrl + '/custom-orders',
+      { headers: this.getAuthHeaders(), params: fullAdminList ? { view: 'admin-list' } : { page: 1, limit: 100 } }
     );
   }
 
@@ -1169,6 +1169,10 @@ export class AdminApiService {
       headers: this.getAuthHeaders(),
       params: { view: 'community' },
     }).pipe(timeout(15000));
+  }
+
+  getBlogsForAdmin(): Promise<AdminBlog[]> {
+    return this.requestWithFallback<AdminBlog[]>('GET', '/api/blogs?view=admin-list');
   }
 
   async getBlogs(): Promise<AdminBlog[]> {

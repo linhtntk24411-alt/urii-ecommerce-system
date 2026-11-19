@@ -283,11 +283,8 @@ exports.createCustomOrder = async (req, res) => {
 exports.getAllCustomOrders = async (req, res) => {
   try {
     const { skip, limit } = getPagination(req.query);
-    const customOrders = await CustomOrder.find()
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const list = CustomOrder.find().sort({ createdAt: -1, _id: -1 });
+    const customOrders = await (req.query.view === 'admin-list' ? list : list.skip(skip).limit(limit)).lean();
     res.json(await enrichCustomOrders(customOrders));
   } catch (error) {
     console.error('Lỗi tải yêu cầu đặt hàng:', error);

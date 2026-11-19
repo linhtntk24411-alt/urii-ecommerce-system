@@ -64,7 +64,9 @@ exports.getAllBlogs = async (req, res) => {
     const { skip, limit } = getPagination(req.query);
     const blogs = community
       ? await Blog.find({ approvalStatus: { $ne: 'rejected' } }).sort({ createdAt: -1, id: -1 }).limit(3).lean()
-      : await Blog.find().sort({ id: 1 }).skip(skip).limit(limit).lean();
+      : req.query.view === 'admin-list'
+        ? await Blog.find().sort({ createdAt: -1, _id: -1 }).lean()
+        : await Blog.find().sort({ id: 1 }).skip(skip).limit(limit).lean();
     res.json(await enrichBlogs(blogs));
   } catch (error) {
     console.error('Lỗi tải bài viết:', error);

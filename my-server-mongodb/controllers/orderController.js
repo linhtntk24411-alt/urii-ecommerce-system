@@ -367,7 +367,8 @@ exports.getAllOrders = async (req, res) => {
     if (typeof req.query.statusId === 'string' && req.query.statusId.trim()) {
       filter.statusId = req.query.statusId.trim();
     }
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const list = Order.find(filter).sort({ createdAt: -1, _id: -1 });
+    const orders = await (req.query.view === 'admin-list' ? list : list.skip(skip).limit(limit)).lean();
     res.json(await enrichOrders(orders));
   } catch (error) {
     console.error('Lỗi tải đơn hàng:', error);
@@ -1031,8 +1032,7 @@ exports.getReturnRequests = async (req, res) => {
         { $match: { returnStatusId: { $exists: true } } }, { $addFields: { source: 'custom_order', orderType: 'custom' } }
       ] } },
       { $match: match },
-      { $addFields: { returnPriority: { $cond: [{ $in: ['$returnStatusId', RETURN_OPEN] }, 0, 1] } } },
-      { $sort: { returnPriority: 1, returnRequestedAt: -1, source: 1, id: 1 } },
+      { $sort: { returnRequestedAt: -1, source: 1, _id: -1 } },
       { $facet: { requests: [{ $skip: skip }, { $limit: limit }], count: [{ $count: 'total' }] } }
     ]);
     const requests = await Promise.all((result?.requests || []).map(async order => returnView(order, order.source, await linkedReturnReason(order, order.source))));

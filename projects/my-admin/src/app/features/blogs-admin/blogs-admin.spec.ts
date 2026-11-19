@@ -24,7 +24,7 @@ describe('BlogsAdmin', () => {
         provide: AdminApiService,
         useValue: {
           getBlogBySlug,
-          getBlogs: () => Promise.resolve([{
+          getBlogsForAdmin: () => Promise.resolve([{
             id: 1,
             title: 'Bài viết kiểm thử',
             slug: 'bai-viet-kiem-thu',

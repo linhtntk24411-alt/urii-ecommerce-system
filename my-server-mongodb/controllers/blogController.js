@@ -60,8 +60,11 @@ async function enrichBlogs(blogs) {
 
 exports.getAllBlogs = async (req, res) => {
   try {
+    const community = req.query.view === 'community';
     const { skip, limit } = getPagination(req.query);
-    const blogs = await Blog.find().sort({ id: 1 }).skip(skip).limit(limit).lean();
+    const blogs = community
+      ? await Blog.find({ approvalStatus: { $ne: 'rejected' } }).sort({ createdAt: -1, id: -1 }).limit(3).lean()
+      : await Blog.find().sort({ id: 1 }).skip(skip).limit(limit).lean();
     res.json(await enrichBlogs(blogs));
   } catch (error) {
     console.error('Lỗi tải bài viết:', error);

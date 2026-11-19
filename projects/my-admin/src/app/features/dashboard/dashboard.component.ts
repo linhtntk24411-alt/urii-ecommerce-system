@@ -12,7 +12,7 @@ import {
   signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { EMPTY, Subject, Subscription, auditTime, catchError, firstValueFrom, merge, switchMap } from 'rxjs';
 import { Router } from '@angular/router';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 import {
@@ -51,6 +51,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly orders = signal<AdminOrder[]>([]);
   readonly products = signal<AdminProduct[]>([]);
   readonly blogs = signal<AdminBlog[]>([]);
+  readonly communityBlogs = signal<AdminBlog[]>([]);
+  readonly communityBlogsError = signal('');
+  private readonly refreshCommunityBlogs = new Subject<void>();
+  private communityBlogSubscription?: Subscription;
   readonly users = signal<AdminUser[]>([]);
   readonly promotions = signal<Promotion[]>([]);
 
@@ -127,16 +131,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly recentOrders = computed(() => this.orders().slice(0, 5));
 
-  readonly pendingBlogs = computed(() =>
-    this.blogs()
-      .filter((b) => b.approvalStatus !== 'rejected')
-      .slice(0, 3)
-  );
-
-  readonly pendingBlogsCount = computed(
-    () => this.pendingBlogs().filter((b) => b.approvalStatus !== 'approved').length
-  );
-
   readonly lowStockProducts = computed(() => {
     const sorted = [...this.products()].sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
     return sorted.slice(0, 3);
@@ -187,9 +181,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isBrowser) {
       // 1. Tải ngay dữ liệu khởi tạo/cache để dashboard hiển thị tức thì (0ms)
       this.populateInitialData();
+      this.watchCommunityBlogs();
       // 2. Tải ngầm cập nhật dữ liệu mới nhất từ backend
       void this.loadAllData();
     }
+  }
+
+  private watchCommunityBlogs(): void {
+    this.communityBlogSubscription = merge(this.refreshCommunityBlogs, this.socket.onCrudChange('blogs')).pipe(
+      auditTime(150),
+      switchMap(() => {
+        this.communityBlogsError.set('');
+        return this.api.getLatestCommunityBlogs().pipe(catchError(error => {
+          this.communityBlogsError.set(apiErrorMessage(error, 'Không thể tải bài viết cộng đồng.'));
+          return EMPTY;
+        }));
+      }),
+    ).subscribe(blogs => this.communityBlogs.set(blogs));
   }
 
   private populateInitialData(): void {
@@ -218,6 +226,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.communityBlogSubscription?.unsubscribe();
     if (this.isBrowser) {
       window.removeEventListener('resize', this.onResize);
     }
@@ -252,6 +261,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async loadAllData(): Promise<void> {
+    this.refreshCommunityBlogs.next();
     this.loading.set(true);
     this.error.set('');
     try {
@@ -534,7 +544,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.pendingBlogIdentity = null;
       this.savingModal.set(false);
       this.closeModal();
-      void this.loadAllData();
+      this.refreshCommunityBlogs.next();
     } catch (error) {
       this.showToast('danger', apiErrorMessage(error, 'Không thể tạo bài viết.'));
     } finally {

@@ -1158,6 +1158,13 @@ export class AdminApiService {
 
   // --- 9. BLOGS ---
 
+  getLatestCommunityBlogs(): Observable<AdminBlog[]> {
+    return this.http.get<AdminBlog[]>(this.baseUrl + '/blogs', {
+      headers: this.getAuthHeaders(),
+      params: { view: 'community' },
+    }).pipe(timeout(15000));
+  }
+
   async getBlogs(): Promise<AdminBlog[]> {
     try {
       const data = await this.requestWithFallback<any>(

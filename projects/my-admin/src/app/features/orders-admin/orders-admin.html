@@ -336,10 +336,9 @@
                             <div class="action-btn-group">
                                 <button class="btn-action-icon" (click)="openCustomOrderForm(o)" title="Xem form yêu cầu"><i class="bi bi-file-text"></i></button>
                                 @if (quoteActionFor(o); as action) {
-                                    @let label = action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : 'Báo giá cho khách';
-                                    <button type="button" class="btn-action-icon text-success flex-shrink-0" (click)="openQuoteForm(o)"
-                                        [title]="label" [attr.aria-label]="label">
-                                        <i class="bi" [ngClass]="action === 'correct' ? 'bi-pencil-square' : action === 'requote' ? 'bi-arrow-repeat' : 'bi-cash-stack'" aria-hidden="true"></i>
+                                    <button type="button" class="btn-action-icon text-success" (click)="openQuoteForm(o)"
+                                        [title]="action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : 'Báo giá cho khách'">
+                                        <i class="bi bi-cash-stack me-1"></i>{{ action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : 'Báo giá' }}
                                     </button>
                                 }
                                 @if (o.status === 'quoted' && o.quoteDecision === 'accepted') {
@@ -372,8 +371,6 @@
     </div>
 </div>
 
-<!-- ================= 4 MODALS TÍCH HỢP TỪ JS CŨ LÊN HTML ================= -->
-<!-- Modal Chi Tiết Đơn Hàng -->
 <div class="modal fade" id="returnRequestModal" tabindex="-1" aria-labelledby="return-modal-title" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content font-segoe">
         <div class="modal-header"><h4 id="return-modal-title" class="modal-title text-danger">Yêu cầu #{{ selectedReturn?.id }}</h4><button type="button" class="btn-close" data-bs-dismiss="modal" [disabled]="returnBusy" aria-label="Đóng"></button></div>
@@ -488,8 +485,6 @@
         </div>
     </div>
 </div>
-
-<!-- Modal Báo Giá -->
 <div class="modal fade" id="quoteModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content font-segoe border-0 shadow-lg rounded-3">
@@ -529,8 +524,6 @@
         </div>
     </div>
 </div>
-
-<!-- 2. Modal Xem form Yêu cầu Custom -->
 <div class="modal fade" id="customFormModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content font-segoe" *ngIf="selectedOrder">
@@ -601,11 +594,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                @if (quoteActionFor(selectedOrder); as action) {
-                    <button type="button" class="btn btn-success fw-bold" (click)="openQuoteForm(selectedOrder)">
-                        <i class="bi bi-cash-stack me-1" aria-hidden="true"></i>{{ action === 'requote' ? 'Báo giá lại' : action === 'correct' ? 'Sửa báo giá' : selectedOrder.status === 'quoted' ? 'Bổ sung báo giá' : 'Báo giá ngay' }}
-                    </button>
-                }
+                <button *ngIf="selectedOrder.status === 'waiting_quote'" class="btn btn-success fw-bold" (click)="openQuoteForm(selectedOrder)"><i class="bi bi-cash-stack me-1"></i> Báo giá ngay</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>

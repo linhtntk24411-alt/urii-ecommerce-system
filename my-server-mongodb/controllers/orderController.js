@@ -97,7 +97,7 @@ function addHoursIso(isoOrDate, hours) {
 
 function hasFinancialOrderChanges(order, updates) {
   if (Object.keys(updates).some((field) => field.startsWith('$'))) return true;
-  const fields = ['total', 'totalAmount', 'subtotal', 'discount', 'discountAmount', 'shippingFee', 'voucher', 'items'];
+  const fields = ['total', 'totalAmount', 'subtotal', 'discount', 'discountAmount', 'shippingFee', 'voucher', 'vouchers', 'items'];
   if (fields.some((field) => Object.hasOwn(updates, field)
     && JSON.stringify(order[field]) !== JSON.stringify(updates[field]))) {
     return true;
@@ -106,7 +106,7 @@ function hasFinancialOrderChanges(order, updates) {
     return true;
   }
   if (Object.keys(updates).some((field) => (
-    field.startsWith('items.') || field.startsWith('voucher.')
+    field.startsWith('items.') || field.startsWith('voucher.') || field.startsWith('vouchers.')
   ))) {
     return true;
   }

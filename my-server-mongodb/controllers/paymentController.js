@@ -174,20 +174,32 @@ exports.createOrderPayment = async (req, res) => {
         payment.paidAt = null;
         payment.inventoryReservations = [];
         payment.voucherReservation = undefined;
+        payment.voucherReservations = undefined;
       }
 
       payment.inventoryReservations = await paymentLifecycleService.reserveInventory(quote.items, session);
-      if (quote.voucherReservation) {
-        await paymentLifecycleService.reserveVoucher({
-          ...quote.voucherReservation,
-          userId,
-          paymentId: payment._id,
-          expiresAt
-        }, session);
+      const reservationsToMake = Array.isArray(quote.voucherReservations) && quote.voucherReservations.length > 1
+        ? quote.voucherReservations
+        : (quote.voucherReservation ? [quote.voucherReservation] : []);
+      if (reservationsToMake.length > 0) {
+        for (const vr of reservationsToMake) {
+          await paymentLifecycleService.reserveVoucher({
+            ...vr,
+            userId,
+            paymentId: payment._id,
+            expiresAt
+          }, session);
+        }
         payment.voucherReservation = {
-          ...quote.voucherReservation,
+          ...reservationsToMake[0],
           status: 'reserved'
         };
+        if (reservationsToMake.length > 1) {
+          payment.voucherReservations = reservationsToMake.map((vr) => ({
+            ...vr,
+            status: 'reserved'
+          }));
+        }
       }
       await payment.save({ session });
 

@@ -66,6 +66,11 @@ export interface CreateOrderPayload {
     voucherId: string;
     discountAmount: number;
   };
+  vouchers?: Array<{
+    voucherId: string;
+    discountAmount: number;
+    type: VoucherType;
+  }>;
   items: Array<{
     productId: string;
     name: string;

@@ -313,6 +313,79 @@ describe('CheckOut', () => {
     expect(component.itemDiscount).toBe(10000);
   });
 
+  it('allows selecting both a shipping voucher and an order discount voucher simultaneously in separated Shopee-style sections', () => {
+    prepareSingleProductCheckout(120000, 1); // subtotal = 120000 (< 200000 -> shippingFee = 30000)
+    component.vouchers = [
+      {
+        id: 'voucher-ship',
+        code: 'FREESHIP',
+        name: 'Miễn phí vận chuyển',
+        type: 'shipping',
+        discountValue: 30000,
+        minOrder: 100000,
+      },
+      {
+        id: 'voucher-discount',
+        code: 'SALE15',
+        name: 'Giảm 15%',
+        type: 'percent',
+        discountValue: 15,
+        minOrder: 70000,
+        maxDiscount: 30000,
+      },
+    ] satisfies CheckoutVoucher[];
+
+    const input = fixture.nativeElement.querySelector('#voucherCode') as HTMLInputElement;
+    input.click();
+    fixture.detectChanges();
+
+    const shippingGroup = fixture.nativeElement.querySelector('[data-testid="voucher-group-shipping"]') as HTMLElement;
+    const discountGroup = fixture.nativeElement.querySelector('[data-testid="voucher-group-discount"]') as HTMLElement;
+    expect(shippingGroup).toBeTruthy();
+    expect(discountGroup).toBeTruthy();
+    expect(shippingGroup.textContent).toContain('Mã Miễn Phí Vận Chuyển');
+    expect(shippingGroup.textContent).toContain('FREESHIP');
+    expect(discountGroup.textContent).toContain('Mã Giảm Giá Đơn Hàng');
+    expect(discountGroup.textContent).toContain('SALE15');
+
+    // 1. Select shipping voucher first
+    const shipBtn = shippingGroup.querySelector('.voucher-option--shipping') as HTMLButtonElement;
+    shipBtn.click();
+    fixture.detectChanges();
+
+    expect(component.appliedShippingVoucher?.code).toBe('FREESHIP');
+    expect(component.appliedDiscountVoucher).toBeNull();
+    expect(component.shippingDiscount).toBe(30000);
+    expect(component.itemDiscount).toBe(0);
+
+    // 2. Open dropdown again and select order discount voucher
+    input.click();
+    fixture.detectChanges();
+    const discBtn = fixture.nativeElement.querySelector('[data-testid="voucher-group-discount"] .voucher-option--discount') as HTMLButtonElement;
+    discBtn.click();
+    fixture.detectChanges();
+
+    expect(component.appliedShippingVoucher?.code).toBe('FREESHIP');
+    expect(component.appliedDiscountVoucher?.code).toBe('SALE15');
+    expect(component.appliedVouchersCount).toBe(2);
+    expect(component.shippingDiscount).toBe(30000);
+    expect(component.itemDiscount).toBe(18000); // 15% of 120000
+    expect(component.totalDiscount).toBe(48000);
+    expect(component.total).toBe(120000 + 30000 - 48000); // 102000
+
+    // Verify separated slots and order payload
+    expect(fixture.nativeElement.querySelector('[data-testid="shipping-voucher-slot"]')?.textContent).toContain('FREESHIP');
+    expect(fixture.nativeElement.querySelector('[data-testid="discount-voucher-slot"]')?.textContent).toContain('SALE15');
+
+    component.placeOrder();
+    const orderReq = http.expectOne('/api/orders');
+    expect(orderReq.request.body.vouchers).toEqual([
+      { voucherId: 'voucher-ship', discountAmount: 30000, type: 'shipping' },
+      { voucherId: 'voucher-discount', discountAmount: 18000, type: 'percent' },
+    ]);
+    orderReq.flush({ id: 'order-dual-voucher' });
+  });
+
   it('closes the voucher list when toggled, clicking outside, or pressing Escape', () => {
     TestBed.inject(CartService).addItem({ productId: 'p-1', variant: null, quantity: 1 });
     flushCartAdd('p-1');

@@ -87,9 +87,31 @@ export class CheckOut implements OnInit, OnDestroy {
   voucherError = '';
   voucherLoadError = '';
   voucherMessage = '';
-  appliedVoucher: CheckoutVoucher | null = null;
+  appliedShippingVoucher: CheckoutVoucher | null = null;
+  appliedDiscountVoucher: CheckoutVoucher | null = null;
   voucherCode = '';
   voucherDropdownOpen = false;
+
+  get appliedVoucher(): CheckoutVoucher | null {
+    return this.appliedDiscountVoucher ?? this.appliedShippingVoucher;
+  }
+
+  set appliedVoucher(voucher: CheckoutVoucher | null) {
+    if (!voucher) {
+      this.appliedShippingVoucher = null;
+      this.appliedDiscountVoucher = null;
+      return;
+    }
+    if (voucher.type === 'shipping') {
+      this.appliedShippingVoucher = voucher;
+    } else {
+      this.appliedDiscountVoucher = voucher;
+    }
+  }
+
+  get appliedVouchersCount(): number {
+    return (this.appliedShippingVoucher ? 1 : 0) + (this.appliedDiscountVoucher ? 1 : 0);
+  }
   customerName = '';
   phone = '';
   shippingAddress = '';
@@ -223,18 +245,25 @@ export class CheckOut implements OnInit, OnDestroy {
   }
 
   get itemDiscount(): number {
-    if (!this.appliedVoucher || this.appliedVoucher.type === 'shipping') return 0;
-    const discount = this.appliedVoucher.type === 'percent'
-      ? this.subtotal * this.appliedVoucher.discountValue / 100
-      : this.appliedVoucher.discountValue;
-    const capped = this.appliedVoucher.maxDiscount === undefined
+    if (!this.appliedDiscountVoucher) return 0;
+    const discount = this.appliedDiscountVoucher.type === 'percent'
+      ? this.subtotal * this.appliedDiscountVoucher.discountValue / 100
+      : this.appliedDiscountVoucher.discountValue;
+    const capped = this.appliedDiscountVoucher.maxDiscount === undefined
       ? discount
-      : Math.min(discount, this.appliedVoucher.maxDiscount);
+      : Math.min(discount, this.appliedDiscountVoucher.maxDiscount);
     return Math.min(this.subtotal, Math.max(0, capped));
   }
 
   get shippingDiscount(): number {
-    return this.appliedVoucher?.type === 'shipping' ? this.shippingFee : 0;
+    if (!this.appliedShippingVoucher || this.shippingFee === 0) return 0;
+    const rawDiscount = this.appliedShippingVoucher.discountValue > 0
+      ? Math.min(this.shippingFee, this.appliedShippingVoucher.discountValue)
+      : this.shippingFee;
+    const capped = this.appliedShippingVoucher.maxDiscount === undefined
+      ? rawDiscount
+      : Math.min(rawDiscount, this.appliedShippingVoucher.maxDiscount);
+    return Math.min(this.shippingFee, Math.max(0, capped));
   }
 
   get totalDiscount(): number {
@@ -255,6 +284,14 @@ export class CheckOut implements OnInit, OnDestroy {
       .sort((a, b) => Number(this.isVoucherApplicable(b.voucher)) - Number(this.isVoucherApplicable(a.voucher))
         || a.index - b.index)
       .map(({ voucher }) => voucher);
+  }
+
+  get shippingVouchers(): CheckoutVoucher[] {
+    return this.sortedVouchers.filter((voucher) => voucher.type === 'shipping');
+  }
+
+  get discountVouchers(): CheckoutVoucher[] {
+    return this.sortedVouchers.filter((voucher) => voucher.type !== 'shipping');
   }
 
   loadCheckout(): void {
@@ -577,7 +614,9 @@ export class CheckOut implements OnInit, OnDestroy {
     const code = this.voucherCode.trim().toUpperCase();
     if (!code) {
       this.voucherError = 'Vui lòng nhập mã voucher.';
-      this.appliedVoucher = null;
+      if (!this.appliedShippingVoucher && !this.appliedDiscountVoucher) {
+        this.appliedVoucher = null;
+      }
       return;
     }
     if (this.loadingVouchers) {
@@ -591,34 +630,86 @@ export class CheckOut implements OnInit, OnDestroy {
 
     const voucher = this.vouchers.find((entry) => entry.code === code);
     if (!voucher) {
-      this.appliedVoucher = null;
       this.voucherError = 'Mã voucher không hợp lệ hoặc đã hết hạn.';
       return;
     }
     if (this.subtotal < voucher.minOrder) {
-      this.appliedVoucher = null;
       this.voucherError = `Đơn hàng cần đạt tối thiểu ${this.formatCurrency(voucher.minOrder)} để dùng mã này.`;
       return;
     }
     if (voucher.type === 'shipping' && this.shippingFee === 0) {
-      this.appliedVoucher = null;
       this.voucherError = 'Đơn hàng hiện đã được miễn phí vận chuyển.';
       return;
     }
 
-    this.appliedVoucher = voucher;
-    this.voucherMessage = `Đã áp dụng voucher ${voucher.code}.`;
+    if (voucher.type === 'shipping') {
+      this.appliedShippingVoucher = voucher;
+    } else {
+      this.appliedDiscountVoucher = voucher;
+    }
+    this.updateVoucherSuccessMessage(voucher);
+  }
+
+  private updateVoucherSuccessMessage(latestVoucher?: CheckoutVoucher): void {
+    if (this.appliedShippingVoucher && this.appliedDiscountVoucher) {
+      this.voucherMessage = `Đã áp dụng đồng thời voucher vận chuyển (${this.appliedShippingVoucher.code}) và voucher giảm giá (${this.appliedDiscountVoucher.code}).`;
+    } else if (latestVoucher) {
+      this.voucherMessage = `Đã áp dụng voucher ${latestVoucher.code}.`;
+    } else if (this.appliedShippingVoucher) {
+      this.voucherMessage = `Đang áp dụng voucher vận chuyển ${this.appliedShippingVoucher.code}.`;
+    } else if (this.appliedDiscountVoucher) {
+      this.voucherMessage = `Đang áp dụng voucher giảm giá ${this.appliedDiscountVoucher.code}.`;
+    } else {
+      this.voucherMessage = '';
+    }
+  }
+
+  removeShippingVoucher(event?: Event): void {
+    event?.stopPropagation();
+    this.appliedShippingVoucher = null;
+    this.voucherError = '';
+    if (!this.appliedDiscountVoucher) {
+      this.voucherCode = '';
+    } else {
+      this.voucherCode = this.appliedDiscountVoucher.code;
+    }
+    this.updateVoucherSuccessMessage();
+  }
+
+  removeDiscountVoucher(event?: Event): void {
+    event?.stopPropagation();
+    this.appliedDiscountVoucher = null;
+    this.voucherError = '';
+    if (!this.appliedShippingVoucher) {
+      this.voucherCode = '';
+    } else {
+      this.voucherCode = this.appliedShippingVoucher.code;
+    }
+    this.updateVoucherSuccessMessage();
   }
 
   clearVoucher(): void {
-    this.appliedVoucher = null;
+    this.appliedShippingVoucher = null;
+    this.appliedDiscountVoucher = null;
     this.voucherCode = '';
     this.voucherError = '';
     this.voucherMessage = '';
   }
 
   toggleVoucherDropdown(): void {
-    if (!this.appliedVoucher) this.voucherDropdownOpen = !this.voucherDropdownOpen;
+    this.voucherDropdownOpen = !this.voucherDropdownOpen;
+  }
+
+  openVoucherDropdown(event?: Event): void {
+    event?.stopPropagation();
+    this.voucherDropdownOpen = true;
+  }
+
+  isVoucherSelected(voucher: CheckoutVoucher): boolean {
+    if (voucher.type === 'shipping') {
+      return this.appliedShippingVoucher?.id === voucher.id || this.appliedShippingVoucher?.code === voucher.code;
+    }
+    return this.appliedDiscountVoucher?.id === voucher.id || this.appliedDiscountVoucher?.code === voucher.code;
   }
 
   @HostListener('document:click', ['$event'])
@@ -661,6 +752,15 @@ export class CheckOut implements OnInit, OnDestroy {
 
   selectVoucher(voucher: CheckoutVoucher): void {
     if (!this.isVoucherApplicable(voucher)) return;
+    if (this.isVoucherSelected(voucher)) {
+      if (voucher.type === 'shipping') {
+        this.removeShippingVoucher();
+      } else {
+        this.removeDiscountVoucher();
+      }
+      this.voucherDropdownOpen = false;
+      return;
+    }
     this.voucherCode = voucher.code;
     this.voucherDropdownOpen = false;
     this.applyVoucher();
@@ -757,6 +857,22 @@ export class CheckOut implements OnInit, OnDestroy {
       ...(this.orderNote.trim() ? { note: this.orderNote.trim() } : {}),
       ...(this.appliedVoucher
         ? { voucher: { voucherId: this.appliedVoucher.id, discountAmount: this.totalDiscount } }
+        : {}),
+      ...(this.appliedShippingVoucher && this.appliedDiscountVoucher
+        ? {
+            vouchers: [
+              {
+                voucherId: this.appliedShippingVoucher.id,
+                discountAmount: this.shippingDiscount,
+                type: 'shipping',
+              },
+              {
+                voucherId: this.appliedDiscountVoucher.id,
+                discountAmount: this.itemDiscount,
+                type: this.appliedDiscountVoucher.type,
+              },
+            ],
+          }
         : {}),
       address: {
         name: address.name,

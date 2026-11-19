@@ -31,6 +31,15 @@ const paymentSchema = new mongoose.Schema({
     voucherId: { type: String, default: null },
     userVoucherId: { type: mongoose.Schema.Types.ObjectId, default: null },
     status: { type: String, enum: ['reserved', 'released', 'consumed'], default: undefined }
+  },
+  voucherReservations: {
+    type: [{
+      _id: false,
+      voucherId: { type: String, default: null },
+      userVoucherId: { type: mongoose.Schema.Types.ObjectId, default: null },
+      status: { type: String, enum: ['reserved', 'released', 'consumed'], default: undefined }
+    }],
+    default: undefined
   }
 }, { timestamps: true });
 

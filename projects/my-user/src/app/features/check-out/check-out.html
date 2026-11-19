@@ -438,7 +438,16 @@
             </div>
 
             <div class="voucher-box">
-              <label class="form-label" for="voucherCode">Mã voucher</label>
+              <div class="voucher-box-header">
+                <label class="form-label" for="voucherCode">
+                  <span class="voucher-title-icon" aria-hidden="true">🎟</span>
+                  Urii Voucher
+                </label>
+                <span class="voucher-count-badge" [class.has-applied]="appliedVouchersCount > 0">
+                  Đã chọn {{ appliedVouchersCount }}/2 mã
+                </span>
+              </div>
+
               <div class="voucher-picker">
                 <div class="voucher-input">
                   <input
@@ -446,27 +455,33 @@
                     class="form-control"
                     name="voucherCode"
                     [(ngModel)]="voucherCode"
-                    placeholder="Nhập hoặc chọn voucher"
-                    [disabled]="!!appliedVoucher"
+                    placeholder="Nhập hoặc chọn mã Freeship / Giảm giá"
                     [attr.aria-expanded]="voucherDropdownOpen"
                     aria-controls="available-vouchers"
                     aria-haspopup="listbox"
                     (click)="toggleVoucherDropdown()"
                   >
-                  @if (appliedVoucher) {
-                    <button class="voucher-button" type="button" (click)="clearVoucher()">Bỏ</button>
-                  } @else {
+                  <button
+                    class="voucher-button"
+                    type="button"
+                    [disabled]="loadingVouchers"
+                    (click)="applyVoucher()"
+                  >
+                    Áp dụng
+                  </button>
+                  @if (appliedVouchersCount > 0) {
                     <button
-                      class="voucher-button"
+                      class="voucher-button voucher-button--clear"
                       type="button"
-                      [disabled]="loadingVouchers"
-                      (click)="applyVoucher()"
+                      (click)="clearVoucher()"
+                      title="Bỏ tất cả voucher đã chọn"
                     >
-                      Áp dụng
+                      Bỏ hết
                     </button>
                   }
                 </div>
-                @if (voucherDropdownOpen && !appliedVoucher) {
+
+                @if (voucherDropdownOpen) {
                   <div class="voucher-dropdown" id="available-vouchers" role="listbox" aria-label="Voucher khả dụng">
                     @if (loadingVouchers) {
                       <p class="voucher-dropdown-state">Đang tải voucher khả dụng...</p>
@@ -475,28 +490,171 @@
                     } @else if (vouchers.length === 0) {
                       <p class="voucher-dropdown-state">Hiện chưa có voucher khả dụng.</p>
                     } @else {
-                      @for (voucher of sortedVouchers; track voucher.id) {
-                        <button
-                          class="voucher-option"
-                          type="button"
-                          role="option"
-                          [disabled]="!isVoucherApplicable(voucher)"
-                          [attr.aria-selected]="voucherCode === voucher.code"
-                          (click)="selectVoucher(voucher)"
-                        >
-                          <span class="voucher-option-info">
-                            <strong>{{ voucher.name }}</strong>
-                            <span>{{ voucher.code }} · {{ voucherRestriction(voucher) }}</span>
+                      <!-- Nhóm 1: Voucher Miễn Phí Vận Chuyển -->
+                      <div class="voucher-group voucher-group--shipping" data-testid="voucher-group-shipping">
+                        <div class="voucher-group-header">
+                          <span class="voucher-group-title">
+                            <span class="voucher-group-badge voucher-group-badge--shipping">FREE SHIP</span>
+                            Mã Miễn Phí Vận Chuyển
                           </span>
-                          <span class="voucher-option-choose">
-                            {{ isVoucherApplicable(voucher) ? 'Dùng' : 'Chưa đủ điều kiện' }}
+                          <span class="voucher-group-limit">Có thể chọn 1 Voucher</span>
+                        </div>
+                        @if (shippingVouchers.length === 0) {
+                          <p class="voucher-group-empty">Chưa có voucher miễn phí vận chuyển trong kho.</p>
+                        } @else {
+                          @for (voucher of shippingVouchers; track voucher.id) {
+                            <button
+                              class="voucher-option voucher-option--shipping"
+                              [class.is-selected]="isVoucherSelected(voucher)"
+                              type="button"
+                              role="option"
+                              [disabled]="!isVoucherApplicable(voucher)"
+                              [attr.aria-selected]="isVoucherSelected(voucher)"
+                              (click)="selectVoucher(voucher)"
+                            >
+                              <span class="voucher-ticket-stub voucher-ticket-stub--shipping" aria-hidden="true">
+                                <strong>FREE</strong>
+                                <small>SHIP</small>
+                              </span>
+                              <span class="voucher-option-info">
+                                <strong>{{ voucher.name }}</strong>
+                                <span>{{ voucher.code }} · {{ voucherRestriction(voucher) }}</span>
+                              </span>
+                              <span class="voucher-option-choose">
+                                {{ isVoucherSelected(voucher) ? 'Đã chọn ✓' : (isVoucherApplicable(voucher) ? 'Dùng' : 'Chưa đủ điều kiện') }}
+                              </span>
+                            </button>
+                          }
+                        }
+                      </div>
+
+                      <div class="voucher-section-divider" role="separator" aria-hidden="true"></div>
+
+                      <!-- Nhóm 2: Voucher Giảm Giá Đơn Hàng -->
+                      <div class="voucher-group voucher-group--discount" data-testid="voucher-group-discount">
+                        <div class="voucher-group-header">
+                          <span class="voucher-group-title">
+                            <span class="voucher-group-badge voucher-group-badge--discount">GIẢM GIÁ</span>
+                            Mã Giảm Giá Đơn Hàng
                           </span>
-                        </button>
-                      }
+                          <span class="voucher-group-limit">Có thể chọn 1 Voucher</span>
+                        </div>
+                        @if (discountVouchers.length === 0) {
+                          <p class="voucher-group-empty">Chưa có voucher giảm giá đơn hàng trong kho.</p>
+                        } @else {
+                          @for (voucher of discountVouchers; track voucher.id) {
+                            <button
+                              class="voucher-option voucher-option--discount"
+                              [class.is-selected]="isVoucherSelected(voucher)"
+                              type="button"
+                              role="option"
+                              [disabled]="!isVoucherApplicable(voucher)"
+                              [attr.aria-selected]="isVoucherSelected(voucher)"
+                              (click)="selectVoucher(voucher)"
+                            >
+                              <span class="voucher-ticket-stub voucher-ticket-stub--discount" aria-hidden="true">
+                                <strong>{{ voucher.type === 'percent' ? ('-' + voucher.discountValue + '%') : 'VOUCHER' }}</strong>
+                                <small>ĐƠN HÀNG</small>
+                              </span>
+                              <span class="voucher-option-info">
+                                <strong>{{ voucher.name }}</strong>
+                                <span>{{ voucher.code }} · {{ voucherRestriction(voucher) }}</span>
+                              </span>
+                              <span class="voucher-option-choose">
+                                {{ isVoucherSelected(voucher) ? 'Đã chọn ✓' : (isVoucherApplicable(voucher) ? 'Dùng' : 'Chưa đủ điều kiện') }}
+                              </span>
+                            </button>
+                          }
+                        }
+                      </div>
                     }
                   </div>
                 }
               </div>
+
+              <!-- Hai ngăn tách biệt hiển thị Voucher Vận Chuyển & Voucher Giảm Giá giống Shopee -->
+              <div class="voucher-slots" aria-label="Các loại voucher áp dụng">
+                <!-- Ngăn 1: Voucher Vận Chuyển -->
+                <div
+                  class="voucher-slot voucher-slot--shipping"
+                  [class.is-applied]="!!appliedShippingVoucher"
+                  data-testid="shipping-voucher-slot"
+                >
+                  <div class="voucher-slot-left">
+                    <span class="voucher-slot-tag voucher-slot-tag--shipping">FREESHIP</span>
+                    <div class="voucher-slot-content">
+                      <span class="voucher-slot-category">Ưu đãi vận chuyển</span>
+                      @if (appliedShippingVoucher; as shipVoucher) {
+                        <strong class="voucher-slot-code">
+                          {{ shipVoucher.code }} · -{{ shippingDiscount | currency:'VND':'symbol':'1.0-0':'vi-VN' }}
+                        </strong>
+                      } @else {
+                        <span class="voucher-slot-placeholder">
+                          {{ shippingFee === 0 ? 'Đơn hàng đã được miễn phí vận chuyển' : 'Chưa chọn mã miễn phí vận chuyển' }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  @if (appliedShippingVoucher) {
+                    <button
+                      type="button"
+                      class="voucher-slot-remove"
+                      data-testid="remove-shipping-voucher"
+                      (click)="removeShippingVoucher($event)"
+                    >
+                      Bỏ
+                    </button>
+                  } @else if (shippingFee > 0) {
+                    <button
+                      type="button"
+                      class="voucher-slot-select"
+                      (click)="openVoucherDropdown($event)"
+                    >
+                      Chọn mã ›
+                    </button>
+                  }
+                </div>
+
+                <!-- Ngăn 2: Voucher Giảm Giá Đơn Hàng -->
+                <div
+                  class="voucher-slot voucher-slot--discount"
+                  [class.is-applied]="!!appliedDiscountVoucher"
+                  data-testid="discount-voucher-slot"
+                >
+                  <div class="voucher-slot-left">
+                    <span class="voucher-slot-tag voucher-slot-tag--discount">GIẢM GIÁ</span>
+                    <div class="voucher-slot-content">
+                      <span class="voucher-slot-category">Voucher giảm giá đơn</span>
+                      @if (appliedDiscountVoucher; as discVoucher) {
+                        <strong class="voucher-slot-code">
+                          {{ discVoucher.code }} · -{{ itemDiscount | currency:'VND':'symbol':'1.0-0':'vi-VN' }}
+                        </strong>
+                      } @else {
+                        <span class="voucher-slot-placeholder">Chưa chọn mã giảm giá đơn hàng</span>
+                      }
+                    </div>
+                  </div>
+                  @if (appliedDiscountVoucher) {
+                    <button
+                      type="button"
+                      class="voucher-slot-remove"
+                      data-testid="remove-discount-voucher"
+                      (click)="removeDiscountVoucher($event)"
+                    >
+                      Bỏ
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="voucher-slot-select"
+                      (click)="openVoucherDropdown($event)"
+                    >
+                      Chọn mã ›
+                    </button>
+                  }
+                </div>
+              </div>
+
               @if (voucherError) {
                 <p class="checkout-alert checkout-alert-error" role="alert">{{ voucherError }}</p>
               } @else if (voucherMessage) {
@@ -510,6 +668,18 @@
 
             <div class="total-row"><span>Tạm tính</span><span>{{ subtotal | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</span></div>
             <div class="total-row"><span>Phí vận chuyển</span><span>{{ shippingFee === 0 ? 'Miễn phí' : (shippingFee | currency:'VND':'symbol':'1.0-0':'vi-VN') }}</span></div>
+            @if (shippingDiscount > 0) {
+              <div class="total-row discount-subrow discount-subrow--shipping" data-testid="shipping-discount-row">
+                <span>Giảm giá vận chuyển</span>
+                <span>-{{ shippingDiscount | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</span>
+              </div>
+            }
+            @if (itemDiscount > 0) {
+              <div class="total-row discount-subrow discount-subrow--item" data-testid="item-discount-row">
+                <span>Voucher giảm giá đơn</span>
+                <span>-{{ itemDiscount | currency:'VND':'symbol':'1.0-0':'vi-VN' }}</span>
+              </div>
+            }
             @if (totalDiscount > 0) {
               <div class="total-row discount-row">
                 <span>Giảm giá</span>

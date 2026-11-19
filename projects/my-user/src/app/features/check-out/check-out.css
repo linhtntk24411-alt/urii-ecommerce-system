@@ -1220,3 +1220,365 @@ textarea.form-control {
     text-align: center;
   }
 }
+
+
+/* ================= SHOPEE-STYLE DUAL VOUCHER (SHIPPING & DISCOUNT) ================= */
+.voucher-box {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid #f0e4e0;
+  border-radius: 12px;
+  background: #fdfaf9;
+}
+
+.voucher-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.voucher-box .form-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #292524;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.voucher-title-icon {
+  color: #ee4d2d;
+  font-size: 16px;
+}
+
+.voucher-count-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f0e9e7;
+  color: #766b68;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.voucher-count-badge.has-applied {
+  background: #fff0ed;
+  color: #840001;
+}
+
+.voucher-dropdown {
+  z-index: 30;
+  max-height: 360px;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(37, 22, 18, 0.18);
+}
+
+.voucher-group {
+  padding: 10px 10px 8px;
+}
+
+.voucher-group--shipping {
+  background: linear-gradient(180deg, rgba(0, 191, 165, 0.06) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.voucher-group--discount {
+  background: linear-gradient(180deg, rgba(238, 77, 45, 0.06) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.voucher-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 2px 4px;
+}
+
+.voucher-group-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #292524;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.voucher-group-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.voucher-group-badge--shipping {
+  background: #00bfa5;
+}
+
+.voucher-group-badge--discount {
+  background: #ee4d2d;
+}
+
+.voucher-group-limit {
+  color: #8a7f7c;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.voucher-group-empty {
+  margin: 0;
+  padding: 10px 8px;
+  border: 1px dashed #e6ddda;
+  border-radius: 8px;
+  color: #8a7f7c;
+  font-size: 12px;
+  text-align: center;
+}
+
+.voucher-section-divider {
+  height: 6px;
+  border-top: 1px solid #ece3e0;
+  border-bottom: 1px solid #ece3e0;
+  background: #f6f2f0;
+}
+
+.voucher-group .voucher-option {
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 7px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #ece2df;
+  border-radius: 8px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.voucher-group .voucher-option:last-child {
+  margin-bottom: 2px;
+  border-bottom: 1px solid #ece2df;
+}
+
+.voucher-option--shipping.is-selected {
+  border-color: #00bfa5;
+  background: #f2fbf9;
+  box-shadow: 0 2px 8px rgba(0, 191, 165, 0.14);
+}
+
+.voucher-option--discount.is-selected {
+  border-color: #ee4d2d;
+  background: #fff7f5;
+  box-shadow: 0 2px 8px rgba(238, 77, 45, 0.14);
+}
+
+.voucher-ticket-stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  flex-shrink: 0;
+  padding: 8px 4px;
+  border-right: 1px dashed rgba(255, 255, 255, 0.65);
+  color: #fff;
+  text-align: center;
+}
+
+.voucher-ticket-stub strong {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.voucher-ticket-stub small {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.voucher-ticket-stub--shipping {
+  background: linear-gradient(135deg, #00bfa5, #009688);
+}
+
+.voucher-ticket-stub--discount {
+  background: linear-gradient(135deg, #ee4d2d, #840001);
+}
+
+.voucher-option--shipping:not(:disabled):hover,
+.voucher-option--shipping:not(:disabled):focus-visible {
+  border-color: #00bfa5;
+  background: #f4fcfb;
+}
+
+.voucher-option--discount:not(:disabled):hover,
+.voucher-option--discount:not(:disabled):focus-visible {
+  border-color: #ee4d2d;
+  background: #fff8f6;
+}
+
+.voucher-group .voucher-option-info {
+  flex: 1;
+  gap: 3px;
+  padding: 9px 4px;
+}
+
+.voucher-option--shipping .voucher-option-info strong {
+  color: #00796b;
+}
+
+.voucher-option--discount .voucher-option-info strong {
+  color: #840001;
+}
+
+.voucher-group .voucher-option-choose {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 11px 0 4px;
+}
+
+.voucher-option--shipping .voucher-option-choose {
+  color: #00897b;
+}
+
+.voucher-slots {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.voucher-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px dashed #ded3cf;
+  border-radius: 9px;
+  background: #fff;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.voucher-slot--shipping.is-applied {
+  border-style: solid;
+  border-color: #00bfa5;
+  background: #f2fbf9;
+}
+
+.voucher-slot--discount.is-applied {
+  border-style: solid;
+  border-color: #ee4d2d;
+  background: #fff7f5;
+}
+
+.voucher-slot-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.voucher-slot-tag {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.voucher-slot-tag--shipping {
+  background: #00bfa5;
+}
+
+.voucher-slot-tag--discount {
+  background: #ee4d2d;
+}
+
+.voucher-slot-content {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.voucher-slot-category {
+  color: #766b68;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.voucher-slot-code {
+  color: #292524;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voucher-slot--shipping .voucher-slot-code {
+  color: #00796b;
+}
+
+.voucher-slot--discount .voucher-slot-code {
+  color: #b3261e;
+}
+
+.voucher-slot-placeholder {
+  color: #968b88;
+  font-size: 12px;
+}
+
+.voucher-slot-select,
+.voucher-slot-remove {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.voucher-slot-select {
+  border: 0;
+  background: transparent;
+  color: #840001;
+}
+
+.voucher-slot--shipping .voucher-slot-select {
+  color: #00897b;
+}
+
+.voucher-slot-remove {
+  border: 1px solid #d9c8c4;
+  background: #fff;
+  color: #766b68;
+}
+
+.voucher-slot-remove:hover {
+  border-color: #a32626;
+  color: #a32626;
+}
+
+.voucher-button--clear {
+  border-color: #cfc2be;
+  color: #665956;
+}
+
+.discount-subrow {
+  font-size: 13px;
+}
+
+.discount-subrow--shipping,
+.discount-subrow--shipping span:last-child {
+  color: #00897b;
+}
+
+.discount-subrow--item,
+.discount-subrow--item span:last-child {
+  color: #c62828;
+}

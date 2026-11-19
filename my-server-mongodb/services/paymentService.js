@@ -501,39 +501,88 @@ async function calculateOrderQuote(order, userId, session, now = new Date()) {
     : STANDARD_SHIPPING_FEE;
   let discountAmount = 0;
   let voucherReservation = null;
+  const voucherReservations = [];
   if (order.voucher && !order.voucher.voucherId
     && Number.isFinite(order.voucher.discountAmount)) {
     throw new PaymentValidationError('Thông tin voucher trong đơn hàng không hợp lệ.');
   }
-  if (order.voucher?.voucherId) {
-    const { voucher, ownership } = await findOwnedVoucher(order.voucher.voucherId, userId, session);
-    voucherReservation = {
-      voucherId: voucher.id,
-      userVoucherId: ownership._id
-    };
+
+  const rawVoucherEntries = Array.isArray(order.vouchers) && order.vouchers.length > 0
+    ? order.vouchers
+    : (order.voucher?.voucherId ? [order.voucher] : []);
+
+  if (rawVoucherEntries.length > 2) {
+    throw new PaymentValidationError('Mỗi đơn hàng chỉ được áp dụng tối đa 1 voucher vận chuyển và 1 voucher giảm giá.');
+  }
+
+  let hasShippingVoucher = false;
+  let hasOrderDiscountVoucher = false;
+  const seenVoucherIds = new Set();
+
+  for (const entry of rawVoucherEntries) {
+    if (!entry || !entry.voucherId) {
+      throw new PaymentValidationError('Thông tin voucher trong đơn hàng không hợp lệ.');
+    }
+    const vid = String(entry.voucherId);
+    if (seenVoucherIds.has(vid)) {
+      throw new PaymentValidationError('Không thể áp dụng trùng một mã voucher nhiều lần.');
+    }
+    seenVoucherIds.add(vid);
+
+    const { voucher, ownership } = await findOwnedVoucher(vid, userId, session);
     if (subtotal < (voucher.minOrder || 0)) {
       throw new PaymentValidationError('Đơn hàng chưa đạt giá trị tối thiểu để áp dụng voucher.');
     }
+
+    let singleDiscount = 0;
     if (voucher.type === 'shipping') {
+      if (hasShippingVoucher) {
+        throw new PaymentValidationError('Chỉ được áp dụng tối đa 1 voucher vận chuyển cho mỗi đơn hàng.');
+      }
+      hasShippingVoucher = true;
       if (shippingFee === 0) {
         throw new PaymentValidationError('Đơn hàng đã được miễn phí vận chuyển.');
       }
-      discountAmount = shippingFee;
+      const rawShipDiscount = voucher.discountValue > 0
+        ? Math.min(shippingFee, voucher.discountValue)
+        : shippingFee;
+      singleDiscount = voucher.maxDiscount === undefined
+        ? rawShipDiscount
+        : Math.min(rawShipDiscount, voucher.maxDiscount);
     } else if (voucher.type === 'percent') {
+      if (hasOrderDiscountVoucher) {
+        throw new PaymentValidationError('Chỉ được áp dụng tối đa 1 voucher giảm giá đơn hàng.');
+      }
+      hasOrderDiscountVoucher = true;
       const percentDiscount = subtotal * voucher.discountValue / 100;
-      discountAmount = Math.min(
+      singleDiscount = Math.min(
         subtotal,
         voucher.maxDiscount === undefined ? percentDiscount : Math.min(percentDiscount, voucher.maxDiscount)
       );
     } else if (voucher.type === 'fixed') {
-      discountAmount = Math.min(subtotal, voucher.discountValue);
+      if (hasOrderDiscountVoucher) {
+        throw new PaymentValidationError('Chỉ được áp dụng tối đa 1 voucher giảm giá đơn hàng.');
+      }
+      hasOrderDiscountVoucher = true;
+      const fixedDiscount = voucher.maxDiscount === undefined
+        ? voucher.discountValue
+        : Math.min(voucher.discountValue, voucher.maxDiscount);
+      singleDiscount = Math.min(subtotal, fixedDiscount);
     } else {
       throw new PaymentValidationError('Loại voucher không được hỗ trợ.');
     }
-    if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+
+    if (!Number.isFinite(singleDiscount) || singleDiscount < 0) {
       throw new PaymentValidationError('Giá trị giảm giá của voucher không hợp lệ.');
     }
+
+    discountAmount += singleDiscount;
+    voucherReservations.push({
+      voucherId: voucher.id,
+      userVoucherId: ownership._id
+    });
   }
+  voucherReservation = voucherReservations[0] || null;
 
   const amountDue = Math.round(Math.max(0, subtotal + shippingFee - discountAmount));
   if (!Number.isSafeInteger(amountDue) || amountDue < 1) {
@@ -546,6 +595,7 @@ async function calculateOrderQuote(order, userId, session, now = new Date()) {
     shippingFee,
     discountAmount: Math.round(discountAmount),
     voucherReservation,
+    ...(voucherReservations.length > 1 ? { voucherReservations } : {}),
     amountDue,
     now
   };

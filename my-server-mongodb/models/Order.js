@@ -65,7 +65,7 @@ function protectReturnWorkflow(schema) {
       error.status = 409;
       throw error;
     }
-    const changesStatus = update && ['status', 'statusId', 'statusType', 'payment', 'total', 'totalAmount', 'items', 'shipping', 'voucher'].some(key =>
+    const changesStatus = update && ['status', 'statusId', 'statusType', 'payment', 'total', 'totalAmount', 'items', 'shipping', 'voucher', 'vouchers'].some(key =>
       Object.keys(update).some(k => k === key || k.startsWith(key + '.')) ||
       Object.keys(update.$set || {}).some(k => k === key || k.startsWith(key + '.')) ||
       Object.keys(update.$unset || {}).some(k => k === key || k.startsWith(key + '.')));
@@ -122,6 +122,15 @@ const orderSchema = new mongoose.Schema({
     variantName: String
   }],
   voucher: { voucherId: String, discountAmount: Number },
+  vouchers: {
+    type: [{
+      _id: false,
+      voucherId: String,
+      discountAmount: Number,
+      type: { type: String, enum: ['shipping', 'percent', 'fixed'] }
+    }],
+    default: undefined
+  },
   payment: {
     methodId: { type: String, enum: orderStatuses.paymentMethods.map(({ id }) => id) },
     method: String,

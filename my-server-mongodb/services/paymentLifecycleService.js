@@ -186,19 +186,18 @@ async function reserveVoucher({ voucherId, userVoucherId, userId, paymentId, exp
   }
 }
 
-async function releaseVoucherReservation(payment, session) {
-  const reservation = payment.voucherReservation;
+async function releaseSingleVoucherReservation(paymentId, reservation, session) {
   if (!reservation || reservation.status !== 'reserved') return;
 
   const ownership = await UserVoucher.updateOne({
     _id: reservation.userVoucherId,
-    reservedByPaymentId: payment._id,
+    reservedByPaymentId: paymentId,
     isUsed: false
   }, {
     $set: { reservedByPaymentId: null, reservedUntil: null }
   }, { session });
   if (ownership.modifiedCount !== 1) {
-    throw new Error(`Không thể giải phóng UserVoucher cho Payment ${payment._id}.`);
+    throw new Error(`Không thể giải phóng UserVoucher cho Payment ${paymentId}.`);
   }
 
   const voucherFilter = mongoose.isValidObjectId(reservation.voucherId)
@@ -215,6 +214,19 @@ async function releaseVoucherReservation(payment, session) {
   }
 
   reservation.status = 'released';
+}
+
+async function releaseVoucherReservation(payment, session) {
+  if (Array.isArray(payment.voucherReservations) && payment.voucherReservations.length > 1) {
+    for (const resItem of payment.voucherReservations) {
+      await releaseSingleVoucherReservation(payment._id, resItem, session);
+    }
+    if (payment.voucherReservation && payment.voucherReservation.status === 'reserved') {
+      payment.voucherReservation.status = 'released';
+    }
+    return;
+  }
+  await releaseSingleVoucherReservation(payment._id, payment.voucherReservation, session);
 }
 
 async function releasePaymentReservations(payment, session) {
@@ -305,6 +317,29 @@ function validatePaymentReservations(payment, order = null) {
     }
   }
 
+  const orderHasMultiVouchers = Array.isArray(order?.vouchers) && order.vouchers.length > 1;
+  const paymentHasMultiVouchers = Array.isArray(payment?.voucherReservations) && payment.voucherReservations.length > 1;
+
+  if (orderHasMultiVouchers || paymentHasMultiVouchers) {
+    const vrs = payment?.voucherReservations;
+    if (!Array.isArray(vrs) || vrs.length === 0) {
+      return 'Reservation danh sách voucher của Payment không hợp lệ.';
+    }
+    for (const vr of vrs) {
+      if (!vr || vr.status !== 'reserved' || !vr.voucherId || !vr.userVoucherId) {
+        return 'Reservation voucher của Payment không hợp lệ hoặc không còn ở trạng thái reserved.';
+      }
+    }
+    if (orderHasMultiVouchers) {
+      const orderVids = order.vouchers.map((v) => String(v?.voucherId || '')).sort();
+      const payVids = vrs.map((v) => String(v.voucherId)).sort();
+      if (orderVids.length !== payVids.length || orderVids.some((id, idx) => id !== payVids[idx])) {
+        return 'Danh sách mã voucher được giữ trong Payment không khớp với voucher của đơn hàng.';
+      }
+    }
+    return null;
+  }
+
   const orderHasVoucher = Boolean(order?.voucher?.voucherId);
   const paymentHasVoucher = Boolean(
     payment?.voucherReservation?.voucherId
@@ -323,6 +358,43 @@ function validatePaymentReservations(payment, order = null) {
   }
 
   return null;
+}
+
+async function consumeSingleVoucherReservation(paymentId, reservation, session, getDbWritesCount, incDbWritesCount) {
+  if (reservation?.status !== 'reserved') return;
+  const ownership = await UserVoucher.updateOne({
+    _id: reservation.userVoucherId,
+    reservedByPaymentId: paymentId,
+    isUsed: false
+  }, {
+    $set: { isUsed: true, usedAt: new Date(), reservedByPaymentId: null, reservedUntil: null }
+  }, { session });
+  if (ownership.modifiedCount !== 1) {
+    throw new PaymentReservationInvalidError(
+      `Không thể sử dụng UserVoucher cho Payment ${paymentId}.`,
+      paymentId,
+      { requiresRollback: getDbWritesCount() > 0 }
+    );
+  }
+  incDbWritesCount();
+
+  const voucherFilter = mongoose.isValidObjectId(reservation.voucherId)
+    ? { $or: [{ id: reservation.voucherId }, { _id: reservation.voucherId }] }
+    : { id: reservation.voucherId };
+  const voucher = await Voucher.updateOne({
+    ...voucherFilter,
+    reservedCount: { $gte: 1 }
+  }, {
+    $inc: { reservedCount: -1, used: 1 }
+  }, { session });
+  if (voucher.modifiedCount !== 1) {
+    throw new PaymentReservationInvalidError(
+      `Không thể xác nhận quota voucher ${reservation.voucherId}.`,
+      paymentId,
+      { requiresRollback: getDbWritesCount() > 0 }
+    );
+  }
+  incDbWritesCount();
 }
 
 async function consumePaymentReservations(payment, session) {
@@ -356,48 +428,38 @@ async function consumePaymentReservations(payment, session) {
     dbWritesCount += 1;
   }
 
-  const reservation = payment.voucherReservation;
-  if (reservation?.status === 'reserved') {
-    const ownership = await UserVoucher.updateOne({
-      _id: reservation.userVoucherId,
-      reservedByPaymentId: payment._id,
-      isUsed: false
-    }, {
-      $set: { isUsed: true, usedAt: new Date(), reservedByPaymentId: null, reservedUntil: null }
-    }, { session });
-    if (ownership.modifiedCount !== 1) {
-      throw new PaymentReservationInvalidError(
-        `Không thể sử dụng UserVoucher cho Payment ${payment._id}.`,
+  if (Array.isArray(payment.voucherReservations) && payment.voucherReservations.length > 1) {
+    for (const vr of payment.voucherReservations) {
+      await consumeSingleVoucherReservation(
         payment._id,
-        { requiresRollback: dbWritesCount > 0 }
+        vr,
+        session,
+        () => dbWritesCount,
+        () => { dbWritesCount += 1; }
       );
     }
-    dbWritesCount += 1;
-
-    const voucherFilter = mongoose.isValidObjectId(reservation.voucherId)
-      ? { $or: [{ id: reservation.voucherId }, { _id: reservation.voucherId }] }
-      : { id: reservation.voucherId };
-    const voucher = await Voucher.updateOne({
-      ...voucherFilter,
-      reservedCount: { $gte: 1 }
-    }, {
-      $inc: { reservedCount: -1, used: 1 }
-    }, { session });
-    if (voucher.modifiedCount !== 1) {
-      throw new PaymentReservationInvalidError(
-        `Không thể xác nhận quota voucher ${reservation.voucherId}.`,
-        payment._id,
-        { requiresRollback: dbWritesCount > 0 }
-      );
+    for (const vr of payment.voucherReservations) {
+      if (vr?.status === 'reserved') vr.status = 'consumed';
     }
-    dbWritesCount += 1;
+    if (payment.voucherReservation?.status === 'reserved') {
+      payment.voucherReservation.status = 'consumed';
+    }
+  } else {
+    const reservation = payment.voucherReservation;
+    await consumeSingleVoucherReservation(
+      payment._id,
+      reservation,
+      session,
+      () => dbWritesCount,
+      () => { dbWritesCount += 1; }
+    );
+    if (reservation?.status === 'reserved') {
+      reservation.status = 'consumed';
+    }
   }
 
   for (const invReservation of payment.inventoryReservations || []) {
     invReservation.status = 'consumed';
-  }
-  if (reservation?.status === 'reserved') {
-    reservation.status = 'consumed';
   }
 }
 

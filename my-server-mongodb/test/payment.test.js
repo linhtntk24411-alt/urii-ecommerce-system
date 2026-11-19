@@ -200,6 +200,67 @@ test('payment quote validates voucher ownership, availability, and discount from
   }
 });
 
+test('payment quote supports applying both a shipping voucher and an order discount voucher simultaneously', async () => {
+  const productFind = mock.method(Product, 'find', () => queryResult([{
+    id: 'product-1',
+    name: 'Sản phẩm kiểm thử',
+    currentPrice: 120000,
+    stock: 5,
+    variants: []
+  }]));
+  const ownershipFind = mock.method(UserVoucher, 'findOne', (filter) => queryResult({
+    _id: `uv-${filter.voucherId}`,
+    userId,
+    voucherId: filter.voucherId,
+    isUsed: false,
+    source: 'promotion'
+  }));
+  const voucherFind = mock.method(Voucher, 'findOne', (filter) => {
+    const id = filter.$or?.[0]?.id;
+    if (id === 'FREESHIP') {
+      return queryResult({
+        id: 'FREESHIP',
+        isActive: true,
+        type: 'shipping',
+        discountValue: 30000,
+        maxDiscount: 30000,
+        minOrder: 100000,
+        used: 0
+      });
+    }
+    return queryResult({
+      id: 'SALE15',
+      isActive: true,
+      type: 'percent',
+      discountValue: 15,
+      maxDiscount: 30000,
+      minOrder: 70000,
+      used: 0
+    });
+  });
+
+  try {
+    const quote = await calculateOrderQuote({
+      items: [{ productId: 'product-1', quantity: 1 }],
+      voucher: { voucherId: 'SALE15', discountAmount: 48000 },
+      vouchers: [
+        { voucherId: 'FREESHIP', discountAmount: 30000, type: 'shipping' },
+        { voucherId: 'SALE15', discountAmount: 18000, type: 'percent' }
+      ]
+    }, userId, {});
+
+    assert.equal(quote.subtotal, 120000);
+    assert.equal(quote.shippingFee, 30000);
+    assert.equal(quote.discountAmount, 48000);
+    assert.equal(quote.amountDue, 102000);
+    assert.equal(quote.voucherReservations.length, 2);
+  } finally {
+    voucherFind.mock.restore();
+    ownershipFind.mock.restore();
+    productFind.mock.restore();
+  }
+});
+
 test('QR settings come from environment configuration and payment references are unique', () => {
   assert.equal(paymentQrConfiguration({}), null);
   assert.throws(

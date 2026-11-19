@@ -152,12 +152,7 @@ exports.createCustomOrder = async (req, res) => {
   const tokenUserId = typeof req.auth?.id === 'string' && mongoose.isValidObjectId(req.auth.id)
     ? req.auth.id
     : undefined;
-  const bodyUserId = typeof req.body.userId === 'string' && mongoose.isValidObjectId(req.body.userId)
-    ? req.body.userId
-    : undefined;
-  const resolvedUserId = req.auth?.role === 'admin'
-    ? (bodyUserId || tokenUserId)
-    : (tokenUserId || bodyUserId);
+  const resolvedUserId = tokenUserId;
 
   let normalizedImageUrl;
   try {
@@ -168,7 +163,8 @@ exports.createCustomOrder = async (req, res) => {
   }
 
   const candidateBody = {
-    ...req.body,
+    ...Object.fromEntries(customerFields.filter(field => field !== 'userId' && Object.hasOwn(req.body, field))
+      .map(field => [field, req.body[field]])),
     ...(resolvedUserId ? { userId: resolvedUserId } : {}),
     ...(normalizedImageUrl !== undefined ? { imageUrl: normalizedImageUrl } : {})
   };
@@ -226,7 +222,7 @@ exports.createCustomOrder = async (req, res) => {
         reference: { customOrderId: String(customOrder.id) },
         title: `Đã gửi yêu cầu thiết kế #${customOrder.id}`,
         message: `Yêu cầu thiết kế "${customOrder.requestName || customOrder.id}" đã được gửi tới xưởng Urii để báo giá.`,
-        actionUrl: '/account/custom-orders'
+        actionUrl: '/custom-order-list/' + encodeURIComponent(customOrder.id)
       });
     }
     emitCrudChange('customOrders', 'created', customOrder.id, { userId: customOrder.userId, status: customOrder.status });
@@ -343,17 +339,7 @@ async function notifyUserOnCustomOrderStatusChange(customOrder, newStatus) {
   if (!customOrder || (!customOrder.userId && !customOrder.email) || !newStatus) return;
   const requestCode = String(customOrder.id || customOrder._id).slice(-8);
 
-  if (newStatus === 'quoted') {
-    await createUserNotification({
-      userId: customOrder.userId,
-      userEmail: customOrder.email,
-      typeId: 'USER_CUSTOM_ORDER_QUOTED',
-      reference: { customOrderId: String(customOrder.id || customOrder._id) },
-      title: `Đã có báo giá yêu cầu custom #${requestCode}`,
-      message: `Urii đã cập nhật bảng màu và báo giá cho yêu cầu custom #${requestCode}. Hãy kiểm tra và xác nhận nhé!`,
-      actionUrl: `/custom-order-list`
-    });
-  } else if (newStatus === 'processing') {
+  if (newStatus === 'processing') {
     await createUserNotification({
       userId: customOrder.userId,
       userEmail: customOrder.email,
@@ -361,7 +347,7 @@ async function notifyUserOnCustomOrderStatusChange(customOrder, newStatus) {
       reference: { customOrderId: String(customOrder.id || customOrder._id) },
       title: `Đơn custom #${requestCode} đang được chế tác`,
       message: `Xưởng Urii đang tiến hành xếp hạt và chế tác mẫu custom #${requestCode} của bạn.`,
-      actionUrl: `/custom-order-list`
+      actionUrl: '/custom-order-list/' + encodeURIComponent(customOrder.id)
     });
   } else if (newStatus === 'completed') {
     await createUserNotification({
@@ -371,15 +357,143 @@ async function notifyUserOnCustomOrderStatusChange(customOrder, newStatus) {
       reference: { customOrderId: String(customOrder.id || customOrder._id) },
       title: `Hoàn thiện đơn custom #${requestCode}`,
       message: `Bộ sản phẩm custom #${requestCode} đã hoàn tất chế tác và sẵn sàng giao đến bạn!`,
-      actionUrl: `/custom-order-list`
+      actionUrl: '/custom-order-list/' + encodeURIComponent(customOrder.id)
     });
   }
 }
+
+const QUOTE_NOTE_LIMIT = 1000;
+const positivePrice = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
+const validVersion = value => Number.isSafeInteger(value) && value > 0;
+const validQuoteDate = value => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value + 'T00:00:00Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+const validQuoteNote = value => value === undefined || (typeof value === 'string' && value.length <= QUOTE_NOTE_LIMIT);
+
+function quoteConflict(res) {
+  return res.status(409).json({ message: 'Báo giá hoặc trạng thái yêu cầu đã thay đổi. Vui lòng kiểm tra dữ liệu mới nhất.' });
+}
+
+function publishQuoteUpdate(order) {
+  emitCrudChange('customOrders', 'updated', order.id, { userId: order.userId, status: order.status });
+}
+
+function quoteFailure(res, error) {
+  console.error('Lỗi xử lý báo giá Custom Order:', error);
+  if (error.name === 'ValidationError') return res.status(400).json({ message: 'Dữ liệu báo giá không hợp lệ.' });
+  return res.status(500).json({ message: 'Không thể xử lý báo giá. Vui lòng thử lại.' });
+}
+
+async function sendQuote(req, res) {
+  const { quoteAction, quoteVersion, quotedPrice, quoteDate, quoteNote } = req.body;
+  const first = quoteAction === 'send';
+  if (!['send', 'correct', 'requote'].includes(quoteAction)
+    || (first ? quoteVersion !== 0 : !validVersion(quoteVersion) || quoteVersion === Number.MAX_SAFE_INTEGER)
+    || !positivePrice(quotedPrice) || !validQuoteDate(quoteDate) || !validQuoteNote(quoteNote)) {
+    return res.status(400).json({ message: 'Giá phải lớn hơn 0, ngày phải hợp lệ và ghi chú tối đa 1.000 ký tự.' });
+  }
+
+  try {
+    const current = await CustomOrder.findOne(customOrderFilter(req.params.id)).lean();
+    if (!current) return res.status(404).json({ message: 'Không tìm thấy yêu cầu thiết kế.' });
+    const filter = { _id: current._id };
+    const update = { $set: {
+      status: 'quoted', quotedPrice, quoteDate, quoteNote: (quoteNote || '').trim(),
+      quoteVersion: quoteVersion + 1, quoteDecision: 'pending', quoteSentAt: new Date()
+    } };
+
+    if (first) {
+      const legacyQuote = current.status === 'quoted' && !positivePrice(current.quotedPrice);
+      if ((current.status !== 'pending' && !legacyQuote) || current.quoteVersion != null || current.quoteDecision != null) {
+        return quoteConflict(res);
+      }
+      Object.assign(filter, { status: current.status, quoteVersion: null, quoteDecision: null });
+    } else {
+      const negotiating = quoteAction === 'requote';
+      const expectedDecision = negotiating ? 'negotiating' : 'pending';
+      if (current.status !== 'quoted' || current.quoteVersion !== quoteVersion || current.quoteDecision !== expectedDecision
+        || !positivePrice(current.quotedPrice) || (negotiating && (current.quoteNegotiation?.quoteVersion !== quoteVersion
+          || !positivePrice(current.quoteNegotiation.proposedPrice) || current.quoteNegotiation.respondedAt))) {
+        return quoteConflict(res);
+      }
+      if (!negotiating && current.quotedPrice === quotedPrice && current.quoteDate === quoteDate
+        && (current.quoteNote || '') === update.$set.quoteNote) {
+        return res.json(current);
+      }
+      Object.assign(filter, { status: 'quoted', quoteVersion, quoteDecision: expectedDecision });
+      const archived = {
+        quotedPrice: current.quotedPrice, quoteDate: current.quoteDate, quoteNote: current.quoteNote,
+        quoteVersion, quoteDecision: current.quoteDecision, quoteSentAt: current.quoteSentAt,
+        quoteRespondedAt: current.quoteRespondedAt, supersededAt: update.$set.quoteSentAt
+      };
+      if (negotiating) archived.quoteNegotiation = { ...current.quoteNegotiation, respondedAt: update.$set.quoteSentAt };
+      update.$push = { quoteHistory: archived };
+      update.$unset = { quoteRespondedAt: 1, quoteNegotiation: 1 };
+    }
+
+    const saved = await CustomOrder.findOneAndUpdate(filter, update, { new: true, runValidators: true }).lean();
+    if (!saved) return quoteConflict(res);
+    publishQuoteUpdate(saved);
+    await createUserNotification({
+      userId: saved.userId, userEmail: saved.email, typeId: 'USER_CUSTOM_ORDER_QUOTED',
+      reference: { customOrderId: saved.id },
+      title: 'Đã có báo giá thiết kế · Phiên bản ' + saved.quoteVersion,
+      message: 'Cửa hàng đã gửi báo giá cho yêu cầu ' + saved.id + '.',
+      actionUrl: '/custom-order-list/' + encodeURIComponent(saved.id)
+    });
+    return res.json(saved);
+  } catch (error) {
+    return quoteFailure(res, error);
+  }
+}
+
+exports.respondToQuote = async (req, res) => {
+  const { decision, quoteVersion, proposedPrice, note } = req.body || {};
+  const negotiating = decision === 'negotiating';
+  if (!['accepted', 'rejected', 'negotiating'].includes(decision) || !validVersion(quoteVersion)
+    || (negotiating && (!positivePrice(proposedPrice) || !validQuoteNote(note)))) {
+    return res.status(400).json({ message: 'Phản hồi không hợp lệ. Giá đề xuất phải lớn hơn 0 và ghi chú tối đa 1.000 ký tự.' });
+  }
+
+  const owner = { id: req.params.id, userId: req.auth.id };
+  const now = new Date();
+  const changes = { quoteDecision: decision, quoteRespondedAt: now };
+  if (decision === 'rejected') changes.status = 'cancelled';
+  if (negotiating) changes.quoteNegotiation = { quoteVersion, proposedPrice, note: (note || '').trim(), requestedAt: now };
+
+  try {
+    const saved = await CustomOrder.findOneAndUpdate({
+      ...owner, status: 'quoted', quoteVersion, quoteDecision: 'pending', quotedPrice: { $gt: 0, $lt: Infinity }
+    }, { $set: changes }, { new: true, runValidators: true }).lean();
+    if (!saved) {
+      if (!await CustomOrder.exists(owner)) return res.status(404).json({ message: 'Không tìm thấy yêu cầu thiết kế.' });
+      return quoteConflict(res);
+    }
+    const title = { accepted: 'Khách đã đồng ý báo giá', rejected: 'Khách đã từ chối báo giá',
+      negotiating: 'Khách yêu cầu thương lượng' }[decision];
+    publishQuoteUpdate(saved);
+    await createAdminNotification({
+      typeId: 'ADMIN_CUSTOM_ORDER_QUOTE_RESPONSE', eventId: String(saved._id) + ':' + quoteVersion,
+      reference: { customOrderId: saved.id }, actorUserId: req.auth.id,
+      title, message: title + ' cho yêu cầu ' + saved.id + '.'
+    });
+    return res.json(saved);
+  } catch (error) {
+    return quoteFailure(res, error);
+  }
+};
 
 exports.updateCustomOrder = async (req, res) => {
   if (!isRecord(req.body)) {
     res.status(400).json({ message: 'Dữ liệu yêu cầu đặt hàng không hợp lệ.' });
     return;
+  }
+
+  if (Object.hasOwn(req.body, 'quoteAction')) return sendQuote(req, res);
+  if (req.body.status === 'quoted' || Object.keys(req.body).some(field => field.startsWith('quote'))) {
+    return res.status(400).json({ message: 'Vui lòng gửi báo giá qua thao tác báo giá hợp lệ.' });
   }
 
   const updates = Object.fromEntries(
@@ -405,12 +519,21 @@ exports.updateCustomOrder = async (req, res) => {
   }
 
   try {
+    const filter = customOrderFilter(req.params.id);
+    const conditions = [];
+    if (updates.status || updates.userId !== undefined) conditions.push({ quoteDecision: { $ne: 'rejected' } });
+    if (updates.userId !== undefined) conditions.push({ quoteVersion: { $exists: false } });
+    if (updates.status === 'processing') conditions.push({ status: 'quoted', quoteDecision: 'accepted' });
+    if (updates.status === 'completed') conditions.push({ status: 'processing' });
+    if (updates.status === 'pending') conditions.push({ status: 'pending', quoteVersion: { $exists: false } });
+    if (updates.status === 'cancelled') conditions.push({ status: { $in: ['pending', 'quoted', 'processing'] } });
     const customOrder = await CustomOrder.findOneAndUpdate(
-      customOrderFilter(req.params.id),
+      conditions.length ? { $and: [filter, ...conditions] } : filter,
       updates,
       { new: true, runValidators: true }
     );
     if (!customOrder) {
+      if (conditions.length && await CustomOrder.exists(filter)) return quoteConflict(res);
       res.status(404).json({ message: 'Không tìm thấy yêu cầu đặt hàng.' });
       return;
     }

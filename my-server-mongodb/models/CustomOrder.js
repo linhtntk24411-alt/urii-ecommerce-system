@@ -2,6 +2,30 @@ const mongoose = require('mongoose');
 const { isValidImageUrl } = require('../utils/imageUrl');
 const Order = require('./Order');
 
+const quoteNoteLimit = 1000;
+const quoteDecisions = ['pending', 'accepted', 'rejected', 'negotiating'];
+const negotiationSchema = new mongoose.Schema({
+  quoteVersion: Number,
+  proposedPrice: { type: Number, validate: value => Number.isFinite(value) && value > 0 },
+  note: { type: String, maxlength: quoteNoteLimit },
+  requestedAt: Date,
+  respondedAt: Date
+}, { _id: false });
+const quoteFields = {
+  quotedPrice: { type: Number, validate: value => Number.isFinite(value) && value > 0 },
+  quoteDate: String,
+  quoteNote: { type: String, maxlength: quoteNoteLimit },
+  quoteVersion: { type: Number, min: 1, validate: Number.isSafeInteger },
+  quoteDecision: { type: String, enum: quoteDecisions },
+  quoteSentAt: Date,
+  quoteRespondedAt: Date,
+  quoteNegotiation: negotiationSchema
+};
+const quoteHistorySchema = new mongoose.Schema({
+  ...quoteFields,
+  supersededAt: Date
+}, { _id: false });
+
 const customOrderSchema = new mongoose.Schema({
   ...Order.returnRequestFields(),
   returnReasonId: String,
@@ -30,6 +54,8 @@ const customOrderSchema = new mongoose.Schema({
       message: 'imageUrl phải là đường dẫn /images/... hoặc URL http/https hợp lệ.'
     }
   },
+  ...quoteFields,
+  quoteHistory: { type: [quoteHistorySchema], default: undefined },
   status: {
     type: String,
     enum: ['pending', 'quoted', 'processing', 'completed', 'cancelled'],

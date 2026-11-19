@@ -1,3 +1,4 @@
+import { DialogService } from '../../../core/services/dialog.service';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -99,6 +100,70 @@ describe('CustomOrders', () => {
     expect(fixture.nativeElement.textContent).toContain('Chi tiết yêu cầu');
     expect(fixture.nativeElement.textContent).toContain('15 x 15 cm');
     expect(fixture.nativeElement.textContent).toContain('Mô tả mẫu');
+  });
+
+  function openQuotedRequest(fields: Record<string, unknown> = {}) {
+    setSignedIn();
+    routeParams.next(convertToParamMap({ slug: 'custom-order-abc' }));
+    fixture.detectChanges();
+    const quote = { ...designRequestResponse(), status: 'quoted', quotedPrice: 125000, quoteDate: '2026-11-19',
+      quoteNote: 'Bao gồm đóng gói', quoteVersion: 1, quoteDecision: 'pending', ...fields };
+    http.expectOne('/api/custom-orders/mine/custom-order-abc').flush(quote);
+    fixture.detectChanges();
+    return quote;
+  }
+
+  it('renders a saved quote and confirms acceptance for its version', async () => {
+    const quote = openQuotedRequest();
+    expect(fixture.nativeElement.textContent).toContain('125.000');
+    expect(fixture.nativeElement.textContent).toContain('Bao gồm đóng gói');
+    vi.spyOn(TestBed.inject(DialogService), 'confirm').mockResolvedValue(true);
+    const action = component.respondToQuote('accepted');
+    await Promise.resolve();
+    const request = http.expectOne('/api/custom-orders/mine/custom-order-abc/quote-response');
+    expect(request.request.body).toEqual({ decision: 'accepted', quoteVersion: 1 });
+    request.flush({ ...quote, quoteDecision: 'accepted' });
+    await action;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Đã đồng ý báo giá');
+    expect(fixture.nativeElement.textContent).not.toContain('Từ chối báo giá');
+  });
+
+  it('confirms rejection and removes response actions after cancellation', async () => {
+    const quote = openQuotedRequest();
+    const confirm = vi.spyOn(TestBed.inject(DialogService), 'confirm').mockResolvedValue(true);
+    const action = component.respondToQuote('rejected');
+    await Promise.resolve();
+    const request = http.expectOne('/api/custom-orders/mine/custom-order-abc/quote-response');
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('kết thúc'), expect.any(String), 'Từ chối báo giá');
+    request.flush({ ...quote, status: 'cancelled', quoteDecision: 'rejected' });
+    await action;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Đã từ chối báo giá');
+    expect(fixture.nativeElement.textContent).not.toContain('Thương lượng giá');
+  });
+
+  it('sends a negotiation once and reloads when the quote changes', async () => {
+    const quote = openQuotedRequest();
+    component.openNegotiation(1);
+    component.desiredPrice = 110000;
+    component.dealNote = 'Ngân sách dự kiến';
+    const action = component.respondToQuote('negotiating');
+    await component.respondToQuote('negotiating');
+    const request = http.expectOne('/api/custom-orders/mine/custom-order-abc/quote-response');
+    expect(request.request.body).toEqual({ decision: 'negotiating', quoteVersion: 1, proposedPrice: 110000, note: 'Ngân sách dự kiến' });
+    request.flush({ message: 'Báo giá đã thay đổi.' }, { status: 409, statusText: 'Conflict' });
+    await action;
+    http.expectOne('/api/custom-orders/mine/custom-order-abc').flush({ ...quote, quoteVersion: 2, quotedPrice: 120000 });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('120.000');
+    expect(fixture.nativeElement.textContent).toContain('Báo giá đã thay đổi.');
+  });
+
+  it('does not show a price or response actions for incomplete legacy quotes', () => {
+    openQuotedRequest({ quotedPrice: undefined, quoteVersion: undefined });
+    expect(fixture.nativeElement.textContent).toContain('Báo giá chưa đầy đủ');
+    expect(fixture.nativeElement.textContent).not.toContain('Đồng ý báo giá');
   });
 
   it('does not request private design requests for signed-out visitors', () => {

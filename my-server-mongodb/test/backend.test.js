@@ -1823,3 +1823,152 @@ test('customer lock persists, rejects authentication and requires a new token af
   const { token } = await newLogin.json();
   assert.equal((await request('/users/' + customerId, token)).status, 200);
 });
+
+test('Custom Order quote workflow persists versions and permits exactly one customer decision each', async t => {
+  const CustomOrder = require('../models/CustomOrder');
+  const owner = '507f1f77bcf86cd799439011';
+  const other = '507f1f77bcf86cd799439012';
+  const admin = reactionToken(other, 'admin');
+  const customer = reactionToken(owner);
+  const orders = new Map();
+  const notifications = [];
+  const oldDb = mongoose.connection.db;
+  mongoose.connection.db = { collection: name => ({
+    insertOne: async doc => { if (name === 'user_notifications') notifications.push(doc); },
+    updateOne: async (_, update) => { notifications.push(update.$setOnInsert); return { upsertedCount: 1 }; }
+  }) };
+  t.after(() => { mongoose.connection.db = oldDb; });
+
+  const match = (order, filter) => Object.entries(filter).every(([key, expected]) => {
+    if (key === '$or') return expected.some(branch => match(order, branch));
+    if (key === '$and') return expected.every(branch => match(order, branch));
+    const value = order[key];
+    if (expected === null) return value == null;
+    if (typeof expected !== 'object') return value === expected;
+    return Object.entries(expected).every(([op, arg]) => ({
+      $gt: () => value > arg, $lt: () => value < arg, $ne: () => value !== arg,
+      $exists: () => (value !== undefined) === arg, $in: () => arg.includes(value)
+    })[op]());
+  });
+  const find = filter => [...orders.values()].find(order => match(order, filter));
+  t.mock.method(User, 'find', () => reactionQuery([]));
+  t.mock.method(CustomOrder, 'create', async payload => {
+    const order = { ...payload, _id: payload.id, createdAt: new Date() };
+    orders.set(order.id, order);
+    return { ...order, toObject: () => structuredClone(order) };
+  });
+  t.mock.method(CustomOrder, 'findOne', filter => reactionQuery(structuredClone(find(filter))));
+  t.mock.method(CustomOrder, 'exists', async filter => Boolean(find(filter)));
+  t.mock.method(CustomOrder, 'findOneAndUpdate', (filter, update) => {
+    const order = find(filter);
+    if (!order) return reactionQuery(null);
+    if (update.$push) (order.quoteHistory ??= []).push(structuredClone(update.$push.quoteHistory));
+    if (update.$unset) for (const field of Object.keys(update.$unset)) delete order[field];
+    Object.assign(order, structuredClone(update.$set || update));
+    const result = structuredClone(order);
+    const query = reactionQuery(result);
+    query.then = (resolve, reject) => Promise.resolve({ ...result, toObject: () => result }).then(resolve, reject);
+    return query;
+  });
+
+  const request = (path, token, method = 'GET', body) => fetch(baseUrl + '/api/custom-orders' + path, {
+    method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) })
+  });
+  const submit = async () => {
+    const result = await request('', customer, 'POST', { requestName: 'Thiết kế', size: '15 x 15', beadType: 'Midi',
+      userId: other, quotedPrice: 1, quoteDecision: 'accepted', status: 'quoted' });
+    assert.equal(result.status, 201);
+    const saved = await result.json();
+    assert.equal(saved.userId, owner);
+    assert.equal(saved.status, 'pending');
+    assert.equal(saved.quotedPrice, undefined);
+    return saved.id;
+  };
+  const quote = (id, quoteAction, quoteVersion, fields = {}, token = admin) => request('/' + id, token, 'PATCH', {
+    quoteAction, quoteVersion, quotedPrice: 125000, quoteDate: '2026-11-19', quoteNote: 'Có hộp quà', ...fields
+  });
+  const respond = (id, decision, quoteVersion, fields = {}, token = customer) =>
+    request('/mine/' + id + '/quote-response', token, 'POST', { decision, quoteVersion, ...fields });
+
+  const id = await submit();
+  assert.equal((await request('/' + id, admin)).status, 200);
+  assert.equal((await quote(id, 'send', 0, {}, customer)).status, 403);
+  assert.equal((await request('/' + id, admin, 'PATCH', { status: 'quoted' })).status, 400);
+  for (const price of [0, -1, Infinity, NaN, '125000']) {
+    assert.equal((await quote(id, 'send', 0, { quotedPrice: price })).status, 400);
+  }
+  assert.equal((await quote(id, 'send', 0, { quoteDate: '2026-02-30' })).status, 400);
+  const sent = await quote(id, 'send', 0);
+  assert.equal(sent.status, 200);
+  assert.deepEqual(((await sent.json()).quoteVersion), 1);
+  for (const [path, token] of [['/' + id, admin], ['/mine/' + id, customer]]) {
+    const saved = await (await request(path, token)).json();
+    assert.equal(saved.quotedPrice, 125000);
+    assert.equal(saved.quoteDate, '2026-11-19');
+    assert.equal(saved.quoteNote, 'Có hộp quà');
+  }
+  assert.equal(notifications.find(n => n.typeId === 'USER_CUSTOM_ORDER_QUOTED').actionUrl, '/custom-order-list/' + id);
+  assert.equal((await quote(id, 'send', 0)).status, 409);
+  assert.equal((await quote(id, 'requote', 1)).status, 409);
+  assert.equal((await respond(id, 'accepted', 1, {}, reactionToken(other))).status, 404);
+  assert.equal((await respond(id, 'negotiating', 1, { proposedPrice: 0 })).status, 400);
+
+  const negotiations = await Promise.all([
+    respond(id, 'negotiating', 1, { proposedPrice: 100000, note: 'Ngân sách' }),
+    respond(id, 'negotiating', 1, { proposedPrice: 100000, note: 'Ngân sách' })
+  ]);
+  assert.deepEqual(negotiations.map(result => result.status).sort(), [200, 409]);
+  const deal = await (await request('/' + id, admin)).json();
+  assert.equal(deal.quoteDecision, 'negotiating');
+  assert.equal(deal.quotedPrice, 125000);
+  assert.equal(deal.quoteNegotiation.proposedPrice, 100000);
+  const newQuotes = await Promise.all([
+    quote(id, 'requote', 1, { quotedPrice: 110000 }), quote(id, 'requote', 1, { quotedPrice: 110000 })
+  ]);
+  assert.deepEqual(newQuotes.map(result => result.status).sort(), [200, 409]);
+  const versionTwo = await (await request('/mine/' + id, customer)).json();
+  assert.equal(versionTwo.quoteVersion, 2);
+  assert.equal(versionTwo.quotedPrice, 110000);
+  assert.equal(versionTwo.quoteDecision, 'pending');
+  assert.equal(versionTwo.quoteHistory[0].quoteNegotiation.proposedPrice, 100000);
+  assert.ok(versionTwo.quoteHistory[0].quoteNegotiation.respondedAt);
+  assert.equal((await respond(id, 'accepted', 1)).status, 409);
+
+  const corrected = await quote(id, 'correct', 2, { quotedPrice: 115000 });
+  assert.equal(corrected.status, 200);
+  assert.equal((await corrected.json()).quoteVersion, 3);
+  const accepted = await respond(id, 'accepted', 3);
+  assert.equal(accepted.status, 200);
+  assert.equal((await accepted.json()).status, 'quoted');
+  assert.equal((await respond(id, 'rejected', 3)).status, 409);
+  assert.equal((await quote(id, 'correct', 3)).status, 409);
+  assert.equal((await request('/' + id, admin, 'PATCH', { status: 'processing' })).status, 200);
+
+  const rejectedId = await submit();
+  assert.equal((await quote(rejectedId, 'send', 0)).status, 200);
+  const competing = await Promise.all([respond(rejectedId, 'rejected', 1), respond(rejectedId, 'rejected', 1)]);
+  assert.deepEqual(competing.map(result => result.status).sort(), [200, 409]);
+  const rejected = await (await request('/' + rejectedId, admin)).json();
+  assert.equal(rejected.status, 'cancelled');
+  assert.equal(rejected.quoteDecision, 'rejected');
+  assert.equal(rejected.quotedPrice, 125000);
+  assert.equal((await respond(rejectedId, 'negotiating', 1, { proposedPrice: 100000 })).status, 409);
+  assert.equal((await quote(rejectedId, 'requote', 1)).status, 409);
+  assert.equal((await quote(rejectedId, 'send', 0)).status, 409);
+  assert.equal((await request('/' + rejectedId, admin, 'PATCH', { status: 'pending' })).status, 409);
+  assert.equal(notifications.filter(n => n.typeId === 'ADMIN_CUSTOM_ORDER_QUOTE_RESPONSE').length, 3);
+  assert.equal(notifications.filter(n => n.typeId === 'USER_CUSTOM_ORDER_QUOTED').length, 4);
+
+  const racedId = await submit();
+  assert.equal((await quote(racedId, 'send', 0)).status, 200);
+  const race = await Promise.all([respond(racedId, 'accepted', 1), respond(racedId, 'rejected', 1)]);
+  assert.deepEqual(race.map(result => result.status).sort(), [200, 409]);
+  const raceResult = await race.find(result => result.status === 200).json();
+  assert.equal(raceResult.status, raceResult.quoteDecision === 'accepted' ? 'quoted' : 'cancelled');
+
+  const legacy = await submit();
+  orders.get(legacy).status = 'quoted';
+  assert.equal((await (await request('/mine/' + legacy, customer)).json()).quotedPrice, undefined);
+  assert.equal((await quote(legacy, 'send', 0)).status, 200);
+});

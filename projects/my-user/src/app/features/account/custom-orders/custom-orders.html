@@ -91,6 +91,61 @@
             </dl>
           </div>
         </div>
+        @if (responseError) { <p role="alert">{{ responseError }}</p> }
+        @if (activeRequest.quote; as quote) {
+          <section class="border-top p-3 p-md-4" aria-labelledby="custom-quote-title">
+            <h3 id="custom-quote-title" class="request-detail__section-title">Thông tin báo giá</h3>
+            <dl class="request-details mb-3">
+              <div><dt>Giá báo</dt><dd>{{ formatQuotePrice(quote.price) }}</dd></div>
+              <div><dt>Ngày báo giá</dt><dd>{{ quote.date | date:'dd/MM/yyyy' }}</dd></div>
+              <div><dt>Phiên bản</dt><dd>{{ quote.version }}</dd></div>
+              <div><dt>Trạng thái</dt><dd>{{ activeRequest.status === 'cancelled' && quote.decision !== 'rejected' ? 'Yêu cầu đã kết thúc' : quoteDecisionLabel(quote.decision) }}</dd></div>
+              @if (quote.note) { <div class="request-details__full"><dt>Ghi chú</dt><dd>{{ quote.note }}</dd></div> }
+              @if (quote.negotiation; as deal) {
+                <div class="request-details__full"><dt>Giá bạn đã đề xuất</dt><dd>{{ formatQuotePrice(deal.proposedPrice) }}
+                  @if (deal.note) { <br>{{ deal.note }} }
+                </dd></div>
+              }
+            </dl>
+            @if (activeRequest.status === 'quoted' && quote.decision === 'pending') {
+              @if (dealingVersion === quote.version) {
+                <form (ngSubmit)="respondToQuote('negotiating')">
+                  <p>Giá hiện tại: {{ formatQuotePrice(quote.price) }}</p>
+                  <p><label for="desired-quote">Giá mong muốn (VNĐ)</label><br>
+                    <input id="desired-quote" name="desiredPrice" type="number" step="any" [(ngModel)]="desiredPrice" required [disabled]="responseBusy"></p>
+                  <p><label for="deal-note">Ghi chú thương lượng</label><br>
+                    <textarea id="deal-note" name="dealNote" [(ngModel)]="dealNote" maxlength="1000" [disabled]="responseBusy"></textarea></p>
+                  <button type="button" class="requests-button requests-button--secondary" [disabled]="responseBusy" (click)="dealingVersion = 0">Hủy</button>
+                  <button type="submit" class="requests-button requests-button--primary" [disabled]="responseBusy || !validNegotiation">Gửi yêu cầu thương lượng</button>
+                </form>
+              } @else {
+                <button type="button" class="requests-button requests-button--primary" [disabled]="responseBusy" (click)="respondToQuote('accepted')">Đồng ý báo giá</button>
+                <button type="button" class="requests-button requests-button--secondary" [disabled]="responseBusy" (click)="openNegotiation(quote.version)">Thương lượng giá</button>
+                <button type="button" class="requests-button requests-button--secondary" [disabled]="responseBusy" (click)="respondToQuote('rejected')">Từ chối báo giá</button>
+              }
+            }
+            @if (activeRequest.quoteHistory.length) {
+              <h3>Lịch sử báo giá và thương lượng</h3>
+              <ul>
+                @for (previous of activeRequest.quoteHistory; track previous.version) {
+                  <li>Phiên bản {{ previous.version }} · {{ formatQuotePrice(previous.price) }} · {{ previous.date | date:'dd/MM/yyyy' }}
+                    @if (previous.note) { <br>{{ previous.note }} }
+                    @if (previous.negotiation; as deal) {
+                      <br>Bạn đề xuất {{ formatQuotePrice(deal.proposedPrice) }} · {{ deal.requestedAt | date:'dd/MM/yyyy HH:mm' }}
+                      @if (deal.note) { · {{ deal.note }} }
+                      @if (deal.respondedAt) { <br>Cửa hàng đã gửi báo giá mới · {{ deal.respondedAt | date:'dd/MM/yyyy HH:mm' }} }
+                    } @else { <br>Cửa hàng đã cập nhật báo giá. }
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        } @else if (activeRequest.status === 'quoted') {
+          <section class="border-top p-3 p-md-4" aria-labelledby="custom-quote-title">
+            <h3 id="custom-quote-title" class="request-detail__section-title">Thông tin báo giá</h3>
+            <p class="mb-0">Báo giá chưa đầy đủ. Vui lòng chờ cửa hàng cập nhật.</p>
+          </section>
+        }
       </article>
     }
   } @else {

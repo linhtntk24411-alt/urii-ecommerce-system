@@ -4,8 +4,30 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom, Subscription } from 'rxjs';
+import { DialogService } from '../../../core/services/dialog.service';
+
+type QuoteDecision = 'pending' | 'accepted' | 'rejected' | 'negotiating';
+type QuoteResponse = Exclude<QuoteDecision, 'pending'>;
+interface QuoteNegotiation {
+  proposedPrice: number;
+  note: string;
+  requestedAt: string;
+  respondedAt: string;
+}
+interface QuoteDetails {
+  price: number;
+  date: string;
+  note: string;
+  version: number;
+  decision: QuoteDecision;
+  negotiation: QuoteNegotiation | null;
+}
 
 interface CustomerDesignRequest {
+  quote: QuoteDetails | null;
+  quoteHistory: QuoteDetails[];
   id: string;
   requestName: string;
   imageUrl: string;
@@ -39,13 +61,21 @@ const REQUEST_STATUS_LABELS = new Map(
 );
 
 @Component({
-  imports: [CommonModule, RouterLink, DatePipe],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule],
   selector: 'app-custom-orders',
   styleUrl: './custom-orders.css',
   templateUrl: './custom-orders.html',
 })
 export class CustomOrders implements OnInit, OnDestroy {
   private refreshTimer: any;
+  private detailRevision = 0;
+  private quoteUpdates?: Subscription;
+  private readonly dialog = inject(DialogService);
+  responseBusy = false;
+  responseError = '';
+  dealingVersion = 0;
+  desiredPrice: number | null = null;
+  dealNote = '';
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -71,9 +101,17 @@ export class CustomOrders implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (this.isBrowser) {
+      this.quoteUpdates = this.socket.onUserUpdate('customOrders').subscribe(event => {
+        if (!this.requestSlug || event.id === this.requestSlug) this.refreshSilently();
+      });
+    }
     this.route.paramMap.subscribe((params) => {
       this.requestSlug = params.get('slug') || '';
       this.activeRequest = null;
+      this.detailRevision++;
+      this.dealingVersion = 0;
+      this.responseError = '';
       if (!this.isBrowser) return;
 
       if (!this.getToken()) {
@@ -91,6 +129,8 @@ export class CustomOrders implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAutoRefresh();
+    this.quoteUpdates?.unsubscribe();
+    this.detailRevision++;
   }
 
   private startAutoRefresh(): void {
@@ -114,10 +154,14 @@ export class CustomOrders implements OnInit, OnDestroy {
     if (!token) return;
 
     if (this.requestSlug) {
+      if (this.responseBusy) return;
+      const revision = ++this.detailRevision;
+      const slug = this.requestSlug;
       this.http.get<unknown>(`/api/custom-orders/mine/${encodeURIComponent(this.requestSlug)}`, {
         headers: this.authorizationHeaders(token)
       }).subscribe({
         next: (res) => {
+          if (revision !== this.detailRevision || slug !== this.requestSlug || this.responseBusy) return;
           const parsed = this.parseRequest(res);
           if (parsed) {
             this.activeRequest = parsed;
@@ -194,18 +238,22 @@ export class CustomOrders implements OnInit, OnDestroy {
     const token = this.getToken();
     if (!token || !slug) return;
 
+    const revision = ++this.detailRevision;
     this.isLoading = true;
     this.errorMessage = '';
     this.http.get<unknown>(`/api/custom-orders/mine/${encodeURIComponent(slug)}`, {
       headers: this.authorizationHeaders(token),
     }).subscribe({
       next: (response) => {
+        if (revision !== this.detailRevision) return;
         this.activeRequest = this.parseRequest(response);
         if (!this.activeRequest) this.errorMessage = 'Dữ liệu yêu cầu thiết kế nhận được không hợp lệ.';
         this.isLoading = false;
         this.changeDetectorRef.markForCheck();
       },
-      error: (error: unknown) => this.handleRequestError(error, 'Không thể tải chi tiết yêu cầu thiết kế.'),
+      error: (error: unknown) => {
+        if (revision === this.detailRevision) this.handleRequestError(error, 'Không thể tải chi tiết yêu cầu thiết kế.');
+      },
     });
   }
 
@@ -289,7 +337,95 @@ export class CustomOrders implements OnInit, OnDestroy {
       createdAt: this.text(value['createdAt']),
       description: this.text(value['description']),
       imageNote: this.text(value['imageNote']),
+      quote: this.parseQuote(value),
+      quoteHistory: Array.isArray(value['quoteHistory'])
+        ? value['quoteHistory'].map(item => this.parseQuote(item)).filter((item): item is QuoteDetails => item !== null) : [],
     };
+  }
+
+  private parseQuote(value: unknown): QuoteDetails | null {
+    if (!this.isRecord(value)) return null;
+    const price = value['quotedPrice'];
+    const version = value['quoteVersion'];
+    const decision = value['quoteDecision'];
+    const date = this.text(value['quoteDate']);
+    if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0
+      || typeof version !== 'number' || !Number.isSafeInteger(version) || version < 1
+      || !date || !['pending', 'accepted', 'rejected', 'negotiating'].includes(String(decision))) return null;
+    const rawDeal = value['quoteNegotiation'];
+    const proposedPrice = this.isRecord(rawDeal) ? rawDeal['proposedPrice'] : null;
+    const negotiation = this.isRecord(rawDeal) && typeof proposedPrice === 'number' && Number.isFinite(proposedPrice) && proposedPrice > 0
+      ? { proposedPrice, note: this.text(rawDeal['note']), requestedAt: this.text(rawDeal['requestedAt']),
+          respondedAt: this.text(rawDeal['respondedAt']) } : null;
+    return { price, date, note: this.text(value['quoteNote']), version, decision: decision as QuoteDecision, negotiation };
+  }
+
+  quoteDecisionLabel(decision: QuoteDecision): string {
+    return { pending: 'Đang chờ bạn phản hồi', accepted: 'Đã đồng ý báo giá', rejected: 'Đã từ chối báo giá',
+      negotiating: 'Đang chờ cửa hàng phản hồi thương lượng' }[decision];
+  }
+
+  formatQuotePrice(price: number): string {
+    return price.toLocaleString('vi-VN') + ' đ';
+  }
+
+  openNegotiation(version: number): void {
+    if (this.responseBusy) return;
+    this.dealingVersion = version;
+    this.desiredPrice = null;
+    this.dealNote = '';
+    this.responseError = '';
+  }
+
+  get validNegotiation(): boolean {
+    return this.desiredPrice !== null && Number.isFinite(this.desiredPrice) && this.desiredPrice > 0 && this.dealNote.length <= 1000;
+  }
+
+  async respondToQuote(decision: QuoteResponse): Promise<void> {
+    const request = this.activeRequest;
+    const quote = request?.quote;
+    const token = this.getToken();
+    if (this.responseBusy || !request || !quote || !token || request.status !== 'quoted' || quote.decision !== 'pending') return;
+    if (decision === 'negotiating' && (this.dealingVersion !== quote.version || !this.validNegotiation)) return;
+
+    this.responseBusy = true;
+    this.responseError = '';
+    try {
+      if (decision !== 'negotiating') {
+        const accept = decision === 'accepted';
+        const confirmed = await this.dialog.confirm(accept
+          ? 'Bạn đồng ý với mức giá ' + this.formatQuotePrice(quote.price) + '?'
+          : 'Từ chối báo giá sẽ kết thúc yêu cầu thiết kế này.',
+          'Xác nhận phản hồi', accept ? 'Đồng ý báo giá' : 'Từ chối báo giá');
+        if (!confirmed || this.requestSlug !== request.id) return;
+      }
+      ++this.detailRevision;
+      const payload = { decision, quoteVersion: quote.version,
+        ...(decision === 'negotiating' ? { proposedPrice: this.desiredPrice, note: this.dealNote } : {}) };
+      const saved = await firstValueFrom(this.http.post<unknown>(
+        '/api/custom-orders/mine/' + encodeURIComponent(request.id) + '/quote-response', payload,
+        { headers: this.authorizationHeaders(token) }));
+      if (this.requestSlug !== request.id) return;
+      const updated = this.parseRequest(saved);
+      if (updated?.id !== request.id || updated.quote?.decision !== decision || updated.quote.version !== quote.version) {
+        this.responseError = 'Máy chủ chưa xác nhận phản hồi. Vui lòng kiểm tra lại báo giá.';
+        this.loadRequest();
+        return;
+      }
+      this.activeRequest = updated;
+      this.dealingVersion = 0;
+    } catch (error) {
+      if (this.requestSlug !== request.id) return;
+      this.responseError = error instanceof HttpErrorResponse && error.error?.message
+        ? error.error.message : 'Không thể gửi phản hồi. Vui lòng thử lại.';
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        this.dealingVersion = 0;
+        this.loadRequest();
+      }
+    } finally {
+      this.responseBusy = false;
+      this.changeDetectorRef.markForCheck();
+    }
   }
 
   private handleRequestError(error: unknown, fallback: string): void {

@@ -103,9 +103,10 @@ export class OrdersAdmin implements OnInit, OnDestroy {
   quotePrice: number | null = null;
   quoteDate: string = '';
   quoteNote: string = '';
-  editQuotePrice: number | null = null;
-  editQuoteDate: string = '';
-  editQuoteNote: string = '';
+  quoteAction: 'send' | 'correct' | 'requote' = 'send';
+  quoteBusy = false;
+  quoteError = '';
+  quoteSuccess = '';
 
   // --- Status Map ---
   statusMap: { [key: string]: any } = {
@@ -363,6 +364,10 @@ export class OrdersAdmin implements OnInit, OnDestroy {
           ...customOrderList.map((item: any) => this.normalizeCustomOrder(item))
         ];
         this.orders = [...this.originalOrders];
+        if (this.selectedOrder?.isCustomOrder && typeof document !== 'undefined' && document.getElementById('customFormModal')?.classList.contains('show')) {
+          const latest = this.originalOrders.find(item => item.isCustomOrder && item.id === this.selectedOrder.id);
+          if (latest) this.selectedOrder = latest;
+        }
         this.applySearchTarget();
         this.changeDetectorRef.markForCheck();
       },
@@ -772,79 +777,94 @@ export class OrdersAdmin implements OnInit, OnDestroy {
     new bootstrap.Modal(document.getElementById('customFormModal')).show();
   }
 
-  openQuoteForm(order: any) {
+  quoteActionFor(order: any): 'send' | 'correct' | 'requote' | null {
+    if (order.status === 'waiting_quote' || (order.status === 'quoted' && !order.quoteVersion && !order.quotedPrice)) return 'send';
+    if (order.status !== 'quoted' || !order.quoteVersion || !(order.quotedPrice > 0)) return null;
+    if (order.quoteDecision === 'pending') return 'correct';
+    if (order.quoteDecision === 'negotiating' && order.quoteNegotiation?.quoteVersion === order.quoteVersion
+      && order.quoteNegotiation.proposedPrice > 0 && !order.quoteNegotiation.respondedAt) return 'requote';
+    return null;
+  }
+
+  quoteDecisionLabel(decision: string): string {
+    return ({ pending: 'Đang chờ khách phản hồi', accepted: 'Khách đã đồng ý báo giá',
+      rejected: 'Khách đã từ chối báo giá', negotiating: 'Khách yêu cầu thương lượng' } as Record<string, string>)[decision] || '';
+  }
+
+  openQuoteForm(order: any): void {
+    const action = this.quoteActionFor(order);
+    if (!action || this.quoteBusy) return;
     this.selectedOrder = order;
-    this.quotePrice = order.quotedPrice || null;
-    this.quoteDate = order.quoteDate || new Date().toISOString().split('T')[0];
-    this.quoteNote = order.quoteNote || '';
-    
-    const customModalEl = document.getElementById('customFormModal');
-    if (customModalEl) {
-      const customModal = bootstrap.Modal.getInstance(customModalEl);
-      if (customModal) customModal.hide();
-    }
-    
-    new bootstrap.Modal(document.getElementById('quoteModal')).show();
+    this.quoteAction = action;
+    this.quoteError = '';
+    this.quoteSuccess = '';
+    this.quotePrice = action === 'correct' ? order.quotedPrice : null;
+    this.quoteDate = action === 'correct' ? order.quoteDate : new Date().toISOString().slice(0, 10);
+    this.quoteNote = action === 'correct' ? order.quoteNote || '' : '';
+
+    const details = document.getElementById('customFormModal');
+    if (details) bootstrap.Modal.getInstance(details)?.hide();
+    const modal = document.getElementById('quoteModal');
+    if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
   }
 
-  submitQuote() {
-    if (!this.quotePrice || this.quotePrice <= 0) {
-      alert('Vui lòng nhập giá báo hợp lệ!'); return;
-    }
-    const order = this.originalOrders.find(o => o.id === this.selectedOrder.id);
-    if (order) {
-      order.quotedPrice = this.quotePrice;
-      order.quoteDate = this.quoteDate;
-      order.quoteNote = this.quoteNote;
-      order.total = this.quotePrice;
-      order.status = 'approved';
-      this.adminApi.updateCustomOrder(order.id, {
-        quotedPrice: this.quotePrice,
-        status: 'quoted',
-        quoteNote: this.quoteNote,
-        quoteDate: this.quoteDate
-      }).subscribe({
-        next: () => this.loadOrders(),
-        error: (err) => console.error('Loi gui bao gia qua API:', err)
-      });
-      this.saveOrders();
-      bootstrap.Modal.getInstance(document.getElementById('quoteModal')).hide();
-      alert(`Đã gửi báo giá thành công!`);
-    }
+  get validQuoteForm(): boolean {
+    const date = new Date(this.quoteDate + 'T00:00:00Z');
+    return this.quotePrice !== null && Number.isFinite(this.quotePrice) && this.quotePrice > 0
+      && /^\d{4}-\d{2}-\d{2}$/.test(this.quoteDate) && Number.isFinite(date.getTime())
+      && date.toISOString().slice(0, 10) === this.quoteDate && this.quoteNote.length <= 1000;
   }
 
-  editQuote(order: any) {
-    if (!order.quotedPrice || order.quotedPrice <= 0) {
-      alert('Đơn hàng này chưa có báo giá. Vui lòng báo giá trước!'); return;
-    }
-    this.selectedOrder = order;
-    this.editQuotePrice = order.quotedPrice;
-    this.editQuoteDate = new Date().toISOString().split('T')[0];
-    this.editQuoteNote = order.quoteNote || '';
-    new bootstrap.Modal(document.getElementById('editQuoteModal')).show();
+  submitQuote(): void {
+    const order = this.selectedOrder;
+    if (!order || this.quoteBusy || !this.validQuoteForm) return;
+    this.saveCustomQuote(order, {
+      quoteAction: this.quoteAction, quoteVersion: order.quoteVersion ?? 0,
+      quotedPrice: this.quotePrice, quoteDate: this.quoteDate, quoteNote: this.quoteNote
+    }, 'Đã lưu báo giá.');
   }
 
-  updateQuote() {
-    if (!this.editQuotePrice || this.editQuotePrice <= 0) {
-      alert('Vui lòng nhập giá mới hợp lệ!'); return;
-    }
-    const order = this.originalOrders.find(o => o.id === this.selectedOrder.id);
-    if (order) {
-      order.quotedPrice = this.editQuotePrice;
-      order.quoteDate = this.editQuoteDate;
-      order.quoteNote = this.editQuoteNote;
-      order.total = this.editQuotePrice;
-      this.adminApi.updateCustomOrder(order.id, {
-        quotedPrice: this.editQuotePrice,
-        quoteNote: this.editQuoteNote,
-        quoteDate: this.editQuoteDate
-      }).subscribe({
-        next: () => this.loadOrders(),
-        error: (err) => console.error('Loi cap nhat bao gia qua API:', err)
-      });
-      this.saveOrders();
-      bootstrap.Modal.getInstance(document.getElementById('editQuoteModal')).hide();
-      alert(`Đã cập nhật báo giá thành công!`);
-    }
+  updateCustomProgress(order: any, status: 'processing' | 'completed'): void {
+    if (this.quoteBusy || (status === 'processing' ? order.status !== 'quoted' || order.quoteDecision !== 'accepted'
+      : order.status !== 'processing')) return;
+    this.saveCustomQuote(order, { status }, 'Đã cập nhật tiến độ yêu cầu.');
+  }
+
+  private saveCustomQuote(order: any, payload: any, success: string): void {
+    this.quoteBusy = true;
+    this.quoteError = '';
+    this.quoteSuccess = '';
+    const isQuote = Boolean(payload.quoteAction);
+    this.adminApi.updateCustomOrder(order.id, payload).subscribe({
+      next: (saved) => {
+        this.quoteBusy = false;
+        if (saved?.id !== order.id || (isQuote && (saved.status !== 'quoted'
+          || saved.quotedPrice !== payload.quotedPrice || saved.quoteDate !== payload.quoteDate
+          || saved.quoteNote !== payload.quoteNote.trim() || !Number.isSafeInteger(saved.quoteVersion)))
+          || (!isQuote && saved.status !== payload.status)) {
+          this.quoteError = 'Máy chủ chưa xác nhận dữ liệu cập nhật. Vui lòng kiểm tra yêu cầu.';
+          this.loadOrders();
+          this.changeDetectorRef.markForCheck();
+          return;
+        }
+        const updated = this.normalizeCustomOrder(saved);
+        this.originalOrders = this.originalOrders.map(item => item.isCustomOrder && item.id === order.id ? updated : item);
+        if (this.selectedOrder?.id === order.id) this.selectedOrder = updated;
+        this.applyFilters();
+        this.quoteSuccess = success;
+        this.loadOrders();
+        if (isQuote) {
+          const modal = document.getElementById('quoteModal');
+          if (modal) bootstrap.Modal.getInstance(modal)?.hide();
+        }
+        this.changeDetectorRef.markForCheck();
+      },
+      error: (error) => {
+        this.quoteBusy = false;
+        this.quoteError = error.error?.message || 'Không thể cập nhật yêu cầu. Vui lòng thử lại.';
+        if (error.status === 409) this.loadOrders();
+        this.changeDetectorRef.markForCheck();
+      }
+    });
   }
 }

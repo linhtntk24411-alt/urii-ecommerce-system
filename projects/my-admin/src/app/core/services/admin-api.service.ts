@@ -1181,7 +1181,7 @@ export class AdminApiService {
 
   // --- 10. QUẢN LÝ NGƯỜI DÙNG ---
 
-  async getUsers(): Promise<AdminUser[]> {
+  async getUsers(allowFallback = true): Promise<AdminUser[]> {
     try {
       const data = await this.requestWithFallback<any>(
         'GET',
@@ -1196,7 +1196,9 @@ export class AdminApiService {
         this.setCached('urii_admin_users', list);
         return list;
       }
-    } catch {
+      if (!allowFallback) return [];
+    } catch (error) {
+      if (!allowFallback) throw error;
       // Trả về cache nếu API lỗi
     }
 
@@ -1219,6 +1221,14 @@ export class AdminApiService {
       'PATCH',
       `/api/users/${encodeURIComponent(id)}`,
       payload
+    );
+  }
+
+  async updateUserStatus(id: string, status: 'active' | 'locked'): Promise<AdminUser> {
+    return this.requestWithFallback<AdminUser>(
+      'PATCH',
+      `/api/users/${encodeURIComponent(id)}/status`,
+      { status }
     );
   }
 

@@ -44,6 +44,7 @@ router.use(authenticate, requireAdmin);
 router.post('/', c.createUser);
 router.put('/:id', c.updateUser);
 router.patch('/:id', c.updateUser);
+router.patch('/:id/status', c.updateAccountStatus);
 router.delete('/:id', c.deleteUser);
 
 module.exports = router;

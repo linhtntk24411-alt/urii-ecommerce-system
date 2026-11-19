@@ -9,6 +9,7 @@ const Order = require('../models/Order');
 const Payment = require('../models/Payment');
 const PaymentTransaction = require('../models/PaymentTransaction');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const UserVoucher = require('../models/UserVoucher');
 const Voucher = require('../models/Voucher');
 const { initializeRealtime } = require('../realtime');
@@ -58,6 +59,11 @@ test('real MongoDB transactions protect inventory, voucher quota, expiry, and id
     ]);
 
     const userIds = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
+    const adminId = new mongoose.Types.ObjectId();
+    await User.collection.insertMany([
+      ...userIds.map((id, index) => ({ _id: id, role: 'user', email: 'customer-' + index + '@example.test' })),
+      { _id: adminId, role: 'admin', email: 'admin@example.test' }
+    ]);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     process.env.JWT_SECRET = 'payment-reservation-integration-test';
@@ -522,7 +528,7 @@ test('real MongoDB transactions protect inventory, voucher quota, expiry, and id
     assert.equal(cancelPayRes.status, 201);
     const cancelPayBody = await cancelPayRes.json();
 
-    const adminToken = jwt.sign({ id: String(userIds[0]), role: 'admin' }, process.env.JWT_SECRET);
+    const adminToken = jwt.sign({ id: String(adminId), role: 'admin' }, process.env.JWT_SECRET);
     const cancelOrderRes = await fetch(`${baseUrl}/api/orders/${cancelOrderId}`, {
       method: 'PATCH',
       headers: {
@@ -840,6 +846,7 @@ test('real MongoDB transactions protect inventory, voucher quota, expiry, and id
         Payment.deleteMany({}),
         PaymentTransaction.deleteMany({}),
         Product.deleteMany({}),
+        User.deleteMany({}),
         UserVoucher.deleteMany({}),
         Voucher.deleteMany({})
       ]);

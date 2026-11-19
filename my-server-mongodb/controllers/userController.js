@@ -2,7 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const { getPagination } = require('../utils/pagination');
-const { emitCrudChange } = require('../realtime');
+const { disconnectAccount, emitCrudChange } = require('../realtime');
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -39,7 +39,7 @@ exports.getUserById = async (req, res) => {
 };
 
 exports.createUser = async (req, res) => {
-  const { name, email, password } = req.body || {};
+  const { name, email, password, status, sessionVersion, ...profile } = req.body || {};
   if (typeof name !== 'string' || !name.trim()
     || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
     || typeof password !== 'string' || password.length < 8
@@ -51,13 +51,14 @@ exports.createUser = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = await User.create({
-      ...req.body,
+      ...profile,
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password: hashedPassword
     });
     const safeUser = user.toObject();
     delete safeUser.password;
+    delete safeUser.sessionVersion;
     emitCrudChange('users', 'created', safeUser._id);
     res.status(201).json(safeUser);
   } catch (error) {
@@ -89,6 +90,14 @@ exports.updateUser = async (req, res) => {
   delete updates.createdAt;
   delete updates.updatedAt;
   delete updates.__v;
+  const accountFields = new Set(['status', 'sessionVersion']);
+  const isAccountField = (field) => typeof field === 'string' && accountFields.has(field.split('.')[0]);
+  const updatesAccountStatus = Object.entries(updates).some(([key, value]) =>
+    isAccountField(key) || (key.startsWith('$') && value && typeof value === 'object'
+      && Object.entries(value).some(([field, target]) => isAccountField(field) || (key === '$rename' && isAccountField(target)))));
+  if (updatesAccountStatus) {
+    return res.status(400).json({ message: 'Vui lòng sử dụng API khóa hoặc mở khóa tài khoản.' });
+  }
   if (updates.email !== undefined) {
     if (typeof updates.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.email.trim())) {
       res.status(400).json({ message: 'Email không hợp lệ.' });
@@ -133,6 +142,47 @@ exports.updateUser = async (req, res) => {
     }
     console.error('Lỗi cập nhật người dùng:', error);
     res.status(500).json({ message: 'Không thể cập nhật người dùng.' });
+  }
+};
+
+exports.updateAccountStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+  if (status !== 'active' && status !== 'locked') {
+    return res.status(400).json({ message: 'Trạng thái tài khoản không hợp lệ.' });
+  }
+  if (!mongoose.isObjectIdOrHexString(id)) {
+    return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+  }
+  if (String(req.auth.id).toLowerCase() === id.toLowerCase()) {
+    return res.status(403).json({ message: 'Bạn không thể khóa hoặc mở khóa tài khoản của mình.' });
+  }
+
+  try {
+    const locking = status === 'locked';
+    const customer = { _id: id, role: 'user' };
+    const user = await User.findOneAndUpdate(
+      { ...customer, status: locking ? { $ne: 'locked' } : 'locked' },
+      locking ? { $set: { status }, $inc: { sessionVersion: 1 } } : { $set: { status } },
+      { new: true, runValidators: true }
+    ).select('-password').lean();
+
+    if (user) {
+      if (locking) disconnectAccount(user._id);
+      emitCrudChange('users', 'updated', user._id);
+      return res.json(user);
+    }
+
+    const current = await User.findById(id).select('-password').lean();
+    if (!current) return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+    if (current.role !== 'user') {
+      return res.status(403).json({ message: 'Chỉ có thể khóa hoặc mở khóa tài khoản khách hàng.' });
+    }
+    if ((current.status ?? 'active') === status) return res.json(current);
+    return res.status(409).json({ message: 'Trạng thái tài khoản đã thay đổi. Vui lòng tải lại và thử lại.' });
+  } catch (error) {
+    console.error('Lỗi cập nhật trạng thái tài khoản:', error);
+    return res.status(500).json({ message: 'Không thể cập nhật trạng thái tài khoản.' });
   }
 };
 

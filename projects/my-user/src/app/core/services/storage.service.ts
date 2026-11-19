@@ -39,6 +39,26 @@ export class StorageService {
     storage?.removeItem(this.userKey);
   }
 
+  getLegacyToken(): string | null {
+    return this.browserStorage()?.getItem('authToken') ?? null;
+  }
+
+  clearRejectedSession(token: string): boolean {
+    const storage = this.browserStorage();
+    if (!storage) return false;
+
+    const modernMatch = storage.getItem(this.tokenKey) === token;
+    const legacyMatch = storage.getItem('authToken') === token;
+    if (modernMatch) this.clear();
+    if (legacyMatch) {
+      for (const key of ['authToken', 'isLoggedIn', 'userId', 'userName', 'userEmail', 'userAvatar', 'userRole']) {
+        storage.removeItem(key);
+      }
+      window.dispatchEvent(new Event('auth:changed'));
+    }
+    return (modernMatch || legacyMatch) && !this.getToken() && !this.getLegacyToken();
+  }
+
   private browserStorage(): Storage | null {
     return isPlatformBrowser(this.platformId) ? localStorage : null;
   }

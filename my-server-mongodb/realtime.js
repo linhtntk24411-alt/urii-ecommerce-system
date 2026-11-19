@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { createHash } = require('node:crypto');
 const ChatSession = require('./models/ChatSession');
+const { checkAccountSession } = require('./middleware/auth');
 
 let ioInstance;
 let adminNamespace;
@@ -20,6 +21,7 @@ async function joinChatRoom(socket, sessionId, acknowledge = () => {}) {
   try {
     if (typeof sessionId !== 'string' || !sessionId || sessionId.length > 150) return reply({ ok: false });
     if (socket.user?.exp && socket.user.exp * 1000 <= Date.now()) return reply({ ok: false });
+    if (socket.user && await checkAccountSession(socket.user)) return reply({ ok: false });
     if (socket.user?.role !== 'admin') {
       const session = await ChatSession.findOne({ sessionId }).select('+reactionOwnerId +reactionGuestHash').lean();
       const actor = socket.userId ? `account:${socket.userId}` : socket.guestHash ? `guest:${socket.guestHash}` : '';
@@ -54,7 +56,7 @@ function initializeRealtime(server, allowedOrigins) {
 
   ioInstance = io;
   adminNamespace = io.of('/admin');
-  adminNamespace.use((socket, next) => {
+  adminNamespace.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token || !process.env.JWT_SECRET) {
       next(new Error('Unauthorized'));
@@ -67,6 +69,7 @@ function initializeRealtime(server, allowedOrigins) {
         next(new Error('Forbidden'));
         return;
       }
+      if (await checkAccountSession(user)) return next(new Error('Unauthorized'));
       socket.user = user;
       next();
     } catch {
@@ -75,7 +78,7 @@ function initializeRealtime(server, allowedOrigins) {
   });
 
   adminNamespace.on('connection', (socket) => {
-    socket.join('admins');
+    socket.join(['admins', 'user:' + socket.user.id]);
     expireSocket(socket);
     socket.on('join:chat', (sessionId, ack) => { void joinChatRoom(socket, sessionId, ack); });
     socket.on('leave:chat', (sessionId) => leaveChatRoom(socket, sessionId));
@@ -85,12 +88,13 @@ function initializeRealtime(server, allowedOrigins) {
 
   userNamespace = io.of('/user');
   const setupUserSocket = (namespace) => {
-    namespace.use((socket, next) => {
+    namespace.use(async (socket, next) => {
       const token = socket.handshake.auth?.token;
       if (token) {
         try {
           const user = jwt.verify(token, process.env.JWT_SECRET);
           if (!user.id || !['admin', 'user'].includes(user.role)) return next(new Error('Unauthorized'));
+          if (await checkAccountSession(user)) return next(new Error('Unauthorized'));
           socket.user = user;
           socket.userId = String(user.id || user._id || '');
         } catch {
@@ -131,6 +135,13 @@ function initializeRealtime(server, allowedOrigins) {
   setupUserSocket(io);
   setupUserSocket(userNamespace);
   return io;
+}
+
+function disconnectAccount(userId) {
+  const room = 'user:' + userId;
+  ioInstance?.in(room).disconnectSockets(true);
+  userNamespace?.in(room).disconnectSockets(true);
+  adminNamespace?.in(room).disconnectSockets(true);
 }
 
 function emitCrudChange(resource, action, id, extraData = {}) {
@@ -185,6 +196,7 @@ function broadcastEvent(event, data) {
 }
 
 module.exports = {
+  disconnectAccount,
   initializeRealtime,
   emitCrudChange,
   emitToUser,

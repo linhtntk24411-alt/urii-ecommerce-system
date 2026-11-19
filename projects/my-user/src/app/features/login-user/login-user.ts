@@ -143,6 +143,12 @@ export class LoginUser implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const sessionError = this.route.snapshot.queryParamMap.get('sessionError');
+    if (sessionError === 'ACCOUNT_LOCKED') {
+      this.errorMessage = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ cửa hàng để được hỗ trợ.';
+    } else if (sessionError === 'SESSION_REVOKED') {
+      this.errorMessage = 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.';
+    }
     if (isPlatformBrowser(this.platformId)) {
       this.waitForGoogleScript();
     }
@@ -713,6 +719,8 @@ if (!popup) {
         } else if (error instanceof HttpErrorResponse && error.status === 401) {
           this.errorMessage = 'Email hoặc mật khẩu không chính xác.';
           this.showRegisterPrompt = true;
+        } else if (error instanceof HttpErrorResponse && error.error?.code === 'ACCOUNT_LOCKED') {
+          this.errorMessage = error.error.message;
         } else if (error instanceof HttpErrorResponse && error.status === 400) {
           this.errorMessage = error.error?.message || 'Vui lòng nhập đầy đủ email và mật khẩu.';
         } else if (error instanceof HttpErrorResponse && error.status === 0) {

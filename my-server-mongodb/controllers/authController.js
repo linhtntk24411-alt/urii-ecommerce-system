@@ -1,3 +1,4 @@
+const { ACCOUNT_LOCKED, checkAccountSession, sessionRejection } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
@@ -424,15 +425,17 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +sessionVersion');
     const isMatch = user?.password && await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(401).json({ message: 'Sai email hoặc mật khẩu.' });
       return;
     }
 
+    if (user.status === 'locked') return res.status(403).json(ACCOUNT_LOCKED);
+
     const token = jwt.sign(
-      { id: user._id.toString(), role: user.role },
+      { id: user._id.toString(), role: user.role, sessionVersion: user.sessionVersion ?? 0 },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -631,7 +634,7 @@ function verifyLinkUser(token) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded?.role === 'user' && mongoose.isValidObjectId(decoded.id)) {
-      return decoded.id;
+      return decoded;
     }
   } catch {
     return null;
@@ -696,7 +699,7 @@ function sendOAuthCallbackResult(req, res, statusCode, provider, payload) {
   res.send(html);
 }
 
-exports.oauthStart = (req, res) => {
+exports.oauthStart = async (req, res) => {
   const { provider } = req.params;
   if (!['google', 'facebook'].includes(provider)) {
     res.status(404).json({ message: 'Nhà cung cấp OAuth không được hỗ trợ.' });
@@ -710,6 +713,10 @@ exports.oauthStart = (req, res) => {
   }
 
   try {
+    if (rawLinkToken) {
+      const rejected = await checkAccountSession(verifyLinkUser(rawLinkToken));
+      if (rejected) return res.status(rejected.status).json(rejected.body);
+    }
     const state = crypto.randomBytes(32).toString('hex');
     const authorizationUrl = oauthProviders.buildAuthorizationUrl(provider, state);
     const cookies = [oauthStateCookie(provider, state, 600)];
@@ -783,7 +790,7 @@ exports.oauthCallback = async (req, res) => {
 
     const linkedByProviderId = await User.findOne({
       oauthAccounts: { $elemMatch: { provider, providerUserId } }
-    }).select('+password');
+    }).select('+password +sessionVersion');
 
     let user = null;
 
@@ -796,7 +803,7 @@ exports.oauthCallback = async (req, res) => {
         return;
       }
 
-      const existingByEmail = await User.findOne({ email }).select('+password');
+      const existingByEmail = await User.findOne({ email }).select('+password +sessionVersion');
       if (linkedByProviderId && existingByEmail && String(linkedByProviderId._id) !== String(existingByEmail._id)) {
         sendOAuthCallbackResult(req, res, 409, provider, {
           message: 'Tài khoản Google này đã được liên kết với một người dùng khác.'
@@ -811,6 +818,7 @@ exports.oauthCallback = async (req, res) => {
         });
         return;
       }
+      if (user.status === 'locked') return sendOAuthCallbackResult(req, res, 403, provider, ACCOUNT_LOCKED);
       if (user.role !== 'user') {
         sendOAuthCallbackResult(req, res, 403, provider, {
           message: 'Tài khoản quản trị không thể đăng nhập qua OAuth.'
@@ -844,9 +852,11 @@ exports.oauthCallback = async (req, res) => {
       }
     } else if (provider === 'facebook') {
       console.log('ĐANG VÀO NHÁNH FACEBOOK');
-      const linkUserId = verifyLinkUser(linkCookieToken);
-      if (linkUserId) {
-        const currentUser = await User.findById(linkUserId).select('+password');
+      if (linkCookieToken) {
+        const linkClaims = verifyLinkUser(linkCookieToken);
+        const currentUser = linkClaims && await User.findById(linkClaims.id).select('+password +sessionVersion');
+        const rejected = sessionRejection(currentUser, linkClaims);
+        if (rejected) return sendOAuthCallbackResult(req, res, rejected.status, provider, rejected.body);
         if (!currentUser || currentUser.role !== 'user') {
           sendOAuthCallbackResult(req, res, 403, provider, {
             message: 'Chỉ tài khoản khách hàng đã đăng nhập mới có thể liên kết Facebook.'
@@ -894,8 +904,9 @@ exports.oauthCallback = async (req, res) => {
       }
     }
 
+    if (user.status === 'locked') return sendOAuthCallbackResult(req, res, 403, provider, ACCOUNT_LOCKED);
     const token = jwt.sign(
-      { id: user._id.toString(), role: user.role },
+      { id: user._id.toString(), role: user.role, sessionVersion: user.sessionVersion ?? 0 },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -969,11 +980,12 @@ exports.googleLogin = async (req, res) => {
     let user = await User.findOne({
       'oauthAccounts.provider': 'google',
       'oauthAccounts.providerUserId': googleId
-    });
+    }).select('+sessionVersion');
 
     if (!user) {
-      user = await User.findOne({ email });
+      user = await User.findOne({ email }).select('+sessionVersion');
     }
+    if (user?.status === 'locked') return res.status(403).json(ACCOUNT_LOCKED);
 
     // 3. Nếu là yêu cầu từ trang Admin (target === 'admin')
     if (target === 'admin') {
@@ -1062,7 +1074,8 @@ exports.googleLogin = async (req, res) => {
     const jwtToken = jwt.sign(
       {
         id: user._id.toString(),
-        role: user.role
+        role: user.role,
+        sessionVersion: user.sessionVersion ?? 0
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }

@@ -146,6 +146,8 @@ const previousNodeEnv = process.env.NODE_ENV;
 const previousPublicUserReads = process.env.ALLOW_PUBLIC_USER_READS;
 
 before(async () => {
+  // Most route tests use signed fixture identities without a MongoDB connection.
+  mock.method(User, 'findAccountSession', async () => ({}));
   process.env.JWT_SECRET = 'test-secret-only';
   process.env.NODE_ENV = 'test';
   process.env.ALLOW_PUBLIC_USER_READS = 'false';
@@ -1739,4 +1741,85 @@ test('sticker: reaction, own-sender recall and reload redact the icon and block 
     if (data.reactions) { assert.deepEqual(data.reactions.sticker, []); assert.equal(data.reactions.other[0].emoji, '👍'); }
   }
   assert.equal(session.messages[0].text, '🥰');
+});
+
+test('customer lock persists, rejects authentication and requires a new token after unlock', async t => {
+  const adminId = '507f1f77bcf86cd799439011';
+  const customerId = '507f1f77bcf86cd799439012';
+  const otherAdminId = '507f1f77bcf86cd799439013';
+  const password = 'CustomerPassword123';
+  const customer = { _id: customerId, role: 'user', name: 'Customer', email: 'customer@example.test',
+    password: await require('bcryptjs').hash(password, 4) };
+  const accounts = { [adminId]: { role: 'admin' }, [otherAdminId]: { role: 'admin' }, [customerId]: customer };
+  const publicAccount = account => {
+    if (!account) return null;
+    const { password, sessionVersion, ...profile } = account;
+    return profile;
+  };
+  t.mock.method(User, 'findAccountSession', async id => accounts[id] ?? null);
+  t.mock.method(User, 'findById', id => reactionQuery(publicAccount(accounts[id])));
+  t.mock.method(User, 'findOne', () => reactionQuery(customer));
+  t.mock.method(User, 'findOneAndUpdate', (filter, update) => {
+    const account = accounts[filter._id];
+    const matchesStatus = filter.status === 'locked' ? account?.status === 'locked' : account?.status !== filter.status.$ne;
+    if (account?.role !== filter.role || !matchesStatus) return reactionQuery(null);
+    Object.assign(account, update.$set);
+    if (update.$inc) account.sessionVersion = (account.sessionVersion ?? 0) + update.$inc.sessionVersion;
+    return reactionQuery(publicAccount(account));
+  });
+  const admin = reactionToken(adminId, 'admin');
+  const oldCustomerToken = reactionToken(customerId);
+  const request = (path, token, body, method = body ? 'PATCH' : 'GET') => fetch(baseUrl + '/api' + path, {
+    method,
+    headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), 'Content-Type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const statusPath = '/users/' + customerId + '/status';
+  assert.equal((await request('/users/' + customerId, oldCustomerToken)).status, 200);
+  assert.equal((await request(statusPath, oldCustomerToken, { status: 'locked' })).status, 403);
+  assert.equal((await request('/users/' + adminId + '/status', admin, { status: 'locked' })).status, 403);
+  assert.equal((await request('/users/' + otherAdminId + '/status', admin, { status: 'locked' })).status, 403);
+  assert.equal((await request('/users/' + customerId, admin, { status: 'locked' })).status, 400);
+  assert.equal((await request(statusPath, admin, { status: 'pending_verify' })).status, 400);
+  const locked = await request(statusPath, admin, { status: 'locked' });
+  assert.equal(locked.status, 200);
+  assert.equal((await locked.json()).status, 'locked');
+  assert.equal((await (await request('/users/' + customerId, admin)).json()).status, 'locked');
+  assert.equal((await request(statusPath, admin, { status: 'locked' })).status, 200);
+  assert.equal(customer.sessionVersion, 1);
+  const denied = await request('/users/' + customerId, oldCustomerToken);
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).code, 'ACCOUNT_LOCKED');
+  const login = () => request('/auth/login', null, { email: customer.email, password }, 'POST');
+  assert.equal((await (await login()).json()).code, 'ACCOUNT_LOCKED');
+
+  t.mock.method(oauthProviders, 'exchangeAuthorizationCode', async () => ({
+    providerUserId: 'provider-id', email: customer.email, emailVerified: true
+  }));
+  for (const provider of ['google', 'facebook']) {
+    const { state, cookie } = await beginOAuth(provider);
+    const callback = await fetch(baseUrl + '/api/auth/oauth/' + provider + '/callback?code=test&state=' + state, {
+      headers: { Cookie: cookie, Accept: 'application/json' }
+    });
+    assert.equal(callback.status, 403);
+    assert.match(await callback.text(), /đã bị khóa/);
+  }
+
+  const realFetch = globalThis.fetch;
+  t.mock.method(globalThis, 'fetch', (url, options) =>
+    url === 'https://www.googleapis.com/oauth2/v3/userinfo'
+      ? Promise.resolve(Response.json({ sub: 'google-id', email: customer.email, email_verified: true }))
+      : realFetch(url, options));
+  const google = await request('/auth/google', null, { token: 'test-google-token' }, 'POST');
+  assert.equal(google.status, 403);
+  assert.equal((await google.json()).code, 'ACCOUNT_LOCKED');
+
+  assert.equal((await request(statusPath, admin, { status: 'active' })).status, 200);
+  const revoked = await request('/users/' + customerId, oldCustomerToken);
+  assert.equal(revoked.status, 401);
+  assert.equal((await revoked.json()).code, 'SESSION_REVOKED');
+  const newLogin = await login();
+  assert.equal(newLogin.status, 200);
+  const { token } = await newLogin.json();
+  assert.equal((await request('/users/' + customerId, token)).status, 200);
 });

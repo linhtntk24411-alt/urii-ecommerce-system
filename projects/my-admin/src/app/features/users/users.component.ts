@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { AdminApiService, AdminUser, UserPayload } from '../../core/services/admin-api.service';
+import { AdminApiService, AdminUser, UserPayload, apiErrorMessage } from '../../core/services/admin-api.service';
 import { AdminSocketService } from '../../core/services/admin-socket.service';
 
 export type UserStatusType = 'active' | 'pending' | 'locked';
@@ -28,6 +28,7 @@ export class UsersComponent implements OnInit {
   private readonly api = inject(AdminApiService);
   private readonly socket = inject(AdminSocketService);
   private readonly route = inject(ActivatedRoute);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   private pendingSearchId: string | null = null;
 
   users: UserView[] = [];
@@ -56,6 +57,8 @@ export class UsersComponent implements OnInit {
 
   showDeleteModal = false;
   deletingUser: UserView | null = null;
+  statusChangeUser: UserView | null = null;
+  isChangingStatus = false;
 
   form = {
     name: '',
@@ -68,16 +71,10 @@ export class UsersComponent implements OnInit {
     address: 'TP. Hồ Chí Minh'
   };
 
-  // Preserve custom statuses & staff roles locally in session
-  private statusOverrides = new Map<string, UserStatusType>();
+  // Preserve the existing staff display role locally.
   private roleOverrides = new Map<string, 'admin' | 'staff' | 'customer'>();
 
   ngOnInit(): void {
-    // 1. Tải ngay lập tức dữ liệu cache/khởi tạo ban đầu để các thẻ thống kê và bảng hiện ngay trong 0ms
-    const initialItems = this.api.getInitialUsers();
-    this.users = initialItems.map((u, idx) => this.mapUserView(u, idx));
-    this.applyFilters();
-    this.isLoading = false;
     this.route.queryParamMap.subscribe(params => {
       this.pendingSearchId = params.get('searchType') === 'user'
         ? params.get('searchId')
@@ -85,22 +82,20 @@ export class UsersComponent implements OnInit {
       this.applySearchTarget();
     });
 
-    // 2. Tiếp tục đồng bộ ngầm với MongoDB, nếu có thay đổi sẽ cập nhật mượt mà
     void this.loadUsers();
   }
 
   async loadUsers(): Promise<void> {
     try {
-      const items = await this.api.getUsers();
-      if (items && items.length > 0) {
-        this.users = items.map((u, idx) => this.mapUserView(u, idx));
-        this.applyFilters();
-        this.applySearchTarget();
-      }
-    } catch (e) {
-      console.warn('Đồng bộ người dùng ngầm:', e);
+      const items = await this.api.getUsers(false);
+      this.users = items.map((u, idx) => this.mapUserView(u, idx));
+      this.applyFilters();
+      this.applySearchTarget();
+    } catch (error) {
+      this.showToast(apiErrorMessage(error, 'Không thể tải danh sách người dùng.'), 'danger');
     } finally {
       this.isLoading = false;
+      this.changeDetector.markForCheck();
     }
   }
 
@@ -131,7 +126,7 @@ export class UsersComponent implements OnInit {
       defaultStatus = 'pending';
     }
 
-    const statusKey: UserStatusType = this.statusOverrides.get(u._id) || defaultStatus;
+    const statusKey = defaultStatus;
     const statusLabelMap: Record<UserStatusType, string> = {
       active: 'Đang hoạt động',
       pending: 'Chờ xác minh',
@@ -354,7 +349,6 @@ export class UsersComponent implements OnInit {
 
     if (this.isEditing && this.editingId) {
       this.roleOverrides.set(this.editingId, this.form.roleKey);
-      this.statusOverrides.set(this.editingId, this.form.statusKey);
 
       const payload: Partial<UserPayload> = {
         name,
@@ -397,7 +391,6 @@ export class UsersComponent implements OnInit {
         const created = await this.api.createUser(payload);
         const id = created?._id || `user_${Date.now()}`;
         this.roleOverrides.set(id, this.form.roleKey);
-        this.statusOverrides.set(id, this.form.statusKey);
         const newUser = this.mapUserView({
           ...created,
           _id: id,
@@ -415,7 +408,6 @@ export class UsersComponent implements OnInit {
       } catch {
         const id = `user_${Date.now()}`;
         this.roleOverrides.set(id, this.form.roleKey);
-        this.statusOverrides.set(id, this.form.statusKey);
         const fallbackUser = this.mapUserView({
           _id: id,
           name,
@@ -434,17 +426,37 @@ export class UsersComponent implements OnInit {
   }
 
   toggleLockStatus(user: UserView): void {
-    const nextStatus: UserStatusType = user.statusKey === 'locked' ? 'active' : 'locked';
-    this.statusOverrides.set(user._id, nextStatus);
-    const idx = this.users.findIndex((u) => u._id === user._id);
-    if (idx > -1) {
-      this.users[idx] = this.mapUserView(this.users[idx], idx);
+    if (user.role !== 'user' || this.isChangingStatus) return;
+    this.statusChangeUser = user;
+  }
+
+  closeStatusConfirm(): void {
+    if (!this.isChangingStatus) this.statusChangeUser = null;
+  }
+
+  async confirmStatusChange(): Promise<void> {
+    const user = this.statusChangeUser;
+    if (!user || this.isChangingStatus) return;
+
+    const status = user.statusKey === 'locked' ? 'active' : 'locked';
+    this.isChangingStatus = true;
+    try {
+      const updated = await this.api.updateUserStatus(user._id, status);
+      this.users = this.users.map((item, index) => item._id === updated._id
+        ? this.mapUserView({ ...item, ...updated }, index) : item);
+      if (this.selectedUser?._id === updated._id) {
+        this.selectedUser = this.mapUserView({ ...this.selectedUser, ...updated });
+      }
       this.applyFilters();
-      this.showToast(
-        nextStatus === 'locked'
-          ? `Đã khóa tài khoản ${user.name}.`
-          : `Đã mở khóa tài khoản ${user.name}.`
-      );
+      this.statusChangeUser = null;
+      const action = status === 'locked' ? 'khóa' : 'mở khóa';
+      this.showToast('Đã ' + action + ' tài khoản ' + user.name + '.');
+    } catch (error) {
+      this.statusChangeUser = null;
+      this.showToast(apiErrorMessage(error, 'Không thể cập nhật trạng thái tài khoản.'), 'danger');
+    } finally {
+      this.isChangingStatus = false;
+      this.changeDetector.markForCheck();
     }
   }
 
@@ -507,6 +519,7 @@ export class UsersComponent implements OnInit {
     setTimeout(() => {
       if (this.toastMessage === message) {
         this.toastMessage = '';
+        this.changeDetector.markForCheck();
       }
     }, 3500);
   }

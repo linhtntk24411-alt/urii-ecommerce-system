@@ -15,6 +15,8 @@ const userSchema = new mongoose.Schema({
     enum: ['', 'male', 'female', 'other', 'prefer_not_to_say']
   },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  status: { type: String, enum: ['active', 'pending_verify', 'locked'], default: 'active' },
+  sessionVersion: { type: Number, default: 0, select: false },
   authProviders: {
     type: [{ type: String, enum: ['password', 'google', 'facebook'] }],
     default: []
@@ -31,4 +33,9 @@ const userSchema = new mongoose.Schema({
     select: false
   }
 }, { timestamps: true });
+userSchema.statics.findAccountSession = function (id) {
+  if (!mongoose.isObjectIdOrHexString(id)) return null;
+  return this.findById(id).select('status +sessionVersion').lean();
+};
+
 module.exports = mongoose.model('User', userSchema);

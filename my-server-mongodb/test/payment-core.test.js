@@ -22,6 +22,7 @@ const { after, before, mock, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const app = require('../app');
+const User = require('../models/User');
 const Order = require('../models/Order');
 const Payment = require('../models/Payment');
 const Product = require('../models/Product');
@@ -49,6 +50,8 @@ for (const key of [
 }
 
 before(async () => {
+  // Route tests use authenticated fixture accounts without a MongoDB connection.
+  mock.method(User, 'findAccountSession', async () => ({}));
   process.env.JWT_SECRET = 'payment-core-test-secret';
   process.env.PAYMENT_QR_BANK_CODE = '970422';
   process.env.PAYMENT_QR_ACCOUNT_NUMBER = '12345678';

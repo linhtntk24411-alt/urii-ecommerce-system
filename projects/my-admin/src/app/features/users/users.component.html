@@ -186,7 +186,7 @@
               <button class="btn-action" title="Chỉnh sửa" (click)="openEditModal(u)">
                 <i class="bi bi-pencil-square"></i>
               </button>
-              <button class="btn-action" [title]="u.statusKey === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'"
+              <button *ngIf="u.role === 'user'" class="btn-action" [title]="u.statusKey === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'"
                 (click)="toggleLockStatus(u)">
                 <i class="bi" [ngClass]="u.statusKey === 'locked' ? 'bi-unlock text-success' : 'bi-lock'"></i>
               </button>
@@ -264,7 +264,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold small mb-1">Trạng thái</label>
-              <select class="form-select form-select-sm" [(ngModel)]="form.statusKey" name="statusKey">
+              <select class="form-select form-select-sm" [ngModel]="form.statusKey" name="statusKey" disabled>
                 <option value="active">Đang hoạt động</option>
                 <option value="pending">Chờ xác minh</option>
                 <option value="locked">Bị khóa</option>
@@ -371,6 +371,29 @@
         <div class="d-flex justify-content-center gap-2">
           <button type="button" class="btn btn-light px-4" (click)="closeDeleteModal()">Hủy</button>
           <button type="button" class="btn btn-danger px-4" style="border-radius: 8px;" (click)="deleteUser()">Xóa bỏ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade show d-block" role="dialog" aria-modal="true" aria-labelledby="user-status-confirm-title"
+  tabindex="-1" style="background: rgba(0,0,0,0.45);" *ngIf="statusChangeUser as user">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+      <div class="modal-body text-center p-4">
+        <h5 class="fw-bold mb-2" id="user-status-confirm-title">
+          {{ user.statusKey === 'locked' ? 'Xác nhận mở khóa' : 'Xác nhận khóa' }}
+        </h5>
+        <p class="text-muted small mb-4">
+          Bạn có chắc chắn muốn {{ user.statusKey === 'locked' ? 'mở khóa' : 'khóa' }} tài khoản
+          <strong class="text-dark">{{ user.name }}</strong> không?
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <button type="button" class="btn btn-light px-4" [disabled]="isChangingStatus" (click)="closeStatusConfirm()">Hủy</button>
+          <button type="button" class="btn btn-danger px-4" [disabled]="isChangingStatus" (click)="confirmStatusChange()">
+            {{ user.statusKey === 'locked' ? 'Mở khóa' : 'Khóa' }}
+          </button>
         </div>
       </div>
     </div>

@@ -37,8 +37,22 @@ export class Cart implements OnInit {
     this.loadCart();
   }
 
+  get selectableLines(): CartLine[] {
+    return this.lines.filter((line) => line.product !== null);
+  }
+
   get selectedLines(): CartLine[] {
     return this.lines.filter((line) => line.selected && line.product !== null);
+  }
+
+  get isAllSelected(): boolean {
+    const selectable = this.selectableLines;
+    return selectable.length > 0 && selectable.every((line) => line.selected);
+  }
+
+  get isPartiallySelected(): boolean {
+    const selectedCount = this.selectedLines.length;
+    return selectedCount > 0 && selectedCount < this.selectableLines.length;
   }
 
   get selectedCount(): number {
@@ -74,6 +88,28 @@ export class Cart implements OnInit {
       line.selected = !line.selected;
     } catch (error) {
       console.error('Không thể cập nhật lựa chọn giỏ hàng:', error);
+      this.errorMessage = error instanceof Error ? error.message : 'Không thể cập nhật lựa chọn.';
+    }
+  }
+
+  toggleSelectAll(): void {
+    const selectable = this.selectableLines;
+    if (selectable.length === 0) return;
+
+    const nextSelected = !this.isAllSelected;
+    try {
+      this.cart.updateAllSelected(
+        nextSelected,
+        selectable.map((line) => ({
+          productId: line.item.productId,
+          variant: line.item.variant,
+        })),
+      );
+      for (const line of selectable) {
+        line.selected = nextSelected;
+      }
+    } catch (error) {
+      console.error('Không thể cập nhật lựa chọn tất cả sản phẩm:', error);
       this.errorMessage = error instanceof Error ? error.message : 'Không thể cập nhật lựa chọn.';
     }
   }

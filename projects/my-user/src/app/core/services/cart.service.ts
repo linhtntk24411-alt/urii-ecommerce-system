@@ -176,6 +176,45 @@ export class CartService {
     if (item.itemId) this.updateRemoteItem(item.itemId, { selected });
   }
 
+  updateAllSelected(
+    selected: boolean,
+    targets?: ReadonlyArray<{ productId: string; variant: string | null }>,
+  ): void {
+    const items = this.getItems();
+    const changedRemoteIds: string[] = [];
+
+    for (const item of items) {
+      const isTarget = !targets || targets.some(
+        (target) => target.productId === item.productId && target.variant === item.variant,
+      );
+      if (!isTarget) continue;
+      if ((item.selected ?? true) !== selected) {
+        item.selected = selected;
+        if (item.itemId) {
+          changedRemoteIds.push(item.itemId);
+        }
+      } else {
+        item.selected = selected;
+      }
+    }
+
+    this.saveItems(items);
+    if (!this.isAuthenticatedUser() || changedRemoteIds.length === 0) return;
+
+    from(changedRemoteIds).pipe(
+      concatMap((itemId) =>
+        this.updateRemoteItemRequest(itemId, { selected }).pipe(
+          tap((response) => this.cacheItems(response)),
+          catchError((error: unknown) => {
+            this.reportSyncError('Không thể cập nhật giỏ hàng trên máy chủ.', error);
+            return of(null);
+          }),
+        ),
+      ),
+      last(),
+    ).subscribe();
+  }
+
   changeVariant(productId: string, currentVariant: string | null, newVariant: string | null): void {
     const items = this.getItems();
     const currentIndex = items.findIndex(

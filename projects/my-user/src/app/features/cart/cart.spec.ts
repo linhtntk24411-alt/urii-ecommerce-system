@@ -366,4 +366,37 @@ describe('Cart', () => {
       { productId: 'p-5', variant: 'Large', quantity: 3 },
     ]);
   });
+
+  it('toggles selecting and deselecting all cart items at once', () => {
+    const cart = TestBed.inject(CartService);
+    cart.addItem({ productId: 'p-1', variant: null, quantity: 1 });
+    cart.addItem({ productId: 'p-2', variant: null, quantity: 2 });
+    component.loadCart();
+    http.expectOne('/api/products').flush([
+      { id: 'p-1', name: 'Sản phẩm 1', price: 50000, stock: 5, variants: [] },
+      { id: 'p-2', name: 'Sản phẩm 2', price: 80000, stock: 5, variants: [] },
+    ]);
+    fixture.detectChanges();
+
+    expect(component.isAllSelected).toBe(true);
+    expect(component.selectedCount).toBe(3);
+
+    const selectAllButton = fixture.nativeElement.querySelector('.select-all-button') as HTMLButtonElement;
+    expect(selectAllButton.textContent).toContain('Bỏ chọn tất cả');
+
+    selectAllButton.click();
+    fixture.detectChanges();
+
+    expect(component.isAllSelected).toBe(false);
+    expect(component.selectedCount).toBe(0);
+    expect(cart.getItems().every((item) => item.selected === false)).toBe(true);
+    expect(selectAllButton.textContent).toContain('Chọn tất cả');
+
+    selectAllButton.click();
+    fixture.detectChanges();
+
+    expect(component.isAllSelected).toBe(true);
+    expect(component.selectedCount).toBe(3);
+    expect(cart.getItems().every((item) => item.selected === true)).toBe(true);
+  });
 });

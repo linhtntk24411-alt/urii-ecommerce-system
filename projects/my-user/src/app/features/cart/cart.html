@@ -37,6 +37,28 @@
     } @else {
       <div class="cart-layout">
         <section class="cart-items" aria-label="Sản phẩm trong giỏ hàng">
+          <div class="cart-select-bar">
+            <label class="select-all-control">
+              <input
+                class="item-checkbox select-all-checkbox"
+                type="checkbox"
+                [checked]="isAllSelected"
+                [indeterminate]="isPartiallySelected"
+                [disabled]="selectableLines.length === 0"
+                aria-label="Chọn tất cả sản phẩm"
+                (change)="toggleSelectAll()"
+              >
+              <span class="select-all-label">Tất cả ({{ selectableLines.length }} sản phẩm)</span>
+            </label>
+            <button
+              type="button"
+              class="select-all-button"
+              [disabled]="selectableLines.length === 0"
+              (click)="toggleSelectAll()"
+            >
+              {{ isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả' }}
+            </button>
+          </div>
           @for (line of lines; track trackLine($index, line)) {
             <article class="cart-item">
               <input
